@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yoga Sequences</title>
+  <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+<header>
+  <div class="row">
+    <strong>Yoga Sequences</strong>
+    <span class="muted" id="statusText">Loading…</span>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <label class="muted" for="sequenceSelect">Sequence:</label>
+    <select id="sequenceSelect">
+      <option value="">Select a sequence</option>
+    </select>
+
+    <button id="browseBtn" type="button" title="Browse / search asanas">Browse</button>
+
+    <span class="pill" id="poseCounter">–</span>
+    <span class="pill" id="poseTimer">–</span>
+
+    <span class="pill" id="totalTimePill" title="Estimated total practice time for this sequence">Total: –</span>
+    <span class="pill" id="lastCompletedPill" title="Last time you marked this sequence complete">Last: –</span>
+
+    <div class="controls">
+      <button id="prevBtn" type="button">◀ Prev</button>
+      <button id="nextBtn" type="button">Next ▶</button>
+      <button id="startStopBtn" type="button">Start</button>
+      <button id="resetBtn" type="button">Reset</button>
+      <button id="completeBtn" type="button" style="display:none">✓ Complete</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+        <div>
+          <div id="poseName" style="font-size:20px;font-weight:700">Select a sequence</div>
+          <div class="muted">
+             <span id="poseMeta"></span>
+             <span id="poseCounter" style="margin-left:8px; font-weight:bold;"></span>
+          </div>
+        </div>
+        
+        <div style="text-align:right">
+           <div class="muted" id="debugSmall"></div>
+           <button id="completeBtn" style="display:none; margin-top:5px;">Complete Sequence</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px" id="collageWrap">
+        <div class="msg" id="loadingText">Select a sequence</div>
+      </div>
+
+      <details id="poseNoteDetails" style="margin-top:12px;max-width:720px;">
+        <summary style="cursor:pointer;font-weight:650;">Note</summary>
+        <div id="poseNoteBody" class="muted" style="padding-top:8px;color:#111"></div>
+      </details>
+
+      <details id="poseDescDetails" style="margin-top:12px;max-width:720px" open>
+         <summary style="cursor:pointer;font-weight:650">Description</summary>
+         <div id="poseDescBody" class="muted" style="padding-top:8px;color:#111"></div>
+      </details>
+
+    </div>
+  </div>
+
+    <div>
+      <details>
+        <summary>Advanced</summary>
+        <div class="inner">
+          
+
+          <div class="adv-section-title">Admin mode</div>
+          <div class="muted" style="margin-top:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <label style="display:flex;gap:8px;align-items:center">
+              <input id="adminModeToggle" type="checkbox">
+              Enable editing (descriptions + categories)
+            </label>
+          </div>
+          <div class="muted" id="adminHint" style="display:none;margin-top:6px">
+            Admin mode enables editing of asana descriptions and category overrides in Browse.
+          </div>
+
+          <div class="adv-section-title">History of completed sequences</div>
+          <div class="muted" style="margin-top:8px">
+            <a href="#" id="historyLink">History</a>
+          </div>
+          <div id="historyPanel" class="muted" style="display:none;margin-top:6px"></div>
+
+        </div>
+      </details>
+    </div>
+  </div>
+</main>
+          
+</main>
+
+<div class="modal-backdrop" id="browseBackdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="browseTitle">
+    <div class="modal-header">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <strong id="browseTitle">Browse Asanas</strong>
+        <span class="muted" id="browseCount">–</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button id="browseCloseBtn" type="button">Close</button>
+      </div>
+    </div>
+
+    <div class="modal-body">
+      <div class="browse-left">
+        <div class="browse-filters">
+          <div style="display:flex;gap:8px;align-items:center;flex:1;min-width:180px"><input id="browseSearch" placeholder="Search name (English or IAST)" style="flex:1"><button id="browseClearBtn" type="button" class="browse-clear" aria-label="Clear filters" title="Clear">✕</button></div>
+          <input id="browsePlate" class="tiny" placeholder="Plate e.g. 184 or 176-183">
+          <input id="browseAsanaNo" class="tiny" placeholder="Asana #">
+          <select id="browseCategory">
+            <option value="">All categories</option>
+            <option value="__UNCAT__">Uncategorized</option>
+            <option value="01_Standing_and_Basic">01 Standing & Basic</option>
+            <option value="02_Seated_and_Lotus_Variations">02 Seated & Lotus</option>
+            <option value="03_Forward_Bends">03 Forward Bends</option>
+            <option value="04_Inversions_Sirsasana_Sarvangasana">04 Inversions</option>
+            <option value="05_Abdominal_and_Supine">05 Abdominal & Supine</option>
+            <option value="06_Twists">06 Twists</option>
+            <option value="07_Arm_Balances">07 Arm Balances</option>
+            <option value="08_Advanced_Leg_behind_Head">08 Leg Behind Head and Advanced and Advanced</option>
+            <option value="09_Backbends">09 Backbends</option>
+            <option value="10_Restorative_Pranayama">10 Restorative/Pranayama</option>
+          </select>
+          <label class="muted" style="display:flex;gap:8px;align-items:center;min-width:170px">
+            <input id="browseFinalOnly" type="checkbox">
+            show only finals
+          </label>
+        </div>
+
+        <div class="browse-list" id="browseList"></div>
+      </div>
+
+      <div class="browse-right">
+        <div class="browse-detail" id="browseDetail">
+          <div class="msg">Select an asana to view details.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

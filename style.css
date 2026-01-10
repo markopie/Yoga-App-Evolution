@@ -1,0 +1,524 @@
+body {
+	font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+	margin: 0;
+	background: #fafafa;
+	color: #111
+}
+
+header {
+	padding: 14px 18px;
+	background: #fff;
+	border-bottom: 1px solid #e8e8e8;
+	position: sticky;
+	top: 0;
+	z-index: 10
+}
+
+.row {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	flex-wrap: wrap
+}
+
+select,
+input,
+button,
+textarea {
+	font: inherit
+}
+
+select,
+input {
+	padding: 8px 10px;
+	border: 1px solid #d0d0d0;
+	border-radius: 10px;
+	background: #fff
+}
+
+button {
+	padding: 8px 12px;
+	border: 1px solid #d0d0d0;
+	border-radius: 10px;
+	background: #fff;
+	cursor: pointer
+}
+
+button:hover {
+	background: #f3f3f3
+}
+
+main {
+	padding: 18px;
+	max-width: 1100px;
+	margin: 0 auto
+}
+
+.card {
+	background: #fff;
+	border: 1px solid #e8e8e8;
+	border-radius: 16px;
+	padding: 14px
+}
+
+.muted {
+	color: #666;
+	font-size: 14px
+}
+
+.msg {
+	color: #666;
+	font-size: 14px
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 14px
+}
+
+@media(min-width:900px) {
+	.grid {
+		grid-template-columns: 1.4fr 0.6fr
+	}
+}
+
+.collage {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 10px
+}
+
+.tile {
+	border: 1px solid #eee;
+	border-radius: 14px;
+	overflow: hidden;
+	background: #fff
+}
+
+.tile picture,
+.tile img {
+	display: block;
+	width: 100%;
+	height: auto
+}
+
+.tile img {
+	display: block
+}
+
+.controls {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	flex-wrap: wrap
+}
+
+.pill {
+	display: inline-block;
+	padding: 3px 10px;
+	border: 1px solid #e8e8e8;
+	border-radius: 999px;
+	background: #fafafa;
+	font-size: 13px
+}
+
+details {
+	border: 1px solid #e8e8e8;
+	border-radius: 16px;
+	background: #fff
+}
+
+details>summary {
+	cursor: pointer;
+	padding: 12px 14px;
+	font-weight: 600
+}
+
+details .inner {
+	padding: 0 14px 14px
+}
+
+textarea {
+	width: 100%;
+	min-height: 110px;
+	padding: 10px;
+	border: 1px solid #d0d0d0;
+	border-radius: 12px
+}
+
+.draft {
+	margin-top: 10px;
+	border-top: 1px solid #eee;
+	padding-top: 10px
+}
+
+.draft-row {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 0;
+	border-bottom: 1px solid #f1f1f1
+}
+
+.draft-row:last-child {
+	border-bottom: none
+}
+
+.draft-row .left {
+	display: flex;
+	flex-direction: column;
+	gap: 2px
+}
+
+.adv-section-title {
+	margin-top: 14px;
+	padding-top: 12px;
+	border-top: 1px solid #f1f1f1;
+	font-weight: 650
+}
+
+details .inner .adv-section-title:first-of-type {
+	border-top: none;
+	padding-top: 0;
+	margin-top: 10px
+}
+
+/* -------- Browse Asanas (minimal modal) -------- */
+/* Mobile: when viewing an asana, show detail full-screen */
+@media (max-width: 900px) {
+	.modal.detail-mode .browse-left {
+		display: none;
+	}
+
+	.modal.detail-mode .browse-right {
+		display: flex;
+	}
+}
+
+.modal-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, .28);
+	display: none;
+	align-items: flex-start;
+	justify-content: center;
+	z-index: 999
+}
+
+.modal {
+	margin: 60px 14px 14px;
+	max-width: 1100px;
+	width: 100%;
+	background: #fff;
+	border: 1px solid #e8e8e8;
+	border-radius: 18px;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, .12);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	max-height: 75vh
+}
+
+.modal-header {
+	display: flex;
+	justify-content: space-between;
+	gap: 10px;
+	align-items: center;
+	padding: 12px 14px;
+	border-bottom: 1px solid #eee;
+	background: #fff
+}
+
+.modal-body {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 0;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden
+}
+
+@media(min-width:900px) {
+	.modal-body {
+		grid-template-columns: 0.6fr 1.4fr
+	}
+}
+
+.browse-left {
+	border-right: 0
+}
+
+@media(min-width:900px) {
+	.browse-left {
+		border-right: 1px solid #f1f1f1
+	}
+}
+
+.browse-left,
+.browse-right {
+	padding: 12px 14px;
+	display: flex;
+	flex-direction: column;
+	min-height: 0
+}
+
+.browse-filters {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+	align-items: center
+}
+
+.browse-filters input,
+.browse-filters select {
+	flex: 1;
+	min-width: 180px
+}
+
+.browse-filters .tiny {
+	min-width: 130px;
+	max-width: 170px
+}
+
+.browse-list {
+	margin-top: 10px;
+	border-top: 1px solid #f1f1f1;
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
+.browse-item {
+	display: flex;
+	gap: 10px;
+	justify-content: space-between;
+	align-items: flex-start;
+	padding: 10px 0;
+	border-bottom: 1px solid #f6f6f6
+}
+
+.browse-item:last-child {
+	border-bottom: none
+}
+
+.browse-item .title {
+	font-weight: 650
+}
+
+.browse-item .meta {
+	color: #666;
+	font-size: 13px;
+	margin-top: 2px
+}
+
+.browse-item button {
+	white-space: nowrap
+}
+
+.browse-detail h2 {
+	margin: 0;
+	font-size: 18px
+}
+
+.browse-detail .sub {
+	color: #666;
+	font-size: 13px;
+	margin-top: 4px
+}
+
+.browse-detail .section-title {
+	margin-top: 12px;
+	font-weight: 650
+}
+
+.browse-clear {
+	padding: 6px 10px;
+	line-height: 1;
+	border-radius: 10px;
+	border: 1px solid #ddd;
+	background: #fff;
+	color: #444;
+	cursor: pointer
+}
+
+.browse-clear:hover {
+	background: #fafafa
+}
+
+.browse-clear:focus {
+	outline: 2px solid #cfe6ff;
+	outline-offset: 2px
+}
+
+.badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border: 1px solid #eee;
+	border-radius: 999px;
+	background: #fafafa;
+	font-size: 12px;
+	color: #555
+}
+
+
+@media(max-width:600px) {
+	.modal {
+		max-height: 86vh;
+		margin: 12px 10px
+	}
+}
+
+/* -------- Image area scrolling (player + browse detail) -------- */
+#collageWrap {
+	max-height: 70vh;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+	padding-right: 2px;
+	/* prevent scrollbar overlay on some browsers */
+}
+
+/* Keep browse detail usable when images are tall */
+#browseDetail {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+@media(max-width:600px) {
+	#collageWrap {
+		max-height: 62vh;
+	}
+}
+
+
+@media (max-width: 700px) {
+	.modal {
+		margin: 0;
+		border-radius: 0;
+		max-height: 100vh;
+		height: 100vh
+	}
+
+	.modal-header {
+		position: sticky;
+		top: 0;
+		z-index: 2
+	}
+
+	.modal-body {
+		grid-template-columns: 1fr;
+		overflow: auto
+	}
+
+	.browse-left,
+	.browse-right {
+		min-height: auto
+	}
+
+	.browse-filters input,
+	.browse-filters select {
+		min-width: 0
+	}
+}
+
+
+/* Description block in player */
+#poseDescDetails summary {
+	list-style: none;
+}
+
+#poseDescDetails summary::-webkit-details-marker {
+	display: none;
+}
+
+#poseDescBody {
+	font-size: 14px;
+	line-height: 1.45;
+}
+
+#poseDescBody p {
+	margin: 0 0 10px 0;
+}
+
+#poseDescBody ul,
+#poseDescBody ol {
+	margin: 0 0 10px 20px;
+	padding: 0;
+}
+
+#poseDescBody li {
+	margin: 4px 0;
+}
+
+#poseDescBody code {
+	background: rgba(0, 0, 0, 0.06);
+	padding: 0 4px;
+	border-radius: 4px;
+}
+
+@media (max-width: 720px) {
+	#poseDescDetails {
+		max-width: 100% !important;
+	}
+}
+
+/* Notes block in player (per-sequence pose notes) */
+#poseNoteDetails summary {
+	list-style: none;
+}
+
+#poseNoteDetails summary::-webkit-details-marker {
+	display: none;
+}
+
+#poseNoteBody {
+	font-size: 14px;
+	line-height: 1.45;
+}
+
+#poseNoteBody p {
+	margin: 0 0 10px 0;
+}
+
+#poseNoteBody ul,
+#poseNoteBody ol {
+	margin: 0 0 10px 20px;
+	padding: 0;
+}
+
+#poseNoteBody li {
+	margin: 4px 0;
+}
+
+#poseNoteBody code {
+	background: rgba(0, 0, 0, 0.06);
+	padding: 0 4px;
+	border-radius: 4px;
+}
+
+@media (max-width: 720px) {
+	#poseNoteDetails {
+		max-width: 100% !important;
+	}
+}
+/* Variation Tabs Added by Colab Agent */
+.variation-tabs { display: flex; gap: 5px; border-bottom: 2px solid #ddd; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+.tab-btn { background: none; border: none; padding: 8px 16px; cursor: pointer; font-size: 0.9rem; color: #666; border-radius: 4px 4px 0 0; transition: all 0.2s; white-space: nowrap; }
+.tab-btn:hover { background-color: #f0f0f0; color: #333; }
+.tab-btn.active { background-color: #e67e22; color: white; font-weight: bold; }
+.tab-content { display: none; animation: fadeIn 0.3s; }
+.tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- VARIATION TABS (Added by Colab) --- */
+.variation-tabs { display: flex; gap: 5px; border-bottom: 2px solid #ddd; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+.tab-btn { background: none; border: none; padding: 8px 16px; cursor: pointer; font-size: 0.9rem; color: #666; border-radius: 4px 4px 0 0; transition: all 0.2s; white-space: nowrap; }
+.tab-btn:hover { background-color: #f0f0f0; color: #333; }
+.tab-btn.active { background-color: #e67e22; color: white; font-weight: bold; }
+.tab-content { display: none; animation: fadeIn 0.3s; }
+.tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
