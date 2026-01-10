@@ -992,6 +992,7 @@ async function loadAsanaIndex() {
    const colP2001 = idx("2001 Edition Page");
    const colP2015 = idx("2015 Edition Page");
    const colIntensity = idx("Intensity");
+   const colVariation = idx("Variation");
    const colDesc = header.findIndex(h => /formatted\s*description/i.test(h) || /formatted_description/i.test(h));
 
    const out = [];
@@ -1008,6 +1009,7 @@ async function loadAsanaIndex() {
       const interRaw = (colInt >= 0 ? row[colInt] : "") || "";
       const finalRaw = (colFinal >= 0 ? row[colFinal] : "") || "";
       const defaultDescriptionMd = (colDesc >= 0 ? row[colDesc] : "") || "";
+      const variation = (colVariation >= 0 ? row[colVariation] : "") || "";
 
       const interPlates = parseIndexPlateField(interRaw);
       const finalPlates = parseIndexPlateField(finalRaw);
@@ -1041,7 +1043,8 @@ async function loadAsanaIndex() {
          defaultDescriptionMd: String(defaultDescriptionMd || "").trim(),
          descriptionMd: "",
          descriptionUpdatedAt: "",
-         descriptionSource: ""
+         descriptionSource: "",
+         variation: variation || ""
       };
 
       out.push(asanaObj);
@@ -1998,35 +2001,11 @@ function exitBrowseDetailMode() {
    if (modal) modal.classList.remove("detail-mode");
 }
 
-// --- VARIATION LOGIC START ---
-window.switchVariationTab = function(btn, contentId) {
-    const parent = btn.closest('#technique-description-container') || document.body;
-    parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    parent.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(contentId).classList.add('active');
-};
-
-function getVariations(techniqueName, allData) {
-    return allData.filter(item => item['Yogasana Name'] === techniqueName);
+// --- NORMALIZATION START ---
+function normalizeText(input) {
+    return input ? input.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : input;
 }
-
-function findSequenceItem(sequenceString, allData) {
-    let exactMatch = allData.find(i => i['Yogasana Name'].toLowerCase() === sequenceString.toLowerCase());
-    if (exactMatch) return exactMatch;
-
-    const match = sequenceString.match(/(.*?)\s*\((.*?)\)/);
-    if (match) {
-        const baseName = match[1].trim();
-        const variationName = match[2].trim();
-        return allData.find(item => 
-            item['Yogasana Name'].toLowerCase() === baseName.toLowerCase() &&
-            item['Variation'].toLowerCase().includes(variationName.toLowerCase())
-        ) || allData.find(i => i['Yogasana Name'].toLowerCase() === baseName.toLowerCase());
-    }
-    return null;
-}
-// --- VARIATION LOGIC END ---
+// --- NORMALIZATION END ---
 
 // --- VARIATION LOGIC START ---
 window.switchVariationTab = function(btn, contentId) {
@@ -2039,23 +2018,9 @@ window.switchVariationTab = function(btn, contentId) {
 };
 
 function getVariations(techniqueName, allData) {
-    return allData.filter(item => item['Yogasana Name'] === techniqueName);
+    return allData.filter(item => normalizeText(item['Yogasana Name']) === normalizeText(techniqueName));
 }
 
+// Refactored to handle variations in sequences with the priority of matching both name and variation
 function findSequenceItem(sequenceString, allData) {
-    let exactMatch = allData.find(i => i['Yogasana Name'].toLowerCase() === sequenceString.toLowerCase());
-    if (exactMatch) return exactMatch;
-
-    // Fixed SyntaxWarning by using raw string handling in Python
     const match = sequenceString.match(/(.*?)\s*\((.*?)\)/);
-    if (match) {
-        const baseName = match[1].trim();
-        const variationName = match[2].trim();
-        return allData.find(item => 
-            item['Yogasana Name'].toLowerCase() === baseName.toLowerCase() &&
-            (item['Variation'] || "").toLowerCase().includes(variationName.toLowerCase())
-        ) || allData.find(i => i['Yogasana Name'].toLowerCase() === baseName.toLowerCase());
-    }
-    return null;
-}
-// --- VARIATION LOGIC END ---
