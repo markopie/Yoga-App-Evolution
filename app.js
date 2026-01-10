@@ -1105,21 +1105,28 @@ function renderBrowseList(items) {
       return;
    }
 
+   const groupedItems = items.reduce((acc, asma) => {
+      const key = asma.english || "(no name)";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(asma);
+      return acc;
+   }, {});
+
    const frag = document.createDocumentFragment();
-   items.slice(0, 400).forEach(asma => {
+   Object.entries(groupedItems).forEach(([name, variations]) => {
       const row = document.createElement("div");
       row.className = "browse-item";
 
       const left = document.createElement("div");
       const title = document.createElement("div");
       title.className = "title";
-      title.textContent = asma.english || "(no name)";
+      title.textContent = name;
       const meta = document.createElement("div");
       meta.className = "meta";
-      const catBadge = asma.category ? ` <span class="badge">${asma.category}</span>` : "";
+      const catBadge = variations[0].category ? ` <span class="badge">${variations[0].category}</span>` : "";
       meta.innerHTML = `
-        Asana # <b>${asma.asanaNo}</b>
-        • Int: ${asma.interRaw || "–"}${asma.finalRaw ? ` • Final: ${asma.finalRaw}` : ""}
+        Asana # <b>${variations[0].asanaNo}</b>
+        • Int: ${variations[0].interRaw || "–"}${variations[0].finalRaw ? ` • Final: ${variations[0].finalRaw}` : ""}
         ${catBadge}
       `;
       left.appendChild(title);
@@ -1129,7 +1136,7 @@ function renderBrowseList(items) {
       btn.type = "button";
       btn.textContent = "View";
       btn.addEventListener("click", () => {
-         showAsanaDetail(asma);
+         showAsanaDetail(variations);
          if (isBrowseMobile()) enterBrowseDetailMode();
       });
 
@@ -1203,7 +1210,7 @@ function renderPlateSection(title, plates, globalSeen) {
    return wrap;
 }
 
-function showAsanaDetail(asma) {
+function showAsanaDetail(asanas) {
    const d = $("browseDetail");
    d.innerHTML = "";
    if (isBrowseMobile()) {
@@ -1222,7 +1229,7 @@ function showAsanaDetail(asma) {
       d.appendChild(back);
    }
    const h = document.createElement("h2");
-   h.textContent = asma.english || "(no name)";
+   h.textContent = asanas[0].english || "(no name)";
 
    // --- NEW: Audio Button in Browse Header ---
    const audioBtn = document.createElement("button");
@@ -1233,16 +1240,16 @@ function showAsanaDetail(asma) {
    audioBtn.style.border = "none";
    audioBtn.style.background = "transparent";
    audioBtn.style.fontSize = "1.2rem";
-   audioBtn.onclick = () => playAsanaAudio(asma);
+   audioBtn.onclick = () => playAsanaAudio(asanas[0]);
    h.appendChild(audioBtn);
    // ------------------------------------------
 
    const sub = document.createElement("div");
    sub.className = "sub";
    const bits = [];
-   if (asma.iast) bits.push(asma.iast);
-   bits.push(`Asana # ${asma.asanaNo}`);
-   if (asma.category) bits.push(asma.category);
+   if (asanas[0].iast) bits.push(asanas[0].iast);
+   bits.push(`Asana # ${asanas[0].asanaNo}`);
+   if (asanas[0].category) bits.push(asanas[0].category);
    sub.textContent = bits.join(" • ");
 
    // Admin: category override editor
@@ -1295,7 +1302,7 @@ function showAsanaDetail(asma) {
       o.textContent = catLabels[v] || v;
       catSel.appendChild(o);
    });
-   catSel.value = asma.category || "";
+   catSel.value = asanas[0].category || "";
 
    const saveCatBtn = document.createElement("button");
    saveCatBtn.type = "button";
@@ -1309,7 +1316,7 @@ function showAsanaDetail(asma) {
       saveCatBtn.disabled = true;
       catStatus.textContent = "Saving…";
       try {
-         await saveCategoryOverride(asma.asanaNo, catSel.value);
+         await saveCategoryOverride(asanas[0].asanaNo, catSel.value);
          applyBrowseFilters();
          catStatus.textContent = "Saved ✓";
       } catch (e) {
@@ -1338,12 +1345,12 @@ function showAsanaDetail(asma) {
    const startBtn = document.createElement("button");
    startBtn.type = "button";
    startBtn.textContent = "Start this asana";
-   const playablePlates = (asma.finalPlates && asma.finalPlates.length) ? asma.finalPlates : asma.interPlates;
+   const playablePlates = (asanas[0].finalPlates && asanas[0].finalPlates.length) ? asanas[0].finalPlates : asanas[0].interPlates;
    if (!playablePlates || !playablePlates.length) {
       startBtn.disabled = true;
       startBtn.title = "No plates available to load into the player.";
    }
-   startBtn.addEventListener("click", () => startBrowseAsana(asma));
+   startBtn.addEventListener("click", () => startBrowseAsana(asanas[0]));
 
    const closeBtn = document.createElement("button");
    closeBtn.type = "button";
@@ -1356,13 +1363,13 @@ function showAsanaDetail(asma) {
    d.appendChild(h);
    d.appendChild(sub);
    // mark current asana for admin re-render
-   d.setAttribute("data-asana-no", asma.asanaNo);
+   d.setAttribute("data-asana-no", asanas[0].asanaNo);
    d.appendChild(actions);
 
    // Sections (de-dupe images across Intermediate + Final)
    const _globalSeen = new Set();
-   d.appendChild(renderPlateSection("Intermediate", asma.interPlates, _globalSeen));
-   d.appendChild(renderPlateSection("Final", asma.finalPlates, _globalSeen));
+   d.appendChild(renderPlateSection("Intermediate", asanas[0].interPlates, _globalSeen));
+   d.appendChild(renderPlateSection("Final", asanas[0].finalPlates, _globalSeen));
 
    // Description (Markdown)
    const descWrap = document.createElement("div");
@@ -1380,7 +1387,7 @@ function showAsanaDetail(asma) {
    const descBody = document.createElement("div");
    descBody.style.paddingTop = "10px";
 
-   const md = String(asma.descriptionMd || "").trim();
+   const md = String(asanas[0].descriptionMd || "").trim();
    if (md) {
       const rendered = document.createElement("div");
       rendered.className = "muted";
@@ -1391,8 +1398,8 @@ function showAsanaDetail(asma) {
       const meta = document.createElement("div");
       meta.className = "muted";
       meta.style.marginTop = "8px";
-      const source = asma.descriptionSource ? `Source: ${asma.descriptionSource}` : "";
-      const updated = asma.descriptionUpdatedAt ? `Updated: ${asma.descriptionUpdatedAt}` : "";
+      const source = asanas[0].descriptionSource ? `Source: ${asanas[0].descriptionSource}` : "";
+      const updated = asanas[0].descriptionUpdatedAt ? `Updated: ${asanas[0].descriptionUpdatedAt}` : "";
       meta.textContent = [source, updated].filter(Boolean).join(" • ");
       descBody.appendChild(meta);
    } else {
@@ -1458,11 +1465,11 @@ function showAsanaDetail(asma) {
          status.style.display = "block";
          status.textContent = "Saving…";
          try {
-            await saveDescriptionOverride(asma.asanaNo, ta.value || "");
+            await saveDescriptionOverride(asanas[0].asanaNo, ta.value || "");
             status.textContent = "Saved ✓";
             // refresh the detail with updated merged data
-            const refreshed = asanaIndex.find(a => normalizePlate(a.asanaNo) === normalizePlate(asma.asanaNo));
-            if (refreshed) showAsanaDetail(refreshed);
+            const refreshed = asanaIndex.find(a => normalizePlate(a.asanaNo) === normalizePlate(asanas[0].asanaNo));
+            if (refreshed) showAsanaDetail([refreshed]);
          } catch (e) {
             status.textContent = "Save failed. Check JSON file permissions / PHP.";
             console.error(e);
@@ -1481,6 +1488,29 @@ function showAsanaDetail(asma) {
    descDetails.appendChild(descBody);
    descWrap.appendChild(descDetails);
    d.appendChild(descWrap);
+
+   // Variation Tabs
+   if (asanas.length > 1) {
+      const tabContainer = document.createElement("div");
+      tabContainer.className = "tab-container";
+
+      asanas.forEach((asana, index) => {
+         const tabBtn = document.createElement("button");
+         tabBtn.className = "tab-btn";
+         tabBtn.textContent = asana.variation || `Variation ${index + 1}`;
+         tabBtn.onclick = () => switchVariationTab(tabBtn, `variation-${index}`);
+         tabContainer.appendChild(tabBtn);
+
+         const tabContent = document.createElement("div");
+         tabContent.className = "tab-content";
+         tabContent.id = `variation-${index}`;
+         tabContent.innerHTML = renderMarkdownMinimal(asana.descriptionMd || "No description available.");
+         d.appendChild(tabContent);
+      });
+
+      d.insertBefore(tabContainer, descWrap);
+      switchVariationTab(tabContainer.querySelector(".tab-btn"), "variation-0");
+   }
 }
 
 function applyBrowseFilters() {
@@ -1982,45 +2012,4 @@ if (_clearDraftBtn) _clearDraftBtn.addEventListener("click", () => {
 
    } catch (e) {
       setStatus("Error");
-      $("loadingText").textContent = "Error loading. Open Console for details.";
-      console.error(e);
-   }
-})();
-
-function isBrowseMobile() {
-   return window.matchMedia("(max-width: 900px)").matches;
 }
-
-function enterBrowseDetailMode() {
-   const modal = document.querySelector("#browseBackdrop .modal");
-   if (modal) modal.classList.add("detail-mode");
-}
-
-function exitBrowseDetailMode() {
-   const modal = document.querySelector("#browseBackdrop .modal");
-   if (modal) modal.classList.remove("detail-mode");
-}
-
-// --- NORMALIZATION START ---
-function normalizeText(input) {
-    return input ? input.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : input;
-}
-// --- NORMALIZATION END ---
-
-// --- VARIATION LOGIC START ---
-window.switchVariationTab = function(btn, contentId) {
-    const parent = btn.closest('#details-panel') || btn.closest('.modal-content') || document.body;
-    parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    parent.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    btn.classList.add('active');
-    const target = document.getElementById(contentId);
-    if(target) target.classList.add('active');
-};
-
-function getVariations(techniqueName, allData) {
-    return allData.filter(item => normalizeText(item['Yogasana Name']) === normalizeText(techniqueName));
-}
-
-// Refactored to handle variations in sequences with the priority of matching both name and variation
-function findSequenceItem(sequenceString, allData) {
-    const match = sequenceString.match(/(.*?)\s*\((.*?)\)/);
