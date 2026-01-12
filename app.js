@@ -291,15 +291,7 @@ async function appendServerHistory(title, whenDate) {
    return false;
 }
 
-function escapeHtml(s) {
-   return String(s).replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-   } [c])); // FIXED: Correct HTML entity mapping
-}
+
 
 function formatHistoryRow(entry) {
    const title = entry?.title || "Untitled sequence";
@@ -610,12 +602,12 @@ async function saveCategoryOverride(asanaNo, category) {
 }
 
 function normalizePlate(p) {
-   // keep "471.0" etc as-is; but strip leading zeros for matching where user types "1" vs "001"
    const s = String(p ?? "").trim();
    if (!s) return "";
-   // if purely digits, normalize to no leading zeros
+   // Strip leading zeros only for pure integers (084 -> 84)
    if (/^\d+$/.test(s)) return String(parseInt(s, 10));
-   return s; // allow "471.0" etc
+   // Keep decimals and stage IDs exactly as they are
+   return s; 
 }
 
 function parsePlateTokens(raw) {
@@ -636,6 +628,15 @@ function primaryAsanaFromFilename(name) {
    const m = name.match(/^(\d{1,5})_/);
    return m ? m[1] : null;
 }
+
+/**
+ * Finds the correct Asana object based on the ID provided in a sequence.
+ * PRIORITY: 
+ * 1. If ID has letters/underscores (U_I), search Asana ID (# column).
+ * 2. If ID is a number (184), search Plate Number first (Loy convention), 
+ * then fall back to Asana ID.
+ */
+
 
 function ensureArray(x) {
    return Array.isArray(x) ? x : [x];
@@ -876,11 +877,31 @@ async function loadSequences() {
 
    const sel = $("sequenceSelect");
    sel.innerHTML = `<option value="">Select a sequence</option>`;
+
+   // 1. Group sequences by category
+   const grouped = {};
    sequences.forEach((s, idx) => {
-      const opt = document.createElement("option");
-      opt.value = String(idx);
-      opt.textContent = s.title || `Sequence ${idx+1}`;
-      sel.appendChild(opt);
+      const cat = s.category || "General / Uncategorized";
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push({ s, idx });
+   });
+
+   // 2. Sort category names alphabetically
+   const categoryNames = Object.keys(grouped).sort();
+
+   // 3. Build the dropdown with OptGroups
+   categoryNames.forEach(catName => {
+      const groupEl = document.createElement("optgroup");
+      groupEl.label = catName;
+
+      grouped[catName].forEach(item => {
+         const opt = document.createElement("option");
+         opt.value = String(item.idx); // Keep original index for selection logic
+         opt.textContent = item.s.title || `Sequence ${item.idx + 1}`;
+         groupEl.appendChild(opt);
+      });
+
+      sel.appendChild(groupEl);
    });
 }
 
@@ -992,7 +1013,12 @@ async function loadAsanaIndex() {
    const colP2001 = idx("2001 Edition Page");
    const colP2015 = idx("2015 Edition Page");
    const colIntensity = idx("Intensity");
+   
+   // --- NEW: PRANAYAMA COLUMNS ---
    const colVariation = idx("Variation");
+   const colPranaDesc = idx("Pranayama Description");
+   const colCaution = idx("Pranayama Cautions");
+   
    const colDesc = header.findIndex(h => /formatted\s*description/i.test(h) || /formatted_description/i.test(h));
 
    const out = [];
@@ -1001,21 +1027,24 @@ async function loadAsanaIndex() {
       const asanaNoRaw = (colNo >= 0 ? row[colNo] : "") || "";
       const asanaNo = normalizePlate(asanaNoRaw);
 
-      // SKIP invalid rows (allow LOY suffix letters like 172a)
-      if (!asanaNo || asanaNo.length > 8 || !/^\d+(?:[a-zA-Z])?$/.test(asanaNo)) continue;
+      // This version allows numbers, letters, and underscores (e.g., 203, U_I, S_XV)
+    if (!asanaNo || asanaNo.length > 10 || !/^[a-zA-Z0-9_]+$/.test(asanaNo)) continue;
 
       const english = (colEng >= 0 ? row[colEng] : "") || "";
       const iast = (colIAST >= 0 ? row[colIAST] : "") || "";
       const interRaw = (colInt >= 0 ? row[colInt] : "") || "";
       const finalRaw = (colFinal >= 0 ? row[colFinal] : "") || "";
       const defaultDescriptionMd = (colDesc >= 0 ? row[colDesc] : "") || "";
-      const variation = (colVariation >= 0 ? row[colVariation] : "") || "";
+
+      // --- MAPPING NEW DATA ---
+      const variationText = (colVariation >= 0 ? row[colVariation] : "") || "";
+      const pranaDescText = (colPranaDesc >= 0 ? row[colPranaDesc] : "") || "";
+      const cautionText = (colCaution >= 0 ? row[colCaution] : "") || "";
 
       const interPlates = parseIndexPlateField(interRaw);
       const finalPlates = parseIndexPlateField(finalRaw);
       const allPlates = [...interPlates, ...finalPlates];
 
-      // Infer category from the first plate that has an image (prefer Final)
       let cat = "";
       const tryPlates = finalPlates.length ? finalPlates : interPlates;
       for (const p of tryPlates) {
@@ -1026,7 +1055,6 @@ async function loadAsanaIndex() {
          }
       }
 
-      // Create object first
       const asanaObj = {
          asanaNo,
          english,
@@ -1040,21 +1068,24 @@ async function loadAsanaIndex() {
          page2001: (colP2001 >= 0 ? row[colP2001] : "") || "",
          page2015: (colP2015 >= 0 ? row[colP2015] : "") || "",
          intensity: (colIntensity >= 0 ? row[colIntensity] : "") || "",
+         
+         // SAVE THESE SPECIFICALLY FOR THE TABS
+         variation: variationText,
+         pranaDesc: pranaDescText,
+         caution: cautionText,
+
          defaultDescriptionMd: String(defaultDescriptionMd || "").trim(),
          descriptionMd: "",
          descriptionUpdatedAt: "",
-         descriptionSource: "",
-         variation: variation || ""
+         descriptionSource: ""
       };
 
       out.push(asanaObj);
 
-      // Map every plate mentioned in this CSV row to this Asana object
       allPlates.forEach(p => {
          const k = normalizePlate(p);
          if (k) csvPlateToAsana[k] = asanaObj;
       });
-      // ---------------------
    }
    return out;
 }
@@ -1105,28 +1136,21 @@ function renderBrowseList(items) {
       return;
    }
 
-   const groupedItems = items.reduce((acc, asma) => {
-      const key = asma.english || "(no name)";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(asma);
-      return acc;
-   }, {});
-
    const frag = document.createDocumentFragment();
-   Object.entries(groupedItems).forEach(([name, variations]) => {
+   items.slice(0, 400).forEach(asma => {
       const row = document.createElement("div");
       row.className = "browse-item";
 
       const left = document.createElement("div");
       const title = document.createElement("div");
       title.className = "title";
-      title.textContent = name;
+      title.textContent = asma.english || "(no name)";
       const meta = document.createElement("div");
       meta.className = "meta";
-      const catBadge = variations[0].category ? ` <span class="badge">${variations[0].category}</span>` : "";
+      const catBadge = asma.category ? ` <span class="badge">${asma.category}</span>` : "";
       meta.innerHTML = `
-        Asana # <b>${variations[0].asanaNo}</b>
-        • Int: ${variations[0].interRaw || "–"}${variations[0].finalRaw ? ` • Final: ${variations[0].finalRaw}` : ""}
+        Asana # <b>${asma.asanaNo}</b>
+        • Int: ${asma.interRaw || "–"}${asma.finalRaw ? ` • Final: ${asma.finalRaw}` : ""}
         ${catBadge}
       `;
       left.appendChild(title);
@@ -1136,7 +1160,7 @@ function renderBrowseList(items) {
       btn.type = "button";
       btn.textContent = "View";
       btn.addEventListener("click", () => {
-         showAsanaDetail(variations);
+         showAsanaDetail(asma);
          if (isBrowseMobile()) enterBrowseDetailMode();
       });
 
@@ -1210,307 +1234,162 @@ function renderPlateSection(title, plates, globalSeen) {
    return wrap;
 }
 
-function showAsanaDetail(asanas) {
+/* ==========================================================================
+   BROWSE & STAGES INTEGRATED LOGIC
+   ========================================================================== */
+
+function showAsanaDetail(asma) {
    const d = $("browseDetail");
+   if (!d) return;
    d.innerHTML = "";
+
+   // 1. Setup Data & Variations
+   const techniqueName = asma.english || asma['Yogasana Name'] || "(no name)";
+   const variations = asanaIndex.filter(v => (v.english || v['Yogasana Name']) === techniqueName);
+
+   // 2. Mobile Back Button
    if (isBrowseMobile()) {
       const back = document.createElement("button");
       back.type = "button";
       back.textContent = "← Back to list";
       back.className = "tiny";
-      back.addEventListener("click", () => {
+      back.style.marginBottom = "10px";
+      back.onclick = () => {
          exitBrowseDetailMode();
-         // optional: keep focus near the results
          const list = $("browseList");
-         if (list) list.scrollIntoView({
-            block: "start"
-         });
-      });
+         if (list) list.scrollIntoView({ block: "start" });
+      };
       d.appendChild(back);
    }
-   const h = document.createElement("h2");
-   h.textContent = asanas[0].english || "(no name)";
 
-   // --- NEW: Audio Button in Browse Header ---
+   // 3. Header: Name + Audio Button
+   const h = document.createElement("h2");
+   h.className = "detail-title";
+   h.textContent = techniqueName;
    const audioBtn = document.createElement("button");
    audioBtn.textContent = "🔊";
-   audioBtn.title = "Pronounce";
-   audioBtn.style.marginLeft = "10px";
-   audioBtn.style.cursor = "pointer";
-   audioBtn.style.border = "none";
-   audioBtn.style.background = "transparent";
-   audioBtn.style.fontSize = "1.2rem";
-   audioBtn.onclick = () => playAsanaAudio(asanas[0]);
+   audioBtn.style.cssText = "margin-left:10px; cursor:pointer; border:none; background:transparent; font-size:1.2rem;";
+   audioBtn.onclick = () => playAsanaAudio(asma);
    h.appendChild(audioBtn);
-   // ------------------------------------------
+   d.appendChild(h);
 
+   // 4. Subtitle Meta (IAST, Asana No, Category)
    const sub = document.createElement("div");
    sub.className = "sub";
    const bits = [];
-   if (asanas[0].iast) bits.push(asanas[0].iast);
-   bits.push(`Asana # ${asanas[0].asanaNo}`);
-   if (asanas[0].category) bits.push(asanas[0].category);
+   if (asma.iast) bits.push(asma.iast);
+   bits.push(`Asana # ${asma.asanaNo}`);
+   if (asma.category) bits.push(asma.category);
    sub.textContent = bits.join(" • ");
-
-   // Admin: category override editor
-   const adminCatWrap = document.createElement("div");
-   adminCatWrap.style.marginTop = "10px";
-   adminCatWrap.style.display = adminMode ? "block" : "none";
-
-   const catLabel = document.createElement("div");
-   catLabel.className = "muted";
-   catLabel.textContent = "Admin: override category";
-   catLabel.style.marginBottom = "6px";
-
-   const catRow = document.createElement("div");
-   catRow.style.display = "flex";
-   catRow.style.gap = "8px";
-   catRow.style.alignItems = "center";
-   catRow.style.flexWrap = "wrap";
-
-   const catSel = document.createElement("select");
-   catSel.className = "tiny";
-   const catOptions = [
-      "",
-      "01_Standing_and_Basic",
-      "02_Seated_and_Lotus_Variations",
-      "03_Forward_Bends",
-      "04_Inversions_Sirsasana_Sarvangasana",
-      "05_Abdominal_and_Supine",
-      "06_Twists",
-      "07_Arm_Balances",
-      "08_Advanced_Leg_behind_Head",
-      "09_Backbends",
-      "10_Restorative_Pranayama"
-   ];
-   const catLabels = {
-      "": "(no category)",
-      "01_Standing_and_Basic": "01 Standing & Basic",
-      "02_Seated_and_Lotus_Variations": "02 Seated & Lotus",
-      "03_Forward_Bends": "03 Forward Bends",
-      "04_Inversions_Sirsasana_Sarvangasana": "04 Inversions",
-      "05_Abdominal_and_Supine": "05 Abdominal & Supine",
-      "06_Twists": "06 Twists",
-      "07_Arm_Balances": "07 Arm Balances",
-      "08_Advanced_Leg_behind_Head": "08 Leg Behind Head and Advanced",
-      "09_Backbends": "09 Backbends",
-      "10_Restorative_Pranayama": "10 Restorative/Pranayama"
-   };
-   catOptions.forEach(v => {
-      const o = document.createElement("option");
-      o.value = v;
-      o.textContent = catLabels[v] || v;
-      catSel.appendChild(o);
-   });
-   catSel.value = asanas[0].category || "";
-
-   const saveCatBtn = document.createElement("button");
-   saveCatBtn.type = "button";
-   saveCatBtn.textContent = "Save category";
-   saveCatBtn.className = "tiny";
-
-   const catStatus = document.createElement("span");
-   catStatus.className = "muted";
-
-   saveCatBtn.addEventListener("click", async () => {
-      saveCatBtn.disabled = true;
-      catStatus.textContent = "Saving…";
-      try {
-         await saveCategoryOverride(asanas[0].asanaNo, catSel.value);
-         applyBrowseFilters();
-         catStatus.textContent = "Saved ✓";
-      } catch (e) {
-         catStatus.textContent = "Save failed";
-      } finally {
-         setTimeout(() => catStatus.textContent = "", 1500);
-         saveCatBtn.disabled = false;
-      }
-   });
-
-   catRow.appendChild(catSel);
-   catRow.appendChild(saveCatBtn);
-   catRow.appendChild(catStatus);
-
-   adminCatWrap.appendChild(catLabel);
-   adminCatWrap.appendChild(catRow);
-
-   if (adminMode) d.appendChild(adminCatWrap);
-
-   const actions = document.createElement("div");
-   actions.style.marginTop = "10px";
-   actions.style.display = "flex";
-   actions.style.gap = "10px";
-   actions.style.flexWrap = "wrap";
-
-   const startBtn = document.createElement("button");
-   startBtn.type = "button";
-   startBtn.textContent = "Start this asana";
-   const playablePlates = (asanas[0].finalPlates && asanas[0].finalPlates.length) ? asanas[0].finalPlates : asanas[0].interPlates;
-   if (!playablePlates || !playablePlates.length) {
-      startBtn.disabled = true;
-      startBtn.title = "No plates available to load into the player.";
-   }
-   startBtn.addEventListener("click", () => startBrowseAsana(asanas[0]));
-
-   const closeBtn = document.createElement("button");
-   closeBtn.type = "button";
-   closeBtn.textContent = "Close";
-   closeBtn.addEventListener("click", closeBrowse);
-
-   //actions.appendChild(startBtn);
-   //actions.appendChild(closeBtn);
-
-   d.appendChild(h);
    d.appendChild(sub);
-   // mark current asana for admin re-render
-   d.setAttribute("data-asana-no", asanas[0].asanaNo);
-   d.appendChild(actions);
 
-   // Sections (de-dupe images across Intermediate + Final)
-   const _globalSeen = new Set();
-   d.appendChild(renderPlateSection("Intermediate", asanas[0].interPlates, _globalSeen));
-   d.appendChild(renderPlateSection("Final", asanas[0].finalPlates, _globalSeen));
-
-   // Description (Markdown)
-   const descWrap = document.createElement("div");
-   descWrap.style.marginTop = "12px";
-
-   const descDetails = document.createElement("details");
-   descDetails.open = false;
-
-   const descSum = document.createElement("summary");
-   descSum.textContent = "Description";
-   descSum.style.cursor = "pointer";
-   descSum.style.fontWeight = "650";
-   descDetails.appendChild(descSum);
-
-   const descBody = document.createElement("div");
-   descBody.style.paddingTop = "10px";
-
-   const md = String(asanas[0].descriptionMd || "").trim();
-   if (md) {
-      const rendered = document.createElement("div");
-      rendered.className = "muted";
-      rendered.style.color = "#111";
-      rendered.innerHTML = renderMarkdownMinimal(md);
-      descBody.appendChild(rendered);
-
-      const meta = document.createElement("div");
-      meta.className = "muted";
-      meta.style.marginTop = "8px";
-      const source = asanas[0].descriptionSource ? `Source: ${asanas[0].descriptionSource}` : "";
-      const updated = asanas[0].descriptionUpdatedAt ? `Updated: ${asanas[0].descriptionUpdatedAt}` : "";
-      meta.textContent = [source, updated].filter(Boolean).join(" • ");
-      descBody.appendChild(meta);
-   } else {
-      const empty = document.createElement("div");
-      empty.className = "msg";
-      empty.textContent = "No description yet.";
-      descBody.appendChild(empty);
-   }
-
+   // 5. Admin Category Editor (From your "Working Site")
    if (adminMode) {
-      const editRow = document.createElement("div");
-      editRow.style.marginTop = "10px";
-      editRow.style.display = "flex";
-      editRow.style.gap = "10px";
-      editRow.style.flexWrap = "wrap";
-
-      const editBtn = document.createElement("button");
-      editBtn.type = "button";
-      editBtn.textContent = "Edit description";
-
-      const saveBtn = document.createElement("button");
-      saveBtn.type = "button";
-      saveBtn.textContent = "Save";
-      saveBtn.style.display = "none";
-
-      const cancelBtn = document.createElement("button");
-      cancelBtn.type = "button";
-      cancelBtn.textContent = "Cancel";
-      cancelBtn.style.display = "none";
-
-      const ta = document.createElement("textarea");
-      ta.style.marginTop = "10px";
-      ta.style.width = "100%";
-      ta.style.minHeight = "160px";
-      ta.style.display = "none";
-      ta.value = md || "";
-
-      const status = document.createElement("div");
-      status.className = "muted";
-      status.style.marginTop = "6px";
-      status.style.display = "none";
-
-      editBtn.addEventListener("click", () => {
-         descDetails.open = true;
-         ta.style.display = "block";
-         saveBtn.style.display = "inline-block";
-         cancelBtn.style.display = "inline-block";
-         editBtn.style.display = "none";
-         status.style.display = "none";
-         ta.focus();
+      const adminCatWrap = document.createElement("div");
+      adminCatWrap.style.marginTop = "10px";
+      const catLabels = { "": "(no category)", "01_Standing_and_Basic": "01 Standing & Basic", "02_Seated_and_Lotus_Variations": "02 Seated & Lotus", "03_Forward_Bends": "03 Forward Bends", "04_Inversions_Sirsasana_Sarvangasana": "04 Inversions", "05_Abdominal_and_Supine": "05 Abdominal & Supine", "06_Twists": "06 Twists", "07_Arm_Balances": "07 Arm Balances", "08_Advanced_Leg_behind_Head": "08 Leg Behind Head and Advanced", "09_Backbends": "09 Backbends", "10_Restorative_Pranayama": "10 Restorative/Pranayama" };
+      const catSel = document.createElement("select");
+      catSel.className = "tiny";
+      Object.entries(catLabels).forEach(([v, l]) => {
+         const o = document.createElement("option"); o.value = v; o.textContent = l; catSel.appendChild(o);
       });
-
-      cancelBtn.addEventListener("click", () => {
-         ta.value = md || "";
-         ta.style.display = "none";
-         saveBtn.style.display = "none";
-         cancelBtn.style.display = "none";
-         editBtn.style.display = "inline-block";
-         status.style.display = "none";
-      });
-
-      saveBtn.addEventListener("click", async () => {
-         status.style.display = "block";
-         status.textContent = "Saving…";
-         try {
-            await saveDescriptionOverride(asanas[0].asanaNo, ta.value || "");
-            status.textContent = "Saved ✓";
-            // refresh the detail with updated merged data
-            const refreshed = asanaIndex.find(a => normalizePlate(a.asanaNo) === normalizePlate(asanas[0].asanaNo));
-            if (refreshed) showAsanaDetail([refreshed]);
-         } catch (e) {
-            status.textContent = "Save failed. Check JSON file permissions / PHP.";
-            console.error(e);
-         }
-      });
-
-      editRow.appendChild(editBtn);
-      editRow.appendChild(saveBtn);
-      editRow.appendChild(cancelBtn);
-
-      descBody.appendChild(editRow);
-      descBody.appendChild(ta);
-      descBody.appendChild(status);
+      catSel.value = asma.category || "";
+      const saveCatBtn = document.createElement("button");
+      saveCatBtn.textContent = "Save category"; saveCatBtn.className = "tiny";
+      saveCatBtn.onclick = async () => {
+         await saveCategoryOverride(asma.asanaNo, catSel.value);
+         applyBrowseFilters();
+      };
+      adminCatWrap.append(catSel, saveCatBtn);
+      d.appendChild(adminCatWrap);
    }
 
-   descDetails.appendChild(descBody);
-   descWrap.appendChild(descDetails);
-   d.appendChild(descWrap);
+   // 6. Compact Variation Tabs (Sticky Shelf)
+   const tabContainer = document.createElement("div");
+   tabContainer.className = "variation-tabs";
+   const contentContainer = document.createElement("div");
+   contentContainer.className = "variation-content";
 
-   // Variation Tabs
-   if (asanas.length > 1) {
-      const tabContainer = document.createElement("div");
-      tabContainer.className = "tab-container";
+   variations.forEach((v, idx) => {
+      // Tab Button
+      const btn = document.createElement("button");
+      btn.className = idx === 0 ? "tab-btn active" : "tab-btn";
+      let rawLabel = v.variation || v['Variation'] || String(idx + 1);
+      btn.textContent = rawLabel.replace(/Stage\s+/i, '').trim(); 
+      btn.title = rawLabel;
 
-      asanas.forEach((asana, index) => {
-         const tabBtn = document.createElement("button");
-         tabBtn.className = "tab-btn";
-         tabBtn.textContent = asana.variation || `Variation ${index + 1}`;
-         tabBtn.onclick = () => switchVariationTab(tabBtn, `variation-${index}`);
-         tabContainer.appendChild(tabBtn);
+      // Tab Pane
+      const pane = document.createElement("div");
+      pane.className = "tab-pane";
+      pane.style.display = idx === 0 ? "block" : "none";
 
-         const tabContent = document.createElement("div");
-         tabContent.className = "tab-content";
-         tabContent.id = `variation-${index}`;
-         tabContent.innerHTML = renderMarkdownMinimal(asana.descriptionMd || "No description available.");
-         d.appendChild(tabContent);
-      });
+      // A. Images for this stage
+      const _globalSeen = new Set();
+      const imgWrap = document.createElement("div");
+      imgWrap.className = "detail-images-wrapper";
+      imgWrap.appendChild(renderPlateSection("Intermediate", v.interPlates, _globalSeen));
+      imgWrap.appendChild(renderPlateSection("Final", v.finalPlates, _globalSeen));
+      pane.appendChild(imgWrap);
 
-      d.insertBefore(tabContainer, descWrap);
-      switchVariationTab(tabContainer.querySelector(".tab-btn"), "variation-0");
-   }
+      // B. Description + Admin Desc Editor (From "Working Site")
+      const descWrap = document.createElement("div");
+      descWrap.className = "desc-text";
+      const pranaText = v.pranaDesc || v.descriptionMd || v.defaultDescriptionMd || "";
+      
+      const descDetails = document.createElement("details");
+      descDetails.open = true; // Auto-open for stages
+      const descSum = document.createElement("summary");
+      descSum.textContent = "Instructions";
+      descDetails.appendChild(descSum);
+
+      const descBody = document.createElement("div");
+      descBody.style.paddingTop = "10px";
+      descBody.innerHTML = renderMarkdownMinimal(pranaText) || '<div class="msg">No description yet.</div>';
+
+      // Admin Editor (Nested inside the Stage pane)
+      if (adminMode) {
+         const editBtn = document.createElement("button");
+         editBtn.textContent = "Edit Stage Desc"; editBtn.className = "tiny";
+         editBtn.style.marginTop = "10px";
+         const ta = document.createElement("textarea");
+         ta.style.display = "none"; ta.value = pranaText;
+         const saveBtn = document.createElement("button");
+         saveBtn.textContent = "Save"; saveBtn.style.display = "none"; saveBtn.className = "tiny";
+
+         editBtn.onclick = () => { ta.style.display = "block"; saveBtn.style.display = "inline"; editBtn.style.display = "none"; };
+         saveBtn.onclick = async () => {
+            await saveDescriptionOverride(v.asanaNo, ta.value);
+            showAsanaDetail(asma); // Refresh
+         };
+         descBody.append(editBtn, ta, saveBtn);
+      }
+      
+      descDetails.appendChild(descBody);
+      descWrap.appendChild(descDetails);
+      pane.appendChild(descWrap);
+
+      // C. Action: Start This Stage (Simplified as per request)
+      const startBtn = document.createElement("button");
+      startBtn.textContent = "Start Practice";
+      startBtn.style.marginTop = "15px";
+      startBtn.onclick = () => startBrowseAsana(v);
+      pane.appendChild(startBtn);
+
+      btn.onclick = () => {
+         Array.from(tabContainer.children).forEach(b => b.classList.remove('active'));
+         Array.from(contentContainer.children).forEach(p => p.style.display = 'none');
+         btn.classList.add('active');
+         pane.style.display = 'block';
+         d.scrollTop = 0;
+      };
+
+      tabContainer.appendChild(btn);
+      contentContainer.appendChild(pane);
+   });
+
+   d.appendChild(tabContainer);
+   d.appendChild(contentContainer);
+   d.setAttribute("data-asana-no", asma.asanaNo);
 }
 
 function applyBrowseFilters() {
@@ -1520,6 +1399,7 @@ function applyBrowseFilters() {
    const cat = $("browseCategory").value;
    const finalsOnly = $("browseFinalOnly").checked;
 
+   // Filter All Rows
    const filtered = asanaIndex.filter(a => {
       if (!matchesText(a, q)) return false;
       if (!matchesPlate(a, plateQ)) return false;
@@ -1529,32 +1409,24 @@ function applyBrowseFilters() {
       return true;
    });
 
-   // Stable sort: by asana number (numeric first)
-   filtered.sort((x, y) => {
-      const ax = parseFloat(x.asanaNo);
-      const ay = parseFloat(y.asanaNo);
-      const nx = Number.isFinite(ax) ? ax : Number.POSITIVE_INFINITY;
-      const ny = Number.isFinite(ay) ? ay : Number.POSITIVE_INFINITY;
-      if (nx !== ny) return nx - ny;
-      return String(x.asanaNo).localeCompare(String(y.asanaNo));
+   // Deduplicate: One card per name
+   const uniqueFiltered = [];
+   const seen = new Set();
+   filtered.forEach(a => {
+      const name = (a.english || a['Yogasana Name'] || "").toLowerCase().trim();
+      if (!seen.has(name)) {
+         seen.add(name);
+         uniqueFiltered.push(a);
+      }
    });
 
-   renderBrowseList(filtered);
-}
+   // Sort numerically
+   uniqueFiltered.sort((x, y) => {
+      const ax = parseFloat(x.asanaNo), ay = parseFloat(y.asanaNo);
+      return (Number.isFinite(ax) ? ax : 9999) - (Number.isFinite(ay) ? ay : 9999);
+   });
 
-function openBrowse() {
-   $("browseBackdrop").style.display = "flex";
-   $("browseBackdrop").setAttribute("aria-hidden", "false");
-   $("browseSearch").focus();
-   applyBrowseFilters();
-}
-
-function closeBrowse() {
-   $("browseBackdrop").style.display = "none";
-   $("browseBackdrop").setAttribute("aria-hidden", "true");
-   exitBrowseDetailMode();
-   const btn = $("browseBtn");
-   if (btn) btn.focus();
+   renderBrowseList(uniqueFiltered);
 }
 
 function startBrowseAsana(asma) {
@@ -1563,72 +1435,83 @@ function startBrowseAsana(asma) {
 
    stopTimer();
    running = false;
-   disableWakeLock();
    $("startStopBtn").textContent = "Start";
 
-   // Create a temporary single-pose sequence that uses explicit plates (step-by-step)
+   const variationName = asma.variation || "";
+   const fullName = variationName ? `${asma.english} (${variationName})` : asma.english;
+
    currentSequence = {
-      title: `Browse: ${asma.english || "Asana"}`,
+      title: `Browse: ${fullName}`,
       category: "Browse",
-      poses: [
-         [plates, 60, asma.english || "Asana"]
-      ]
+      poses: [[plates, 60, fullName]]
    };
    currentIndex = 0;
-   $("sequenceSelect").value = ""; // keep existing sequences unchanged
-   updateTotalAndLastUI();
    setPose(0);
    closeBrowse();
 }
 
+
+/* ==========================================================================
+   BROWSE UI CONTROLS - CONSOLIDATED & ERROR-FREE
+   ========================================================================== */
+
+function openBrowse() {
+    const bd = $("browseBackdrop");
+    if (!bd) return;
+    bd.style.display = "flex";
+    bd.setAttribute("aria-hidden", "false");
+    applyBrowseFilters(); 
+    if ($("browseSearch")) $("browseSearch").focus();
+}
+
+function closeBrowse() {
+    const bd = $("browseBackdrop");
+    if (!bd) return;
+    bd.style.display = "none";
+    bd.setAttribute("aria-hidden", "true");
+    exitBrowseDetailMode();
+    if ($("browseBtn")) $("browseBtn").focus();
+}
+
+
 function setupBrowseUI() {
-   $("browseBtn").addEventListener("click", openBrowse);
-   $("browseCloseBtn").addEventListener("click", closeBrowse);
+    if ($("browseBtn")) $("browseBtn").addEventListener("click", openBrowse);
+    if ($("browseCloseBtn")) $("browseCloseBtn").addEventListener("click", closeBrowse);
 
-   // Clear filters
-   $("browseClearBtn").addEventListener("click", () => {
-      $("browseSearch").value = "";
-      $("browsePlate").value = "";
-      $("browseAsanaNo").value = "";
-      $("browseCategory").value = "";
-      $("browseFinalOnly").checked = false;
-      applyBrowseFilters();
-      $("browseSearch").focus();
-   });
+    // Backdrop Click Logic
+    (function () {
+        const bd = $("browseBackdrop");
+        if (!bd) return;
+        let downOnBackdrop = false;
+        bd.addEventListener("pointerdown", (e) => { downOnBackdrop = (e.target === bd); });
+        bd.addEventListener("click", (e) => {
+            if (e.target === bd && downOnBackdrop) closeBrowse();
+            downOnBackdrop = false;
+        });
+    })();
 
-   // click backdrop to close (only when the down/up both start on the backdrop)
-   (function () {
-      const bd = $("browseBackdrop");
-      let downOnBackdrop = false;
+    // ESC Key Support
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && $("browseBackdrop")?.style.display === "flex") {
+            closeBrowse();
+        }
+    });
 
-      bd.addEventListener("pointerdown", (e) => {
-         downOnBackdrop = (e.target === bd);
-      });
+    // Input Listeners with Debounce
+    const onChange = () => applyBrowseFilters();
+    const debounce = (fn, ms = 120) => {
+        let t = null;
+        return (...args) => {
+            if (t) clearTimeout(t);
+            t = setTimeout(() => fn(...args), ms);
+        };
+    };
 
-      bd.addEventListener("click", (e) => {
-         if (e.target === bd && downOnBackdrop) closeBrowse();
-         downOnBackdrop = false;
-      });
-   })();
-   // ESC closes
-   document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && $("browseBackdrop").style.display === "flex") closeBrowse();
-   });
-
-   const onChange = () => applyBrowseFilters();
-   const debounce = (fn, ms = 120) => {
-      let t = null;
-      return (...args) => {
-         if (t) clearTimeout(t);
-         t = setTimeout(() => fn(...args), ms);
-      };
-   };
-
-   $("browseSearch").addEventListener("input", debounce(onChange, 120));
-   $("browsePlate").addEventListener("input", debounce(onChange, 120));
-   $("browseAsanaNo").addEventListener("input", debounce(onChange, 120));
-   $("browseCategory").addEventListener("change", onChange);
-   $("browseFinalOnly").addEventListener("change", onChange);
+    if ($("browseSearch")) $("browseSearch").addEventListener("input", debounce(onChange, 120));
+    if ($("browsePlate")) $("browsePlate").addEventListener("input", debounce(onChange, 120));
+    if ($("browseAsanaNo")) $("browseAsanaNo").addEventListener("input", debounce(onChange, 120));
+    if ($("browseCategory")) $("browseCategory").addEventListener("change", onChange);
+    if ($("browseFinalOnly")) $("browseFinalOnly").addEventListener("change", onChange);
 }
 
 // -------- Playback --------
@@ -1678,29 +1561,48 @@ function updateTimerUI() {
    $("poseTimer").textContent = `${mm}:${String(ss).padStart(2,"0")}`;
 }
 
+/**
+ * SMART LOOKUP HELPER
+ * Ensures numeric IDs (184) prioritize LOY Plate numbers (Sirsasana),
+ * while alphanumeric IDs (U_I) prioritize the Asana ID column.
+ */
+function findAsanaByIdOrPlate(idField) {
+   const id = Array.isArray(idField) ? normalizePlate(idField[0]) : normalizePlate(idField);
+   if (!id) return null;
 
+   // 1. If ID is alphanumeric (contains letters/underscores like U_I, S_XV, 172a)
+   if (/[a-zA-Z_]/.test(id)) {
+       return asanaByNo[id] || csvPlateToAsana[id];
+   }
+
+   // 2. If ID is a pure number (e.g. 184)
+   // Prioritize the Plate Map (LOY convention) then fallback to Asana ID column
+   return csvPlateToAsana[id] || asanaByNo[id];
+}
+
+/**
+* descriptionForPose
+* Handles priority logic for Stage instructions and LOY plate numbers.
+*/
 function descriptionForPose(idField) {
-   // 1. Get the plate number from the sequence
-   const plate = Array.isArray(idField) ? normalizePlate(idField[0]) : normalizePlate(idField);
+   const asana = findAsanaByIdOrPlate(idField);
+   if (!asana) return "";
 
-   // 2. Look up the Asana object using our CSV map
-   const asana = csvPlateToAsana[plate];
-
-   // 3. Return the description (this includes overrides if they exist)
-   return (asana && asana.descriptionMd) ? String(asana.descriptionMd).trim() : "";
+   // PRIORITY: Stage instructions -> Admin overrides -> CSV default
+   return (asana.pranaDesc || asana.descriptionMd || asana.defaultDescriptionMd || "").trim();
 }
 
 function updatePoseDescription(idField) {
    const body = $("poseDescBody");
-   const md = descriptionForPose(idField);
    if (!body) return;
+
+   const md = descriptionForPose(idField);
    if (md) {
       body.innerHTML = renderMarkdownMinimal(md);
    } else {
-      body.innerHTML = '<span class="msg">No description yet.</span>';
+      body.innerHTML = '<span class="msg">No instructions available for this stage.</span>';
    }
 }
-
 
 function updatePoseNote(note) {
    const details = $("poseNoteDetails");
@@ -1709,20 +1611,20 @@ function updatePoseNote(note) {
 
    const text = (note ?? "").toString().trim();
    if (!text) {
-      // Hide the panel entirely and reset its state if empty
       details.style.display = "none";
       details.open = false;
       body.innerHTML = "";
       return;
    }
 
-   // Show the panel and auto-expand it when text exists
    details.style.display = "block";
    details.open = true; 
    body.innerHTML = renderMarkdownMinimal(text);
 }
 
-
+/**
+* FULL SETPOSE REPLACEMENT
+*/
 function setPose(idx) {
    if (!currentSequence) return;
    const poses = currentSequence.poses || [];
@@ -1730,95 +1632,87 @@ function setPose(idx) {
 
    currentIndex = idx;
 
-   // 1. Update the destructuring to include 'note' (the 4th element)
-   const [idField, seconds, label, note] = poses[idx];
+   const currentPose = poses[idx];
+   const idField = currentPose[0];
+   const seconds = currentPose[1];
+   const label   = currentPose[2];
+   const note    = currentPose[3] || "";
 
-   // --- 1. LOOKUP ASANA ---
-   const plate = Array.isArray(idField) ? normalizePlate(idField[0]) : normalizePlate(idField);
-   const asana = csvPlateToAsana[plate]; // The object from CSV
+   // --- 1. SMART LOOKUP ---
+   const asana = findAsanaByIdOrPlate(idField); 
 
    // --- 2. UPDATE UI ---
-   $("poseName").textContent = label || "Pose";
+   const nameEl = $("poseName");
+   if (nameEl) nameEl.textContent = label || "Pose";
+   
    updatePoseNote(note);
+   updatePoseDescription(idField); 
 
-   // Update Meta + Add Pronounce Button
    const idDisplay = Array.isArray(idField) ? idField.join(", ") : String(idField);
-
-   // Clear previous buttons in debugSmall or poseMeta if you want, or just append
-   // Here we rebuild the meta line to include the button
    const metaContainer = $("poseMeta");
-   metaContainer.innerHTML = `Plate(s): ${idDisplay} • ${seconds}s `;
-
-   if (asana) {
-      const speakBtn = document.createElement("button");
-      speakBtn.className = "tiny"; // You can style this in CSS
-      speakBtn.textContent = "🔊 Pronounce";
-      speakBtn.style.marginLeft = "10px";
-      speakBtn.onclick = () => playAsanaAudio(asana);
-      metaContainer.appendChild(speakBtn);
+   if (metaContainer) {
+       metaContainer.innerHTML = `Plate(s): ${idDisplay} • ${seconds}s `;
+       
+       if (asana) {
+           const speakBtn = document.createElement("button");
+           speakBtn.className = "tiny";
+           speakBtn.textContent = "🔊 Pronounce";
+           speakBtn.style.marginLeft = "10px";
+           speakBtn.onclick = () => playAsanaAudio(asana);
+           metaContainer.appendChild(speakBtn);
+       }
    }
 
-   updatePoseDescription(idField);
-   $("poseCounter").textContent = `${idx + 1} / ${poses.length}`;
+   const counterEl = $("poseCounter");
+   if (counterEl) counterEl.textContent = `${idx + 1} / ${poses.length}`;
 
-   // show Complete button only on final pose
-   $("completeBtn").style.display = (idx === poses.length - 1) ? "inline-block" : "none";
-
-   // timer
    currentPoseSeconds = parseInt(seconds, 10) || 0;
    remaining = currentPoseSeconds;
    updateTimerUI();
 
-   // images
    const urls = smartUrlsForPoseId(idField);
    const wrap = $("collageWrap");
-   wrap.innerHTML = "";
-   if (!urls || !urls.length) {
-      const div = document.createElement("div");
-      div.className = "msg";
-      div.textContent = `No image found for plate(s): ${idDisplay}`;
-      wrap.appendChild(div);
-   } else {
-      wrap.appendChild(renderCollage(urls));
+   if (wrap) {
+       wrap.innerHTML = "";
+       if (!urls || !urls.length) {
+           const div = document.createElement("div");
+           div.className = "msg";
+           div.textContent = `No image found for: ${idDisplay}`;
+           wrap.appendChild(div);
+       } else {
+           wrap.appendChild(renderCollage(urls));
+       }
    }
 
-   // Show Complete button only on final pose
-   const posesArr = currentSequence.poses || [];
-   const isFinal = posesArr.length && currentIndex === posesArr.length - 1;
-   $("completeBtn").style.display = isFinal ? "inline-block" : "none";
+   const isFinal = (idx === poses.length - 1);
+   const compBtn = $("completeBtn");
+   if (compBtn) compBtn.style.display = isFinal ? "inline-block" : "none";
 
-   // Keep Total/Last pills in sync
    updateTotalAndLastUI();
 
-   // debug small
-   $("debugSmall").textContent = urls && urls.length ? `${urls.length} image(s)` : "";
-
-   // --- 3. AUTO PLAY AUDIO ---
-   // Only play automatically if the sequence is actively running
    if (running && asana) {
-      playAsanaAudio(asana);
+       playAsanaAudio(asana);
    }
 }
 
 function nextPose() {
-   if (!currentSequence) return;
-   const poses = currentSequence.poses || [];
-   if (currentIndex < poses.length - 1) {
-      setPose(currentIndex + 1);
-      if (running) {
-         /* keep running */ } else stopTimer();
-   } else {
-      stopTimer();
-   }
+    if (!currentSequence) return;
+    const poses = currentSequence.poses || [];
+    if (currentIndex < poses.length - 1) {
+        setPose(currentIndex + 1);
+    } else {
+        stopTimer();
+        // Automatically show completion button/state if at the end
+        const compBtn = $("completeBtn");
+        if (compBtn) compBtn.style.display = "inline-block";
+    }
 }
 
 function prevPose() {
-   if (!currentSequence) return;
-   if (currentIndex > 0) {
-      setPose(currentIndex - 1);
-      if (running) {
-         /* keep running */ } else stopTimer();
-   }
+    if (!currentSequence) return;
+    if (currentIndex > 0) {
+        setPose(currentIndex - 1);
+    }
 }
 
 // -------- Builder --------
@@ -2012,4 +1906,17 @@ if (_clearDraftBtn) _clearDraftBtn.addEventListener("click", () => {
 
    } catch (e) {
       setStatus("Error");
+      $("loadingText").textContent = "Error loading. Open Console for details.";
+      console.error(e);
+   }
+})();
+
+function isBrowseMobile() {
+   return window.matchMedia("(max-width: 900px)").matches;
 }
+
+function enterBrowseDetailMode() {
+   const modal = document.querySelector("#browseBackdrop .modal");
+   if (modal) modal.classList.add("detail-mode");
+}
+
