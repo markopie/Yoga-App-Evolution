@@ -1,4 +1,7 @@
 // -------- Config (relative paths; index.html is /yoga/) --------
+const LOCAL_SEQ_KEY = "yoga_sequences_v1";
+const OVERRIDE_URL = "sequences_override.json"; // ⚡ NEW: Server file
+const SAVE_URL = "save_sequences.php"; // ⚡ NEW: PHP Endpoint
 const SEQUENCES_URL = "sequences.json";
 const MANIFEST_URL = "images/manifest.json";
 const PLATE_GROUPS_URL = "plate_groups.json"; // optional overrides: plate -> [plates]
@@ -871,38 +874,84 @@ async function buildImageIndexes() {
    Object.keys(asanaToUrls).forEach(k => asanaToUrls[k].sort());
 }
 
+// -------- REPLACEMENT: loadSequences --------
 async function loadSequences() {
-   sequences = await loadJSON(SEQUENCES_URL);
-   if (!Array.isArray(sequences)) throw new Error("sequences.json must be an array");
+   // 1. Always load the base structure first
+   const baseData = await loadJSON(SEQUENCES_URL);
+   let finalData = baseData;
 
+   // 2. Try to load Server Overrides (High Priority)
+   try {
+      const serverData = await fetch(OVERRIDE_URL, { cache: "no-store" }).then(r => r.json());
+      if (Array.isArray(serverData) && serverData.length > 0) {
+         console.log("Loaded sequences from Server Override");
+         finalData = serverData;
+      }
+   } catch (e) {
+      console.log("No server override found, using default.");
+   }
+
+   // Update global variable
+   sequences = finalData;
+   
+   // Refresh dropdown
+   renderSequenceDropdown();
+}
+
+// ⚡ NEW: Helper to render the dropdown (we call this after saving edits too)
+function renderSequenceDropdown() {
    const sel = $("sequenceSelect");
+   if (!sel) return;
+   
+   // Save current selection if possible
+   const currentVal = sel.value;
+
    sel.innerHTML = `<option value="">Select a sequence</option>`;
 
-   // 1. Group sequences by category
+   // Group sequences by category
    const grouped = {};
    sequences.forEach((s, idx) => {
-      const cat = s.category || "General / Uncategorized";
+      // Handle empty categories gracefully
+      const cat = s.category ? s.category.trim() : "Uncategorized";
       if (!grouped[cat]) grouped[cat] = [];
       grouped[cat].push({ s, idx });
    });
 
-   // 2. Sort category names alphabetically
+   // Sort categories
    const categoryNames = Object.keys(grouped).sort();
 
-   // 3. Build the dropdown with OptGroups
    categoryNames.forEach(catName => {
       const groupEl = document.createElement("optgroup");
       groupEl.label = catName;
 
       grouped[catName].forEach(item => {
          const opt = document.createElement("option");
-         opt.value = String(item.idx); // Keep original index for selection logic
+         opt.value = String(item.idx);
+         // Show "Title (Weeks)" if available, else just Title
          opt.textContent = item.s.title || `Sequence ${item.idx + 1}`;
          groupEl.appendChild(opt);
       });
 
       sel.appendChild(groupEl);
    });
+
+   // Restore selection if it still exists
+   if (currentVal) sel.value = currentVal;
+}
+
+// ⚡ NEW: The "Save" function. Call this whenever you edit data.
+function saveSequencesLocally() {
+   if (!sequences || !sequences.length) return;
+   localStorage.setItem(LOCAL_SEQ_KEY, JSON.stringify(sequences));
+   renderSequenceDropdown(); // Refresh the dropdown to show new names/categories
+   alert("Changes saved to browser storage!");
+}
+
+// ⚡ NEW: Reset Button Logic (Clear local edits)
+function resetToOriginalJSON() {
+   if(!confirm("This will erase all your custom edits and categories. Are you sure?")) return;
+   localStorage.removeItem(LOCAL_SEQ_KEY);
+   location.reload();
 }
 
 
@@ -1919,4 +1968,169 @@ function enterBrowseDetailMode() {
    const modal = document.querySelector("#browseBackdrop .modal");
    if (modal) modal.classList.add("detail-mode");
 }
+/* ==========================================================================
+   ADMIN UI LOGIC (Paste at BOTTOM of app.js)
+   ========================================================================== */
 
+// 1. Toggle Views (Hide App / Show Admin)
+window.toggleAdminUI = function(showAdmin) {
+   const adminDiv = document.getElementById("adminContainer");
+   const appDiv = document.getElementById("mainAppContainer");
+
+   if (!adminDiv || !appDiv) return console.error("Admin containers not found in HTML");
+
+   if (showAdmin) {
+       adminDiv.style.display = "block";
+       appDiv.style.display = "none";
+       renderBulkEditor(); // Draw the table
+   } else {
+       adminDiv.style.display = "none";
+       appDiv.style.display = "block";
+       // Refresh the dropdown in case we changed titles/categories
+       // We call the existing loadSequences logic to refresh UI
+       if (typeof renderSequenceDropdown === 'function') {
+           renderSequenceDropdown();
+       } else {
+           // Fallback: reload sequences if helper doesn't exist
+           loadSequences().catch(e => console.error(e));
+       }
+   }
+};
+
+// 2. Render the Bulk Editor Table
+window.renderBulkEditor = function() {
+  const container = document.getElementById("adminBulkEditor"); 
+  if (!container) return;
+
+  // Control Bar HTML
+  let html = `
+     <div style="background:#f9f9f9; padding:15px; border:1px solid #ddd; margin-bottom:20px;">
+        <div style="margin-bottom:10px; display:flex; gap:10px; align-items:center;">
+           <strong>Bulk Actions:</strong> 
+           <input type="text" id="newCatInput" placeholder="New Category Name..." style="padding:5px; width:200px;">
+           <button onclick="applyBulkCategory()" style="padding:5px 15px; cursor:pointer;">Update Category</button>
+           <span style="flex:1;"></span>
+           <button onclick="saveSequencesToServer()" style="background:#dff0d8; border:1px solid #d6e9c6; padding:5px 15px; font-weight:bold; cursor:pointer;">💾 Save Changes to Server</button>
+        </div>
+     </div>
+     <div style="max-height:600px; overflow-y:auto; border:1px solid #ccc;">
+        <table style="width:100%; border-collapse:collapse; background:white;">
+           <thead style="background:#eee; position:sticky; top:0; z-index:10;">
+              <tr>
+                 <th style="width:40px; padding:10px;"><input type="checkbox" onclick="toggleAllSequences(this)"></th>
+                 <th style="text-align:left; padding:10px;">Category</th>
+                 <th style="text-align:left; padding:10px;">Title</th>
+                 <th style="padding:10px; color:#999;">ID</th>
+              </tr>
+           </thead>
+           <tbody id="bulkTableBody"></tbody>
+        </table>
+     </div>
+  `;
+  
+  container.innerHTML = html;
+  renderBulkTableRows();
+};
+
+// 3. Render Table Rows
+window.renderBulkTableRows = function() {
+  const tbody = document.getElementById("bulkTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  if (typeof window.selectedSeqIndices === 'undefined') {
+      window.selectedSeqIndices = new Set();
+  }
+
+  sequences.forEach((s, idx) => {
+     const tr = document.createElement("tr");
+     tr.style.borderBottom = "1px solid #eee";
+     
+     const isChecked = window.selectedSeqIndices.has(idx) ? "checked" : "";
+     // Escape strings to prevent HTML breakage
+     const safeCat = String(s.category || "").replace(/"/g, '&quot;');
+     const safeTitle = String(s.title || "").replace(/"/g, '&quot;');
+
+     tr.innerHTML = `
+        <td style="padding:5px; text-align:center;">
+           <input type="checkbox" class="seq-checkbox" value="${idx}" ${isChecked} onchange="toggleSeqSelection(${idx})">
+        </td>
+        <td style="padding:5px;">
+           <input type="text" value="${safeCat}" onchange="updateSingleField(${idx}, 'category', this.value)" style="width:100%; border:1px solid #eee; padding:4px;">
+        </td>
+        <td style="padding:5px;">
+           <input type="text" value="${safeTitle}" onchange="updateSingleField(${idx}, 'title', this.value)" style="width:100%; border:1px solid #eee; padding:4px; font-weight:bold;">
+        </td>
+        <td style="padding:5px; color:#666; font-size:0.9em;">${idx}</td>
+     `;
+     tbody.appendChild(tr);
+  });
+};
+
+// 4. Helper Functions
+window.toggleSeqSelection = function(idx) {
+  if (window.selectedSeqIndices.has(idx)) window.selectedSeqIndices.delete(idx);
+  else window.selectedSeqIndices.add(idx);
+};
+
+window.toggleAllSequences = function(source) {
+  const checkboxes = document.querySelectorAll(".seq-checkbox");
+  window.selectedSeqIndices.clear();
+  if (source.checked) {
+     checkboxes.forEach(cb => {
+        cb.checked = true;
+        window.selectedSeqIndices.add(parseInt(cb.value));
+     });
+  } else {
+     checkboxes.forEach(cb => cb.checked = false);
+  }
+};
+
+window.updateSingleField = function(idx, field, value) {
+  sequences[idx][field] = value;
+};
+
+window.applyBulkCategory = function() {
+  const newCat = document.getElementById("newCatInput").value.trim();
+  if (!newCat) return alert("Please enter a category name");
+  if (window.selectedSeqIndices.size === 0) return alert("No sequences selected");
+
+  window.selectedSeqIndices.forEach(idx => {
+     sequences[idx].category = newCat;
+  });
+
+  renderBulkTableRows();
+  window.selectedSeqIndices.clear();
+  document.getElementById("newCatInput").value = "";
+  alert("Category updated! Don't forget to click Save to Server.");
+};
+
+window.saveSequencesToServer = async function() {
+   if (!confirm("Save these changes to the server? This affects all users.")) return;
+
+   // Ensure SAVE_URL is defined (fallback if missing)
+   const url = (typeof SAVE_URL !== 'undefined') ? SAVE_URL : 'save_sequences.php';
+
+   try {
+       const res = await fetch(url, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify(sequences)
+       });
+
+       const result = await res.json();
+       
+       if (result.status === 'success') {
+           alert("✅ Saved successfully!");
+           // Update local backup
+           if (typeof LOCAL_SEQ_KEY !== 'undefined') {
+               localStorage.setItem(LOCAL_SEQ_KEY, JSON.stringify(sequences)); 
+           }
+       } else {
+           alert("❌ Server Error: " + (result.message || "Unknown error"));
+       }
+   } catch (e) {
+       console.error(e);
+       alert("❌ Network Error. Check console.");
+   }
+};
