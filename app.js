@@ -333,7 +333,7 @@ async function toggleHistoryPanel() {
    const sorted = [...hist].filter(x => x && typeof x.ts === "number").sort((a, b) => b.ts - a.ts);
    const lines = sorted.map(formatHistoryRow);
 
-   panel.innerHTML = "<div style='margin-top:4px'></div>" + lines.map(l => `<div>• ${escapeHtml(l)}</div>`).join("");
+   panel.innerHTML = "<div style='margin-top:4px'></div>" + lines.map(l => `<div>• ${escapeHtml2(l)}</div>`).join("");
 }
 
 function formatHMS(totalSeconds) {
