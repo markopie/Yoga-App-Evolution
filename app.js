@@ -2662,26 +2662,52 @@ safeListen("startStopBtn", "click", () => {
 });
 
 safeListen("resetBtn", "click", () => {
-    stopTimer();
-    // ⚡ CLEAR PROGRESS
-    if (typeof clearProgress === "function") clearProgress();
-    if (currentSequence) setPose(0);
-    
-    const statusEl = $("statusText");
-    if (statusEl) statusEl.textContent = "Session Reset";
+   // 1. Stop the Timer
+   stopTimer();
+
+   // 2. Clear Saved Progress
+   if (typeof clearProgress === "function") clearProgress();
+
+   // 3. Reset the Dropdown
+   const sel = document.getElementById("sequenceSelect");
+   if (sel) sel.selectedIndex = 0; // Selects the top option ("Select a sequence...")
+
+   // 4. Unload the Sequence & Hide Player
+   currentSequence = null;
+   currentIndex = 0;
+   
+   const player = document.getElementById("sequencePlayer");
+   if (player) player.style.display = "none";
+   
+   // 5. Show the Start Screen / Menu again
+   // (Adjust 'main-header' ID if your menu container is named differently)
+   const menu = document.getElementById("main-header") || document.getElementById("sequenceList");
+   if (menu) menu.style.display = "block";
+
+   // 6. Update Status
+   const statusEl = document.getElementById("statusText");
+   if (statusEl) statusEl.textContent = "Ready";
 });
 
 safeListen("completeBtn", "click", async () => {
-    if (!currentSequence) return;
-    const poses = currentSequence.poses || [];
-    if (!poses.length || currentIndex !== poses.length - 1) return;
+   if (!currentSequence) return;
+   const poses = currentSequence.poses || [];
+   if (!poses.length) return;
+   
+   // Only allow marking complete on the final pose
+   if (currentIndex !== poses.length - 1) return;
 
-    stopTimer();
-    await appendServerHistory(currentSequence.title || "Untitled", new Date());
-    updateTotalAndLastUI();
-    
-    const statusEl = $("statusText");
-    if (statusEl) statusEl.textContent = "Completed ✓";
+   stopTimer();
+
+   // ⚡ CLEAR SAVED PROGRESS (So it doesn't ask to resume later)
+   if (typeof clearProgress === "function") clearProgress();
+
+   // Save to History
+   await appendServerHistory(currentSequence.title || "Untitled sequence", new Date());
+   updateTotalAndLastUI();
+   
+   const statusEl = $("statusText");
+   if (statusEl) statusEl.textContent = "Completed ✓";
 });
 
 // 3. UI Toggles
