@@ -1,10 +1,11 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <link rel="icon" href="data:,">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yoga Sequences</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="styles/style.css">
 </head>
 <body>
 
@@ -70,15 +71,16 @@
              <div style="margin-top:12px" id="collageWrap">
                 <div class="msg" id="loadingText">Select a sequence</div>
              </div>
-
+            <div id="poseInstructions" class="muted" style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; white-space: pre-wrap;"></div>
              <details id="poseNoteDetails" style="margin-top:12px;max-width:720px;">
                 <summary style="cursor:pointer;font-weight:650;">Note</summary>
                 <div id="poseNoteBody" class="muted" style="padding-top:8px;color:#111"></div>
              </details>
 
-             <details id="poseDescDetails" style="margin-top:12px;max-width:720px" open>
-                <summary style="cursor:pointer;font-weight:650">Description</summary>
-                <div id="poseDescBody" class="muted" style="padding-top:8px;color:#111"></div>
+             <details id="poseDescDetails" style="margin-top:12px; max-width:720px" open>
+            <summary style="cursor:pointer; font-weight:650">My Personal Notes</summary>
+            <div id="poseDescBody" class="muted" style="padding-top:8px; color:#111"></div>
+</details>
              </details>
           </div>
        </div>
@@ -102,6 +104,7 @@
                    <a href="#" id="historyLink">History</a>
                 </div>
                 <div id="historyPanel" class="muted" style="display:none;margin-top:6px"></div>
+                <div id="pose-admin-tools" style="margin-top:15px; padding-top:10px; border-top:1px dashed #ccc; display:none;"></div>
              </div>
           </details>
        </div>
