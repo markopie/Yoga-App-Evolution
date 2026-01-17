@@ -1157,6 +1157,7 @@ function prevPose() {
    ========================================================================== */
 
 function setPose(idx) {
+   if (typeof saveCurrentProgress === "function") saveCurrentProgress();
    if (!currentSequence) return;
    const poses = currentSequence.poses || [];
    if (idx < 0 || idx >= poses.length) return;
