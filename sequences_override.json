@@ -5499,20 +5499,39 @@
         "title":  "Week 55 to 60",
         "category":  "Light on Yoga > Course 2",
         "poses":  [
-                      [
-                          [
-                              "184"
-                          ],
-                          300,
-                          "Sirsasana Cycle (184-218)"
-                      ],
-                      [
-                          [
-                              "223"
-                          ],
-                          300,
-                          "Sarvangasana Cycle (234-271)"
-                      ],
+                      
+                        ["074", 300, "Sirsasana Cycle"],
+                        ["075", 30, "Sirsasana Cycle"],
+                        ["076", 30, "Sirsasana Cycle"],
+                        ["077", 30, "Sirsasana Cycle"],
+                        ["078", 30, "Sirsasana Cycle"],
+                        ["079", 30, "Sirsasana Cycle"],
+                        ["080", 30, "Sirsasana Cycle"],
+                        ["081", 30, "Sirsasana Cycle"],
+                        ["082", 30, "Sirsasana Cycle"],
+                        ["083", 30, "Sirsasana Cycle"],
+                        ["084", 30, "Sirsasana Cycle"],
+                        ["085", 30, "Sirsasana Cycle"],
+                        ["086", 30, "Sirsasana Cycle"],
+                        
+                        ["087", 300, "Sarvangasana Cycle"],
+                        ["088", 180, "Sarvangasana Cycle"],
+                        ["089", 60, "Sarvangasana Cycle"],
+                        ["090", 60, "Sarvangasana Cycle"],
+                        ["091", 45, "Sarvangasana Cycle"],
+                        ["092", 45, "Sarvangasana Cycle"],
+                        ["093", 45, "Sarvangasana Cycle"],
+                        ["094", 45, "Sarvangasana Cycle"],
+                        ["095", 60, "Sarvangasana Cycle"],
+                        ["096", 45, "Sarvangasana Cycle"],
+                        ["097", 45, "Sarvangasana Cycle"],
+                        ["098", 45, "Sarvangasana Cycle"],
+                        ["099", 45, "Sarvangasana Cycle"],
+                        ["100", 45, "Sarvangasana Cycle"],
+                        ["101", 30, "Sarvangasana Cycle"],
+                        ["102", 30, "Sarvangasana Cycle"],
+                        ["103", 120, "Sarvangasana Cycle"],
+                        ["104", 60, "Sarvangasana Cycle"],
                       [
                           [
                               "105"

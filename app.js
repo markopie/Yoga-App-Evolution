@@ -1193,14 +1193,29 @@ function setPose(idx) {
 
    // 4. HEADER UI
    const nameEl = document.getElementById("poseName");
-   if (nameEl) nameEl.textContent = label || (asana ? asana.english : "Pose");
+   if (nameEl) {
+       // Get the raw strings
+       const jsonLabel = label ? String(label).trim() : "";
+       const csvName = asana ? (asana.english || asana['Yogasana Name'] || "").trim() : "";
+
+       let finalTitle = "";
+
+       // LOGIC: Combine them if we have both
+       if (jsonLabel && csvName && jsonLabel !== csvName) {
+           finalTitle = `${jsonLabel} - (${csvName})`;
+       } else {
+           // Fallback: use whichever one we have
+           finalTitle = jsonLabel || csvName || "Pose";
+       }
+
+       nameEl.textContent = finalTitle;
+   }
    
    if (typeof updatePoseNote === "function") updatePoseNote(note);
 
    if (typeof loadUserPersonalNote === "function") {
        loadUserPersonalNote(lookupId);
    }
-
    // 5. META UI
    const idDisplay = lookupId; 
    const metaContainer = document.getElementById("poseMeta");
