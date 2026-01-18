@@ -2587,13 +2587,52 @@ safeListen("startStopBtn", "click", () => {
 });
 
 safeListen("resetBtn", "click", () => {
-    stopTimer();
-    // ⚡ CLEAR PROGRESS
-    if (typeof clearProgress === "function") clearProgress();
-    if (currentSequence) setPose(0);
-    
-    const statusEl = $("statusText");
-    if (statusEl) statusEl.textContent = "Session Reset";
+   // 1. Stop the clock
+   stopTimer();
+
+   // 2. WIPE MEMORY (Fixes the "Resume" popup on refresh)
+   localStorage.removeItem("lastPlayedSequence");
+   localStorage.removeItem("currentPoseIndex");
+   localStorage.removeItem("timeLeft");
+   
+   // Optional: Clear internal progress tracking if you use it
+   if (typeof clearProgress === "function") clearProgress();
+
+   // 3. RESET DROPDOWN (Fixes the ID: sequenceSelect)
+   const dropdown = $("sequenceSelect");
+   if (dropdown) dropdown.value = ""; 
+
+   // 4. NULLIFY DATA
+   currentSequence = null;
+   currentIndex = 0;
+
+   // 5. RESET UI VISUALS (Matched to your specific HTML IDs)
+   const titleEl = $("poseName");
+   const metaEl = $("poseMeta"); // Used for english/sanskrit subtext
+   const collageEl = $("collageWrap"); // Where images go
+   const timerEl = $("poseTimer");
+   const statusEl = $("statusText");
+   const instructionsEl = $("poseInstructions");
+
+   // Reset Title
+   if (titleEl) titleEl.innerText = "Select a sequence";
+   
+   // Reset Meta/Subtitle
+   if (metaEl) metaEl.innerText = "";
+
+   // Reset Image Area (Restore the "Select a sequence" message)
+   if (collageEl) {
+       collageEl.innerHTML = '<div class="msg" id="loadingText">Select a sequence</div>';
+   }
+
+   // Reset Timer
+   if (timerEl) timerEl.innerText = "–"; // Matching your default HTML
+
+   // Reset Status
+   if (statusEl) statusEl.textContent = "Session Reset";
+   
+   // Reset Instructions
+   if (instructionsEl) instructionsEl.textContent = "";
 });
 
 safeListen("completeBtn", "click", async () => {
