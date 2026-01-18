@@ -4131,6 +4131,18 @@
                           45,
                           "Garbha Pindasana"
                       ],
+                      [["045"], 60, "Padmasana Cycle"],
+        [["046"], 30, "Padmasana Cycle"],
+        [["047"], 30, "Padmasana Cycle"],
+        [["048"], 30, "Padmasana Cycle"],
+        [["049"], 30, "Padmasana Cycle"],
+        [["050"], 30, "Padmasana Cycle"],
+        [["051"], 30, "Padmasana Cycle"],
+        [["052"], 30, "Padmasana Cycle"],
+        [["053"], 30, "Padmasana Cycle"],
+        [["054"], 30, "Padmasana Cycle"],
+        [["055"], 30, "Padmasana Cycle"],
+        [["056"], 30, "Padmasana Cycle"],
                       [
                           [
                               "066"
@@ -4231,10 +4243,171 @@
                       ],
                       [
                           [
+                              "075"
+                          ],
+                          30,
+                          "Urdhva Dandasana (Headstand)"
+                      ],
+                      [
+                          [
+                              "080"
+                          ],
+                          30,
+                          "Parsva Sirsasana"
+                      ],
+                      [
+                          [
+                              "081"
+                          ],
+                          30,
+                          "Parivrttaikapada Sirsasana"
+                      ],
+                      [
+                          [
+                              "135"
+                          ],
+                          30,
+                          "Eka Pada Sirsasana"
+                      ],
+                      [
+                          [
+                              "083"
+                          ],
+                          30,
+                          "Parsvaikapada Sirsasana"
+                      ],
+                      [
+                          [
+                              "84"
+                          ],
+                          30,
+                          "Urdhva Padmasana (Headstand)"
+                      ],
+                      [
+                          [
+                              "215"
+                          ],
+                          30,
+                          "Parsva Urdhva Padmasana"
+                      ],
+                      [
+                          [
+                              "218"
+                          ],
+                          30,
+                          "Pindasana (Headstand)"
+                      ],
+                      [
+                          [
                               "087"
                           ],
                           300,
                           "Salamba Sarvangasana I"
+                      ],
+                      [
+                          [
+                              "088"
+                          ],
+                          60,
+                          "Salamba Sarvangasana II"
+                      ],
+                      [
+                          [
+                              "089"
+                          ],
+                          30,
+                          "Niralamba Sarvangasana I"
+                      ],
+                      [
+                          [
+                              "090"
+                          ],
+                          30,
+                          "Niralamba Sarvangasana II"
+                      ],
+                      [
+                          [
+                              "091"
+                          ],
+                          180,
+                          "Halasana"
+                      ],
+                      [
+                          [
+                              "092"
+                          ],
+                          60,
+                          "Karnapidasana"
+                      ],
+                      [
+                          [
+                              "093"
+                          ],
+                          60,
+                          "Supta Konasana"
+                      ],
+                      [
+                          [
+                              "094"
+                          ],
+                          60,
+                          "Parsva Halasana"
+                      ],
+                      [
+                          [
+                              "095"
+                          ],
+                          60,
+                          "Eka Pada Sarvangasana"
+                      ],
+                      [
+                          [
+                              "096"
+                          ],
+                          60,
+                          "Parsvaikapada Sarvangasana"
+                      ],
+                      [
+                          [
+                              "261"
+                          ],
+                          60,
+                          "Urdhva Padmasana (Sarvangasana)"
+                      ],
+                      [
+                          [
+                              "269"
+                          ],
+                          60,
+                          "Pindasana (Sarvangasana)"
+                      ],
+                      [
+                          [
+                              "270"
+                          ],
+                          60,
+                          "Parsva Pindasana"
+                      ],
+                      [
+                          [
+                              "259"
+                          ],
+                          60,
+                          "Setu Bandha Sarvangasana"
+                      ],
+                      [
+                          [
+                              "260"
+                          ],
+                          60,
+                          "Eka Pada Setu Bandha"
+                      ],
+                      [
+                          [
+                              "105"
+                          ],
+                          60,
+                          "Jathara Parivartanasana"
                       ],
                       [
                           [
@@ -4518,14 +4691,14 @@
                       ],
                       [
                           [
-                              "600"
+                              "205"
                           ],
                           300,
                           "Nadi Sodhana (5 min)"
                       ],
                       [
                           [
-                              "600"
+                              "204"
                           ],
                           300,
                           "Suryabhedana (5 min)"
@@ -5244,80 +5417,92 @@
                       ]
                   ]
     },
+
+{
+    "title": "Week 55 to 60",
+    "category": "Light on Yoga > Course 2",
+    "poses": [
+        [["074"], 300, "Sirsasana Cycle"],
+        [["075"], 30, "Sirsasana Cycle"],
+        [["076"], 30, "Sirsasana Cycle"],
+        [["077"], 30, "Sirsasana Cycle"],
+        [["078"], 30, "Sirsasana Cycle"],
+        [["079"], 30, "Sirsasana Cycle"],
+        [["080"], 30, "Sirsasana Cycle"],
+        [["081"], 30, "Sirsasana Cycle"],
+        [["082"], 30, "Sirsasana Cycle"],
+        [["083"], 30, "Sirsasana Cycle"],
+        [["084"], 30, "Sirsasana Cycle"],
+        [["085"], 30, "Sirsasana Cycle"],
+        [["086"], 30, "Sirsasana Cycle"],
+
+        [["087"], 300, "Sarvangasana Cycle"],
+        [["088"], 180, "Sarvangasana Cycle"],
+        [["089"], 60, "Sarvangasana Cycle"],
+        [["090"], 60, "Sarvangasana Cycle"],
+        [["091"], 45, "Sarvangasana Cycle"],
+        [["092"], 45, "Sarvangasana Cycle"],
+        [["093"], 45, "Sarvangasana Cycle"],
+        [["094"], 45, "Sarvangasana Cycle"],
+        [["095"], 60, "Sarvangasana Cycle"],
+        [["096"], 45, "Sarvangasana Cycle"],
+        [["097"], 45, "Sarvangasana Cycle"],
+        [["098"], 45, "Sarvangasana Cycle"],
+        [["099"], 45, "Sarvangasana Cycle"],
+        [["100"], 45, "Sarvangasana Cycle"],
+        [["101"], 30, "Sarvangasana Cycle"],
+        [["102"], 30, "Sarvangasana Cycle"],
+        [["103"], 120, "Sarvangasana Cycle"],
+        [["104"], 60, "Sarvangasana Cycle"],
+
+        [["105"], 60, "Jathara Parivartanasana"],
+        [["108"], 60, "Supta Padangusthasana"],
+        [["109"], 60, "Anantasana"],
+        [["106"], 60, "Urdhva Prasarita Padasana"],
+        [["067"], 120, "Paschimottanasana"],
+        [["068"], 60, "Parivrtta Paschimottanasana"],
+        [["069"], 60, "Urdhva Mukha Paschimottanasana I"],
+        [["073"], 60, "Akarna Dhanurasana"],
+        [["126"], 60, "Bhujapidasana"],
+        [["133"], 60, "Kurmasana"],
+        [["134"], 60, "Supta Kurmasana"],
+        [["135"], 60, "Eka Pada Sirsasana"],
+
+        [["045"], 60, "Padmasana Cycle"],
+        [["046"], 30, "Padmasana Cycle"],
+        [["047"], 30, "Padmasana Cycle"],
+        [["048"], 30, "Padmasana Cycle"],
+        [["049"], 30, "Padmasana Cycle"],
+        [["050"], 30, "Padmasana Cycle"],
+        [["051"], 30, "Padmasana Cycle"],
+        [["052"], 30, "Padmasana Cycle"],
+        [["053"], 30, "Padmasana Cycle"],
+        [["054"], 30, "Padmasana Cycle"],
+        [["055"], 30, "Padmasana Cycle"],
+        [["056"], 30, "Padmasana Cycle"],
+
+        [["057"], 60, "Supta Vajrasana"],
+        [["043"], 60, "Bhekasana"],
+        [["044"], 60, "Baddha Konasana"],
+        [["114"], 60, "Marichyasana III"],
+        [["116"], 60, "Ardha Matsyendrasana I"],
+        [["117"], 60, "Malasana I"],
+        [["119"], 60, "Pasasana"],
+        [["110"], 60, "Uttana Padasana"],
+        [["111"], 60, "Setu Bandhasana"],
+        [["172a"], 180, "Urdhva Dhanurasana II (12x)"],
+        [["020"], 60, "Uttanasana"],
+        [["200"], 300, "Savasana"],
+        [["205"], 600, "Nadi Sodhana (Antar Kumbhaka)"],
+        [["206"], 180, "Bhastrika"],
+        [["200"], 300, "Savasana"],
+        [["218"], 300, "Dhyana (in Siddhasana, Virasana, Baddha Konasana or Padmasana)"]
+    ]
+},
     {
-        "title":  "Week 51 to 54 (Mastery)",
+        "title":  "Week 61 to 65",
         "category":  "Light on Yoga > Course 2",
         "poses":  [
-                      [
-                          [
-                              "001"
-                          ],
-                          30,
-                          "Tadasana (Center yourself)"
-                      ],
-                      [
-                          [
-                              "23"
-                          ],
-                          45,
-                          "Utthita Hasta Padangusthasana"
-                      ],
-                      [
-                          [
-                              "024"
-                          ],
-                          45,
-                          "Vatayanasana"
-                      ],
-                      [
-                          [
-                              "003"
-                          ],
-                          30,
-                          "Utthita Trikonasana"
-                      ],
-                      [
-                          [
-                              "004"
-                          ],
-                          30,
-                          "Parivrtta Trikonasana"
-                      ],
-                      [
-                          [
-                              "005"
-                          ],
-                          30,
-                          "Utthita Parsvakonasana"
-                      ],
-                      [
-                          [
-                              "007"
-                          ],
-                          30,
-                          "Virabhadrasana I"
-                      ],
-                      [
-                          [
-                              "009"
-                          ],
-                          30,
-                          "Virabhadrasana III"
-                      ],
-                      [
-                          [
-                              "010"
-                          ],
-                          30,
-                          "Ardha Chandrasana"
-                      ],
-                      [
-                          [
-                              "012"
-                          ],
-                          45,
-                          "Parsvottanasana"
-                      ],
                       [
                           [
                               "074"
@@ -5329,8 +5514,57 @@
                           [
                               "075"
                           ],
-                          60,
-                          "Urdhva Dandasana (In Headstand)"
+                          30,
+                          "Urdhva Dandasana (Headstand)"
+                      ],
+                      [
+                          [
+                              "080"
+                          ],
+                          30,
+                          "Parsva Sirsasana"
+                      ],
+                      [
+                          [
+                              "081"
+                          ],
+                          30,
+                          "Parivrttaikapada Sirsasana"
+                      ],
+                      [
+                          [
+                              "135"
+                          ],
+                          30,
+                          "Eka Pada Sirsasana"
+                      ],
+                      [
+                          [
+                              "083"
+                          ],
+                          30,
+                          "Parsvaikapada Sirsasana"
+                      ],
+                      [
+                          [
+                              "84"
+                          ],
+                          30,
+                          "Urdhva Padmasana (Headstand)"
+                      ],
+                      [
+                          [
+                              "215"
+                          ],
+                          30,
+                          "Parsva Urdhva Padmasana"
+                      ],
+                      [
+                          [
+                              "218"
+                          ],
+                          30,
+                          "Pindasana (Headstand)"
                       ],
                       [
                           [
@@ -5341,6 +5575,27 @@
                       ],
                       [
                           [
+                              "088"
+                          ],
+                          60,
+                          "Salamba Sarvangasana II"
+                      ],
+                      [
+                          [
+                              "089"
+                          ],
+                          30,
+                          "Niralamba Sarvangasana I"
+                      ],
+                      [
+                          [
+                              "090"
+                          ],
+                          30,
+                          "Niralamba Sarvangasana II"
+                      ],
+                      [
+                          [
                               "091"
                           ],
                           180,
@@ -5348,365 +5603,73 @@
                       ],
                       [
                           [
-                              "111"
+                              "092"
                           ],
                           60,
-                          "Setu Bandhasana (Drop from Bridge)"
+                          "Karnapidasana"
                       ],
                       [
                           [
-                              "132"
+                              "093"
                           ],
                           60,
-                          "Adho Mukha Vrksasana (Handstand)"
+                          "Supta Konasana"
                       ],
                       [
                           [
-                              "127"
-                          ],
-                          45,
-                          "Mayurasana"
-                      ],
-                      [
-                          [
-                              "152"
-                          ],
-                          45,
-                          "Bakasana"
-                      ],
-                      [
-                          [
-                              "123"
-                          ],
-                          45,
-                          "Astavakrasana"
-                      ],
-                      [
-                          [
-                              "126"
-                          ],
-                          45,
-                          "Bhujapidasana"
-                      ],
-                      [
-                          [
-                              "067"
-                          ],
-                          120,
-                          "Paschimottanasana"
-                      ],
-                      [
-                          [
-                              "068"
+                              "094"
                           ],
                           60,
-                          "Parivrtta Paschimottanasana"
+                          "Parsva Halasana"
                       ],
                       [
                           [
-                              "073"
+                              "095"
                           ],
                           60,
-                          "Akarna Dhanurasana"
+                          "Eka Pada Sarvangasana"
                       ],
                       [
                           [
-                              "063"
+                              "096"
                           ],
                           60,
-                          "Krounchasana"
+                          "Parsvaikapada Sarvangasana"
                       ],
                       [
                           [
-                              "133"
+                              "261"
                           ],
                           60,
-                          "Kurmasana"
+                          "Urdhva Padmasana (Sarvangasana)"
                       ],
                       [
                           [
-                              "134"
+                              "269"
                           ],
                           60,
-                          "Supta Kurmasana"
+                          "Pindasana (Sarvangasana)"
                       ],
                       [
                           [
-                              "135"
+                              "270"
                           ],
                           60,
-                          "Eka Pada Sirsasana"
+                          "Parsva Pindasana"
                       ],
                       [
                           [
-                              "136"
+                              "259"
                           ],
                           60,
-                          "Skandasana"
+                          "Setu Bandha Sarvangasana"
                       ],
                       [
                           [
-                              "053"
+                              "260"
                           ],
                           60,
-                          "Garbha Pindasana"
-                      ],
-                      [
-                          [
-                              "116"
-                          ],
-                          60,
-                          "Ardha Matsyendrasana I"
-                      ],
-                      [
-                          [
-                              "119"
-                          ],
-                          60,
-                          "Pasasana"
-                      ],
-                      [
-                          [
-                              "486"
-                          ],
-                          120,
-                          "Urdhva Dhanurasana (12-15x)"
-                      ],
-                      [
-                          [
-                              "066"
-                          ],
-                          60,
-                          "Upavistha Konasana"
-                      ],
-                      [
-                          [
-                              "044"
-                          ],
-                          60,
-                          "Baddha Konasana"
-                      ],
-                      [
-                          [
-                              "200"
-                          ],
-                          600,
-                          "Savasana (10 min)"
-                      ]
-                  ]
-    },
-    {
-        "title":  "Week 55 to 60",
-        "category":  "Light on Yoga > Course 2",
-        "poses":  [
-                      [
-                          [
-                              "184"
-                          ],
-                          300,
-                          "Sirsasana Cycle (184-218)"
-                      ],
-                      [
-                          [
-                              "223"
-                          ],
-                          300,
-                          "Sarvangasana Cycle (234-271)"
-                      ],
-                      [
-                          [
-                              "105"
-                          ],
-                          60,
-                          "Jathara Parivartanasana"
-                      ],
-                      [
-                          [
-                              "108"
-                          ],
-                          60,
-                          "Supta Padangusthasana"
-                      ],
-                      [
-                          [
-                              "109"
-                          ],
-                          60,
-                          "Anantasana"
-                      ],
-                      [
-                          [
-                              "106"
-                          ],
-                          60,
-                          "Urdhva Prasarita Padasana"
-                      ],
-                      [
-                          [
-                              "067"
-                          ],
-                          120,
-                          "Paschimottanasana"
-                      ],
-                      [
-                          [
-                              "068"
-                          ],
-                          60,
-                          "Parivrtta Paschimottanasana"
-                      ],
-                      [
-                          [
-                              "069"
-                          ],
-                          60,
-                          "Urdhva Mukha Paschimottanasana I"
-                      ],
-                      [
-                          [
-                              "073"
-                          ],
-                          60,
-                          "Akarna Dhanurasana"
-                      ],
-                      [
-                          [
-                              "126"
-                          ],
-                          60,
-                          "Bhujapidasana"
-                      ],
-                      [
-                          [
-                              "133"
-                          ],
-                          60,
-                          "Kurmasana"
-                      ],
-                      [
-                          [
-                              "134"
-                          ],
-                          60,
-                          "Supta Kurmasana"
-                      ],
-                      [
-                          [
-                              "135"
-                          ],
-                          60,
-                          "Eka Pada Sirsasana"
-                      ],
-                      [
-                          [
-                              "104"
-                          ],
-                          180,
-                          "Padmasana Cycle (104-120)"
-                      ],
-                      [
-                          [
-                              "057"
-                          ],
-                          60,
-                          "Supta Vajrasana"
-                      ],
-                      [
-                          [
-                              "043"
-                          ],
-                          60,
-                          "Bhekasana"
-                      ],
-                      [
-                          [
-                              "044"
-                          ],
-                          60,
-                          "Baddha Konasana"
-                      ],
-                      [
-                          [
-                              "114"
-                          ],
-                          60,
-                          "Marichyasana III"
-                      ],
-                      [
-                          [
-                              "116"
-                          ],
-                          60,
-                          "Ardha Matsyendrasana I"
-                      ],
-                      [
-                          [
-                              "117"
-                          ],
-                          60,
-                          "Malasana I"
-                      ],
-                      [
-                          [
-                              "119"
-                          ],
-                          60,
-                          "Pasasana"
-                      ],
-                      [
-                          [
-                              "110"
-                          ],
-                          60,
-                          "Uttana Padasana"
-                      ],
-                      [
-                          [
-                              "111"
-                          ],
-                          60,
-                          "Setu Bandhasana"
-                      ],
-                      [
-                          [
-                              "486"
-                          ],
-                          180,
-                          "Urdhva Dhanurasana II (12x)"
-                      ],
-                      [
-                          [
-                              "020"
-                          ],
-                          60,
-                          "Uttanasana"
-                      ],
-                      [
-                          [
-                              "200"
-                          ],
-                          300,
-                          "Savasana"
-                      ]
-                  ]
-    },
-    {
-        "title":  "Week 61 to 65",
-        "category":  "Light on Yoga > Course 2",
-        "poses":  [
-                      [
-                          [
-                              "184"
-                          ],
-                          300,
-                          "Sirsasana Cycle (184-218)"
-                      ],
-                      [
-                          [
-                              "223"
-                          ],
-                          300,
-                          "Sarvangasana Cycle"
+                          "Eka Pada Setu Bandha"
                       ],
                       [
                           [
@@ -5813,13 +5776,18 @@
                           60,
                           "Adho Mukha Vrksasana (Handstand)"
                       ],
-                      [
-                          [
-                              "104"
-                          ],
-                          180,
-                          "Padmasana Cycle"
-                      ],
+                      [["045"], 60, "Padmasana Cycle"],
+                        [["046"], 30, "Padmasana Cycle"],
+                        [["047"], 30, "Padmasana Cycle"],
+                        [["048"], 30, "Padmasana Cycle"],
+                        [["049"], 30, "Padmasana Cycle"],
+                        [["050"], 30, "Padmasana Cycle"],
+                        [["051"], 30, "Padmasana Cycle"],
+                        [["052"], 30, "Padmasana Cycle"],
+                        [["053"], 30, "Padmasana Cycle"],
+                        [["054"], 30, "Padmasana Cycle"],
+                        [["055"], 30, "Padmasana Cycle"],
+                        [["056"], 30, "Padmasana Cycle"],
                       [
                           [
                               "114"

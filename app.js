@@ -63,10 +63,7 @@ let remaining = 0;
 let running = false;
 
 // Image Mapping State
-let plateToUrls = {};         // "176" -> ["images/..webp", ...]
-let plateToPrimaryAsana = {}; // "176" -> "074" (string) or null
-let asanaToUrls = {};         // "074" -> [urls...]
-let csvPlateToAsana = {};     // Maps "104" -> Asana Object (Legacy CSV helper)
+let asanaToUrls = {};          // Strict ID Map: "218" -> ["images/218_dhyana.jpg"]
 
 // -------- Wake Lock (prevent screen sleep while running, if supported) --------
 let wakeLock = null;
@@ -383,9 +380,55 @@ function ensureArray(x) {
 }
 
 /* ==========================================================================
-   CSV PARSER
+   REGION 3: CSV DATA HANDLING (STRICT ID MODE)
    ========================================================================== */
+// 1. FETCH AND INDEX (The Strict Version)
+async function fetchAndParseCSV() {
+    try {
+        const res = await fetch(CSV_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`CSV 404: ${CSV_URL}`);
+        
+        const text = await res.text();
+        const rows = parseCSV(text); // Use your existing parser
+        
+        asanaByNo = {};
+        if (rows.length < 2) return; 
 
+        const headers = rows[0];
+
+        // Loop through rows (skipping the header row)
+        for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (row.length < 1) continue;
+
+            // Convert row array to object
+            const asana = {};
+            headers.forEach((h, idx) => {
+                asana[h.trim()] = row[idx] || "";
+            });
+
+            // ⚡ STRICT LOOKUP: Only check the first column (ID)
+            let id = row[0] ? String(row[0]).trim() : "";
+            
+            // Normalize ID (e.g., "5" -> "005")
+            if (/^\d+$/.test(id)) {
+                id = id.padStart(3, '0');
+            }
+
+            // Save to index ONLY if ID exists. 
+            // We DO NOT check other columns for plates/ranges anymore.
+            if (id) {
+                asanaByNo[id] = asana;
+            }
+        }
+        console.log(`CSV Index Built. Loaded ${Object.keys(asanaByNo).length} poses.`);
+        
+    } catch (e) {
+        console.error("CSV Load Failed", e);
+    }
+}
+
+// 2. PARSER (Your existing code - logic is perfect, kept as is)
 function parseCSV(text) {
    const rows = [];
    let cur = [];
@@ -433,31 +476,7 @@ function parseCSV(text) {
    return rows;
 }
 
-function parseIndexPlateField(raw) {
-   const s = String(raw || "").trim();
-   if (!s) return [];
-   const parts = s.split("|").map(x => String(x).trim()).filter(Boolean);
-
-   const out = [];
-   for (const token of parts) {
-      const t = token.replace(/\s+/g, ""); 
-      const m = t.match(/^(\d+)-(\d+)$/);
-      if (m) {
-         const a = parseInt(m[1], 10);
-         const b = parseInt(m[2], 10);
-         if (Number.isFinite(a) && Number.isFinite(b) && a <= b) {
-            for (let k = a; k <= b; k++) {
-               out.push(normalizePlate(k)); 
-            }
-            continue;
-         }
-      }
-      out.push(normalizePlate(t));
-   }
-   const seen = new Set();
-   return out.filter(x => (x && !seen.has(x) && (seen.add(x), true)));
-}
-
+// 3. UTILITIES
 function isBrowseMobile() {
    return window.matchMedia("(max-width: 900px)").matches;
 }
@@ -525,6 +544,7 @@ function resetToOriginalJSON() {
 }
 
 // 4. Load & Parse CSV Index
+// 4. Load & Parse CSV Index (STRICT ID ONLY)
 async function loadAsanaIndex() {
    if (typeof INDEX_CSV_URL === 'undefined') return [];
 
@@ -544,11 +564,9 @@ async function loadAsanaIndex() {
    const colIAST = idx("IAST Name");
    const colDesc = idx("Description"); 
    const colTech = idx("Technique"); 
-   const colInt = idx("Intermediate Plate");
-   const colFinal = idx("Final Asana Plate");
    const colCat = header.findIndex(h => /category|classification/i.test(h));
 
-   // Variation Columns
+   // Variation Columns (Keep these for tabs)
    const specificVarHeaders = [
        "I", "Ia", "Ib", "II", "IIa", "IIb", "III", "IIIa", "IIIb", 
        "IV", "IVa", "IVb", "V", "Va", "Vb", "VI", "VIa", "VIb", 
@@ -565,12 +583,14 @@ async function loadAsanaIndex() {
    
    for (let r = 1; r < rows.length; r++) {
       const row = rows[r];
+      // 1. GET ID STRICTLY
       const asanaNoRaw = (colNo >= 0 ? row[colNo] : "") || "";
-      const asanaNo = normalizePlate(asanaNoRaw);
+      const asanaNo = normalizePlate(asanaNoRaw); // e.g. "5" -> "005"
 
+      // Skip invalid IDs
       if (!asanaNo || asanaNo.length > 10 || !/^[a-zA-Z0-9_\-]+$/.test(asanaNo)) continue;
 
-      // Extract Variations
+      // 2. Extract Variations
       const inlineVars = [];
       varCols.forEach(vc => {
           const val = row[vc.index];
@@ -579,38 +599,20 @@ async function loadAsanaIndex() {
           }
       });
 
-      const english = (colEng >= 0 ? row[colEng] : "") || "";
-      const interRaw = (colInt >= 0 ? row[colInt] : "") || "";
-      const finalRaw = (colFinal >= 0 ? row[colFinal] : "") || "";
-      
-      const interPlates = parseIndexPlateField(interRaw);
-      const finalPlates = parseIndexPlateField(finalRaw);
-      const allPlates = [...interPlates, ...finalPlates];
-
+      // 3. Build Object (Ignoring Plate Columns)
       const asanaObj = {
           asanaNo,
-          english,
+          english: (colEng >= 0 ? row[colEng] : "") || "",
           iast: (colIAST >= 0 ? row[colIAST] : "") || "",
           description: (colDesc >= 0 ? row[colDesc] : "") || "",
           technique: (colTech >= 0 ? row[colTech] : "") || "",
           inlineVariations: inlineVars,
-          interRaw: String(interRaw || "").trim(),
-          finalRaw: String(finalRaw || "").trim(),
-          interPlates,
-          finalPlates,
-          allPlates,
+          // We keep 'allPlates' just for search filtering, but strictly based on ID now
+          allPlates: [asanaNo], 
           category: (colCat >= 0 ? row[colCat] : "") || "",
       };
 
       out.push(asanaObj);
-
-      if (typeof csvPlateToAsana !== 'undefined') {
-          allPlates.forEach(p => {
-              const k = normalizePlate(p);
-              if (k) csvPlateToAsana[k] = asanaObj;
-          });
-          csvPlateToAsana[asanaNo] = asanaObj;
-      }
    }
    return out;
 }
@@ -619,69 +621,47 @@ async function loadAsanaIndex() {
    IMAGE INDEXING & RESOLUTION
    ========================================================================== */
 
+/**
+ * 1. Build the Image Map
+ * Scans your image folder and maps "218" -> ["images/218_dhyana.jpg"]
+ */
 async function buildImageIndexes() {
    const manifest = await loadJSON(MANIFEST_URL);
    const items = manifestToFileList(manifest);
 
-   plateToUrls = {};
-   plateToPrimaryAsana = {};
-   asanaToUrls = {};
+   asanaToUrls = {}; // Global map for ID -> [URLs]
 
    items.forEach(item => {
       const rel = manifestItemToPath(item);
       if (!rel) return;
 
-      const lower = String(rel).toLowerCase();
+      const lower = rel.toLowerCase();
       if (!(lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp"))) return;
 
-      // 1. Get raw ID from filename
       const rawID = primaryAsanaFromFilename(filenameFromUrl(rel));
       const normalizedKey = rawID ? normalizePlate(rawID) : null;
       const url = normalizeImagePath(rel);
 
-      // 2. Map Clean Key -> URL
       if (normalizedKey) {
          if (!asanaToUrls[normalizedKey]) asanaToUrls[normalizedKey] = [];
-         asanaToUrls[normalizedKey].push(url);
-      }
-      
-      // 3. Legacy Map (Plate -> URL)
-      const plateFromName = plateFromFilename(rel);
-      const plateFromItem = (item && typeof item === "object" && item.plate) ? normalizePlate(item.plate) : null;
-      const plate = plateFromName || plateFromItem;
-
-      if (plate) {
-         if (!plateToUrls[plate]) plateToUrls[plate] = [];
-         plateToUrls[plate].push(url);
+         if (!asanaToUrls[normalizedKey].includes(url)) {
+            asanaToUrls[normalizedKey].push(url);
+         }
       }
    });
 
-   // Sort for consistency
-   Object.keys(plateToUrls).forEach(k => plateToUrls[k].sort());
    Object.keys(asanaToUrls).forEach(k => asanaToUrls[k].sort());
 }
 
+/**
+ * 2. Find Image URL for a specific ID
+ */
 function smartUrlsForPoseId(idField) {
-   // 1. Handle Array Input
-   if (Array.isArray(idField)) {
-      if (idField.length > 1) return urlsForExplicitPlates(idField);
-      idField = idField[0];
-   }
-
-   // 2. Normalize
-   let id = normalizePlate(idField);
+   let id = Array.isArray(idField) ? idField[0] : idField;
+   id = normalizePlate(id);
+   
    if (!id) return [];
 
-   // 3. Resolve Aliases
-   if (typeof idAliases !== 'undefined' && idAliases[id]) {
-       let aliasVal = idAliases[id];
-       if (aliasVal.includes("|")) {
-           aliasVal = aliasVal.split("|")[0];
-       }
-       id = normalizePlate(aliasVal); 
-   }
-
-   // 4. Check Admin Overrides
    if (typeof imageOverrides !== 'undefined' && imageOverrides[id]) {
        let ov = imageOverrides[id];
        if (ov && !ov.startsWith("images/") && !ov.startsWith("http") && !ov.startsWith("/")) {
@@ -690,48 +670,36 @@ function smartUrlsForPoseId(idField) {
        return [ov];
    }
 
-   // 5. Lookup
-   if (typeof asanaToUrls !== 'undefined' && asanaToUrls[id] && asanaToUrls[id].length) {
-      return asanaToUrls[id];
-   }
+   return asanaToUrls[id] || [];
+}
 
-   // 6. Fallback (Legacy)
-   if (typeof plateToPrimaryAsana !== 'undefined') {
-       const primary = plateToPrimaryAsana[id];
-       if (primary && asanaToUrls[primary] && asanaToUrls[primary].length) {
-          return asanaToUrls[primary];
-       }
-   }
-
-   if (typeof plateToUrls !== 'undefined' && plateToUrls[id]) {
-       return plateToUrls[id];
-   }
+/**
+ * 3. Find CSV Data for a specific ID
+ */
+function findAsanaByIdOrPlate(idField) {
+   let id = Array.isArray(idField) ? idField[0] : idField;
+   if (!id) return null;
    
-   return [];
+   id = String(id).trim();
+   // Standardize to 3 digits (e.g. "5" -> "005") to match CSV column #
+   if (/^\d+$/.test(id)) id = id.padStart(3, '0');
+
+   return asanaByNo[id] || null;
 }
 
-// Helper: explicit list of IDs
-function urlsForExplicitPlates(plates) {
-   const out = [];
-   const seen = new Set();
-   ensureArray(plates).forEach(p => {
-      const key = normalizePlate(p);
-      (plateToUrls[key] || []).forEach(u => {
-         if (!seen.has(u)) {
-            seen.add(u);
-            out.push(u);
-         }
-      });
-   });
-   return out;
+/**
+ * 4. Helper for UI
+ */
+function urlsForPlateToken(p) {
+   return smartUrlsForPoseId(p);
 }
 
-// Helper: Normalize various Manifest formats
+// --- CORE UTILITIES ---
+
 function manifestToFileList(manifest) {
    if (Array.isArray(manifest)) return manifest;
    if (!manifest || typeof manifest !== "object") return [];
 
-   // Heuristic: Is it a Plate Map? {"332": {...}}
    const looksLikePlateMap = (obj) => {
       if (!obj || typeof obj !== "object" || Array.isArray(obj)) return false;
       const keys = Object.keys(obj);
@@ -751,22 +719,15 @@ function manifestToFileList(manifest) {
       });
    }
 
-   const candidates = [
-      manifest.files, manifest.images, manifest.items, manifest.main,
-      manifest.paths, manifest.list, manifest.variants && manifest.variants.main,
-      manifest.variants && manifest.variants.files
-   ];
-
-   for (const c of candidates) {
-      if (c && Array.isArray(c)) return c;
-   }
+   const candidates = [manifest.files, manifest.images, manifest.items, manifest.main];
+   for (const c of candidates) { if (c && Array.isArray(c)) return c; }
    return [];
 }
 
 function manifestItemToPath(item) {
    if (typeof item === "string") return item;
    if (!item || typeof item !== "object") return null;
-   return item.filename || item.main || item.path || item.file || item.name || item.relpath || item.relative_path || null;
+   return item.filename || item.main || item.path || item.file || item.name || null;
 }
 
 function normalizeImagePath(p) {
@@ -776,24 +737,6 @@ function normalizeImagePath(p) {
    return IMAGES_BASE + s;
 }
 
-// Helper: Find Data Object
-function findAsanaByIdOrPlate(idField) {
-   let rawId = Array.isArray(idField) ? idField[0] : idField;
-   if (!rawId) return null;
-   
-   let id = String(rawId).trim();
-   if (/^\d+$/.test(id)) id = id.padStart(3, '0');
-
-   return asanaByNo[id] || asanaByNo[id.toLowerCase()];
-}
-
-// Wrapper for UI calls
-function urlsForPlateToken(p) {
-   const urls = smartUrlsForPoseId(p);
-   return urls && urls.length ? urls : [];
-}
-
-// Helper: Fetch Aliases
 async function fetchIdAliases() {
     try {
         const res = await fetch("id_aliases.json", { cache: "no-store" });
@@ -1080,36 +1023,38 @@ async function init() {
    TIMER ENGINE
    ========================================================================== */
 
-function startTimer() {
-   if (!currentSequence) return;
-   if (running) {
-      stopTimer();
-      return;
-   }
-
-   running = true;
-   enableWakeLock();
-   $("startStopBtn").textContent = "Pause";
-
-   // Play audio immediately when starting
-   const currentPose = currentSequence.poses[currentIndex];
-   if (currentPose) {
-       const [idField] = currentPose;
-       const plate = Array.isArray(idField) ? normalizePlate(idField[0]) : normalizePlate(idField);
-       // Try DB lookup first, then CSV map fallback
-       const asana = findAsanaByIdOrPlate(plate) || (csvPlateToAsana && csvPlateToAsana[plate]);
-       if (asana) playAsanaAudio(asana);
-   }
-
-   timer = setInterval(() => {
-      if (remaining > 0) remaining--;
-      updateTimerUI();
-      if (remaining <= 0) {
-         if (running && currentPoseSeconds >= 60) playFaintGong();
-         nextPose(); 
+   function startTimer() {
+      if (!currentSequence) return;
+      if (running) {
+         stopTimer();
+         return;
       }
-   }, 1000);
-}
+   
+      running = true;
+      enableWakeLock();
+      $("startStopBtn").textContent = "Pause";
+   
+      // Play audio immediately when starting
+      const currentPose = currentSequence.poses[currentIndex];
+      if (currentPose) {
+          const [idField] = currentPose;
+          const plate = Array.isArray(idField) ? normalizePlate(idField[0]) : normalizePlate(idField);
+          
+          // ⚡ STRICT FIX: Only use the strict lookup function
+          const asana = findAsanaByIdOrPlate(plate);
+          
+          if (asana) playAsanaAudio(asana);
+      }
+   
+      timer = setInterval(() => {
+         if (remaining > 0) remaining--;
+         updateTimerUI();
+         if (remaining <= 0) {
+            if (running && currentPoseSeconds >= 60) playFaintGong();
+            nextPose(); 
+         }
+      }, 1000);
+   }
 
 function stopTimer() {
    if (timer) clearInterval(timer);
@@ -1156,166 +1101,162 @@ function prevPose() {
    RENDERER (SetPose)
    ========================================================================== */
 
-function setPose(idx) {
-   if (!currentSequence) return;
-   const poses = currentSequence.poses || [];
-   if (idx < 0 || idx >= poses.length) return;
-
-   currentIndex = idx;
+   function setPose(idx) {
+      if (!currentSequence) return;
+      // --- DEBUGGING START ---
+    const debugPose = currentSequence.poses[idx];
+    console.log("--------------------------------");
+    console.log("DEBUG POSE #", idx);
+    console.log("Raw from JSON:", debugPose);
+    console.log("Raw ID:", debugPose[0]);
+    // --- DEBUGGING END ---
+      const poses = currentSequence.poses || [];
+      if (idx < 0 || idx >= poses.length) return;
    
-   // 1. DATA EXTRACTION
-   const currentPose = poses[idx]; 
-   const rawIdField = currentPose[0]; 
-   const seconds = currentPose[1];
-   const label   = currentPose[2]; 
-   const note    = currentPose[3] || "";
-
-   // 2. ID NORMALIZATION 
-   let lookupId = Array.isArray(rawIdField) ? rawIdField[0] : rawIdField;
+      // 1. SAVE PROGRESS
+      if (typeof saveCurrentProgress === "function") saveCurrentProgress();
    
-   // Special Case Fixes
-   if (lookupId === "U_V") lookupId = "203"; 
-   if (lookupId === "V_II") lookupId = "204"; 
-
-   lookupId = normalizePlate(lookupId); 
-
-   // ALIAS RESOLUTION
-   if (typeof idAliases !== 'undefined' && idAliases[lookupId]) {
-       let aliasVal = idAliases[lookupId];
-       if (aliasVal.includes("|")) {
-           aliasVal = aliasVal.split("|")[0]; 
-       }
-       lookupId = normalizePlate(aliasVal);
-   }
-
-   // 3. SMART LOOKUP
-   const asana = findAsanaByIdOrPlate(lookupId); 
-
-   // 4. HEADER UI
-   const nameEl = document.getElementById("poseName");
-   if (nameEl) nameEl.textContent = label || (asana ? asana.english : "Pose");
-   
-   if (typeof updatePoseNote === "function") updatePoseNote(note);
-
-   if (typeof loadUserPersonalNote === "function") {
-       loadUserPersonalNote(lookupId);
-   }
-
-   // 5. META UI
-   const idDisplay = lookupId; 
-   const metaContainer = document.getElementById("poseMeta");
-   
-   if (metaContainer) {
-      let metaText = `ID: ${idDisplay} • ${seconds}s`;
-      if (asana && asana['Final Asana Plate']) {
-         metaText = `Plate: ${asana['Final Asana Plate']} • ${seconds}s`;
-      }
-      metaContainer.innerHTML = metaText + " ";
+      currentIndex = idx;
       
-      if (asana) {
-         const speakBtn = document.createElement("button");
-         speakBtn.className = "tiny";
-         speakBtn.textContent = "🔊 Pronounce";
-         speakBtn.style.marginLeft = "10px";
-         speakBtn.onclick = (e) => { 
-            e.stopPropagation(); 
-            playAsanaAudio(asana); 
-         };
-         metaContainer.appendChild(speakBtn);
+      // 2. DATA EXTRACTION
+      const currentPose = poses[idx]; 
+      const rawIdField = currentPose[0]; 
+      const seconds = currentPose[1];
+      const label    = currentPose[2]; 
+      const note     = currentPose[3] || "";
+   
+      let lookupId = Array.isArray(rawIdField) ? rawIdField[0] : rawIdField;
+      lookupId = normalizePlate(lookupId); 
+   
+      // ALIAS RESOLUTION
+      if (typeof idAliases !== 'undefined' && idAliases[lookupId]) {
+          let aliasVal = idAliases[lookupId];
+          if (aliasVal.includes("|")) aliasVal = aliasVal.split("|")[0]; 
+          lookupId = normalizePlate(aliasVal);
       }
-   }
-
-   const counterEl = document.getElementById("poseCounter");
-   if (counterEl) counterEl.textContent = `${idx + 1} / ${poses.length}`;
-
-   // 6. TIMER LOGIC
-   currentPoseSeconds = parseInt(seconds, 10) || 0;
-   remaining = currentPoseSeconds;
-   updateTimerUI();
-
-   // 7. IMAGE RENDERING
-   const urls = smartUrlsForPoseId(lookupId);
-   const wrap = document.getElementById("collageWrap");
-   if (wrap) {
-      wrap.innerHTML = "";
-      if (!urls || !urls.length) {
-         const div = document.createElement("div");
-         div.className = "msg";
-         div.textContent = `No image found for: ${idDisplay}`;
-         wrap.appendChild(div);
+   
+      // 3. SMART LOOKUP (Strict)
+      const asana = findAsanaByIdOrPlate(lookupId); 
+   
+      // 4. HEADER UI (RE-APPLIED)
+      const nameEl = document.getElementById("poseName");
+      if (nameEl) {
+          const jsonLabel = label ? String(label).trim() : "";
+          const csvName = asana ? (asana.english || asana['Yogasana Name'] || "").trim() : "";
+   
+          let finalTitle = "";
+   
+          // LOGIC: "Sirsasana Cycle - (Parsva Sirsasana)"
+          if (jsonLabel && csvName && jsonLabel !== csvName) {
+              finalTitle = `${jsonLabel} - (${csvName})`;
+          } else {
+              finalTitle = jsonLabel || csvName || "Pose";
+          }
+   
+          nameEl.textContent = finalTitle;
+      }
+      
+      if (typeof updatePoseNote === "function") updatePoseNote(note);
+      if (typeof loadUserPersonalNote === "function") loadUserPersonalNote(lookupId);
+   
+      // 5. META UI
+      const idDisplay = lookupId; 
+      const metaContainer = document.getElementById("poseMeta");
+      
+      if (metaContainer) {
+         let metaText = `ID: ${idDisplay} • ${seconds}s`;
+         metaContainer.innerHTML = metaText + " ";
+         
+         if (asana) {
+            const speakBtn = document.createElement("button");
+            speakBtn.className = "tiny";
+            speakBtn.textContent = "🔊";
+            speakBtn.style.marginLeft = "10px";
+            speakBtn.onclick = (e) => { 
+               e.stopPropagation(); 
+               playAsanaAudio(asana); 
+            };
+            metaContainer.appendChild(speakBtn);
+         }
+      }
+   
+      const counterEl = document.getElementById("poseCounter");
+      if (counterEl) counterEl.textContent = `${idx + 1} / ${poses.length}`;
+   
+      // 6. TIMER LOGIC
+      currentPoseSeconds = parseInt(seconds, 10) || 0;
+      remaining = currentPoseSeconds;
+      updateTimerUI();
+   
+      // 7. IMAGE RENDERING
+      const urls = smartUrlsForPoseId(lookupId);
+      const wrap = document.getElementById("collageWrap");
+      if (wrap) {
+         wrap.innerHTML = "";
+         if (!urls || !urls.length) {
+            const div = document.createElement("div");
+            div.className = "msg";
+            div.textContent = `No image found for: ${idDisplay}`;
+            wrap.appendChild(div);
+         } else {
+            wrap.appendChild(renderCollage(urls));
+         }
+      }
+   
+      // 8. TEXT RENDERING
+      let instructionsText = "";
+      let targetVarName = null;
+   
+      if (asana) instructionsText = asana.technique || "";
+   
+      if (typeof idAliases !== 'undefined' && idAliases[lookupId]) {
+          const alias = idAliases[lookupId];
+          if (alias && alias.includes("|")) targetVarName = alias.split("|")[1].trim();
+      }
+      
+      if (currentPose.length > 3 && currentPose[3]) targetVarName = String(currentPose[3]).trim();
+   
+      if (targetVarName && asana && asana.inlineVariations) {
+          let match = asana.inlineVariations.find(v => v.label === targetVarName);
+          if (!match) match = asana.inlineVariations.find(v => v.label.toLowerCase() === targetVarName.toLowerCase());
+          if (match) instructionsText = match.text;
+      }
+   
+      const textContainer = document.getElementById("poseInstructions"); 
+      if (textContainer) {
+          if (instructionsText && instructionsText.trim().length > 0) {
+              textContainer.style.display = "block";
+              const formatted = (typeof formatTechniqueText === 'function') ? formatTechniqueText(instructionsText) : instructionsText;
+              const title = targetVarName ? `Instructions (${targetVarName}):` : "Instructions:";
+              textContainer.innerHTML = `<strong>${title}</strong>\n` + formatted;
+          } else {
+              textContainer.style.display = "none";
+              textContainer.textContent = "";
+          }
+      }
+   
+      // 9. BUTTON STATES & WAKE LOCK
+      const isFinal = (idx === poses.length - 1);
+      const compBtn = document.getElementById("completeBtn");
+      if (compBtn) compBtn.style.display = isFinal ? "inline-block" : "none";
+   
+      updateTotalAndLastUI();
+      if (running && asana) playAsanaAudio(asana);
+      if (wakeLockVisibilityHooked && typeof reacquireWakeLock === "function") reacquireWakeLock();
+      
+      // 10. ADMIN TOOL
+      if (typeof adminMode !== 'undefined' && adminMode) {
+          const toolSlot = document.getElementById("pose-admin-tools");
+          if (toolSlot && lookupId && typeof renderIdFixer === "function") {
+              toolSlot.innerHTML = ""; 
+              toolSlot.style.display = "block"; 
+              renderIdFixer(toolSlot, lookupId);
+          }
       } else {
-         wrap.appendChild(renderCollage(urls));
+          const toolSlot = document.getElementById("pose-admin-tools");
+          if (toolSlot) toolSlot.style.display = "none";
       }
    }
-
-   // 8. TEXT RENDERING
-   let instructionsText = "";
-   let targetVarName = null;
-
-   if (asana) {
-       instructionsText = asana.technique || "";
-   }
-
-   // A. Find Target Variation Name from Alias
-   if (typeof idAliases !== 'undefined' && idAliases[lookupId]) {
-       const alias = idAliases[lookupId];
-       if (alias && alias.includes("|")) {
-           targetVarName = alias.split("|")[1].trim();
-       }
-   }
-   
-   // B. Or From Sequence Data Override
-   if (currentPose && currentPose.length > 3 && currentPose[3]) {
-       targetVarName = String(currentPose[3]).trim();
-   }
-
-   // C. Look up text
-   if (targetVarName && asana && asana.inlineVariations) {
-       let match = asana.inlineVariations.find(v => v.label === targetVarName);
-       if (!match) {
-           match = asana.inlineVariations.find(v => v.label.toLowerCase() === targetVarName.toLowerCase());
-       }
-       if (match) instructionsText = match.text;
-   }
-
-   // D. Inject
-   const textContainer = document.getElementById("poseInstructions"); 
-   if (textContainer) {
-       if (instructionsText && instructionsText.trim().length > 0) {
-           textContainer.style.display = "block";
-           const formatted = (typeof formatTechniqueText === 'function') ? formatTechniqueText(instructionsText) : instructionsText;
-           const title = targetVarName ? `Instructions (${targetVarName}):` : "Instructions:";
-           textContainer.innerHTML = `<strong>${title}</strong>\n` + formatted;
-       } else {
-           textContainer.style.display = "none";
-           textContainer.textContent = "";
-       }
-   }
-
-   // 9. BUTTON STATES
-   const isFinal = (idx === poses.length - 1);
-   const compBtn = document.getElementById("completeBtn");
-   if (compBtn) compBtn.style.display = isFinal ? "inline-block" : "none";
-
-   updateTotalAndLastUI();
-
-   if (running && asana) {
-      playAsanaAudio(asana);
-   }
-   
-   // 10. ADMIN TOOL INJECTION
-   if (typeof adminMode !== 'undefined' && adminMode) {
-       const toolSlot = document.getElementById("pose-admin-tools");
-       if (toolSlot && lookupId && typeof renderIdFixer === "function") {
-           toolSlot.innerHTML = ""; 
-           toolSlot.style.display = "block"; 
-           renderIdFixer(toolSlot, lookupId);
-       }
-   } else {
-       const toolSlot = document.getElementById("pose-admin-tools");
-       if (toolSlot) toolSlot.style.display = "none";
-   }
-}
 
 /* ==========================================================================
    UI HELPERS (Notes & Stats)
