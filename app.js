@@ -2657,7 +2657,44 @@ safeListen("historyLink", "click", (e) => {
 safeListen("adminModeToggle", "change", (e) => {
     setAdminMode(e.target.checked);
 });
+// ... (Place this after the resetBtn logic in Region 9) ...
 
+// 5. Complete Button Logic
+safeListen("completeBtn", "click", async () => {
+    if (!currentSequence) return;
+
+    const btn = $("completeBtn");
+    const originalText = btn.textContent;
+    
+    // UI Feedback
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+
+    try {
+        const title = currentSequence.title || "Unknown Sequence";
+        const now = new Date();
+
+        // Call the helper from Region 5
+        const success = await appendServerHistory(title, now);
+
+        if (success) {
+            console.log("✅ Server sync success");
+        } else {
+            console.warn("⚠️ Saved locally only (Server sync failed)");
+        }
+        
+        // Optional: Play a success sound or visual cue
+        alert("Sequence Completed and Logged!");
+
+    } catch (e) {
+        console.error("Completion error:", e);
+        alert("Error saving progress. See console.");
+    } finally {
+        // Reset button state
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+});
 // 4. APP STARTUP (Crucial!)
 window.onload = init;
 
