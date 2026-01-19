@@ -2018,6 +2018,59 @@ function setAdminMode(val) {
     }
 }
 
+window.toggleAdminUI = function(show) {
+    // 1. Target the container from your HTML
+    const panel = document.getElementById("adminContainer");
+    
+    if (!panel) {
+        console.error("❌ Error: <div id='adminContainer'> not found.");
+        return;
+    }
+
+    // 2. Logic to Open/Close
+    const isHidden = (panel.style.display === "none" || panel.style.display === "");
+    const shouldShow = (typeof show === "boolean") ? show : isHidden;
+
+    panel.style.display = shouldShow ? "block" : "none";
+
+    // 3. Build the Editor Interface (First run only)
+    if (shouldShow) {
+        const editorDiv = document.getElementById("adminBulkEditor");
+        
+        // If empty, inject the table structure
+        if (editorDiv && editorDiv.innerHTML.trim() === "") {
+            editorDiv.innerHTML = `
+                <div style="background:#f9f9f9; padding:15px; border-bottom:1px solid #ddd; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <strong>Bulk Actions:</strong>
+                    <input type="text" id="newCatInput" placeholder="New Category Name..." style="padding:6px; border:1px solid #ccc;">
+                    <button onclick="applyBulkCategory()" class="tiny">Apply Category</button>
+                    <div style="flex:1"></div>
+                    <button onclick="window.saveSequencesLocally()" style="background:#2e7d32; color:white; border:none; padding:8px 15px; cursor:pointer;">💾 Save Changes</button>
+                </div>
+                <div style="overflow-x:auto; margin-top:10px;">
+                    <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                        <thead style="background:#eee; text-align:left;">
+                            <tr>
+                                <th style="padding:8px; width:40px; text-align:center;"><input type="checkbox" onchange="toggleAllSequences(this)"></th>
+                                <th style="padding:8px; width:30%;">Category</th>
+                                <th style="padding:8px;">Sequence Title</th>
+                                <th style="padding:8px; width:60px;">Index</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bulkTableBody">
+                            </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // 4. Populate Data
+        if (typeof renderBulkTableRows === "function") {
+            renderBulkTableRows();
+        }
+    }
+};
+
 /* ==========================================================================
    DATA FETCHING (GET)
    ========================================================================== */
