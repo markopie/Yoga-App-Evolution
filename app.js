@@ -2688,19 +2688,6 @@ safeListen("resetBtn", "click", () => {
    if (instructionsEl) instructionsEl.textContent = "";
 });
 
-safeListen("completeBtn", "click", async () => {
-    if (!currentSequence) return;
-    const poses = currentSequence.poses || [];
-    if (!poses.length || currentIndex !== poses.length - 1) return;
-
-    stopTimer();
-    await appendServerHistory(currentSequence.title || "Untitled", new Date());
-    updateTotalAndLastUI();
-    
-    const statusEl = $("statusText");
-    if (statusEl) statusEl.textContent = "Completed ✓";
-});
-
 // 3. UI Toggles
 safeListen("historyLink", "click", (e) => {
     e.preventDefault();
@@ -2710,9 +2697,8 @@ safeListen("historyLink", "click", (e) => {
 safeListen("adminModeToggle", "change", (e) => {
     setAdminMode(e.target.checked);
 });
-// ... (Place this after the resetBtn logic in Region 9) ...
 
-// 5. Complete Button Logic
+// Complete Button Logic
 safeListen("completeBtn", "click", async () => {
     if (!currentSequence) return;
 
