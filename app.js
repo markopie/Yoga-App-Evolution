@@ -6,12 +6,12 @@
 // 1. Data Sources
 const SEQUENCES_URL = "sequences.json";
 const MANIFEST_URL = "images/manifest.json";
-const PLATE_GROUPS_URL = "plate_groups.json"; 
-const INDEX_CSV_URL = "index.csv"; 
+const PLATE_GROUPS_URL = "plate_groups.json";
+const INDEX_CSV_URL = "index.csv";
 
 // 2. Paths
 const IMAGES_BASE = "images/";
-const AUDIO_BASE = "audio/"; 
+const AUDIO_BASE = "audio/";
 const IMAGES_MAIN_BASE = "images/";   // Since you moved to root, main is just root
 const IMAGES_MOBILE_BASE = "images/"; // Same for mobile if you aren't generating w800 anymore
 
@@ -19,21 +19,26 @@ const IMAGES_MOBILE_BASE = "images/"; // Same for mobile if you aren't generatin
 const OVERRIDE_URL = "sequences_override.json";
 const SAVE_URL = "save_sequences.php";
 
-const DESCRIPTIONS_OVERRIDE_URL = "descriptions_override.json"; 
-const SAVE_DESCRIPTION_URL = "save_description.php"; 
+const DESCRIPTIONS_OVERRIDE_URL = "descriptions_override.json";
+const SAVE_DESCRIPTION_URL = "save_description.php";
 
-const CATEGORY_OVERRIDE_URL = "category_overrides.json"; 
-const SAVE_CATEGORY_URL = "save_category.php"; 
+const CATEGORY_OVERRIDE_URL = "category_overrides.json";
+const SAVE_CATEGORY_URL = "save_category.php";
 
-const IMAGE_OVERRIDE_URL = "image_overrides.json"; 
+const IMAGE_OVERRIDE_URL = "image_overrides.json";
 const SAVE_IMAGE_URL = "save_image_override.php";
 
-const AUDIO_OVERRIDE_URL = "audio_overrides.json"; 
+const AUDIO_OVERRIDE_URL = "audio_overrides.json";
 const UPLOAD_AUDIO_URL = "upload_audio.php";
 
 // 4. Other
-const COMPLETION_LOG_URL = "completion_log.php"; 
+const COMPLETION_LOG_URL = "completion_log.php";
 const LOCAL_SEQ_KEY = "yoga_sequences_v1";
+
+// 5. Supabase Configuration
+const SUPABASE_URL = "https://yonzdrhewxwaowfyuglx.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlvbnpkcmhld3h3YW93Znl1Z2x4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMDE5MjcsImV4cCI6MjA4NDY3NzkyN30.I3L9kAXs-5Ggq1TxnE-GZoYWGITg9kUcUCTw0l-LvG8";
+const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 
 
@@ -762,14 +767,14 @@ function saveCompletionLog(log) {
    localStorage.setItem(COMPLETION_KEY, JSON.stringify(log));
 }
 
-function addCompletion(title, whenDate) {
+function addCompletion(title, whenDate, category = null) {
    const log = loadCompletionLog();
    const localStr = whenDate.toLocaleString("en-AU", {
       year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit"
    });
 
-   log.push({ title, ts: whenDate.getTime(), local: localStr });
+   log.push({ title, category, ts: whenDate.getTime(), local: localStr });
    saveCompletionLog(log);
 }
 
@@ -809,62 +814,85 @@ function seedManualCompletionsOnce() {
 }
 
 /* ==========================================================================
-   SERVER SYNC (History)
+   SERVER SYNC (History) - Using Supabase
    ========================================================================== */
 
-let serverHistoryCache = null; 
+let serverHistoryCache = null;
 
 async function fetchServerHistory() {
    try {
-      const res = await fetch(COMPLETION_LOG_URL + "?action=get", { cache: "no-store" });
-      if (!res.ok) throw new Error("History fetch failed");
-      const data = await res.json();
-      if (!Array.isArray(data)) throw new Error("History data not an array");
-      serverHistoryCache = data;
-      return data;
+      if (!supabase) {
+         console.warn("Supabase not initialized, using local storage");
+         serverHistoryCache = loadCompletionLog();
+         return serverHistoryCache;
+      }
+
+      const { data, error } = await supabase
+         .from('sequence_completions')
+         .select('*')
+         .order('completed_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Convert Supabase format to app format for compatibility
+      serverHistoryCache = data.map(record => ({
+         title: record.title,
+         category: record.category,
+         ts: new Date(record.completed_at).getTime(),
+         local: new Date(record.completed_at).toLocaleString("en-AU", {
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit"
+         }),
+         iso: record.completed_at
+      }));
+
+      return serverHistoryCache;
    } catch (e) {
+      console.error("Failed to fetch server history:", e);
       serverHistoryCache = loadCompletionLog();
       return serverHistoryCache;
    }
 }
 
-async function appendServerHistory(title, whenDate) {
+async function appendServerHistory(title, whenDate, category = null) {
    // 1. Optimistic Update (Local)
-   addCompletion(title, whenDate);
+   addCompletion(title, whenDate, category);
 
-   const payload = {
-      title,
-      ts: whenDate.getTime(),
-      iso: whenDate.toISOString()
-   };
-
-   // 2. Background Sync (Server)
+   // 2. Sync to Supabase
    try {
-      const res = await fetch(COMPLETION_LOG_URL + "?action=add", {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error("History append failed");
-      const out = await res.json();
-      if (out && out.status === "success") {
-         await fetchServerHistory();
-         return true;
+      if (!supabase) {
+         console.warn("Supabase not initialized, saving locally only");
+         return false;
       }
+
+      const { error } = await supabase
+         .from('sequence_completions')
+         .insert([{
+            title: title,
+            category: category,
+            completed_at: whenDate.toISOString()
+         }]);
+
+      if (error) throw error;
+
+      // Refresh cache
+      await fetchServerHistory();
+      return true;
    } catch (e) {
+      console.error("Failed to append to server history:", e);
       return false; // Local record persists even if server fails
    }
-   return false;
 }
 
 function formatHistoryRow(entry) {
    const title = entry?.title || "Untitled sequence";
+   const category = entry?.category ? ` (${entry.category})` : "";
    const local = (typeof entry?.ts === "number") ?
       new Date(entry.ts).toLocaleString("en-AU", {
          year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
       }) : (entry.local || "");
 
-   return `${local} — ${title}`;
+   return `${local} — ${title}${category}`;
 }
 
 async function toggleHistoryPanel() {
@@ -2704,17 +2732,18 @@ safeListen("completeBtn", "click", async () => {
 
     const btn = $("completeBtn");
     const originalText = btn.textContent;
-    
+
     // UI Feedback
     btn.disabled = true;
     btn.textContent = "Saving...";
 
     try {
         const title = currentSequence.title || "Unknown Sequence";
+        const category = currentSequence.category || null;
         const now = new Date();
 
-        // Call the helper from Region 5
-        const success = await appendServerHistory(title, now);
+        // Call the helper from Region 5 with category support
+        const success = await appendServerHistory(title, now, category);
 
         if (success) {
             console.log("✅ Server sync success");
