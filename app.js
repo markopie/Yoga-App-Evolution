@@ -2988,6 +2988,195 @@ safeListen("editCourseCancelBtn", "click", () => {
 safeListen("editCourseSaveBtn", "click", saveEditedCourse);
 safeListen("exportCourseBtn", "click", exportCoursesJSON);
 
+// -------- GITHUB SYNC --------
+const GITHUB_REPO = "markopie/Yoga-App-Evolution";
+const GITHUB_FILE = "courses.json";
+const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
+const GH_PAT_STORAGE_KEY = "gh_pat";
+
+let pendingGitHubPAT = null;
+
+function getStoredGitHubPAT() {
+    return localStorage.getItem(GH_PAT_STORAGE_KEY) || null;
+}
+
+function storeGitHubPAT(token, remember) {
+    if (remember) {
+        localStorage.setItem(GH_PAT_STORAGE_KEY, token);
+    }
+    return token;
+}
+
+function clearStoredGitHubPAT() {
+    localStorage.removeItem(GH_PAT_STORAGE_KEY);
+}
+
+function showGitHubPatPrompt(callback) {
+    const backdrop = $("gitHubPatBackdrop");
+    const input = $("gitHubPatInput");
+    const checkbox = $("gitHubRememberPat");
+
+    if (!backdrop || !input) return;
+
+    input.value = "";
+    checkbox.checked = false;
+    backdrop.style.display = "flex";
+
+    const handleSubmit = () => {
+        const token = input.value.trim();
+        if (!token) {
+            alert("Please enter a GitHub Personal Access Token");
+            return;
+        }
+        backdrop.style.display = "none";
+        const remember = checkbox.checked;
+        const storedToken = storeGitHubPAT(token, remember);
+        input.value = "";
+        if (callback) callback(storedToken);
+    };
+
+    const handleCancel = () => {
+        backdrop.style.display = "none";
+        input.value = "";
+    };
+
+    safeListen("gitHubPatSubmitBtn", "click", handleSubmit);
+    safeListen("gitHubPatCancelBtn", "click", handleCancel);
+    safeListen("gitHubPatCloseBtn", "click", handleCancel);
+    safeListen("gitHubPatInput", "keypress", (e) => {
+        if (e.key === "Enter") handleSubmit();
+    });
+}
+
+function showGitHubStatus(message, isError = false) {
+    const statusEl = $("gitHubStatus");
+    if (!statusEl) return;
+
+    statusEl.style.display = "block";
+    statusEl.className = isError ? "notification-error" : "notification-success";
+    statusEl.textContent = message;
+
+    if (!isError) {
+        setTimeout(() => {
+            statusEl.style.display = "none";
+        }, 5000);
+    }
+}
+
+function setGitHubButtonLoading(loading) {
+    const btn = $("syncGitHubBtn");
+    if (!btn) return;
+
+    if (loading) {
+        btn.classList.add("btn-loading");
+        btn.disabled = true;
+    } else {
+        btn.classList.remove("btn-loading");
+        btn.disabled = false;
+    }
+}
+
+async function fetchGitHubFileSha(token) {
+    try {
+        const response = await fetch(GITHUB_API_URL, {
+            method: "GET",
+            headers: {
+                "Authorization": `token ${token}`,
+                "Accept": "application/vnd.github.v3+json"
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error("Invalid GitHub token (401 Unauthorized)");
+            } else if (response.status === 404) {
+                throw new Error("File not found on GitHub");
+            }
+            throw new Error(`GitHub API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.sha;
+    } catch (error) {
+        console.error("Error fetching SHA:", error);
+        throw error;
+    }
+}
+
+function encodeToBase64(str) {
+    try {
+        return btoa(unescape(encodeURIComponent(str)));
+    } catch (error) {
+        console.error("Base64 encoding error:", error);
+        throw new Error("Failed to encode data");
+    }
+}
+
+async function syncCoursesToGitHub(token) {
+    try {
+        setGitHubButtonLoading(true);
+        showGitHubStatus("Fetching current file...");
+
+        const sha = await fetchGitHubFileSha(token);
+
+        const coursesJson = JSON.stringify(courses, null, 2);
+        const encodedContent = encodeToBase64(coursesJson);
+
+        showGitHubStatus("Uploading to GitHub...");
+
+        const response = await fetch(GITHUB_API_URL, {
+            method: "PUT",
+            headers: {
+                "Authorization": `token ${token}`,
+                "Accept": "application/vnd.github.v3+json",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                message: "Update sequences via Yoga App UI",
+                content: encodedContent,
+                sha: sha
+            })
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                clearStoredGitHubPAT();
+                throw new Error("GitHub token expired or invalid. Please re-enter.");
+            } else if (response.status === 422) {
+                throw new Error("Failed to update file on GitHub (422)");
+            }
+            throw new Error(`GitHub API error: ${response.status}`);
+        }
+
+        showGitHubStatus("✓ Successfully synced to GitHub!");
+        console.log("GitHub sync completed successfully");
+    } catch (error) {
+        console.error("GitHub sync error:", error);
+        showGitHubStatus(`Error: ${error.message}`, true);
+        throw error;
+    } finally {
+        setGitHubButtonLoading(false);
+    }
+}
+
+async function initiateSyncToGitHub() {
+    try {
+        let token = getStoredGitHubPAT();
+
+        if (!token) {
+            showGitHubPatPrompt(async (newToken) => {
+                await syncCoursesToGitHub(newToken);
+            });
+        } else {
+            await syncCoursesToGitHub(token);
+        }
+    } catch (error) {
+        console.error("Sync initiation error:", error);
+    }
+}
+
+safeListen("syncGitHubBtn", "click", initiateSyncToGitHub);
+
 // 4. APP STARTUP (Crucial!)
 window.onload = init;
 

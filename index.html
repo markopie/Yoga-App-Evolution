@@ -116,8 +116,10 @@
                 <div style="display:flex; gap:12px; margin-bottom:15px; flex-wrap:wrap;">
                    <button id="editCourseBtn" type="button" style="padding: 10px 16px;">Edit Current Course</button>
                    <button id="exportCourseBtn" type="button" style="padding: 10px 16px;">Export as JSON</button>
+                   <button id="syncGitHubBtn" type="button" style="padding: 10px 16px; background:#24292e; color:#fff;">Sync to GitHub</button>
                 </div>
                 <div id="exportStatus" class="muted" style="margin-top:8px; display:none;"></div>
+                <div id="gitHubStatus" class="muted" style="margin-top:8px; display:none;"></div>
              </div>
           </details>
        </div>
@@ -136,6 +138,39 @@
       <div class="modal-footer" style="display:flex; gap:12px; justify-content:flex-end; padding:15px; border-top:1px solid #eee;">
          <button id="editCourseCancelBtn" type="button">Cancel</button>
          <button id="editCourseSaveBtn" type="button" style="background:#007AFF; color:white;">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="gitHubPatBackdrop" aria-hidden="true" style="display:none;">
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:500px;">
+      <div class="modal-header">
+         <strong>GitHub Personal Access Token</strong>
+         <button id="gitHubPatCloseBtn" type="button">Close</button>
+      </div>
+      <div class="modal-body" style="display:block; padding:20px;">
+         <div style="margin-bottom:15px; color:#666;">
+            <p>To sync to GitHub, please provide a Personal Access Token (PAT).</p>
+            <p style="font-size:13px; margin:10px 0;">
+               <strong>Steps:</strong><br>
+               1. Go to <a href="https://github.com/settings/tokens" target="_blank">GitHub Personal Access Tokens</a><br>
+               2. Click "Generate new token"<br>
+               3. Select "repo" scope<br>
+               4. Copy the token and paste it below
+            </p>
+         </div>
+         <input id="gitHubPatInput" type="password" placeholder="ghp_..." style="width:100%; padding:10px; border:1px solid #d0d0d0; border-radius:6px; font-family:monospace; box-sizing:border-box;">
+         <label style="display:flex; gap:8px; align-items:center; margin-top:12px;">
+            <input id="gitHubRememberPat" type="checkbox">
+            <span style="font-size:13px;">Remember token in browser (localStorage)</span>
+         </label>
+         <div style="font-size:12px; color:#999; margin-top:10px;">
+            Token is stored securely in browser storage only.
+         </div>
+      </div>
+      <div class="modal-footer" style="display:flex; gap:12px; justify-content:flex-end; padding:15px; border-top:1px solid #eee;">
+         <button id="gitHubPatCancelBtn" type="button">Cancel</button>
+         <button id="gitHubPatSubmitBtn" type="button" style="background:#24292e; color:white;">Continue</button>
       </div>
     </div>
   </div>
