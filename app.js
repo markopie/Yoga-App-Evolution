@@ -4,7 +4,7 @@
    ========================================================================== */
 
 // 1. Data Sources
-const SEQUENCES_URL = "sequences.json";
+const COURSES_URL = "courses.json";
 const MANIFEST_URL = "images/manifest.json";
 const PLATE_GROUPS_URL = "plate_groups.json";
 const ASANA_LIBRARY_URL = "asana_library.json";
@@ -12,11 +12,10 @@ const ASANA_LIBRARY_URL = "asana_library.json";
 // 2. Paths
 const IMAGES_BASE = "images/";
 const AUDIO_BASE = "audio/";
-const IMAGES_MAIN_BASE = "images/";   // Since you moved to root, main is just root
-const IMAGES_MOBILE_BASE = "images/"; // Same for mobile if you aren't generating w800 anymore
+const IMAGES_MAIN_BASE = "images/";
+const IMAGES_MOBILE_BASE = "images/";
 
 // 3. Server Overrides & Saving (Admin Features)
-const OVERRIDE_URL = "sequences_override.json";
 const SAVE_URL = "save_sequences.php";
 
 const DESCRIPTIONS_OVERRIDE_URL = "descriptions_override.json";
@@ -47,7 +46,8 @@ const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SU
    ========================================================================== */
 
 // Data storage
-let sequences = [];
+let courses = [];
+let sequences = [];  // For backwards compatibility during transition
 let asanaLibrary = {};  // JSON object keyed by ID (e.g. "003" -> pose data)
 let plateGroups = {};   // "18" -> ["18","19"] (optional)
 
@@ -454,104 +454,7 @@ function ensureArray(x) {
    return Array.isArray(x) ? x : [x];
 }
 
-/* ==========================================================================
-   REGION 3: CSV DATA HANDLING (STRICT ID MODE)
-   ========================================================================== */
-// 1. FETCH AND INDEX (The Strict Version)
-async function fetchAndParseCSV() {
-    try {
-        const res = await fetch(CSV_URL, { cache: "no-store" });
-        if (!res.ok) throw new Error(`CSV 404: ${CSV_URL}`);
-        
-        const text = await res.text();
-        const rows = parseCSV(text); // Use your existing parser
-        
-        asanaByNo = {};
-        if (rows.length < 2) return; 
-
-        const headers = rows[0];
-
-        // Loop through rows (skipping the header row)
-        for (let i = 1; i < rows.length; i++) {
-            const row = rows[i];
-            if (row.length < 1) continue;
-
-            // Convert row array to object
-            const asana = {};
-            headers.forEach((h, idx) => {
-                asana[h.trim()] = row[idx] || "";
-            });
-
-            // ⚡ STRICT LOOKUP: Only check the first column (ID)
-            let id = row[0] ? String(row[0]).trim() : "";
-            
-            // Normalize ID (e.g., "5" -> "005")
-            if (/^\d+$/.test(id)) {
-                id = id.padStart(3, '0');
-            }
-
-            // Save to index ONLY if ID exists. 
-            // We DO NOT check other columns for plates/ranges anymore.
-            if (id) {
-                asanaByNo[id] = asana;
-            }
-        }
-        console.log(`CSV Index Built. Loaded ${Object.keys(asanaByNo).length} poses.`);
-        
-    } catch (e) {
-        console.error("CSV Load Failed", e);
-    }
-}
-
-// 2. PARSER (Your existing code - logic is perfect, kept as is)
-function parseCSV(text) {
-   const rows = [];
-   let cur = [];
-   let val = "";
-   let inQuotes = false;
-   
-   for (let i = 0; i < text.length; i++) {
-      const c = text[i];
-      if (inQuotes) {
-         if (c === '"') {
-            const next = text[i + 1];
-            if (next === '"') {
-               val += '"';
-               i++;
-            } else {
-               inQuotes = false;
-            }
-         } else {
-            val += c;
-         }
-      } else {
-         if (c === '"') {
-            inQuotes = true;
-         } else if (c === ',') {
-            cur.push(val);
-            val = "";
-         } else if (c === '\n') {
-            cur.push(val);
-            val = "";
-            if (cur.length === 1 && cur[0] === "") {
-               cur = [];
-               continue;
-            }
-            rows.push(cur.map(x => String(x ?? "").replace(/\r$/, "")));
-            cur = [];
-         } else {
-            val += c;
-         }
-      }
-   }
-   if (val.length || cur.length) {
-      cur.push(val);
-      rows.push(cur.map(x => String(x ?? "").replace(/\r$/, "")));
-   }
-   return rows;
-}
-
-// 3. UTILITIES
+// UTILITIES
 function isBrowseMobile() {
    return window.matchMedia("(max-width: 900px)").matches;
 }
@@ -586,46 +489,38 @@ async function loadJSON(url, fallback = null) {
    }
 }
 
-// 2. Load Sequences (Base + Server Override) with Robust Error Handling
-async function loadSequences() {
-   // A. Load Base with fallback to empty array
-   const baseData = await loadJSON(SEQUENCES_URL, []);
+// 2. Load Courses with Robust Error Handling
+async function loadCourses() {
+   const data = await loadJSON(COURSES_URL, []);
 
-   if (!Array.isArray(baseData) || baseData.length === 0) {
-      console.error("Failed to load sequences.json - using empty array");
+   if (!Array.isArray(data) || data.length === 0) {
+      console.error("Failed to load courses.json - using empty array");
+      courses = [];
       sequences = [];
-      if (typeof renderSequenceDropdown === "function") renderSequenceDropdown();
+      if (typeof renderCourseUI === "function") renderCourseUI();
       return;
    }
 
-   let finalData = baseData;
-
-   // B. Load Server Overrides (High Priority)
-   try {
-      const serverData = await fetch(OVERRIDE_URL, { cache: "no-store" }).then(r => r.json());
-      if (Array.isArray(serverData) && serverData.length > 0) {
-         console.log("Loaded sequences from Server Override");
-         finalData = serverData;
-      }
-   } catch (e) {
-      console.log("No server override found, using default.");
-   }
-
-   // C. Validate each sequence has required fields
-   sequences = finalData.filter(seq => {
-      if (!seq || !seq.title || !Array.isArray(seq.poses)) {
-         console.warn("Invalid sequence detected, skipping:", seq);
+   // Validate each course has required fields
+   courses = data.filter(course => {
+      if (!course || !course.title || !Array.isArray(course.poses)) {
+         console.warn("Invalid course detected, skipping:", course);
          return false;
       }
-      // Ensure category exists, default to "Uncategorized"
-      if (!seq.category) {
-         seq.category = "Uncategorized";
+      // Ensure category exists, default to empty string
+      if (!course.category) {
+         course.category = "";
       }
       return true;
    });
 
-   // D. Refresh UI
-   if (typeof renderSequenceDropdown === "function") renderSequenceDropdown();
+   // For backwards compatibility, also populate sequences
+   sequences = courses;
+
+   console.log(`Loaded ${courses.length} courses`);
+
+   // Refresh UI
+   if (typeof renderCourseUI === "function") renderCourseUI();
 }
 
 // 3. Local Sequence Editing (Save/Reset)
@@ -1113,15 +1008,14 @@ async function init() {
 
         // 3. Load Main Data
         const statusEl = $("statusText");
-        if (statusEl) statusEl.textContent = "Loading images...";
-        
-        await buildImageIndexes();
-        
-        if (statusEl) statusEl.textContent = "Loading sequences...";
-        await loadSequences();
-
         if (statusEl) statusEl.textContent = "Loading asana library...";
         asanaLibrary = await loadAsanaLibrary();
+
+        if (statusEl) statusEl.textContent = "Loading courses...";
+        await loadCourses();
+
+        if (statusEl) statusEl.textContent = "Loading images...";
+        await buildImageIndexes();
 
         // 4. Apply Logic
         if (typeof applyDescriptionOverrides === "function") applyDescriptionOverrides();
@@ -1144,7 +1038,7 @@ async function init() {
         }
 
         const loadText = $("loadingText");
-        if (loadText) loadText.textContent = "Select a sequence";
+        if (loadText) loadText.textContent = "Select a course";
         
     } catch (e) {
         console.error("Init Error:", e);
@@ -2042,35 +1936,43 @@ function renderCollage(urls) {
    return wrap;
 }
 
-function renderSequenceDropdown() {
+function renderCourseUI() {
    const sel = $("sequenceSelect");
    if (!sel) return;
-   
-   const currentVal = sel.value;
-   sel.innerHTML = `<option value="">Select a sequence</option>`;
 
+   const currentVal = sel.value;
+   sel.innerHTML = `<option value="">Select a course</option>`;
+
+   // Group courses by category
    const grouped = {};
-   sequences.forEach((s, idx) => {
-      const cat = s.category ? s.category.trim() : "Uncategorized";
+   courses.forEach((course, idx) => {
+      const cat = course.category ? course.category.trim() : "Uncategorized";
       if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push({ s, idx });
+      grouped[cat].push({ course, idx });
    });
 
+   // Sort categories
    const categoryNames = Object.keys(grouped).sort();
 
+   // Render as optgroups for dropdown
    categoryNames.forEach(catName => {
       const groupEl = document.createElement("optgroup");
       groupEl.label = catName;
       grouped[catName].forEach(item => {
          const opt = document.createElement("option");
          opt.value = String(item.idx);
-         opt.textContent = item.s.title || `Sequence ${item.idx + 1}`;
+         opt.textContent = item.course.title || `Course ${item.idx + 1}`;
          groupEl.appendChild(opt);
       });
       sel.appendChild(groupEl);
    });
 
    if (currentVal) sel.value = currentVal;
+}
+
+// Backwards compatibility alias
+function renderSequenceDropdown() {
+   renderCourseUI();
 }
 
 /* ==========================================================================
