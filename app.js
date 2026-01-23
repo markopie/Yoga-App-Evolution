@@ -2839,6 +2839,155 @@ safeListen("completeBtn", "click", async () => {
         btn.textContent = originalText;
     }
 });
+
+// -------- COURSE EDITING & EXPORT --------
+let editingCourseData = null;
+let editingCourseIndex = null;
+
+function openEditCourse() {
+    if (!currentSequence) {
+        alert("Please select a course first");
+        return;
+    }
+
+    editingCourseIndex = courses.findIndex(c => c.title === currentSequence.title);
+    if (editingCourseIndex === -1) {
+        alert("Could not find course");
+        return;
+    }
+
+    editingCourseData = JSON.parse(JSON.stringify(currentSequence));
+
+    $("editCourseTitle").textContent = currentSequence.title;
+    renderEditList();
+
+    const backdrop = $("editCourseBackdrop");
+    if (backdrop) backdrop.style.display = "flex";
+}
+
+function renderEditList() {
+    if (!editingCourseData || !editingCourseData.poses) return;
+
+    const container = $("editCourseList");
+    if (!container) return;
+
+    container.innerHTML = `
+        <div style="padding: 12px; background:#f5f5f5; border-radius:8px; margin-bottom:12px;">
+            <strong>Edit individual poses:</strong> Modify timing (seconds), label, or notes for each pose.
+        </div>
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+                <tr style="background:#f9f9f9; border-bottom:2px solid #eee;">
+                    <th style="padding:10px; text-align:left; font-weight:600;">Pose</th>
+                    <th style="padding:10px; text-align:left; font-weight:600;">Timing (sec)</th>
+                    <th style="padding:10px; text-align:left; font-weight:600;">Label</th>
+                    <th style="padding:10px; text-align:left; font-weight:600;">Notes</th>
+                </tr>
+            </thead>
+            <tbody id="editTableBody">
+            </tbody>
+        </table>
+    `;
+
+    const tbody = container.querySelector("#editTableBody");
+    if (!tbody) return;
+
+    editingCourseData.poses.forEach((pose, idx) => {
+        const asanaId = Array.isArray(pose[0]) ? pose[0][0] : pose[0];
+        const timing = pose[1] || 0;
+        const label = pose[2] || "";
+        const notes = pose[4] || "";
+
+        const asana = findAsanaByIdOrPlate(asanaId);
+        const poseName = asana ? asana.english || asana.name || asanaId : asanaId;
+
+        const row = document.createElement("tr");
+        row.style.borderBottom = "1px solid #eee";
+        row.innerHTML = `
+            <td style="padding:10px; font-weight:500;">${poseName}</td>
+            <td style="padding:10px;">
+                <input type="number" class="edit-timing" data-idx="${idx}" value="${timing}" min="0" max="3600" style="width:80px; padding:6px 8px; border:1px solid #d0d0d0; border-radius:4px;">
+            </td>
+            <td style="padding:10px;">
+                <input type="text" class="edit-label" data-idx="${idx}" value="${label}" placeholder="Custom label" style="width:100%; padding:6px 8px; border:1px solid #d0d0d0; border-radius:4px; box-sizing:border-box;">
+            </td>
+            <td style="padding:10px;">
+                <input type="text" class="edit-notes" data-idx="${idx}" value="${notes}" placeholder="Notes" style="width:100%; padding:6px 8px; border:1px solid #d0d0d0; border-radius:4px; box-sizing:border-box;">
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function saveEditedCourse() {
+    if (!editingCourseData || editingCourseIndex === -1) return;
+
+    document.querySelectorAll(".edit-timing").forEach(input => {
+        const idx = parseInt(input.dataset.idx);
+        editingCourseData.poses[idx][1] = parseInt(input.value) || 0;
+    });
+
+    document.querySelectorAll(".edit-label").forEach(input => {
+        const idx = parseInt(input.dataset.idx);
+        editingCourseData.poses[idx][2] = input.value;
+    });
+
+    document.querySelectorAll(".edit-notes").forEach(input => {
+        const idx = parseInt(input.dataset.idx);
+        editingCourseData.poses[idx][4] = input.value;
+    });
+
+    courses[editingCourseIndex] = JSON.parse(JSON.stringify(editingCourseData));
+
+    const backdrop = $("editCourseBackdrop");
+    if (backdrop) backdrop.style.display = "none";
+
+    alert("Changes saved to current session. Click 'Export as JSON' to download.");
+    editingCourseData = null;
+    editingCourseIndex = -1;
+}
+
+function exportCoursesJSON() {
+    if (courses.length === 0) {
+        alert("No courses to export");
+        return;
+    }
+
+    const dataStr = JSON.stringify(courses, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "courses.json";
+    link.click();
+
+    URL.revokeObjectURL(url);
+
+    const status = $("exportStatus");
+    if (status) {
+        status.style.display = "block";
+        status.textContent = "✓ Exported courses.json";
+        setTimeout(() => status.style.display = "none", 3000);
+    }
+}
+
+safeListen("editCourseBtn", "click", openEditCourse);
+safeListen("editCourseCloseBtn", "click", () => {
+    const backdrop = $("editCourseBackdrop");
+    if (backdrop) backdrop.style.display = "none";
+    editingCourseData = null;
+});
+
+safeListen("editCourseCancelBtn", "click", () => {
+    const backdrop = $("editCourseBackdrop");
+    if (backdrop) backdrop.style.display = "none";
+    editingCourseData = null;
+});
+
+safeListen("editCourseSaveBtn", "click", saveEditedCourse);
+safeListen("exportCourseBtn", "click", exportCoursesJSON);
+
 // 4. APP STARTUP (Crucial!)
 window.onload = init;
 

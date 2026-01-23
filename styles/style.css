@@ -192,10 +192,51 @@ textarea {
 }
 
 .modal-body {
-    flex: 1;           
-    display: flex;     
-    min-height: 0;     
-    overflow: hidden;  
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+    background: #fafafa;
+    flex-wrap: wrap;
+}
+
+.edit-item {
+    padding: 14px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    display: grid;
+    grid-template-columns: 80px 1fr 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+}
+
+.edit-item:last-child {
+    border-bottom: none;
+}
+
+.edit-item-label {
+    font-weight: 600;
+    font-size: 13px;
+    color: #666;
+    word-break: break-word;
+}
+
+.edit-item input {
+    padding: 8px 10px;
+    font-size: 13px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.edit-item-timing input {
+    max-width: 80px;
 }
 
 /* LEFT SIDE (List) */

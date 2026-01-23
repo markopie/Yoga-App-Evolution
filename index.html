@@ -108,8 +108,39 @@
              </div>
           </details>
        </div>
+
+       <div>
+          <details>
+             <summary>Edit & Export Course</summary>
+             <div class="inner">
+                <div style="display:flex; gap:12px; margin-bottom:15px; flex-wrap:wrap;">
+                   <button id="editCourseBtn" type="button" style="padding: 10px 16px;">Edit Current Course</button>
+                   <button id="exportCourseBtn" type="button" style="padding: 10px 16px;">Export as JSON</button>
+                </div>
+                <div id="exportStatus" class="muted" style="margin-top:8px; display:none;"></div>
+             </div>
+          </details>
+       </div>
     </main>
-  </div> <div class="modal-backdrop" id="browseBackdrop" aria-hidden="true">
+  </div>
+
+  <div class="modal-backdrop" id="editCourseBackdrop" aria-hidden="true" style="display:none;">
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:900px;">
+      <div class="modal-header">
+         <strong>Edit Course: <span id="editCourseTitle"></span></strong>
+         <button id="editCourseCloseBtn" type="button">Close</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh; overflow-y:auto;">
+         <div id="editCourseList"></div>
+      </div>
+      <div class="modal-footer" style="display:flex; gap:12px; justify-content:flex-end; padding:15px; border-top:1px solid #eee;">
+         <button id="editCourseCancelBtn" type="button">Cancel</button>
+         <button id="editCourseSaveBtn" type="button" style="background:#007AFF; color:white;">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="browseBackdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="browseTitle">
       <div class="modal-header">
          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
