@@ -7,7 +7,7 @@
 const SEQUENCES_URL = "sequences.json";
 const MANIFEST_URL = "images/manifest.json";
 const PLATE_GROUPS_URL = "plate_groups.json";
-const INDEX_CSV_URL = "index.csv";
+const ASANA_LIBRARY_URL = "asana_library.json";
 
 // 2. Paths
 const IMAGES_BASE = "images/";
@@ -48,8 +48,7 @@ const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SU
 
 // Data storage
 let sequences = [];
-let asanaIndex = [];    // Full CSV data
-let asanaByNo = {};     // Quick lookup map (e.g. "203" -> Object)
+let asanaLibrary = {};  // JSON object keyed by ID (e.g. "003" -> pose data)
 let plateGroups = {};   // "18" -> ["18","19"] (optional)
 
 // Admin Overrides
@@ -66,6 +65,8 @@ let currentAudio = null; // Tracks the currently playing sound
 let timer = null;
 let remaining = 0;
 let running = false;
+let currentSide = "right"; // Track which side for requiresSides poses
+let needsSecondSide = false; // Track if we need to play left side after right
 
 // Image Mapping State
 let asanaToUrls = {};          // Strict ID Map: "218" -> ["images/218_dhyana.jpg"]
@@ -217,26 +218,44 @@ function playSideCue(side) {
 // -------- Audio File Player (MP3) --------
 /**
  * Logic Flow:
- * 1. Check Specific Override ("Ujjayi Stage 1")
- * 2. Check Global ID Override ("203")
- * 3. Fallback: Auto-guess file "audio/203_Ujjayi.mp3"
- * 4. Side Detection: Play audio cue for Left/Right poses
+ * 1. Check if requiresSides - play right_side.mp3 or left_side.mp3 first
+ * 2. Check Specific Override ("Ujjayi Stage 1")
+ * 3. Check Global ID Override ("203")
+ * 4. Fallback: Auto-guess file "audio/203_Ujjayi.mp3"
+ * 5. Side Detection: Play audio cue for Left/Right poses in label
  */
 function playAsanaAudio(asana, poseLabel = null) {
    if (!asana) return;
 
-   // 1. Side Detection - Play audio cue for left/right poses
-   if (poseLabel) {
+   // 1. Reset current audio
+   if (currentAudio) {
+      try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
+      currentAudio = null;
+   }
+
+   // 2. Play side audio if requiresSides is true
+   if (asana.requiresSides && currentSide) {
+      const sideAudio = new Audio(`audio/${currentSide}_side.mp3`);
+      sideAudio.play().catch(e => console.warn(`Failed to play ${currentSide}_side.mp3:`, e));
+
+      // Wait for side audio to finish, then play pose audio
+      sideAudio.onended = () => {
+         playPoseMainAudio(asana, poseLabel);
+      };
+      return;
+   }
+
+   // 3. No requiresSides, play main audio directly
+   playPoseMainAudio(asana, poseLabel);
+}
+
+function playPoseMainAudio(asana, poseLabel = null) {
+   // 1. Side Detection - Play audio cue for left/right poses in label
+   if (poseLabel && !asana.requiresSides) {
       const side = detectSide(poseLabel);
       if (side) {
          setTimeout(() => playSideCue(side), 100);
       }
-   }
-
-   // 2. Reset current audio
-   if (currentAudio) {
-      try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
-      currentAudio = null;
    }
 
    // 2. Prepare Identifiers
@@ -628,77 +647,35 @@ function resetToOriginalJSON() {
 }
 
 // 4. Load & Parse CSV Index
-// 4. Load & Parse CSV Index (STRICT ID ONLY)
-async function loadAsanaIndex() {
-   if (typeof INDEX_CSV_URL === 'undefined') return [];
+// 4. Load Asana Library JSON
+async function loadAsanaLibrary() {
+   try {
+      const data = await loadJSON(ASANA_LIBRARY_URL, {});
 
-   const res = await fetch(INDEX_CSV_URL, { cache: "no-store" });
-   if (!res.ok) throw new Error("Failed to load index.csv");
-   
-   let text = await res.text();
-   const rows = parseCSV(text);
-   if (!rows.length) return [];
+      if (!data || typeof data !== 'object') {
+         console.error("Failed to load asana_library.json - invalid format");
+         return {};
+      }
 
-   const header = rows[0].map(h => String(h || "").trim());
-   const idx = (name) => header.findIndex(h => h.toLowerCase() === name.toLowerCase() || h.includes(name));
-
-   // Column Mappings
-   const colNo = idx("#");
-   const colEng = idx("Yogasana Name");
-   const colIAST = idx("IAST Name");
-   const colDesc = idx("Description"); 
-   const colTech = idx("Technique"); 
-   const colCat = header.findIndex(h => /category|classification/i.test(h));
-
-   // Variation Columns (Keep these for tabs)
-   const specificVarHeaders = [
-       "I", "Ia", "Ib", "II", "IIa", "IIb", "III", "IIIa", "IIIb", 
-       "IV", "IVa", "IVb", "V", "Va", "Vb", "VI", "VIa", "VIb", 
-       "VII", "VIIa", "VIIb", "VIII", "VIIIa", "VIIIb", "IX", "X", 
-       "XI", "XII", "XIII", "XIV", "XV", "XVI"
-   ];
-   const varCols = [];
-   specificVarHeaders.forEach(hName => {
-       const i = header.findIndex(h => h === hName); 
-       if (i >= 0) varCols.push({ index: i, label: hName });
-   });
-
-   const out = [];
-   
-   for (let r = 1; r < rows.length; r++) {
-      const row = rows[r];
-      // 1. GET ID STRICTLY
-      const asanaNoRaw = (colNo >= 0 ? row[colNo] : "") || "";
-      const asanaNo = normalizePlate(asanaNoRaw); // e.g. "5" -> "005"
-
-      // Skip invalid IDs
-      if (!asanaNo || asanaNo.length > 10 || !/^[a-zA-Z0-9_\-]+$/.test(asanaNo)) continue;
-
-      // 2. Extract Variations
-      const inlineVars = [];
-      varCols.forEach(vc => {
-          const val = row[vc.index];
-          if (val && val.trim().length > 0) { 
-              inlineVars.push({ label: vc.label, text: val.trim() });
-          }
+      // Normalize all IDs in the library
+      const normalized = {};
+      Object.keys(data).forEach(rawId => {
+         const normalizedId = normalizePlate(rawId);
+         if (normalizedId) {
+            normalized[normalizedId] = data[rawId];
+            // Store the original ID reference for lookups
+            if (!normalized[normalizedId].id) {
+               normalized[normalizedId].id = normalizedId;
+            }
+         }
       });
 
-      // 3. Build Object (Ignoring Plate Columns)
-      const asanaObj = {
-          asanaNo,
-          english: (colEng >= 0 ? row[colEng] : "") || "",
-          iast: (colIAST >= 0 ? row[colIAST] : "") || "",
-          description: (colDesc >= 0 ? row[colDesc] : "") || "",
-          technique: (colTech >= 0 ? row[colTech] : "") || "",
-          inlineVariations: inlineVars,
-          // We keep 'allPlates' just for search filtering, but strictly based on ID now
-          allPlates: [asanaNo], 
-          category: (colCat >= 0 ? row[colCat] : "") || "",
-      };
-
-      out.push(asanaObj);
+      console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
+      return normalized;
+   } catch (e) {
+      console.error("Failed to load asana_library.json:", e);
+      return {};
    }
-   return out;
 }
 
 /* ==========================================================================
@@ -758,17 +735,44 @@ function smartUrlsForPoseId(idField) {
 }
 
 /**
- * 3. Find CSV Data for a specific ID
+ * Helper: Convert asana from library to backward-compatible format
+ */
+function normalizeAsana(id, asana) {
+   if (!asana) return null;
+   return {
+      ...asana,
+      asanaNo: id,
+      english: asana.name || "",
+      'Yogasana Name': asana.name || "",
+      variation: "", // Variations are now in variations object
+      inlineVariations: asana.variations ? Object.keys(asana.variations).map(key => ({
+         label: key,
+         text: asana.variations[key]
+      })) : [],
+      allPlates: [id] // For search compatibility
+   };
+}
+
+/**
+ * Helper: Get asana library as array (for browse/filter operations)
+ */
+function getAsanaIndex() {
+   return Object.keys(asanaLibrary).map(id => normalizeAsana(id, asanaLibrary[id])).filter(Boolean);
+}
+
+/**
+ * 3. Find Asana Data for a specific ID (using JSON library)
  */
 function findAsanaByIdOrPlate(idField) {
    let id = Array.isArray(idField) ? idField[0] : idField;
    if (!id) return null;
-   
-   id = String(id).trim();
-   // Standardize to 3 digits (e.g. "5" -> "005") to match CSV column #
-   if (/^\d+$/.test(id)) id = id.padStart(3, '0');
 
-   return asanaByNo[id] || null;
+   id = normalizePlate(id);
+   const asana = asanaLibrary[id];
+
+   if (!asana) return null;
+
+   return normalizeAsana(id, asana);
 }
 
 /**
@@ -1115,19 +1119,13 @@ async function init() {
         
         if (statusEl) statusEl.textContent = "Loading sequences...";
         await loadSequences();
-        
-        if (statusEl) statusEl.textContent = "Loading index...";
-        asanaIndex = await loadAsanaIndex();
+
+        if (statusEl) statusEl.textContent = "Loading asana library...";
+        asanaLibrary = await loadAsanaLibrary();
 
         // 4. Apply Logic
         if (typeof applyDescriptionOverrides === "function") applyDescriptionOverrides();
         if (typeof applyCategoryOverrides === "function") applyCategoryOverrides();
-        
-        asanaByNo = {};
-        asanaIndex.forEach(a => {
-            const k = normalizePlate(a.asanaNo);
-            if (k) asanaByNo[k] = a;
-        });
         
         if (typeof setupBrowseUI === "function") setupBrowseUI();
 
@@ -1226,7 +1224,21 @@ function updateTimerUI() {
 function nextPose() {
     if (!currentSequence) return;
     const poses = currentSequence.poses || [];
+
+    // Check if current pose requires sides and we just finished right side
+    const currentPose = poses[currentIndex];
+    if (currentPose && needsSecondSide) {
+        // Play left side of the same pose
+        currentSide = "left";
+        needsSecondSide = false;
+        setPose(currentIndex, true); // true = keep same pose, just switch side
+        return;
+    }
+
+    // Move to next pose
     if (currentIndex < poses.length - 1) {
+        currentSide = "right"; // Reset to right side for next pose
+        needsSecondSide = false;
         setPose(currentIndex + 1);
     } else {
         stopTimer();
@@ -1246,7 +1258,7 @@ function prevPose() {
    RENDERER (SetPose)
    ========================================================================== */
 
-   function setPose(idx) {
+   function setPose(idx, keepSamePose = false) {
       if (!currentSequence) return;
       // --- DEBUGGING START ---
     const debugPose = currentSequence.poses[idx];
@@ -1257,11 +1269,17 @@ function prevPose() {
     // --- DEBUGGING END ---
       const poses = currentSequence.poses || [];
       if (idx < 0 || idx >= poses.length) return;
-   
+
       // 1. SAVE PROGRESS
       if (typeof saveCurrentProgress === "function") saveCurrentProgress();
-   
+
       currentIndex = idx;
+
+      // Reset side tracking when moving to a new pose
+      if (!keepSamePose) {
+         currentSide = "right";
+         needsSecondSide = false;
+      }
       
       // 2. DATA EXTRACTION
       const currentPose = poses[idx]; 
@@ -1281,23 +1299,34 @@ function prevPose() {
       }
    
       // 3. SMART LOOKUP (Strict)
-      const asana = findAsanaByIdOrPlate(lookupId); 
-   
+      const asana = findAsanaByIdOrPlate(lookupId);
+
+      // Check if this pose requires sides and set flag
+      if (asana && asana.requiresSides && !keepSamePose) {
+         needsSecondSide = true;
+      }
+
       // 4. HEADER UI (RE-APPLIED)
       const nameEl = document.getElementById("poseName");
       if (nameEl) {
           const jsonLabel = label ? String(label).trim() : "";
           const csvName = asana ? (asana.english || asana['Yogasana Name'] || "").trim() : "";
-   
+
           let finalTitle = "";
-   
+
           // LOGIC: "Sirsasana Cycle - (Parsva Sirsasana)"
           if (jsonLabel && csvName && jsonLabel !== csvName) {
               finalTitle = `${jsonLabel} - (${csvName})`;
           } else {
               finalTitle = jsonLabel || csvName || "Pose";
           }
-   
+
+          // Add side suffix if requiresSides is true
+          if (asana && asana.requiresSides) {
+              const sideSuffix = currentSide === "right" ? " (Right Side)" : " (Left Side)";
+              finalTitle += sideSuffix;
+          }
+
           nameEl.textContent = finalTitle;
       }
       
@@ -1440,7 +1469,21 @@ function updatePoseDescription(idField, label) {
 
 function updateTotalAndLastUI() {
    const poses = (currentSequence && currentSequence.poses) ? currentSequence.poses : [];
-   const total = poses.reduce((acc, p) => acc + (Number(p?.[1]) || 0), 0);
+
+   // Calculate total time, counting requiresSides poses twice
+   const total = poses.reduce((acc, p) => {
+      const duration = Number(p?.[1]) || 0;
+      const idField = p?.[0];
+      const id = Array.isArray(idField) ? idField[0] : idField;
+      const asana = findAsanaByIdOrPlate(id);
+
+      // If pose requires sides, count it twice
+      if (asana && asana.requiresSides) {
+         return acc + (duration * 2);
+      }
+      return acc + duration;
+   }, 0);
+
    $("totalTimePill").textContent = `Total: ${formatHMS(total)}`;
 
    const title = currentSequence && currentSequence.title ? currentSequence.title : null;
@@ -1448,8 +1491,8 @@ function updateTotalAndLastUI() {
       const source = (typeof serverHistoryCache !== 'undefined' && Array.isArray(serverHistoryCache) && serverHistoryCache.length) ? serverHistoryCache : loadCompletionLog();
       const last = source.filter(x => x && x.title === title && typeof x.ts === "number").sort((a, b) => b.ts - a.ts)[0];
       $("lastCompletedPill").textContent = last ?
-         `Last: ${new Date(last.ts).toLocaleString("en-AU", { 
-          year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" 
+         `Last: ${new Date(last.ts).toLocaleString("en-AU", {
+          year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
     })}` : "Last: –";
    }
 }
@@ -1592,6 +1635,7 @@ function renderBrowseList(items) {
    
    list.innerHTML = "";
    const countEl = document.getElementById("browseCount");
+   const asanaIndex = getAsanaIndex();
    if (countEl) countEl.textContent = `Showing ${items.length} of ${asanaIndex.length}`;
 
    if (!items.length) {
@@ -1692,6 +1736,7 @@ function showAsanaDetail(asma) {
 
    // 1. Setup Data
    const techniqueName = asma.english || asma['Yogasana Name'] || "(no name)";
+   const asanaIndex = getAsanaIndex();
    const rowVariations = asanaIndex.filter(v => (v.english || v['Yogasana Name']) === techniqueName);
    const isRestorative = (asma.category && asma.category.includes("Restorative"));
 
@@ -2039,6 +2084,7 @@ function applyBrowseFilters() {
    const cat = $("browseCategory").value;
    const finalsOnly = $("browseFinalOnly").checked;
 
+   const asanaIndex = getAsanaIndex();
    const filtered = asanaIndex.filter(a => {
       if (!matchesText(a, q)) return false;
       if (!matchesPlate(a, plateQ)) return false;
@@ -2158,7 +2204,8 @@ function setAdminMode(val) {
     // Refresh view if looking at details
     const currentNo = $("browseDetail")?.getAttribute("data-asana-no");
     if (currentNo) {
-        const asma = asanaIndex.find(a => normalizePlate(a.asanaNo) === normalizePlate(currentNo));
+        const normalizedId = normalizePlate(currentNo);
+        const asma = findAsanaByIdOrPlate(normalizedId);
         if (asma) showAsanaDetail(asma);
     }
 }
@@ -2293,24 +2340,26 @@ async function fetchServerImageList() {
    ========================================================================== */
 
 function applyDescriptionOverrides() {
-    asanaIndex.forEach(a => {
-        const key = normalizePlate(a.asanaNo);
+    Object.keys(asanaLibrary).forEach(id => {
+        const key = normalizePlate(id);
+        const a = asanaLibrary[id];
         const o = descriptionOverrides && descriptionOverrides[key];
         if (o && typeof o === "object" && typeof o.md === "string") {
             a.descriptionMd = o.md;
             a.descriptionUpdatedAt = o.updated_at || "";
             a.descriptionSource = "override";
         } else {
-            a.descriptionMd = a.defaultDescriptionMd || "";
+            a.descriptionMd = a.defaultDescriptionMd || a.description || "";
             a.descriptionUpdatedAt = "";
-            a.descriptionSource = a.descriptionMd ? "csv" : "";
+            a.descriptionSource = a.descriptionMd ? "json" : "";
         }
     });
 }
 
 function applyCategoryOverrides() {
-    asanaIndex.forEach(a => {
-        const key = normalizePlate(a.asanaNo);
+    Object.keys(asanaLibrary).forEach(id => {
+        const key = normalizePlate(id);
+        const a = asanaLibrary[id];
         const o = categoryOverrides && categoryOverrides[key];
         if (o && typeof o === "object" && typeof o.category === "string" && o.category.trim()) {
             a.category = o.category.trim();
@@ -2419,6 +2468,7 @@ function renderIdFixer(container, brokenId) {
     searchInput.oninput = () => {
         const q = searchInput.value.toLowerCase();
         if (q.length < 2) return;
+        const asanaIndex = getAsanaIndex();
         const matches = asanaIndex.filter(a =>
             (a.english.toLowerCase().includes(q) || a.asanaNo.includes(q))
         ).slice(0, 10);
