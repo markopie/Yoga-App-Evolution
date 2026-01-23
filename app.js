@@ -4,14 +4,14 @@
    ========================================================================== */
 
 // 1. Data Sources
-const COURSES_URL = "courses.json";
-const MANIFEST_URL = "images/manifest.json";
+const COURSES_URL = "https://raw.githubusercontent.com/markopie/Yoga-App-Evolution/main/courses.json";
+const MANIFEST_URL = "https://raw.githubusercontent.com/markopie/Yoga-App-Evolution/main/manifest.json";
 const PLATE_GROUPS_URL = "plate_groups.json";
 const ASANA_LIBRARY_URL = "asana_library.json";
 
 // 2. Paths
-const IMAGES_BASE = "images/";
-const AUDIO_BASE = "audio/";
+const IMAGES_BASE = "https://arrowroad.com.au/yoga/images/";
+const AUDIO_BASE = "https://arrowroad.com.au/yoga/audio/";
 const IMAGES_MAIN_BASE = "images/";
 const IMAGES_MOBILE_BASE = "images/";
 
@@ -475,259 +475,272 @@ function resolveId(id) {
 
 // 1. Generic JSON Loader with Robust Error Handling
 async function loadJSON(url, fallback = null) {
-   try {
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) {
-         console.warn(`Fetch failed ${res.status} for ${url}`);
-         return fallback;
-      }
-      const data = await res.json();
-      return data;
-   } catch (e) {
-      console.error(`Error loading ${url}:`, e);
-      return fallback;
-   }
-}
-
-// 2. Load Courses with Robust Error Handling
-async function loadCourses() {
-   const data = await loadJSON(COURSES_URL, []);
-
-   if (!Array.isArray(data) || data.length === 0) {
-      console.error("Failed to load courses.json - using empty array");
-      courses = [];
-      sequences = [];
-      if (typeof renderCourseUI === "function") renderCourseUI();
-      return;
-   }
-
-   // Validate each course has required fields
-   courses = data.filter(course => {
-      if (!course || !course.title || !Array.isArray(course.poses)) {
-         console.warn("Invalid course detected, skipping:", course);
-         return false;
-      }
-      // Ensure category exists, default to empty string
-      if (!course.category) {
-         course.category = "";
-      }
-      return true;
-   });
-
-   // For backwards compatibility, also populate sequences
-   sequences = courses;
-
-   console.log(`Loaded ${courses.length} courses`);
-
-   // Refresh UI
-   if (typeof renderCourseUI === "function") renderCourseUI();
-}
-
-// 3. Local Sequence Editing (Save/Reset)
-function saveSequencesLocally() {
-   if (!sequences || !sequences.length) return;
-   if (typeof LOCAL_SEQ_KEY !== 'undefined') {
-       localStorage.setItem(LOCAL_SEQ_KEY, JSON.stringify(sequences));
-   }
-   if (typeof renderSequenceDropdown === "function") renderSequenceDropdown();
-   alert("Changes saved to browser storage!");
-}
-
-function resetToOriginalJSON() {
-   if(!confirm("This will erase all your custom edits and categories. Are you sure?")) return;
-   if (typeof LOCAL_SEQ_KEY !== 'undefined') {
-       localStorage.removeItem(LOCAL_SEQ_KEY);
-   }
-   location.reload();
-}
-
-// 4. Load & Parse CSV Index
-// 4. Load Asana Library JSON
-async function loadAsanaLibrary() {
-   try {
-      const data = await loadJSON(ASANA_LIBRARY_URL, {});
-
-      if (!data || typeof data !== 'object') {
-         console.error("Failed to load asana_library.json - invalid format");
-         return {};
-      }
-
-      // Normalize all IDs in the library
-      const normalized = {};
-      Object.keys(data).forEach(rawId => {
-         const normalizedId = normalizePlate(rawId);
-         if (normalizedId) {
-            normalized[normalizedId] = data[rawId];
-            // Store the original ID reference for lookups
-            if (!normalized[normalizedId].id) {
-               normalized[normalizedId].id = normalizedId;
-            }
-         }
-      });
-
-      console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
-      return normalized;
-   } catch (e) {
-      console.error("Failed to load asana_library.json:", e);
-      return {};
-   }
-}
-
-/* ==========================================================================
-   IMAGE INDEXING & RESOLUTION
-   ========================================================================== */
-
-/**
- * 1. Build the Image Map
- * Scans your image folder and maps "218" -> ["images/218_dhyana.jpg"]
- */
-async function buildImageIndexes() {
-   const manifest = await loadJSON(MANIFEST_URL);
-   const items = manifestToFileList(manifest);
-
-   asanaToUrls = {}; // Global map for ID -> [URLs]
-
-   items.forEach(item => {
-      const rel = manifestItemToPath(item);
-      if (!rel) return;
-
-      const lower = rel.toLowerCase();
-      if (!(lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp"))) return;
-
-      const rawID = primaryAsanaFromFilename(filenameFromUrl(rel));
-      const normalizedKey = rawID ? normalizePlate(rawID) : null;
-      const url = normalizeImagePath(rel);
-
-      if (normalizedKey) {
-         if (!asanaToUrls[normalizedKey]) asanaToUrls[normalizedKey] = [];
-         if (!asanaToUrls[normalizedKey].includes(url)) {
-            asanaToUrls[normalizedKey].push(url);
-         }
-      }
-   });
-
-   Object.keys(asanaToUrls).forEach(k => asanaToUrls[k].sort());
-}
-
-/**
- * 2. Find Image URL for a specific ID
- */
-function smartUrlsForPoseId(idField) {
-   let id = Array.isArray(idField) ? idField[0] : idField;
-   id = normalizePlate(id);
-   
-   if (!id) return [];
-
-   if (typeof imageOverrides !== 'undefined' && imageOverrides[id]) {
-       let ov = imageOverrides[id];
-       if (ov && !ov.startsWith("images/") && !ov.startsWith("http") && !ov.startsWith("/")) {
-           ov = "images/" + ov;
-       }
-       return [ov];
-   }
-
-   return asanaToUrls[id] || [];
-}
-
-/**
- * Helper: Convert asana from library to backward-compatible format
- */
-function normalizeAsana(id, asana) {
-   if (!asana) return null;
-   return {
-      ...asana,
-      asanaNo: id,
-      english: asana.name || "",
-      'Yogasana Name': asana.name || "",
-      variation: "", // Variations are now in variations object
-      inlineVariations: asana.variations ? Object.keys(asana.variations).map(key => ({
-         label: key,
-         text: asana.variations[key]
-      })) : [],
-      allPlates: [id] // For search compatibility
-   };
-}
-
-/**
- * Helper: Get asana library as array (for browse/filter operations)
- */
-function getAsanaIndex() {
-   return Object.keys(asanaLibrary).map(id => normalizeAsana(id, asanaLibrary[id])).filter(Boolean);
-}
-
-/**
- * 3. Find Asana Data for a specific ID (using JSON library)
- */
-function findAsanaByIdOrPlate(idField) {
-   let id = Array.isArray(idField) ? idField[0] : idField;
-   if (!id) return null;
-
-   id = normalizePlate(id);
-   const asana = asanaLibrary[id];
-
-   if (!asana) return null;
-
-   return normalizeAsana(id, asana);
-}
-
-/**
- * 4. Helper for UI
- */
-function urlsForPlateToken(p) {
-   return smartUrlsForPoseId(p);
-}
-
-// --- CORE UTILITIES ---
-
-function manifestToFileList(manifest) {
-   if (Array.isArray(manifest)) return manifest;
-   if (!manifest || typeof manifest !== "object") return [];
-
-   const looksLikePlateMap = (obj) => {
-      if (!obj || typeof obj !== "object" || Array.isArray(obj)) return false;
-      const keys = Object.keys(obj);
-      if (keys.length === 0) return false;
-      const digitKeys = keys.filter(k => /^\d+$/.test(String(k))).length;
-      return digitKeys >= Math.max(1, Math.floor(keys.length * 0.7));
-   };
-
-   if (manifest.images && looksLikePlateMap(manifest.images)) {
-      return Object.entries(manifest.images).map(([plate, meta]) => {
-         return (meta && typeof meta === "object" && !Array.isArray(meta)) ? { plate, ...meta } : { plate, main: meta };
-      });
-   }
-   if (looksLikePlateMap(manifest)) {
-      return Object.entries(manifest).map(([plate, meta]) => {
-         return (meta && typeof meta === "object" && !Array.isArray(meta)) ? { plate, ...meta } : { plate, main: meta };
-      });
-   }
-
-   const candidates = [manifest.files, manifest.images, manifest.items, manifest.main];
-   for (const c of candidates) { if (c && Array.isArray(c)) return c; }
-   return [];
-}
-
-function manifestItemToPath(item) {
-   if (typeof item === "string") return item;
-   if (!item || typeof item !== "object") return null;
-   return item.filename || item.main || item.path || item.file || item.name || null;
-}
-
-function normalizeImagePath(p) {
-   if (!p) return null;
-   const s = String(p).replace(/\\/g, "/").replace(/^\.?\//, "");
-   if (s.startsWith("http") || s.startsWith(IMAGES_BASE)) return s;
-   return IMAGES_BASE + s;
-}
-
-async function fetchIdAliases() {
     try {
-        const res = await fetch("id_aliases.json", { cache: "no-store" });
-        if (res.ok) idAliases = await res.json();
-    } catch (e) { idAliases = {}; }
-}
-
-// #endregion
+       const res = await fetch(url, { cache: "no-store" });
+       if (!res.ok) {
+          console.warn(`Fetch failed ${res.status} for ${url}`);
+          return fallback;
+       }
+       const data = await res.json();
+       return data;
+    } catch (e) {
+       console.error(`Error loading ${url}:`, e);
+       return fallback;
+    }
+ }
+ 
+ // 2. Load Courses with Robust Error Handling
+ async function loadCourses() {
+    const data = await loadJSON(COURSES_URL, []);
+ 
+    if (!Array.isArray(data) || data.length === 0) {
+       console.error("Failed to load courses.json - using empty array");
+       courses = [];
+       sequences = [];
+       if (typeof renderCourseUI === "function") renderCourseUI();
+       return;
+    }
+ 
+    // Validate each course has required fields
+    const validCourses = data.filter(course => {
+       if (!course || !course.title || !Array.isArray(course.poses)) {
+          console.warn("Invalid course detected, skipping:", course);
+          return false;
+       }
+       // Ensure category exists, default to empty string
+       if (!course.category) {
+          course.category = "";
+       }
+       return true;
+    });
+ 
+    // Assign to global variables
+    courses = validCourses;
+    sequences = courses;     // For backwards compatibility
+    window.courses = courses; // CRITICAL: For GitHub Sync to work
+ 
+    console.log(`Loaded ${courses.length} courses`);
+ 
+    // Refresh UI
+    if (typeof renderCourseUI === "function") renderCourseUI();
+ }
+ 
+ // 3. Local Sequence Editing (Save/Reset)
+ function saveSequencesLocally() {
+    if (!sequences || !sequences.length) return;
+    if (typeof LOCAL_SEQ_KEY !== 'undefined') {
+        localStorage.setItem(LOCAL_SEQ_KEY, JSON.stringify(sequences));
+    }
+    if (typeof renderSequenceDropdown === "function") renderSequenceDropdown();
+    alert("Changes saved to browser storage!");
+ }
+ 
+ function resetToOriginalJSON() {
+    if(!confirm("This will erase all your custom edits and categories. Are you sure?")) return;
+    if (typeof LOCAL_SEQ_KEY !== 'undefined') {
+        localStorage.removeItem(LOCAL_SEQ_KEY);
+    }
+    location.reload();
+ }
+ 
+ // 4. Load Asana Library JSON
+ async function loadAsanaLibrary() {
+    try {
+       const data = await loadJSON(ASANA_LIBRARY_URL, {});
+ 
+       if (!data || typeof data !== 'object') {
+          console.error("Failed to load asana_library.json - invalid format");
+          return {};
+       }
+ 
+       // Normalize all IDs in the library
+       const normalized = {};
+       Object.keys(data).forEach(rawId => {
+          const normalizedId = normalizePlate(rawId);
+          if (normalizedId) {
+             normalized[normalizedId] = data[rawId];
+             // Store the original ID reference for lookups
+             if (!normalized[normalizedId].id) {
+                normalized[normalizedId].id = normalizedId;
+             }
+          }
+       });
+ 
+       console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
+       return normalized;
+    } catch (e) {
+       console.error("Failed to load asana_library.json:", e);
+       return {};
+    }
+ }
+ 
+ /* ==========================================================================
+    IMAGE INDEXING & RESOLUTION
+    ========================================================================== */
+ 
+ /**
+  * 1. Build the Image Map
+  * Scans your image folder and maps "218" -> ["images/218_dhyana.jpg"]
+  */
+ async function buildImageIndexes() {
+     // 1. Load the manifest with a fallback of null
+     const manifest = await loadJSON(MANIFEST_URL, null);
+     
+     // 2. SAFETY CHECK: If manifest is missing, don't try to process it
+     if (!manifest) {
+        console.warn("Manifest not found at " + MANIFEST_URL + ". Images will not be indexed.");
+        asanaToUrls = {}; 
+        return; 
+     }
+  
+     const items = manifestToFileList(manifest);
+     asanaToUrls = {}; 
+  
+     items.forEach(item => {
+        const rel = manifestItemToPath(item);
+        if (!rel) return;
+  
+        const lower = rel.toLowerCase();
+        const validExt = [".png", ".jpg", ".jpeg", ".webp"].some(ext => lower.endsWith(ext));
+        if (!validExt) return;
+  
+        const rawID = primaryAsanaFromFilename(filenameFromUrl(rel));
+        const normalizedKey = rawID ? normalizePlate(rawID) : null;
+        
+        // Ensure normalizeImagePath handles the IMAGES_BASE correctly
+        const url = normalizeImagePath(rel);
+  
+        if (normalizedKey) {
+           if (!asanaToUrls[normalizedKey]) asanaToUrls[normalizedKey] = [];
+           if (!asanaToUrls[normalizedKey].includes(url)) {
+              asanaToUrls[normalizedKey].push(url);
+           }
+        }
+     });
+  
+     Object.keys(asanaToUrls).forEach(k => asanaToUrls[k].sort());
+     console.log("✓ Image indexing complete.");
+  }
+ 
+ /**
+  * 2. Find Image URL for a specific ID
+  */
+ function smartUrlsForPoseId(idField) {
+    let id = Array.isArray(idField) ? idField[0] : idField;
+    id = normalizePlate(id);
+    
+    if (!id) return [];
+ 
+    if (typeof imageOverrides !== 'undefined' && imageOverrides[id]) {
+        let ov = imageOverrides[id];
+        if (ov && !ov.startsWith("images/") && !ov.startsWith("http") && !ov.startsWith("/")) {
+            ov = "images/" + ov;
+        }
+        return [ov];
+    }
+ 
+    return asanaToUrls[id] || [];
+ }
+ 
+ /**
+  * Helper: Convert asana from library to backward-compatible format
+  */
+ function normalizeAsana(id, asana) {
+    if (!asana) return null;
+    return {
+       ...asana,
+       asanaNo: id,
+       english: asana.name || "",
+       'Yogasana Name': asana.name || "",
+       variation: "", // Variations are now in variations object
+       inlineVariations: asana.variations ? Object.keys(asana.variations).map(key => ({
+          label: key,
+          text: asana.variations[key]
+       })) : [],
+       allPlates: [id] // For search compatibility
+    };
+ }
+ 
+ /**
+  * Helper: Get asana library as array (for browse/filter operations)
+  */
+ function getAsanaIndex() {
+    return Object.keys(asanaLibrary).map(id => normalizeAsana(id, asanaLibrary[id])).filter(Boolean);
+ }
+ 
+ /**
+  * 3. Find Asana Data for a specific ID (using JSON library)
+  */
+ function findAsanaByIdOrPlate(idField) {
+    let id = Array.isArray(idField) ? idField[0] : idField;
+    if (!id) return null;
+ 
+    id = normalizePlate(id);
+    const asana = asanaLibrary[id];
+ 
+    if (!asana) return null;
+ 
+    return normalizeAsana(id, asana);
+ }
+ 
+ /**
+  * 4. Helper for UI
+  */
+ function urlsForPlateToken(p) {
+    return smartUrlsForPoseId(p);
+ }
+ 
+ // --- CORE UTILITIES ---
+ 
+ function manifestToFileList(manifest) {
+    if (Array.isArray(manifest)) return manifest;
+    if (!manifest || typeof manifest !== "object") return [];
+ 
+    const looksLikePlateMap = (obj) => {
+       if (!obj || typeof obj !== "object" || Array.isArray(obj)) return false;
+       const keys = Object.keys(obj);
+       if (keys.length === 0) return false;
+       const digitKeys = keys.filter(k => /^\d+$/.test(String(k))).length;
+       return digitKeys >= Math.max(1, Math.floor(keys.length * 0.7));
+    };
+ 
+    if (manifest.images && looksLikePlateMap(manifest.images)) {
+       return Object.entries(manifest.images).map(([plate, meta]) => {
+          return (meta && typeof meta === "object" && !Array.isArray(meta)) ? { plate, ...meta } : { plate, main: meta };
+       });
+    }
+    if (looksLikePlateMap(manifest)) {
+       return Object.entries(manifest).map(([plate, meta]) => {
+          return (meta && typeof meta === "object" && !Array.isArray(meta)) ? { plate, ...meta } : { plate, main: meta };
+       });
+    }
+ 
+    const candidates = [manifest.files, manifest.images, manifest.items, manifest.main];
+    for (const c of candidates) { if (c && Array.isArray(c)) return c; }
+    return [];
+ }
+ 
+ function manifestItemToPath(item) {
+    if (typeof item === "string") return item;
+    if (!item || typeof item !== "object") return null;
+    return item.filename || item.main || item.path || item.file || item.name || null;
+ }
+ 
+ function normalizeImagePath(p) {
+    if (!p) return null;
+    const s = String(p).replace(/\\/g, "/").replace(/^\.?\//, "");
+    if (s.startsWith("http") || s.startsWith(IMAGES_BASE)) return s;
+    return IMAGES_BASE + s;
+ }
+ 
+ async function fetchIdAliases() {
+     try {
+         const res = await fetch("id_aliases.json", { cache: "no-store" });
+         if (res.ok) idAliases = await res.json();
+     } catch (e) { idAliases = {}; }
+ }
+ 
+ // #endregion
 // #region 5. HISTORY & LOGGING
 /* ==========================================================================
    LOCAL LOGGING & PERSISTENCE
@@ -1092,24 +1105,26 @@ function stopTimer() {
 }
 
 function updateTimerUI() {
-   const timerEl = $("poseTimer");
-   if (!currentSequence) {
-      timerEl.textContent = "–";
-      timerEl.className = "";
-      return;
-   }
-   const mm = Math.floor(remaining / 60);
-   const ss = remaining % 60;
-   timerEl.textContent = `${mm}:${String(ss).padStart(2,"0")}`;
-
-   // Add visual warning states
-   timerEl.className = "";
-   if (remaining <= 5 && remaining > 0) {
-      timerEl.className = "critical";
-   } else if (remaining <= 10 && remaining > 0) {
-      timerEl.className = "warning";
-   }
-}
+    const timerEl = document.getElementById("poseTimer");
+    if (!timerEl) return; // <--- This simple line prevents the crash
+ 
+    if (!currentSequence) {
+       timerEl.textContent = "–";
+       timerEl.className = "";
+       return;
+    }
+    const mm = Math.floor(remaining / 60);
+    const ss = remaining % 60;
+    timerEl.textContent = `${mm}:${String(ss).padStart(2,"0")}`;
+ 
+    // Add visual warning states
+    timerEl.className = "";
+    if (remaining <= 5 && remaining > 0) {
+       timerEl.className = "critical";
+    } else if (remaining <= 10 && remaining > 0) {
+       timerEl.className = "warning";
+    }
+ }
 
 /* ==========================================================================
    NAVIGATION
@@ -1154,13 +1169,6 @@ function prevPose() {
 
    function setPose(idx, keepSamePose = false) {
       if (!currentSequence) return;
-      // --- DEBUGGING START ---
-    const debugPose = currentSequence.poses[idx];
-    console.log("--------------------------------");
-    console.log("DEBUG POSE #", idx);
-    console.log("Raw from JSON:", debugPose);
-    console.log("Raw ID:", debugPose[0]);
-    // --- DEBUGGING END ---
       const poses = currentSequence.poses || [];
       if (idx < 0 || idx >= poses.length) return;
 
@@ -1201,27 +1209,26 @@ function prevPose() {
       }
 
       // 4. HEADER UI (RE-APPLIED)
+      
       const nameEl = document.getElementById("poseName");
+
       if (nameEl) {
           const jsonLabel = label ? String(label).trim() : "";
           const csvName = asana ? (asana.english || asana['Yogasana Name'] || "").trim() : "";
-
           let finalTitle = "";
 
-          // LOGIC: "Sirsasana Cycle - (Parsva Sirsasana)"
           if (jsonLabel && csvName && jsonLabel !== csvName) {
               finalTitle = `${jsonLabel} - (${csvName})`;
           } else {
               finalTitle = jsonLabel || csvName || "Pose";
           }
 
-          // Add side suffix if requiresSides is true
           if (asana && asana.requiresSides) {
               const sideSuffix = currentSide === "right" ? " (Right Side)" : " (Left Side)";
               finalTitle += sideSuffix;
           }
 
-          nameEl.textContent = finalTitle;
+          nameEl.textContent = finalTitle; // No more crashing here!
       }
       
       if (typeof updatePoseNote === "function") updatePoseNote(note);
@@ -1230,10 +1237,10 @@ function prevPose() {
       // 5. META UI
       const idDisplay = lookupId; 
       const metaContainer = document.getElementById("poseMeta");
-      
       if (metaContainer) {
          let metaText = `ID: ${idDisplay} • ${seconds}s`;
          metaContainer.innerHTML = metaText + " ";
+          
          
          if (asana) {
             const speakBtn = document.createElement("button");
@@ -1249,7 +1256,9 @@ function prevPose() {
       }
    
       const counterEl = document.getElementById("poseCounter");
-      if (counterEl) counterEl.textContent = `${idx + 1} / ${poses.length}`;
+      if (counterEl) {
+        counterEl.textContent = `${idx + 1} / ${poses.length}`;
+     }
    
       // 6. TIMER LOGIC
       currentPoseSeconds = parseInt(seconds, 10) || 0;
@@ -1362,34 +1371,55 @@ function updatePoseDescription(idField, label) {
 }
 
 function updateTotalAndLastUI() {
-   const poses = (currentSequence && currentSequence.poses) ? currentSequence.poses : [];
-
-   // Calculate total time, counting requiresSides poses twice
-   const total = poses.reduce((acc, p) => {
-      const duration = Number(p?.[1]) || 0;
-      const idField = p?.[0];
-      const id = Array.isArray(idField) ? idField[0] : idField;
-      const asana = findAsanaByIdOrPlate(id);
-
-      // If pose requires sides, count it twice
-      if (asana && asana.requiresSides) {
-         return acc + (duration * 2);
-      }
-      return acc + duration;
-   }, 0);
-
-   $("totalTimePill").textContent = `Total: ${formatHMS(total)}`;
-
-   const title = currentSequence && currentSequence.title ? currentSequence.title : null;
-   if (title) {
-      const source = (typeof serverHistoryCache !== 'undefined' && Array.isArray(serverHistoryCache) && serverHistoryCache.length) ? serverHistoryCache : loadCompletionLog();
-      const last = source.filter(x => x && x.title === title && typeof x.ts === "number").sort((a, b) => b.ts - a.ts)[0];
-      $("lastCompletedPill").textContent = last ?
-         `Last: ${new Date(last.ts).toLocaleString("en-AU", {
-          year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
-    })}` : "Last: –";
-   }
-}
+    const poses = (currentSequence && currentSequence.poses) ? currentSequence.poses : [];
+ 
+    // 1. Calculate Total Time
+    const total = poses.reduce((acc, p) => {
+       const duration = Number(p?.[1]) || 0;
+       const idField = p?.[0];
+       const id = Array.isArray(idField) ? idField[0] : idField;
+       
+       const asana = (typeof findAsanaByIdOrPlate === 'function') 
+          ? findAsanaByIdOrPlate(id) 
+          : null;
+ 
+       if (asana && asana.requiresSides) {
+          return acc + (duration * 2);
+       }
+       return acc + duration;
+    }, 0);
+ 
+    // 2. Update Total Time UI (Safely)
+    const totalEl = document.getElementById("totalTimePill");
+    if (totalEl) {
+        totalEl.textContent = `Total: ${formatHMS(total)}`;
+    }
+    // CRITICAL: The duplicate $("totalTimePill")... line is DELETED here.
+ 
+    // 3. Update History UI (Safely)
+    const lastEl = document.getElementById("lastCompletedPill");
+    
+    if (lastEl) {
+        const title = currentSequence && currentSequence.title ? currentSequence.title : null;
+        
+        if (title) {
+           const source = (typeof serverHistoryCache !== 'undefined' && Array.isArray(serverHistoryCache) && serverHistoryCache.length) 
+              ? serverHistoryCache 
+              : (typeof loadCompletionLog === 'function' ? loadCompletionLog() : []);
+ 
+           const last = source
+              .filter(x => x && x.title === title && typeof x.ts === "number")
+              .sort((a, b) => b.ts - a.ts)[0];
+ 
+           lastEl.textContent = last ?
+              `Last: ${new Date(last.ts).toLocaleString("en-AU", {
+               year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
+              })}` : "Last: –";
+        } else {
+           lastEl.textContent = "Last: –";
+        }
+    }
+ }
 
 function loadUserPersonalNote(idField) {
    const container = document.getElementById("poseDescBody");
