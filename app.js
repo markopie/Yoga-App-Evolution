@@ -92,11 +92,24 @@ function $(id) {
    return document.getElementById(id);
 }
 
+// Store registered listeners to prevent duplicates
+const registeredListeners = new Map();
+
 function safeListen(id, event, handler) {
     const el = document.getElementById(id);
-    if (el) {
-        el.addEventListener(event, handler);
+    if (!el) return;
+
+    const key = `${id}:${event}`;
+
+    // Remove previous listener if it exists
+    if (registeredListeners.has(key)) {
+        const oldHandler = registeredListeners.get(key);
+        el.removeEventListener(event, oldHandler);
     }
+
+    // Add new listener and store reference
+    el.addEventListener(event, handler);
+    registeredListeners.set(key, handler);
 }
 
 // -------- Wake Lock (Prevent screen sleep) --------
@@ -172,17 +185,55 @@ function playFaintGong() {
    } catch (e) {}
 }
 
+// -------- Side Detection Logic --------
+function detectSide(poseLabel) {
+   if (!poseLabel) return null;
+   const label = poseLabel.toLowerCase();
+   if (label.includes("(right)") || label.includes("right side")) return "right";
+   if (label.includes("(left)") || label.includes("left side")) return "left";
+   return null;
+}
+
+function playSideCue(side) {
+   if (!side) return;
+   const ctx = new (window.AudioContext || window.webkitAudioContext)();
+   const oscillator = ctx.createOscillator();
+   const gainNode = ctx.createGain();
+
+   oscillator.connect(gainNode);
+   gainNode.connect(ctx.destination);
+
+   // Different frequencies for left and right
+   oscillator.frequency.value = side === "right" ? 800 : 600;
+   oscillator.type = "sine";
+
+   gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+   gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+
+   oscillator.start(ctx.currentTime);
+   oscillator.stop(ctx.currentTime + 0.3);
+}
+
 // -------- Audio File Player (MP3) --------
 /**
  * Logic Flow:
  * 1. Check Specific Override ("Ujjayi Stage 1")
  * 2. Check Global ID Override ("203")
  * 3. Fallback: Auto-guess file "audio/203_Ujjayi.mp3"
+ * 4. Side Detection: Play audio cue for Left/Right poses
  */
-function playAsanaAudio(asana) {
+function playAsanaAudio(asana, poseLabel = null) {
    if (!asana) return;
 
-   // 1. Reset current audio
+   // 1. Side Detection - Play audio cue for left/right poses
+   if (poseLabel) {
+      const side = detectSide(poseLabel);
+      if (side) {
+         setTimeout(() => playSideCue(side), 100);
+      }
+   }
+
+   // 2. Reset current audio
    if (currentAudio) {
       try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
       currentAudio = null;
@@ -500,17 +551,34 @@ function resolveId(id) {
    DATA LOADING & PARSING
    ========================================================================== */
 
-// 1. Generic JSON Loader
-async function loadJSON(url) {
-   const res = await fetch(url, { cache: "no-store" });
-   if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`);
-   return await res.json();
+// 1. Generic JSON Loader with Robust Error Handling
+async function loadJSON(url, fallback = null) {
+   try {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) {
+         console.warn(`Fetch failed ${res.status} for ${url}`);
+         return fallback;
+      }
+      const data = await res.json();
+      return data;
+   } catch (e) {
+      console.error(`Error loading ${url}:`, e);
+      return fallback;
+   }
 }
 
-// 2. Load Sequences (Base + Server Override)
+// 2. Load Sequences (Base + Server Override) with Robust Error Handling
 async function loadSequences() {
-   // A. Load Base
-   const baseData = await loadJSON(SEQUENCES_URL);
+   // A. Load Base with fallback to empty array
+   const baseData = await loadJSON(SEQUENCES_URL, []);
+
+   if (!Array.isArray(baseData) || baseData.length === 0) {
+      console.error("Failed to load sequences.json - using empty array");
+      sequences = [];
+      if (typeof renderSequenceDropdown === "function") renderSequenceDropdown();
+      return;
+   }
+
    let finalData = baseData;
 
    // B. Load Server Overrides (High Priority)
@@ -524,9 +592,20 @@ async function loadSequences() {
       console.log("No server override found, using default.");
    }
 
-   sequences = finalData;
-   
-   // C. Refresh UI
+   // C. Validate each sequence has required fields
+   sequences = finalData.filter(seq => {
+      if (!seq || !seq.title || !Array.isArray(seq.poses)) {
+         console.warn("Invalid sequence detected, skipping:", seq);
+         return false;
+      }
+      // Ensure category exists, default to "Uncategorized"
+      if (!seq.category) {
+         seq.category = "Uncategorized";
+      }
+      return true;
+   });
+
+   // D. Refresh UI
    if (typeof renderSequenceDropdown === "function") renderSequenceDropdown();
 }
 
@@ -755,16 +834,37 @@ async function fetchIdAliases() {
    LOCAL LOGGING & PERSISTENCE
    ========================================================================== */
 
-const COMPLETION_KEY = "yogaCompletionLog_v1";
+const COMPLETION_KEY = "yogaCompletionLog_v2";
+
+// Safe localStorage with corruption handling
+function safeGetLocalStorage(key, defaultValue = null) {
+   try {
+      const item = localStorage.getItem(key);
+      if (!item) return defaultValue;
+      return JSON.parse(item);
+   } catch (e) {
+      console.error(`Corrupted localStorage for key: ${key}`, e);
+      localStorage.removeItem(key);
+      return defaultValue;
+   }
+}
+
+function safeSetLocalStorage(key, value) {
+   try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+   } catch (e) {
+      console.error(`Failed to save to localStorage: ${key}`, e);
+      return false;
+   }
+}
 
 function loadCompletionLog() {
-   try {
-      return JSON.parse(localStorage.getItem(COMPLETION_KEY) || "[]");
-   } catch (e) { return []; }
+   return safeGetLocalStorage(COMPLETION_KEY, []);
 }
 
 function saveCompletionLog(log) {
-   localStorage.setItem(COMPLETION_KEY, JSON.stringify(log));
+   safeSetLocalStorage(COMPLETION_KEY, log);
 }
 
 function addCompletion(title, whenDate, category = null) {
@@ -886,13 +986,19 @@ async function appendServerHistory(title, whenDate, category = null) {
 
 function formatHistoryRow(entry) {
    const title = entry?.title || "Untitled sequence";
-   const category = entry?.category ? ` (${entry.category})` : "";
+   const category = entry?.category || "Uncategorized";
    const local = (typeof entry?.ts === "number") ?
       new Date(entry.ts).toLocaleString("en-AU", {
          year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
       }) : (entry.local || "");
 
-   return `${local} — ${title}${category}`;
+   return `
+      <div style="padding: 10px; border-bottom: 1px solid #f0f0f0;">
+         <div style="font-weight: 600; color: #1a1a1a; margin-bottom: 4px;">${title}</div>
+         <div style="font-size: 0.85rem; color: #666;">${category}</div>
+         <div style="font-size: 0.8rem; color: #999; margin-top: 2px;">${local}</div>
+      </div>
+   `;
 }
 
 async function toggleHistoryPanel() {
@@ -913,32 +1019,34 @@ async function toggleHistoryPanel() {
    }
 
    const sorted = [...hist].filter(x => x && typeof x.ts === "number").sort((a, b) => b.ts - a.ts);
-   
-   // Safety check for escapeHtml2 helper
-   const safeHtml = (typeof escapeHtml2 === 'function') ? escapeHtml2 : (s) => String(s).replace(/</g, "&lt;");
-   
+
    const lines = sorted.map(formatHistoryRow);
-   panel.innerHTML = "<div style='margin-top:4px'></div>" + lines.map(l => `<div>• ${safeHtml(l)}</div>`).join("");
+   panel.innerHTML = lines.join("");
 }
 
 /* ==========================================================================
    RESUME STATE & PROGRESS
    ========================================================================== */
 
-const RESUME_STATE_KEY = "yoga_resume_state";
+const RESUME_STATE_KEY = "yoga_resume_state_v2";
 
 function saveCurrentProgress() {
     if (!currentSequence) return;
     const state = {
-        sequenceIdx: $("sequenceSelect").value, 
+        sequenceIdx: $("sequenceSelect")?.value || "",
         poseIdx: currentIndex,
+        sequenceTitle: currentSequence.title,
         timestamp: Date.now()
     };
-    localStorage.setItem(RESUME_STATE_KEY, JSON.stringify(state));
+    safeSetLocalStorage(RESUME_STATE_KEY, state);
 }
 
 function clearProgress() {
-    localStorage.removeItem(RESUME_STATE_KEY);
+    try {
+        localStorage.removeItem(RESUME_STATE_KEY);
+    } catch (e) {
+        console.error("Failed to clear progress", e);
+    }
 }
 
 function showResumePrompt(state) {
@@ -1025,17 +1133,16 @@ async function init() {
 
         // 5. Final UI Polish
         if (statusEl) statusEl.textContent = "Ready";
-        
-        const saved = localStorage.getItem(RESUME_STATE_KEY);
-        if (saved) {
-            try {
-                const state = JSON.parse(saved);
-                // Only offer resume if it was saved in the last 4 hours
-                const fourHours = 4 * 60 * 60 * 1000;
-                if (Date.now() - state.timestamp < fourHours) {
-                    showResumePrompt(state);
-                }
-            } catch(e) { console.error("Resume failed", e); }
+
+        const state = safeGetLocalStorage(RESUME_STATE_KEY, null);
+        if (state && state.timestamp) {
+            // Only offer resume if it was saved in the last 4 hours
+            const fourHours = 4 * 60 * 60 * 1000;
+            if (Date.now() - state.timestamp < fourHours) {
+                showResumePrompt(state);
+            } else {
+                clearProgress(); // Clean up old state
+            }
         }
 
         const loadText = $("loadingText");
@@ -1065,13 +1172,13 @@ async function init() {
       // Play audio immediately when starting
       const currentPose = currentSequence.poses[currentIndex];
       if (currentPose) {
-          const [idField] = currentPose;
+          const [idField, , poseLabel] = currentPose;
           const plate = Array.isArray(idField) ? normalizePlate(idField[0]) : normalizePlate(idField);
-          
+
           // ⚡ STRICT FIX: Only use the strict lookup function
           const asana = findAsanaByIdOrPlate(plate);
-          
-          if (asana) playAsanaAudio(asana);
+
+          if (asana) playAsanaAudio(asana, poseLabel);
       }
    
       timer = setInterval(() => {
@@ -1093,13 +1200,23 @@ function stopTimer() {
 }
 
 function updateTimerUI() {
+   const timerEl = $("poseTimer");
    if (!currentSequence) {
-      $("poseTimer").textContent = "–";
+      timerEl.textContent = "–";
+      timerEl.className = "";
       return;
    }
    const mm = Math.floor(remaining / 60);
    const ss = remaining % 60;
-   $("poseTimer").textContent = `${mm}:${String(ss).padStart(2,"0")}`;
+   timerEl.textContent = `${mm}:${String(ss).padStart(2,"0")}`;
+
+   // Add visual warning states
+   timerEl.className = "";
+   if (remaining <= 5 && remaining > 0) {
+      timerEl.className = "critical";
+   } else if (remaining <= 10 && remaining > 0) {
+      timerEl.className = "warning";
+   }
 }
 
 /* ==========================================================================
@@ -1269,7 +1386,7 @@ function prevPose() {
       if (compBtn) compBtn.style.display = isFinal ? "inline-block" : "none";
    
       updateTotalAndLastUI();
-      if (running && asana) playAsanaAudio(asana);
+      if (running && asana) playAsanaAudio(asana, label);
       if (wakeLockVisibilityHooked && typeof reacquireWakeLock === "function") reacquireWakeLock();
       
       // 10. ADMIN TOOL
@@ -1872,7 +1989,7 @@ function renderCollage(urls) {
       tile.innerHTML = `
         <picture>
           <source media="(max-width: 768px)" srcset="${mob}">
-          <img src="${u}" alt="">
+          <img src="${u}" alt="" loading="lazy" decoding="async">
         </picture>
       `;
       wrap.appendChild(tile);
@@ -2622,7 +2739,7 @@ if (seqSelect) {
     seqSelect.addEventListener("change", () => {
        const idx = seqSelect.value;
        stopTimer();
-       
+
        if (!idx) {
           // Reset UI if "Select Sequence" is chosen
           currentSequence = null;
@@ -2636,13 +2753,20 @@ if (seqSelect) {
           $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`;
           return;
        }
-       
+
        // Load the sequence
        currentSequence = sequences[parseInt(idx, 10)];
        updateTotalAndLastUI();
-       
+
        try {
           setPose(0);
+          // Auto-start timer after a brief delay (improved 1-click start flow)
+          setTimeout(() => {
+             if (currentSequence && !running) {
+                $("status").textContent = "Starting...";
+                setTimeout(() => startTimer(), 800);
+             }
+          }, 300);
        } catch (e) {
           console.error(e);
           $("collageWrap").innerHTML = `<div class="msg">Error rendering this pose. Check Console.</div>`;
