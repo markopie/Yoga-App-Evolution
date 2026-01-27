@@ -113,28 +113,32 @@ function safeListen(id, event, handler) {
     registeredListeners.set(key, handler);
 }
 
-// -------- Wake Lock (Prevent screen sleep) --------
-async function enableWakeLock(){
-   try {
-      if (!("wakeLock" in navigator)) return;
-      if (wakeLock) return;
-
-      wakeLock = await navigator.wakeLock.request("screen");
-      wakeLock.addEventListener("release", () => {
-         wakeLock = null;
-      });
-
-      // Hook once: if user switches away and returns, re-request lock.
-      if (!wakeLockVisibilityHooked) {
-         wakeLockVisibilityHooked = true;
-         document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible" && running) enableWakeLock();
-         });
-      }
-   } catch (e) {
-      wakeLock = null;
-   }
-}
+async function enableWakeLock() {
+    if (!("wakeLock" in navigator)) return;
+    if (wakeLock !== null) return; // Already active
+ 
+    try {
+       wakeLock = await navigator.wakeLock.request("screen");
+       
+       // Clean up variable when released (manually or by system)
+       wakeLock.addEventListener("release", () => {
+          wakeLock = null;
+       });
+    } catch (err) {
+       console.error(`${err.name}, ${err.message}`);
+    }
+ }
+ 
+ // Separate the listener so it's only attached ONCE globally
+ if (!wakeLockVisibilityHooked) {
+    wakeLockVisibilityHooked = true;
+    document.addEventListener("visibilitychange", async () => {
+       // Re-enable if we come back to the tab and the app is "running"
+       if (document.visibilityState === "visible" && typeof running !== 'undefined' && running) {
+          await enableWakeLock();
+       }
+    });
+ }
 
 async function disableWakeLock() {
    try {
@@ -2743,12 +2747,7 @@ if (seqSelect) {
        try {
           setPose(0);
           // Auto-start timer after a brief delay (improved 1-click start flow)
-          setTimeout(() => {
-             if (currentSequence && !running) {
-                $("status").textContent = "Starting...";
-                setTimeout(() => startTimer(), 800);
-             }
-          }, 300);
+          
        } catch (e) {
           console.error(e);
           $("collageWrap").innerHTML = `<div class="msg">Error rendering this pose. Check Console.</div>`;
