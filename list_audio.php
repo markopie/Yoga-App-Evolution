@@ -3,7 +3,7 @@
 header('Content-Type: application/json');
 
 // Scan audio folder, remove '.' and '..', and filter for mp3s
-$files = array_filter(scandir('audio/'), function($f) {
+$files = array_filter(scandir("https://arrowroad.com.au/yoga/audio/";), function($f) {
     return strtolower(pathinfo($f, PATHINFO_EXTENSION)) === 'mp3';
 });
 

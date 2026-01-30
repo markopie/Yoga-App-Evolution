@@ -9,21 +9,11 @@
 </head>
 <body>
 
-  <div id="adminContainer" style="display:none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 2000; overflow-y: auto; padding: 20px; box-sizing: border-box;">
-     <div style="max-width: 1200px; margin: 0 auto;">
-       <div style="margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px; display:flex; align-items:center;">
-          <button onclick="toggleAdminUI(false)" style="font-size: 1.1rem; cursor:pointer; padding: 5px 15px;">← Back to App</button>
-          <h2 style="display:inline-block; margin-left: 20px; margin-top:0;">Sequence Manager</h2>
-       </div>
-       <div id="adminBulkEditor"></div>
-     </div>
-  </div>
-
   <div id="mainAppContainer">
     <header>
        <div class="row" style="display:flex; justify-content:space-between; align-items:center;">
           <strong>Yoga Sequences</strong>
-          <button type="button" onclick="toggleAdminUI(true)" style="font-size:0.9rem;">⚙️ Manage Sequences</button>
+          <button type="button" onclick="toggleAdminUI(true)" style="font-size:0.9rem;">⚙️ Admin Dashboard</button>
        </div>
        
        <div class="row" style="margin-top:10px">
@@ -64,66 +54,39 @@
                 </div>
                 <div style="text-align:right">
                    <div class="muted" id="debugSmall"></div>
-                   <button id="completeBtn" style="display:none; margin-top:5px;">Complete Sequence</button>
-                </div>
+                   </div>
              </div>
 
              <div style="margin-top:12px" id="collageWrap">
                 <div class="msg" id="loadingText">Select a course</div>
              </div>
-            <div id="poseInstructions" class="muted" style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; white-space: pre-wrap;"></div>
+             
+             <div id="poseInstructions" class="muted" style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; white-space: pre-wrap;"></div>
+             
              <details id="poseNoteDetails" style="margin-top:12px;max-width:720px;">
                 <summary style="cursor:pointer;font-weight:650;">Note</summary>
                 <div id="poseNoteBody" class="muted" style="padding-top:8px;color:#111"></div>
              </details>
 
              <details id="poseDescDetails" style="margin-top:12px; max-width:720px" open>
-            <summary style="cursor:pointer; font-weight:650">My Personal Notes</summary>
-            <div id="poseDescBody" class="muted" style="padding-top:8px; color:#111"></div>
-</details>
+                <summary style="cursor:pointer; font-weight:650">My Personal Notes</summary>
+                <div id="poseDescBody" class="muted" style="padding-top:8px; color:#111"></div>
              </details>
           </div>
        </div>
-
-       <div>
-          <details>
-             <summary>Advanced</summary>
-             <div class="inner">
-                <div class="adv-section-title">Admin mode</div>
-                <div class="muted" style="margin-top:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-                   <label style="display:flex;gap:8px;align-items:center">
-                   <input id="adminModeToggle" type="checkbox">
-                   Enable editing (descriptions + categories)
-                   </label>
-                </div>
-                <div class="muted" id="adminHint" style="display:none;margin-top:6px">
-                   Admin mode enables editing of asana descriptions and category overrides in Browse.
-                </div>
-                <div class="adv-section-title">History of completed sequences</div>
-                <div class="muted" style="margin-top:8px">
-                   <a href="#" id="historyLink">History</a>
-                </div>
-                <div id="historyPanel" class="muted" style="display:none;margin-top:6px"></div>
-                <div id="pose-admin-tools" style="margin-top:15px; padding-top:10px; border-top:1px dashed #ccc; display:none;"></div>
-             </div>
-          </details>
-       </div>
-
-       <div>
-          <details>
-             <summary>Edit & Export Course</summary>
-             <div class="inner">
-                <div style="display:flex; gap:12px; margin-bottom:15px; flex-wrap:wrap;">
-                   <button id="editCourseBtn" type="button" style="padding: 10px 16px;">Edit Current Course</button>
-                   <button id="exportCourseBtn" type="button" style="padding: 10px 16px;">Export as JSON</button>
-                   <button id="syncGitHubBtn" type="button" style="padding: 10px 16px; background:#24292e; color:#fff;">Sync to GitHub</button>
-                </div>
-                <div id="exportStatus" class="muted" style="margin-top:8px; display:none;"></div>
-                <div id="gitHubStatus" class="muted" style="margin-top:8px; display:none;"></div>
-             </div>
-          </details>
-       </div>
     </main>
+  </div>
+
+  <div class="modal-backdrop" id="manageSequencesBackdrop" aria-hidden="true" style="display:none;">
+   <div class="modal" role="dialog" aria-modal="true" style="max-width:800px; width: 95%;">
+     <div class="modal-header">
+        <h2>⚙️ Admin Dashboard</h2>
+        <button id="manageCloseBtn" type="button">Close</button>
+     </div>
+     <div class="modal-body" style="max-height: 75vh; overflow-y: auto; padding: 20px;">
+        <div id="manageSequenceList"></div>
+     </div>
+   </div>
   </div>
 
   <div class="modal-backdrop" id="editCourseBackdrop" aria-hidden="true" style="display:none;">
@@ -151,21 +114,11 @@
       <div class="modal-body" style="display:block; padding:20px;">
          <div style="margin-bottom:15px; color:#666;">
             <p>To sync to GitHub, please provide a Personal Access Token (PAT).</p>
-            <p style="font-size:13px; margin:10px 0;">
-               <strong>Steps:</strong><br>
-               1. Go to <a href="https://github.com/settings/tokens" target="_blank">GitHub Personal Access Tokens</a><br>
-               2. Click "Generate new token"<br>
-               3. Select "repo" scope<br>
-               4. Copy the token and paste it below
-            </p>
-         </div>
-         <input id="gitHubPatInput" type="password" placeholder="ghp_..." style="width:100%; padding:10px; border:1px solid #d0d0d0; border-radius:6px; font-family:monospace; box-sizing:border-box;">
-         <label style="display:flex; gap:8px; align-items:center; margin-top:12px;">
-            <input id="gitHubRememberPat" type="checkbox">
-            <span style="font-size:13px;">Remember token in browser (localStorage)</span>
-         </label>
-         <div style="font-size:12px; color:#999; margin-top:10px;">
-            Token is stored securely in browser storage only.
+            <input id="gitHubPatInput" type="password" placeholder="ghp_..." style="width:100%; padding:10px; border:1px solid #d0d0d0; border-radius:6px; font-family:monospace; box-sizing:border-box;">
+            <label style="display:flex; gap:8px; align-items:center; margin-top:12px;">
+                <input id="gitHubRememberPat" type="checkbox">
+                <span style="font-size:13px;">Remember token in browser</span>
+            </label>
          </div>
       </div>
       <div class="modal-footer" style="display:flex; gap:12px; justify-content:flex-end; padding:15px; border-top:1px solid #eee;">
@@ -222,6 +175,35 @@
             <div class="msg">Select an asana to view details.</div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="historyBackdrop" aria-hidden="true" style="display:none;">
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:600px; width:95%;">
+      <div class="modal-header" style="flex-direction:column; align-items:stretch; gap:10px;">
+         <div style="display:flex; justify-content:space-between; align-items:center;">
+             <strong>✅ Completion History</strong>
+             <button id="historyCloseBtn" type="button">Close</button>
+         </div>
+         <div style="display:flex; background:#eee; padding:4px; border-radius:6px; gap:5px;">
+             <button id="histTabCurrent" class="tiny" style="flex:1; background:#fff; font-weight:bold; border:1px solid #ddd;">Current Sequence</button>
+             <button id="histTabGlobal" class="tiny" style="flex:1; border:none; background:transparent;">Global Dashboard</button>
+         </div>
+      </div>
+      
+      <div class="modal-body" style="padding:0;">
+         <div id="histViewCurrent" style="padding:15px; display:block;">
+            <h4 id="historyTitle" style="margin-top:0; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px;"></h4>
+            <div id="historyList" style="max-height:300px; overflow-y:auto; font-size:0.9rem;"></div>
+            <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px; text-align:right;">
+               <button id="clearHistoryBtn" class="tiny warn">Clear This Sequence</button>
+            </div>
+         </div>
+
+         <div id="histViewGlobal" style="padding:15px; display:none; max-height:60vh; overflow-y:auto; background:#f9f9f9;">
+            <div id="globalHistoryList"></div>
+         </div>
       </div>
     </div>
   </div>
