@@ -8,6 +8,7 @@ const BASE_RAW_URL = "https://raw.githubusercontent.com/markopie/Yoga-App-Evolut
 const COURSES_URL = `${BASE_RAW_URL}courses.json`;
 const MANIFEST_URL = `${BASE_RAW_URL}manifest.json`;
 const ASANA_LIBRARY_URL = `${BASE_RAW_URL}asana_library.json`;
+const HISTORY_URL = `${BASE_RAW_URL}history.json`;
 
 // Overrides
 const DESCRIPTIONS_OVERRIDE_URL = `${BASE_RAW_URL}descriptions_override.json`;
@@ -535,8 +536,8 @@ function resolveId(id) {
 // 1. Generic JSON Loader with Robust Error Handling
 async function loadJSON(url, fallback = null) {
     try {
-       const res = await fetch(url, { cache: "no-store" });
-       if (!res.ok) {
+        const res = await fetch(HISTORY_URL + "?t=" + Date.now());
+                       if (!res.ok) {
           console.warn(`Fetch failed ${res.status} for ${url}`);
           return fallback;
        }
@@ -723,6 +724,22 @@ function normalizeImagePath(p) {
     // Strip redundant "images/" if present in the filename string
     const cleanFilename = s.replace("images/", "");
     return `https://arrowroad.com.au/yoga/images/${cleanFilename}`;
+}
+async function setupHistory() {
+    try {
+        // Fetch the file from GitHub/Server
+        const res = await fetch("history.json?t=" + Date.now()); 
+        if (res.ok) {
+            window.completionHistory = await res.json();
+            console.log("History loaded:", Object.keys(window.completionHistory).length, "sequences found.");
+        } else {
+            // If file missing, start empty
+            window.completionHistory = {};
+        }
+    } catch (e) {
+        console.warn("History load failed, starting empty.", e);
+        window.completionHistory = {};
+    }
 }
  // #endregion
 // #region 5. HISTORY & LOGGING
@@ -1017,11 +1034,13 @@ async function init() {
         if (typeof seedManualCompletionsOnce === "function") seedManualCompletionsOnce();
         if (typeof loadAdminMode === "function") loadAdminMode();
 
-        // 2. Load Overrides First (Sequence, Audio, Image)
-        // This prevents the "Uncaught Error" by ensuring data is ready before UI renders
+        // 2. Load Overrides & History
         await Promise.all([
             typeof loadManifestAndPopulateLists === "function" ? loadManifestAndPopulateLists() : Promise.resolve(), 
-            typeof fetchServerHistory === "function" ? fetchServerHistory() : Promise.resolve(),
+            
+            // ✅ CHANGED: Call our new history loader here
+            setupHistory(),
+
             typeof fetchAudioOverrides === "function" ? fetchAudioOverrides() : Promise.resolve(),
             typeof fetchImageOverrides === "function" ? fetchImageOverrides() : Promise.resolve(),
             typeof fetchDescriptionOverrides === "function" ? fetchDescriptionOverrides() : Promise.resolve(),
@@ -1051,12 +1070,11 @@ async function init() {
 
         const state = safeGetLocalStorage(RESUME_STATE_KEY, null);
         if (state && state.timestamp) {
-            // Only offer resume if it was saved in the last 4 hours
             const fourHours = 4 * 60 * 60 * 1000;
             if (Date.now() - state.timestamp < fourHours) {
                 showResumePrompt(state);
             } else {
-                clearProgress(); // Clean up old state
+                clearProgress(); 
             }
         }
 
@@ -1508,12 +1526,10 @@ function descriptionForPose(asana, fullLabel) {
    BROWSE SCREEN & FILTERS
    ========================================================================== */
 
-function setupBrowseUI() {
-    // 1. Existing Buttons
+   function setupBrowseUI() {
     if ($("browseBtn")) $("browseBtn").addEventListener("click", openBrowse);
     if ($("browseCloseBtn")) $("browseCloseBtn").addEventListener("click", closeBrowse);
 
-    // 2. Hide "Show only finals" Checkbox
     const finalsChk = $("browseFinalOnly");
     if (finalsChk) {
         if (finalsChk.parentElement && finalsChk.parentElement.tagName === "LABEL") {
@@ -1523,17 +1539,16 @@ function setupBrowseUI() {
         }
     }
 
-    // 3. Inject "Sync to GitHub" Button into Browse Header
     const closeBtn = $("browseCloseBtn");
     if (closeBtn && !document.getElementById("browseSyncBtn")) {
         const syncBtn = document.createElement("button");
         syncBtn.id = "browseSyncBtn";
-        syncBtn.textContent = "💾 Sync Library to GitHub";
+        syncBtn.textContent = "💾 Sync Library";
         syncBtn.className = "tiny";
         syncBtn.style.cssText = "background: #2e7d32; color: white; margin-right: 15px; margin-left: auto;";
         
         syncBtn.onclick = async () => {
-            if (confirm("Push all library changes (names, descriptions, techniques, categories) to GitHub?")) {
+            if (confirm("Push library changes to GitHub?")) {
                 await syncDataToGitHub("asana_library.json", asanaLibrary);
             }
         };
@@ -1545,7 +1560,7 @@ function setupBrowseUI() {
         }
     }
 
-    // 4. Backdrop Click Logic
+    // Backdrop Click Logic
     (function () {
         const bd = $("browseBackdrop");
         if (!bd) return;
@@ -1557,14 +1572,14 @@ function setupBrowseUI() {
         });
     })();
 
-    // 5. ESC Key Support
+    // ESC Key Support
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && $("browseBackdrop")?.style.display === "flex") {
             closeBrowse();
         }
     });
 
-    // 6. Input Listeners with Debounce
+    // Filters
     const onChange = () => applyBrowseFilters();
     const debounce = (fn, ms = 120) => {
         let t = null;
@@ -1616,7 +1631,6 @@ function renderBrowseList(items) {
 
    const frag = document.createDocumentFragment();
    
-   // Limit to 400 items for performance
    items.slice(0, 400).forEach(asma => {
       const row = document.createElement("div");
       row.className = "browse-item";
@@ -1626,14 +1640,11 @@ function renderBrowseList(items) {
       title.className = "title";
       
       let titleText = asma.english || asma['Yogasana Name'] || "(no name)";
-      if (asma.variation) {
-          titleText += ` <span style="font-weight:normal; color:#666; font-size:0.9em;">(${asma.variation})</span>`;
-      }
+      if (asma.variation) titleText += ` <span style="font-weight:normal; color:#666; font-size:0.9em;">(${asma.variation})</span>`;
       title.innerHTML = titleText;
 
       const meta = document.createElement("div");
       meta.className = "meta";
-      
       const catDisplay = asma.category ? asma.category.replace(/_/g, " ") : "";
       const catBadge = catDisplay ? ` <span class="badge">${catDisplay}</span>` : "";
       
@@ -1648,14 +1659,11 @@ function renderBrowseList(items) {
       left.appendChild(meta);
 
       const btn = document.createElement("button");
-      btn.type = "button";
       btn.textContent = "View";
       btn.className = "tiny"; 
       btn.addEventListener("click", () => {
          showAsanaDetail(asma);
-         if (typeof isBrowseMobile === 'function' && isBrowseMobile()) {
-             enterBrowseDetailMode();
-         }
+         if (typeof isBrowseMobile === 'function' && isBrowseMobile()) enterBrowseDetailMode();
       });
 
       row.appendChild(left);
@@ -1669,7 +1677,7 @@ function renderBrowseList(items) {
       const more = document.createElement("div");
       more.className = "msg";
       more.style.padding = "10px 0";
-      more.textContent = `Showing first 400 results. Narrow your filters to see others.`;
+      more.textContent = `Showing first 400 results. Narrow your filters.`;
       list.appendChild(more);
    }
 }
@@ -1704,13 +1712,11 @@ function showAsanaDetail(asma) {
    if (!d) return;
    d.innerHTML = "";
 
-   // 1. Setup Data
    const techniqueName = asma.english || asma['Yogasana Name'] || "(no name)";
    const asanaIndex = getAsanaIndex();
    const rowVariations = asanaIndex.filter(v => (v.english || v['Yogasana Name']) === techniqueName);
    const isRestorative = (asma.category && asma.category.includes("Restorative"));
 
-   // 2. Mobile Back Button
    if (typeof isBrowseMobile === "function" && isBrowseMobile()) {
       const back = document.createElement("button");
       back.textContent = "← Back to list";
@@ -1724,27 +1730,21 @@ function showAsanaDetail(asma) {
       d.appendChild(back);
    }
 
-   // 3. Header & Audio
    const h = document.createElement("h2");
    h.className = "detail-title";
    h.textContent = techniqueName;
    const audioBtn = document.createElement("button");
    audioBtn.textContent = "🔊";
    audioBtn.style.cssText = "margin-left:10px; cursor:pointer; border:none; background:transparent; font-size:1.2rem;";
-   
-   // FIX: Pass 'true' as the 3rd argument to prevent side cues
    audioBtn.onclick = () => playAsanaAudio(asma, null, true); 
-   
    h.appendChild(audioBtn);
    d.appendChild(h);
 
-   // 4. Subtitle
    const sub = document.createElement("div");
    sub.className = "sub";
    sub.textContent = `${asma.iast || ""} • Asana # ${asma.asanaNo} • ${asma.category || ""}`;
    d.appendChild(sub);
 
-   // 5. Description
    if (asma.description) {
        const descBlock = document.createElement("div");
        descBlock.style.cssText = "margin: 10px 0; font-style: italic; color: #555; line-height: 1.4; border-left: 3px solid #eee; padding-left: 10px;";
@@ -1752,9 +1752,7 @@ function showAsanaDetail(asma) {
        d.appendChild(descBlock);
    }
 
-   // 6. TABS & LAYOUT LOGIC
    let tabsSource = [];
-   
    if (asma.inlineVariations && asma.inlineVariations.length > 0) {
        tabsSource = asma.inlineVariations.map(iv => ({
            label: iv.label, text: iv.text, imagesId: asma.asanaNo, rowId: asma.asanaNo 
@@ -1784,14 +1782,12 @@ function showAsanaDetail(asma) {
       pane.className = "tab-pane";
       pane.style.display = idx === 0 ? "block" : "none";
 
-      // A. Create Image Wrapper
       const imgWrap = document.createElement("div");
       imgWrap.className = "detail-images-wrapper";
       const targets = [tab.imagesId];
       const _seen = new Set();
       imgWrap.appendChild(renderPlateSection("", targets, _seen, tab.imagesId));
 
-      // B. Create Text Wrapper
       const instructions = document.createElement("div");
       instructions.className = "desc-text";
       instructions.style.marginTop = "15px";
@@ -1825,22 +1821,19 @@ function showAsanaDetail(asma) {
    d.appendChild(contentContainer);
    d.setAttribute("data-asana-no", asma.asanaNo);
 
-   // 7. ADMIN MENU INJECTION
    if (typeof adminMode !== 'undefined' && adminMode) {
       renderAdminDetailTools(d, asma, rowVariations);
    } else if (window.enableEditing) {
-       // Also show if the new global flag is set
        renderAdminDetailTools(d, asma, rowVariations);
    }
 }
 
-// Helper to inject Admin Tools into Detail View
 function renderAdminDetailTools(container, asma, rowVariations) {
     const adminDetails = document.createElement("details");
     adminDetails.style.marginTop = "20px";
     adminDetails.style.borderTop = "1px solid #ccc";
     adminDetails.style.paddingTop = "10px";
-    adminDetails.open = true; // Keep open for easier editing
+    adminDetails.open = true; 
 
     const adminSum = document.createElement("summary");
     adminSum.textContent = "🔧 Admin / Editing Tools";
@@ -1854,9 +1847,7 @@ function renderAdminDetailTools(container, asma, rowVariations) {
     adminContent.style.background = "#f4f4f4";
     adminContent.style.borderRadius = "8px";
 
-    // ---------------------------------------------------------
-    // A0. NAME / TITLE EDITOR (NEW!)
-    // ---------------------------------------------------------
+    // A0. NAME
     const nameDiv = document.createElement("div");
     nameDiv.style.marginBottom = "15px";
     nameDiv.innerHTML = "<div style='font-size:0.85rem; font-weight:bold; margin-bottom:4px;'>🏷️ Pose Name</div>";
@@ -1874,11 +1865,8 @@ function renderAdminDetailTools(container, asma, rowVariations) {
     saveNameBtn.onclick = async () => {
         saveNameBtn.textContent = "Saving...";
         await saveAsanaField(asma.asanaNo, "name", nameInput.value);
-        
-        // Update header immediately
         const header = container.querySelector("h2");
         if(header) header.childNodes[0].nodeValue = nameInput.value;
-        
         saveNameBtn.textContent = "✓ Renamed";
         setTimeout(() => saveNameBtn.textContent = "Rename Pose", 2000);
     };
@@ -1886,9 +1874,7 @@ function renderAdminDetailTools(container, asma, rowVariations) {
     nameDiv.appendChild(saveNameBtn);
     adminContent.appendChild(nameDiv);
 
-    // ---------------------------------------------------------
-    // A. CATEGORY EDITOR
-    // ---------------------------------------------------------
+    // A. CATEGORY
     const catDiv = document.createElement("div");
     catDiv.style.marginBottom = "15px";
     catDiv.innerHTML = "<div style='font-size:0.85rem; font-weight:bold; margin-bottom:4px;'>📂 Category</div>";
@@ -1902,14 +1888,13 @@ function renderAdminDetailTools(container, asma, rowVariations) {
         "05_Abdominal_and_Supine": "05 Abdominal & Supine", 
         "06_Twists": "06 Twists", 
         "07_Arm_Balances": "07 Arm Balances", 
-        "08_Advanced_Leg_behind_Head": "08 Leg Behind Head and Advanced", 
+        "08_Advanced_Leg_behind_Head": "08 Leg Behind Head", 
         "09_Backbends": "09 Backbends", 
         "10_Restorative_Pranayama": "10 Restorative/Pranayama" 
     };
     const catSel = document.createElement("select");
     catSel.className = "tiny";
     catSel.style.width = "100%";
-    
     Object.entries(catLabels).forEach(([v, l]) => {
         const o = document.createElement("option"); o.value = v; o.textContent = l; catSel.appendChild(o);
     });
@@ -1930,9 +1915,46 @@ function renderAdminDetailTools(container, asma, rowVariations) {
     catDiv.appendChild(saveCatBtn);
     adminContent.appendChild(catDiv);
 
-    // ---------------------------------------------------------
-    // B. DESCRIPTION EDITOR
-    // ---------------------------------------------------------
+    // A2. SIDES PROPERTY
+    const propDiv = document.createElement("div");
+    propDiv.style.marginBottom = "15px";
+    propDiv.style.padding = "10px";
+    propDiv.style.background = "#fff";
+    propDiv.style.border = "1px solid #ddd";
+    propDiv.style.borderRadius = "4px";
+
+    const sideLabel = document.createElement("label");
+    sideLabel.style.display = "flex";
+    sideLabel.style.alignItems = "center";
+    sideLabel.style.gap = "10px";
+    sideLabel.style.cursor = "pointer";
+    sideLabel.style.fontSize = "0.9rem";
+    sideLabel.style.fontWeight = "bold";
+
+    const sideChk = document.createElement("input");
+    sideChk.type = "checkbox";
+    sideChk.checked = !!asma.requiresSides;
+
+    const sideText = document.createElement("span");
+    sideText.textContent = "Requires Left & Right Sides (Audio)";
+
+    sideChk.onchange = async () => {
+        sideText.textContent = "Saving...";
+        sideText.style.color = "#666";
+        await saveAsanaField(asma.asanaNo, "requiresSides", sideChk.checked);
+        sideText.textContent = "✓ Saved";
+        sideText.style.color = "green";
+        setTimeout(() => {
+            sideText.textContent = "Requires Left & Right Sides (Audio)";
+            sideText.style.color = "black";
+        }, 2000);
+    };
+    sideLabel.appendChild(sideChk);
+    sideLabel.appendChild(sideText);
+    propDiv.appendChild(sideLabel);
+    adminContent.appendChild(propDiv);
+
+    // B. DESCRIPTION
     const descDiv = document.createElement("div");
     descDiv.style.borderTop = "1px dashed #ccc";
     descDiv.style.paddingTop = "15px";
@@ -1957,9 +1979,7 @@ function renderAdminDetailTools(container, asma, rowVariations) {
     descDiv.appendChild(saveDescBtn);
     adminContent.appendChild(descDiv);
 
-    // ---------------------------------------------------------
-    // C. TECHNIQUE EDITOR
-    // ---------------------------------------------------------
+    // C. TECHNIQUE
     const techDiv = document.createElement("div");
     techDiv.style.borderTop = "1px dashed #ccc";
     techDiv.style.paddingTop = "15px";
@@ -1984,15 +2004,13 @@ function renderAdminDetailTools(container, asma, rowVariations) {
     techDiv.appendChild(saveTechBtn);
     adminContent.appendChild(techDiv);
 
-    // ---------------------------------------------------------
-    // D. MEDIA MANAGER
-    // ---------------------------------------------------------
+    // D. MEDIA
     const mediaDiv = document.createElement("div");
     mediaDiv.style.borderTop = "1px dashed #ccc";
     mediaDiv.style.paddingTop = "15px";
     renderMediaManager(mediaDiv, asma, rowVariations);
-
     adminContent.appendChild(mediaDiv);
+
     adminDetails.appendChild(adminContent);
     container.appendChild(adminDetails);
 }
@@ -2001,8 +2019,6 @@ function renderMediaManager(container, asma, rowVariations) {
     const audioFiles = window.serverAudioFiles || [];
     const imageFiles = window.serverImageFiles || [];
     
-    console.log(`MediaManager Init: Found ${audioFiles.length} audio, ${imageFiles.length} images.`);
-
     const mediaDiv = document.createElement("div");
     mediaDiv.style.marginTop = "8px";
     mediaDiv.style.fontSize = "0.85rem";
@@ -2018,7 +2034,7 @@ function renderMediaManager(container, asma, rowVariations) {
                 <div id="currentAudioLabel" style="margin-bottom:8px; font-size:0.8rem; color:#666; min-height:1.2em;"></div>
                 <div style="margin-bottom:8px;">
                    ${audioFiles.length === 0 ? 
-                     `<button id="retryManifestBtn" class="tiny" style="width:100%; background:#ffecb3;">⚠️ Lists Empty - Click to Retry</button>` : 
+                     `<button id="retryManifestBtn" class="tiny" style="width:100%; background:#ffecb3;">⚠️ Lists Empty - Retry</button>` : 
                      `<select id="audioSelectServer" class="tiny" style="width:100%; margin-bottom:2px;"><option value="">Select server file...</option></select>`
                    }
                    <button id="linkAudioBtn" class="tiny" style="width:100%; margin-top:4px;">Link Selected</button>
@@ -2052,25 +2068,18 @@ function renderMediaManager(container, asma, rowVariations) {
     }
 
     const audioSel = mediaDiv.querySelector("#audioSelectServer");
-    if (audioSel) {
-        audioFiles.forEach(f => {
-            const opt = document.createElement("option");
-            opt.value = f; opt.textContent = f; audioSel.appendChild(opt);
-        });
-    }
+    if (audioSel) audioFiles.forEach(f => {
+        const opt = document.createElement("option"); opt.value = f; opt.textContent = f; audioSel.appendChild(opt);
+    });
 
     const imageSel = mediaDiv.querySelector("#imageSelectServer");
-    if (imageSel) {
-        imageFiles.forEach(f => {
-            const opt = document.createElement("option");
-            opt.value = f; opt.textContent = f; imageSel.appendChild(opt);
-        });
-    }
+    if (imageSel) imageFiles.forEach(f => {
+        const opt = document.createElement("option"); opt.value = f; opt.textContent = f; imageSel.appendChild(opt);
+    });
 
     const targetSel = mediaDiv.querySelector("#mediaTargetKey");
     const optMain = document.createElement("option");
-    const mainKey = normalizePlate(asma.asanaNo);
-    optMain.value = mainKey;
+    optMain.value = normalizePlate(asma.asanaNo);
     optMain.textContent = `Global (ID ${asma.asanaNo})`;
     targetSel.appendChild(optMain);
 
@@ -2108,28 +2117,20 @@ function renderMediaManager(container, asma, rowVariations) {
 
     const linkAudioBtn = mediaDiv.querySelector("#linkAudioBtn");
     if(linkAudioBtn) linkAudioBtn.onclick = async () => {
-        if (!audioSel) return;
-        const val = audioSel.value;
-        const targetKey = targetSel.value;
-        if (!val) return alert("Select a file first.");
-        
-        if (typeof audioOverrides === 'undefined') audioOverrides = {};
-        audioOverrides[targetKey] = val;
-        
+        if (!audioSel || !audioSel.value) return alert("Select a file first.");
+        const key = targetSel.value;
+        if (typeof audioOverrides === 'undefined') window.audioOverrides = {};
+        audioOverrides[key] = audioSel.value;
         await syncDataToGitHub("audio_overrides.json", audioOverrides);
         updateMediaLabels();
     };
 
     const linkImageBtn = mediaDiv.querySelector("#linkImageBtn");
     if(linkImageBtn) linkImageBtn.onclick = async () => {
-        if (!imageSel) return;
-        const val = imageSel.value;
-        const targetKey = targetSel.value;
-        if (!val) return alert("Select a file first.");
-        
-        if (typeof imageOverrides === 'undefined') imageOverrides = {};
-        imageOverrides[targetKey] = val;
-        
+        if (!imageSel || !imageSel.value) return alert("Select a file first.");
+        const key = targetSel.value;
+        if (typeof imageOverrides === 'undefined') window.imageOverrides = {};
+        imageOverrides[key] = imageSel.value;
         await syncDataToGitHub("image_overrides.json", imageOverrides);
         updateMediaLabels();
         showAsanaDetail(asma);
@@ -2144,14 +2145,12 @@ function renderMediaManager(container, asma, rowVariations) {
 
 function renderPlateSection(title, plates, globalSeen, fallbackId) {
    const wrap = document.createElement("div");
-   
    const header = document.createElement("div");
    header.className = "section-title";
    header.textContent = title;
    wrap.appendChild(header);
 
    let targets = (plates && plates.length) ? plates : [];
-
    if (!targets.length && !fallbackId) {
       const msg = document.createElement("div");
       msg.className = "msg";
@@ -2167,13 +2166,8 @@ function renderPlateSection(title, plates, globalSeen, fallbackId) {
    const processIds = (idList) => {
        for (const p of idList) {
           if (!p || p === "undefined") continue;
-          // IMPORTANT: Requires helper from Region 3
           const u = (typeof urlsForPlateToken === 'function') ? urlsForPlateToken(p) : [];
-          
-          if (!u.length) {
-             missing.push(p);
-          }
-          
+          if (!u.length) missing.push(p);
           u.forEach(x => {
              const g = globalSeen || null;
              if (!seen.has(x) && !(g && g.has(x))) {
@@ -2184,7 +2178,6 @@ function renderPlateSection(title, plates, globalSeen, fallbackId) {
           });
        }
    };
-
    processIds(targets);
 
    if (urls.length === 0 && fallbackId) {
@@ -2212,11 +2205,8 @@ function renderPlateSection(title, plates, globalSeen, fallbackId) {
    }
 
    if (urls.length) {
-      if (typeof renderCollage === "function") {
-         wrap.appendChild(renderCollage(urls));
-      } else {
-         console.warn("renderCollage function missing");
-      }
+      if (typeof renderCollage === "function") wrap.appendChild(renderCollage(urls));
+      else console.warn("renderCollage missing");
    }
 
    if (missing.length && urls.length === 0) {
@@ -2226,7 +2216,6 @@ function renderPlateSection(title, plates, globalSeen, fallbackId) {
       m.textContent = `⚠️ Image not found for Ref: ${missing.join(", ")}`;
       wrap.appendChild(m);
    }
-   
    return wrap;
 }
 
@@ -2251,7 +2240,6 @@ function renderCollage(urls) {
 function renderCourseUI() {
    const sel = $("sequenceSelect");
    if (!sel) return;
-
    const currentVal = sel.value;
    sel.innerHTML = `<option value="">Select a course</option>`;
 
@@ -2262,9 +2250,7 @@ function renderCourseUI() {
       grouped[cat].push({ course, idx });
    });
 
-   const categoryNames = Object.keys(grouped).sort();
-
-   categoryNames.forEach(catName => {
+   Object.keys(grouped).sort().forEach(catName => {
       const groupEl = document.createElement("optgroup");
       groupEl.label = catName;
       grouped[catName].forEach(item => {
@@ -2275,7 +2261,6 @@ function renderCourseUI() {
       });
       sel.appendChild(groupEl);
    });
-
    if (currentVal) sel.value = currentVal;
 }
 
@@ -2324,19 +2309,14 @@ function applyBrowseFilters() {
 
 function matchesText(asma, q) {
    if (!q) return true;
-   const haystack = (
-      String(asma.english || "") + " " + 
-      String(asma.iast || "") + " " + 
-      String(asma.variation || "")
-   ).toLowerCase();
+   const haystack = (String(asma.english || "") + " " + String(asma.iast || "") + " " + String(asma.variation || "")).toLowerCase();
    return haystack.includes(q.toLowerCase());
 }
 
 function parsePlateQuery(q) {
    const s = String(q || "").trim();
    if (!s) return [];
-   const unified = s.replace(/[,\s]+/g, "|");
-   return parseIndexPlateField(unified);
+   return parseIndexPlateField(s.replace(/[,\s]+/g, "|"));
 }
 
 function matchesPlate(asma, plateQuery) {
@@ -2378,147 +2358,212 @@ function enterBrowseDetailMode() {
 
 function exitBrowseDetailMode() {
     const modal = document.querySelector("#browseBackdrop .modal");
-    if (modal) {
-        modal.classList.remove("detail-mode");
-    }
+    if (modal) modal.classList.remove("detail-mode");
 }
 
 /* ==========================================================================
    CONSOLIDATED ADMIN / MANAGE UI
    ========================================================================== */
 
-   function toggleAdminUI(show) {
+function toggleAdminUI(show) {
     const backdrop = document.getElementById("manageSequencesBackdrop");
     if (!backdrop) return;
-
     if (show) {
         const title = backdrop.querySelector("h2");
-        if (title) title.textContent = "⚙️ Admin & Course Manager";
-        // Ensure the dashboard renderer exists
-        if (typeof renderAdminDashboard === 'function') {
-            renderAdminDashboard();
-        }
+        if (title) title.textContent = "⚙️ Admin Dashboard";
+        if (typeof renderAdminDashboard === 'function') renderAdminDashboard();
         backdrop.style.display = "flex";
     } else {
         backdrop.style.display = "none";
     }
 }
-// CRITICAL FIX: Expose this function so the HTML onclick="..." can see it
-window.toggleAdminUI = toggleAdminUI; 
+window.toggleAdminUI = toggleAdminUI;
 
 const closeManBtn = document.getElementById("manageCloseBtn");
-if (closeManBtn) {
-    closeManBtn.onclick = () => toggleAdminUI(false);
-}
+if (closeManBtn) closeManBtn.onclick = () => toggleAdminUI(false);
 
 function renderAdminDashboard() {
     const list = document.getElementById("manageSequenceList");
     if (!list) return;
     list.innerHTML = "";
+    
+    // Reset selection state on re-render
+    if (!window.adminSelectedIndices) window.adminSelectedIndices = new Set();
+    // But clearing it every time might annoy users if we re-render on checkbox click.
+    // We will re-render intelligently or just use DOM updates. 
+    // For simplicity, we keep the Set global but don't clear it automatically unless closing.
 
-    // --- SECTION A: GLOBAL TOOLS (Sync & Edit Mode) ---
+    // A. GLOBAL TOOLS
     const toolsDiv = document.createElement("div");
     toolsDiv.style.cssText = "background:#f0f8ff; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #cceeff;";
-    
-    // Check global flag (using window.enableEditing is fine as we explicitly set that)
     const isEditing = window.enableEditing || false;
 
     toolsDiv.innerHTML = `
-        <div style="font-weight:bold; margin-bottom:10px; color:#005580;">Global Tools</div>
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <button id="adminSyncBtn" class="tiny" style="background:#2e7d32; color:white;">
-                💾 Sync All Data to GitHub
-            </button>
-            <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; cursor:pointer; user-select:none; margin-left:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+           <strong style="color:#005580;">Global Tools</strong>
+           <button id="adminSyncBtn" class="tiny" style="background:#2e7d32; color:white;">💾 Sync All to GitHub</button>
+        </div>
+        <div style="display:flex; gap:15px; align-items:center;">
+             <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; cursor:pointer;">
                 <input type="checkbox" id="adminEditToggle" ${isEditing ? "checked" : ""}>
-                <span>Enable Library Editing</span>
+                Enable Library Editing
             </label>
         </div>
-        <div style="font-size:0.75rem; color:#666; margin-top:8px;">
-            "Sync All" saves Courses, Categories, Audio links, and Library text changes.
+        
+        <div style="margin-top:15px; padding-top:15px; border-top:1px solid #cceeff;">
+            <div style="font-weight:bold; font-size:0.85rem; margin-bottom:5px;">Bulk Sequence Actions</div>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="bulkCatInput" placeholder="New Category Name (e.g. Light on Yoga > Course 2)" style="flex:1; padding:5px; border:1px solid #ccc;">
+                <button id="bulkApplyBtn" class="tiny" style="background:#007AFF; color:white;">Set Category for Selected</button>
+            </div>
         </div>
     `;
     list.appendChild(toolsDiv);
 
-    // Wire up Sync
+    // Wire up Sync (Updated to include History)
     toolsDiv.querySelector("#adminSyncBtn").onclick = async () => {
-        if(confirm("Push ALL local changes (Courses, Library, Audio) to GitHub?")) {
-            const btn = toolsDiv.querySelector("#adminSyncBtn");
-            const oldText = btn.textContent;
-            btn.textContent = "Syncing...";
-            
-            try {
-                // FIX: Use 'sequences' variable directly, NOT window.sequences
-                await syncDataToGitHub("courses.json", sequences);
-                
-                if(window.asanaLibrary) await syncDataToGitHub("asana_library.json", window.asanaLibrary);
-                if(window.audioOverrides) await syncDataToGitHub("audio_overrides.json", window.audioOverrides);
-                if(window.categoryOverrides) await syncDataToGitHub("category_overrides.json", window.categoryOverrides);
-                
-                alert("✓ All Data Synced Successfully");
-            } catch(e) {
-                alert("❌ Sync Failed: " + e.message);
-            }
-            btn.textContent = oldText;
-        }
-    };
+        if(!confirm("Push ALL changes (Courses, Library, History) to GitHub?")) return;
+        
+        const btn = toolsDiv.querySelector("#adminSyncBtn");
+        const oldText = btn.textContent;
+        btn.textContent = "Syncing...";
 
+        try {
+            // 1. Sync Courses
+            await syncDataToGitHub("courses.json", sequences);
+            
+            // 2. Sync History (This is the new part!)
+            if (window.completionHistory) {
+                await syncDataToGitHub(HISTORY_URL, window.completionHistory);
+            }
+
+            // 3. Sync Other Files
+            if(window.asanaLibrary) await syncDataToGitHub("asana_library.json", window.asanaLibrary);
+            if(window.audioOverrides) await syncDataToGitHub("audio_overrides.json", window.audioOverrides);
+
+            alert("✓ All Data Synced Successfully");
+        } catch(e) {
+            alert("❌ Sync Failed: " + e.message);
+        }
+        btn.textContent = oldText;
+    };
     // Wire up Edit Toggle
     toolsDiv.querySelector("#adminEditToggle").onchange = (e) => {
         window.enableEditing = e.target.checked;
         localStorage.setItem("admin_mode_enabled", e.target.checked);
         if(typeof applyBrowseFilters === 'function') applyBrowseFilters();
     };
+    // Wire up Bulk Apply
+    toolsDiv.querySelector("#bulkApplyBtn").onclick = () => {
+        const cat = toolsDiv.querySelector("#bulkCatInput").value.trim();
+        if (!cat) return alert("Enter a category name first.");
+        if (window.adminSelectedIndices.size === 0) return alert("Select at least one sequence below.");
+        
+        const count = window.adminSelectedIndices.size;
+        if (confirm(`Set category "${cat}" for ${count} sequences?`)) {
+            window.adminSelectedIndices.forEach(idx => {
+                if (sequences[idx]) sequences[idx].category = cat;
+            });
+            populateSequenceSelect();
+            renderAdminDashboard(); // Refresh list to show new categories
+            alert("Updated! Remember to Sync.");
+        }
+    };
 
-
-    // --- SECTION B: SEQUENCE MANAGER ---
+    // C. SEQUENCE LIST HEADER
     const header = document.createElement("div");
-    header.innerHTML = "<strong>Manage Courses:</strong> Rename, Reorder, or Delete.";
-    header.style.marginBottom = "10px";
+    header.style.cssText = "display:flex; gap:10px; padding:8px; background:#eee; font-weight:bold; font-size:0.85rem; border-bottom:1px solid #ccc;";
+    header.innerHTML = `
+        <div style="width:30px; text-align:center;"><input type="checkbox" id="selectAllSeqs"></div>
+        <div style="width:150px;">Category</div>
+        <div style="flex:1;">Sequence Title</div>
+        <div style="width:40px;"></div>
+    `;
     list.appendChild(header);
 
-    // FIX: Use 'sequences' directly (removed window.)
+    // Select All Logic
+    header.querySelector("#selectAllSeqs").onchange = (e) => {
+        const chk = e.target.checked;
+        const boxes = list.querySelectorAll(".seq-chk");
+        window.adminSelectedIndices.clear();
+        boxes.forEach(b => {
+            b.checked = chk;
+            if(chk) window.adminSelectedIndices.add(parseInt(b.value));
+        });
+    };
+
+    // D. SEQUENCE ROWS
     if (typeof sequences !== 'undefined' && Array.isArray(sequences)) {
         sequences.forEach((seq, idx) => {
             const row = document.createElement("div");
             row.className = "manage-row";
-            row.style.cssText = "display:flex; gap:10px; margin-bottom:8px; align-items:center;";
+            row.style.cssText = "display:flex; gap:10px; padding:8px; border-bottom:1px solid #eee; align-items:center;";
 
-            const input = document.createElement("input");
-            input.type = "text";
-            input.value = seq.title;
-            input.style.cssText = "flex:1; padding:6px; border:1px solid #ccc; border-radius:4px;";
-            input.onchange = (e) => {
-                seq.title = e.target.value;
-                populateSequenceSelect(); 
+            // Checkbox
+            const chkDiv = document.createElement("div");
+            chkDiv.style.width = "30px";
+            chkDiv.style.textAlign = "center";
+            const chk = document.createElement("input");
+            chk.type = "checkbox";
+            chk.className = "seq-chk";
+            chk.value = idx;
+            if (window.adminSelectedIndices.has(idx)) chk.checked = true;
+            chk.onchange = (e) => {
+                if (e.target.checked) window.adminSelectedIndices.add(idx);
+                else window.adminSelectedIndices.delete(idx);
+            };
+            chkDiv.appendChild(chk);
+
+            // Category Input
+            const catInput = document.createElement("input");
+            catInput.type = "text";
+            catInput.value = seq.category || "";
+            catInput.style.cssText = "width:150px; padding:5px; border:1px solid #ccc; font-size:0.85rem;";
+            catInput.onchange = (e) => {
+                seq.category = e.target.value;
+                populateSequenceSelect();
             };
 
+            // Title Input
+            const titleInput = document.createElement("input");
+            titleInput.type = "text";
+            titleInput.value = seq.title;
+            titleInput.style.cssText = "flex:1; padding:5px; border:1px solid #ccc; font-weight:bold;";
+            titleInput.onchange = (e) => {
+                seq.title = e.target.value;
+                populateSequenceSelect();
+            };
+
+            // Delete
             const delBtn = document.createElement("button");
             delBtn.textContent = "🗑";
             delBtn.className = "tiny warn";
             delBtn.onclick = () => {
                 if (confirm(`Delete "${seq.title}"?`)) {
-                    sequences.splice(idx, 1); // FIX: sequences directly
+                    sequences.splice(idx, 1);
+                    window.adminSelectedIndices.delete(idx); // Cleanup
                     populateSequenceSelect();
                     renderAdminDashboard(); 
                 }
             };
 
-            row.appendChild(input);
+            row.appendChild(chkDiv);
+            row.appendChild(catInput);
+            row.appendChild(titleInput);
             row.appendChild(delBtn);
             list.appendChild(row);
         });
     }
 
-    // --- SECTION C: ADD NEW ---
+    // E. ADD NEW
     const addBtn = document.createElement("button");
     addBtn.textContent = "+ New Sequence";
     addBtn.className = "tiny";
-    addBtn.style.marginTop = "10px";
+    addBtn.style.marginTop = "15px";
     addBtn.onclick = () => {
         const title = prompt("Name for new sequence?");
         if (title) {
-            sequences.push({ title, poses: [] }); // FIX: sequences directly
+            sequences.push({ title, category: "Uncategorized", poses: [] });
             populateSequenceSelect();
             renderAdminDashboard();
         }
@@ -2526,7 +2571,6 @@ function renderAdminDashboard() {
     list.appendChild(addBtn);
 }
 
-// Restore Admin Preference on Load
 if (localStorage.getItem("admin_mode_enabled") === "true") {
     window.enableEditing = true;
 }
@@ -2779,6 +2823,207 @@ if (seqSelect) {
           console.error(e);
        }
     });
+}
+
+// 2. History Interactions (Clickable Pill)
+const lastPill = $("lastCompletedPill");
+if (lastPill) {
+    lastPill.style.cursor = "pointer";
+    lastPill.title = "Click to view full completion history";
+    lastPill.style.textDecoration = "underline dotted";
+
+    lastPill.addEventListener("click", () => {
+        if (!currentSequence) return alert("Please select a sequence first.");
+        openHistoryModal("current");
+    });
+}
+
+// History Modal & Tabs Logic
+const histBackdrop = $("historyBackdrop");
+if ($("historyCloseBtn")) $("historyCloseBtn").onclick = () => {
+    if(histBackdrop) histBackdrop.style.display = "none";
+};
+
+// Tab Switching
+const tabCurrent = $("histTabCurrent");
+const tabGlobal = $("histTabGlobal");
+const viewCurrent = $("histViewCurrent");
+const viewGlobal = $("histViewGlobal");
+
+if (tabCurrent && tabGlobal) {
+    tabCurrent.onclick = () => switchHistoryTab("current");
+    tabGlobal.onclick = () => switchHistoryTab("global");
+}
+
+function switchHistoryTab(mode) {
+    if (mode === "current") {
+        tabCurrent.style.background = "#fff";
+        tabCurrent.style.fontWeight = "bold";
+        tabCurrent.style.border = "1px solid #ddd";
+        
+        tabGlobal.style.background = "transparent";
+        tabGlobal.style.fontWeight = "normal";
+        tabGlobal.style.border = "none";
+
+        viewCurrent.style.display = "block";
+        viewGlobal.style.display = "none";
+    } else {
+        tabGlobal.style.background = "#fff";
+        tabGlobal.style.fontWeight = "bold";
+        tabGlobal.style.border = "1px solid #ddd";
+
+        tabCurrent.style.background = "transparent";
+        tabCurrent.style.fontWeight = "normal";
+        tabCurrent.style.border = "none";
+
+        viewCurrent.style.display = "none";
+        viewGlobal.style.display = "block";
+        renderGlobalHistory(); // Render on demand
+    }
+}
+
+// Clear History Button
+if ($("clearHistoryBtn")) $("clearHistoryBtn").onclick = () => {
+    if (!currentSequence) return;
+    if (confirm("Clear all completion dates for this sequence?")) {
+        if (window.completionHistory && window.completionHistory[currentSequence.title]) {
+            delete window.completionHistory[currentSequence.title];
+            localStorage.setItem("asana_app_history", JSON.stringify(window.completionHistory));
+            openHistoryModal("current"); // Refresh list
+            updateTotalAndLastUI(); // Refresh pill
+        }
+    }
+};
+
+function openHistoryModal(defaultTab = "current") {
+    if (!histBackdrop) return;
+    
+    // 1. Setup Current View
+    const titleEl = $("historyTitle");
+    if (titleEl && currentSequence) titleEl.textContent = currentSequence.title;
+
+    const listEl = $("historyList");
+    if (listEl && currentSequence) {
+        listEl.innerHTML = "";
+        const historyData = window.completionHistory || {};
+        const dates = historyData[currentSequence.title] || [];
+        
+        if (dates.length === 0) {
+            listEl.innerHTML = `<div class="muted">No completion history yet.</div>`;
+        } else {
+            [...dates].reverse().forEach(dateStr => {
+                const row = document.createElement("div");
+                row.style.cssText = "padding:8px; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between;";
+                
+                const d = new Date(dateStr);
+                const niceDate = isNaN(d) ? dateStr : d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                row.textContent = niceDate;
+                listEl.appendChild(row);
+            });
+        }
+    }
+
+    // 2. Open & Switch Tab
+    switchHistoryTab(defaultTab);
+    histBackdrop.style.display = "flex";
+}
+
+// New: Render Global Dashboard
+function renderGlobalHistory() {
+   const container = $("globalHistoryList");
+   if (!container) return;
+   container.innerHTML = "";
+
+   const history = window.completionHistory || {};
+   const allSeqs = window.sequences || [];
+   const grouped = {};
+   let totalCompletions = 0;
+
+   // 1. Map Titles to Categories (from courses.json)
+   const titleToCat = {};
+   allSeqs.forEach(s => titleToCat[s.title] = s.category || "Uncategorized");
+
+   // 2. Aggregate Data
+   Object.keys(history).forEach(title => {
+       const dates = history[title];
+       if(!dates || !dates.length) return;
+
+       const cat = titleToCat[title] || "Archived / Deleted Sequences";
+       if(!grouped[cat]) grouped[cat] = [];
+
+       // Sort dates (newest first)
+       const sortedDates = [...dates].sort((a,b) => new Date(b) - new Date(a));
+       const lastDate = new Date(sortedDates[0]);
+
+       grouped[cat].push({
+           title: title,
+           count: dates.length,
+           lastDate: lastDate,
+           lastDateStr: lastDate.toLocaleDateString()
+       });
+       totalCompletions += dates.length;
+   });
+
+   // 3. Render
+   if (Object.keys(grouped).length === 0) {
+       container.innerHTML = `<div class="msg">No history found for any sequence.</div>`;
+       return;
+   }
+
+   const statsHeader = document.createElement("div");
+   statsHeader.style.cssText = "padding:10px; background:#e3f2fd; color:#0d47a1; border-radius:6px; margin-bottom:15px; font-weight:bold; text-align:center;";
+   statsHeader.textContent = `🎉 Total Sessions Completed: ${totalCompletions}`;
+   container.appendChild(statsHeader);
+
+   // Sort Categories Alphabetically
+   Object.keys(grouped).sort().forEach(catName => {
+       const items = grouped[catName];
+       // Sort items inside category by Recency (Last Completed)
+       items.sort((a,b) => b.lastDate - a.lastDate);
+
+       const section = document.createElement("details");
+       section.open = true; // Default open
+       section.style.marginBottom = "10px";
+       section.style.border = "1px solid #ddd";
+       section.style.borderRadius = "6px";
+       section.style.background = "#fff";
+
+       const summary = document.createElement("summary");
+       summary.style.padding = "10px";
+       summary.style.cursor = "pointer";
+       summary.style.fontWeight = "bold";
+       summary.style.background = "#f5f5f5";
+       summary.style.borderRadius = "6px 6px 0 0";
+       summary.innerHTML = `${catName} <span style="font-weight:normal; color:#666; font-size:0.85em;">(${items.length} seqs)</span>`;
+       
+       const content = document.createElement("div");
+       content.style.padding = "0";
+
+       items.forEach(item => {
+           const row = document.createElement("div");
+           row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee; font-size:0.9rem;";
+           
+           // Count Badge style
+           let countColor = "#eee";
+           if(item.count > 5) countColor = "#ffe0b2"; // Orange for 5+
+           if(item.count > 10) countColor = "#c8e6c9"; // Green for 10+
+
+           row.innerHTML = `
+               <div style="flex:1;">
+                   <div style="font-weight:600;">${item.title}</div>
+                   <div style="font-size:0.8rem; color:#888;">Last: ${item.lastDateStr}</div>
+               </div>
+               <div style="background:${countColor}; padding:2px 8px; border-radius:10px; font-size:0.8rem; font-weight:bold;">
+                   ${item.count}x
+               </div>
+           `;
+           content.appendChild(row);
+       });
+
+       section.appendChild(summary);
+       section.appendChild(content);
+       container.appendChild(section);
+   });
 }
 
 // 2. Playback Controls

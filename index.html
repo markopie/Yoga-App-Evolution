@@ -14,7 +14,7 @@
        <div class="row" style="display:flex; justify-content:space-between; align-items:center;">
           <strong>Yoga Sequences</strong>
           <button type="button" onclick="toggleAdminUI(true)" style="font-size:0.9rem;">⚙️ Admin Dashboard</button>
-                </div>
+       </div>
        
        <div class="row" style="margin-top:10px">
           <label class="muted" for="sequenceSelect">Course:</label>
@@ -54,14 +54,15 @@
                 </div>
                 <div style="text-align:right">
                    <div class="muted" id="debugSmall"></div>
-                   <button id="completeBtn" style="display:none; margin-top:5px;">Complete Sequence</button>
-                </div>
+                   </div>
              </div>
 
              <div style="margin-top:12px" id="collageWrap">
                 <div class="msg" id="loadingText">Select a course</div>
              </div>
-            <div id="poseInstructions" class="muted" style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; white-space: pre-wrap;"></div>
+             
+             <div id="poseInstructions" class="muted" style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; white-space: pre-wrap;"></div>
+             
              <details id="poseNoteDetails" style="margin-top:12px;max-width:720px;">
                 <summary style="cursor:pointer;font-weight:650;">Note</summary>
                 <div id="poseNoteBody" class="muted" style="padding-top:8px;color:#111"></div>
@@ -73,8 +74,7 @@
              </details>
           </div>
        </div>
-
-       </main>
+    </main>
   </div>
 
   <div class="modal-backdrop" id="manageSequencesBackdrop" aria-hidden="true" style="display:none;">
@@ -87,7 +87,7 @@
         <div id="manageSequenceList"></div>
      </div>
    </div>
- </div>
+  </div>
 
   <div class="modal-backdrop" id="editCourseBackdrop" aria-hidden="true" style="display:none;">
     <div class="modal" role="dialog" aria-modal="true" style="max-width:900px;">
@@ -175,6 +175,35 @@
             <div class="msg">Select an asana to view details.</div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="historyBackdrop" aria-hidden="true" style="display:none;">
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:600px; width:95%;">
+      <div class="modal-header" style="flex-direction:column; align-items:stretch; gap:10px;">
+         <div style="display:flex; justify-content:space-between; align-items:center;">
+             <strong>✅ Completion History</strong>
+             <button id="historyCloseBtn" type="button">Close</button>
+         </div>
+         <div style="display:flex; background:#eee; padding:4px; border-radius:6px; gap:5px;">
+             <button id="histTabCurrent" class="tiny" style="flex:1; background:#fff; font-weight:bold; border:1px solid #ddd;">Current Sequence</button>
+             <button id="histTabGlobal" class="tiny" style="flex:1; border:none; background:transparent;">Global Dashboard</button>
+         </div>
+      </div>
+      
+      <div class="modal-body" style="padding:0;">
+         <div id="histViewCurrent" style="padding:15px; display:block;">
+            <h4 id="historyTitle" style="margin-top:0; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px;"></h4>
+            <div id="historyList" style="max-height:300px; overflow-y:auto; font-size:0.9rem;"></div>
+            <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px; text-align:right;">
+               <button id="clearHistoryBtn" class="tiny warn">Clear This Sequence</button>
+            </div>
+         </div>
+
+         <div id="histViewGlobal" style="padding:15px; display:none; max-height:60vh; overflow-y:auto; background:#f9f9f9;">
+            <div id="globalHistoryList"></div>
+         </div>
       </div>
     </div>
   </div>
