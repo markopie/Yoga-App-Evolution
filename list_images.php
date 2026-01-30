@@ -2,7 +2,7 @@
 // list_images.php
 header('Content-Type: application/json');
 
-$dir = 'images/';
+$dir = "https://arrowroad.com.au/yoga/images/";
 $files = [];
 
 if (is_dir($dir)) {

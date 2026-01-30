@@ -3,32 +3,24 @@
    APP CONFIGURATION & CONSTANTS
    ========================================================================== */
 
-// 1. Data Sources
-const COURSES_URL = "https://raw.githubusercontent.com/markopie/Yoga-App-Evolution/main/courses.json";
-const MANIFEST_URL = "https://raw.githubusercontent.com/markopie/Yoga-App-Evolution/main/manifest.json";
-const PLATE_GROUPS_URL = "plate_groups.json";
-const ASANA_LIBRARY_URL = "asana_library.json";
+// 1. Data Sources (GitHub Raw URLs)
+const BASE_RAW_URL = "https://raw.githubusercontent.com/markopie/Yoga-App-Evolution/main/";
+const COURSES_URL = `${BASE_RAW_URL}courses.json`;
+const MANIFEST_URL = `${BASE_RAW_URL}manifest.json`;
+const ASANA_LIBRARY_URL = `${BASE_RAW_URL}asana_library.json`;
 
-// 2. Paths
+// Overrides
+const DESCRIPTIONS_OVERRIDE_URL = `${BASE_RAW_URL}descriptions_override.json`;
+const CATEGORY_OVERRIDE_URL = `${BASE_RAW_URL}category_overrides.json`;
+const IMAGE_OVERRIDE_URL = `${BASE_RAW_URL}image_overrides.json`;
+const AUDIO_OVERRIDE_URL = `${BASE_RAW_URL}audio_overrides.json`;
+const ID_ALIASES_URL = `${BASE_RAW_URL}id_aliases.json`;
+
+// 2. Paths (Static assets stay on your host)
+// We name these exactly what the functions look for: IMAGES_BASE and AUDIO_BASE
 const IMAGES_BASE = "https://arrowroad.com.au/yoga/images/";
 const AUDIO_BASE = "https://arrowroad.com.au/yoga/audio/";
-const IMAGES_MAIN_BASE = "images/";
-const IMAGES_MOBILE_BASE = "images/";
-
-// 3. Server Overrides & Saving (Admin Features)
-const SAVE_URL = "save_sequences.php";
-
-const DESCRIPTIONS_OVERRIDE_URL = "descriptions_override.json";
-const SAVE_DESCRIPTION_URL = "save_description.php";
-
-const CATEGORY_OVERRIDE_URL = "category_overrides.json";
-const SAVE_CATEGORY_URL = "save_category.php";
-
-const IMAGE_OVERRIDE_URL = "image_overrides.json";
-const SAVE_IMAGE_URL = "save_image_override.php";
-
-const AUDIO_OVERRIDE_URL = "audio_overrides.json";
-const UPLOAD_AUDIO_URL = "upload_audio.php";
+const IMAGES_BASE_URL = IMAGES_BASE; // Kept for safety if legacy code uses it
 
 // 4. Other
 const COMPLETION_LOG_URL = "completion_log.php";
@@ -38,7 +30,6 @@ const LOCAL_SEQ_KEY = "yoga_sequences_v1";
 const SUPABASE_URL = "https://yonzdrhewxwaowfyuglx.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlvbnpkcmhld3h3YW93Znl1Z2x4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMDE5MjcsImV4cCI6MjA4NDY3NzkyN30.I3L9kAXs-5Ggq1TxnE-GZoYWGITg9kUcUCTw0l-LvG8";
 const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-
 
 
 /* ==========================================================================
@@ -215,112 +206,174 @@ function playSideCue(side) {
    oscillator.stop(ctx.currentTime + 0.3);
 }
 
+/* ==========================================================================
+   AUDIO ENGINE
+   ========================================================================== */
+
+// ... (Keep detectSide and playSideCue helper functions as they are) ...
+
 // -------- Audio File Player (MP3) --------
+
 /**
- * Logic Flow:
- * 1. Check if requiresSides - play right_side.mp3 or left_side.mp3 first
- * 2. Check Specific Override ("Ujjayi Stage 1")
- * 3. Check Global ID Override ("203")
- * 4. Fallback: Auto-guess file "audio/203_Ujjayi.mp3"
- * 5. Side Detection: Play audio cue for Left/Right poses in label
+ * Orchestrates the audio playback sequence.
+ * New Logic: Plays Main Name -> THEN plays Side Cue (if needed).
+ * @param {boolean} isBrowseContext - If true, skips side cues (for Browse menu).
  */
-function playAsanaAudio(asana, poseLabel = null) {
-   if (!asana) return;
-
-   // 1. Reset current audio
-   if (currentAudio) {
-      try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
-      currentAudio = null;
-   }
-
-   // 2. Play side audio if requiresSides is true
-   if (asana.requiresSides && currentSide) {
-      const sideAudio = new Audio(`audio/${currentSide}_side.mp3`);
-      sideAudio.play().catch(e => console.warn(`Failed to play ${currentSide}_side.mp3:`, e));
-
-      // Wait for side audio to finish, then play pose audio
-      sideAudio.onended = () => {
-         playPoseMainAudio(asana, poseLabel);
-      };
-      return;
-   }
-
-   // 3. No requiresSides, play main audio directly
-   playPoseMainAudio(asana, poseLabel);
-}
-
-function playPoseMainAudio(asana, poseLabel = null) {
-   // 1. Side Detection - Play audio cue for left/right poses in label
-   if (poseLabel && !asana.requiresSides) {
-      const side = detectSide(poseLabel);
-      if (side) {
-         setTimeout(() => playSideCue(side), 100);
-      }
-   }
-
-   // 2. Prepare Identifiers
-   const idStr = normalizePlate(asana.asanaNo);
-   const mainName = (asana.english || asana.title || asana['Yogasana Name'] || "").trim();
-   const variation = (asana.variation || asana['Variation'] || "").trim();
-   
-   const specificKey = variation ? `${mainName} ${variation}` : mainName;
-   const norm = (s) => String(s || "").trim();
-
-   // 3. Check Overrides (Admin Tool)
-   let overrideSrc = null;
-   if (typeof audioOverrides !== 'undefined') {
-       // Priority A: Specific Variation
-       if (specificKey && audioOverrides[norm(specificKey)]) {
-           overrideSrc = audioOverrides[norm(specificKey)];
-       } 
-       // Priority B: Global ID
-       else if (idStr && audioOverrides[idStr]) {
-           overrideSrc = audioOverrides[idStr];
-       }
-   }
-
-   if (overrideSrc) {
-       const src = overrideSrc.includes("/") ? overrideSrc : (AUDIO_BASE + overrideSrc);
-       const a = new Audio(src);
-       a.play().then(() => { currentAudio = a; }).catch(e => console.warn("Override play failed:", e));
-       return; 
-   }
-
-   // 4. Fallback: Auto-detect file logic
-   if (!idStr) return;
-   const safeName = mainName.replace(/[^a-zA-Z0-9]/g, "");
-   const candidates = [];
-
-   const pushId = (x) => {
-      if (!x) return;
-      const formatted = (String(x).length < 3) ? String(x).padStart(3, "0") : String(x);
-      candidates.push(`${AUDIO_BASE}${formatted}_${safeName}.mp3`);
-   };
-
-   // Try exact ID (e.g. "172a") then base ID (e.g. "172")
-   pushId(idStr);
-   const digitPart = (idStr.match(/^\d+/) || [null])[0];
-   if (digitPart && digitPart !== idStr) pushId(digitPart);
-
-   // Recursive player: tries candidate 1, if fail, tries candidate 2
-   let i = 0;
-   const tryNext = () => {
-      if (i >= candidates.length) return; 
-      const src = candidates[i++];
-      const a = new Audio(src);
-      a.addEventListener("error", () => tryNext(), { once: true });
-      a.play().then(() => { currentAudio = a; }).catch(() => tryNext());
-   };
-
-   tryNext();
-}
+function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
+    if (!asana) return;
+ 
+    // 1. Reset current audio
+    if (currentAudio) {
+       try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
+       currentAudio = null;
+    }
+ 
+    // 2. Define what happens AFTER the main name finishes
+    const onMainAudioEnded = () => {
+        // If we are browsing, or if sides aren't required, stop here.
+        if (isBrowseContext) return;
+        
+        // Play side audio (Right/Left) AFTER main audio
+        if (asana.requiresSides && currentSide) {
+           // Use AUDIO_BASE to ensure we fetch from the server
+           const sideUrl = AUDIO_BASE + `${currentSide}_side.mp3`; 
+           const sideAudio = new Audio(sideUrl);
+           
+           sideAudio.play().catch(e => console.warn(`Failed to play ${currentSide}_side.mp3:`, e));
+           
+           // Track this as current so we can pause it if the user clicks "Stop"
+           currentAudio = sideAudio; 
+        }
+    };
+ 
+    // 3. Play Main Audio immediately, then trigger the callback
+    playPoseMainAudio(asana, poseLabel, onMainAudioEnded);
+ }
+ 
+ function playPoseMainAudio(asana, poseLabel = null, onComplete = null) {
+     // 1. Side Detection (Visual/Sound Effect only, not the voice cue)
+     if (poseLabel && !asana.requiresSides) {
+        const side = detectSide(poseLabel);
+        if (side) setTimeout(() => playSideCue(side), 100);
+     }
+  
+     // 2. Prepare IDs
+     const idStr = normalizePlate(asana.asanaNo);
+     console.log(`[Audio Debug] Playing ID: ${idStr}, Name: ${asana.name || asana.english}`);
+ 
+     // Helper to play and attach the 'onended' listener
+     const playSrc = (src) => {
+         const a = new Audio(src);
+         // CRITICAL: Attach the callback so side audio plays next
+         if (onComplete) {
+             a.onended = onComplete;
+         }
+         a.play()
+             .then(() => { currentAudio = a; console.log("[Audio Debug] Playing started..."); })
+             .catch(e => console.error("[Audio Debug] Playback failed:", e));
+     };
+ 
+     // 3. Override Check
+     let overrideSrc = null;
+     if (typeof audioOverrides !== 'undefined') {
+         const norm = (s) => String(s || "").trim();
+         const mainName = (asana.english || asana.title || asana['Yogasana Name'] || "").trim();
+         const variation = (asana.variation || asana['Variation'] || "").trim();
+         const specificKey = variation ? `${mainName} ${variation}` : mainName;
+ 
+         if (specificKey && audioOverrides[norm(specificKey)]) {
+             overrideSrc = audioOverrides[norm(specificKey)];
+         } else if (idStr && audioOverrides[idStr]) {
+             overrideSrc = audioOverrides[idStr];
+         }
+     }
+ 
+     if (overrideSrc) {
+        console.log(`[Audio Debug] Using Override: ${overrideSrc}`);
+        const src = overrideSrc.includes("/") ? overrideSrc : (AUDIO_BASE + overrideSrc);
+        playSrc(src);
+        return; 
+     }
+  
+     // 4. SMART FALLBACK (Manifest Lookup)
+     const fileList = window.serverAudioFiles || [];
+     if (fileList.length > 0 && idStr) {
+         const match = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
+         if (match) {
+             console.log(`[Audio Debug] FOUND MATCH: ${match}`);
+             playSrc(AUDIO_BASE + match);
+             return;
+         }
+     }
+ 
+     // 5. Legacy Fallback
+     console.log("[Audio Debug] Falling back to legacy guessing...");
+     if (!idStr) { if (onComplete) onComplete(); return; } // If no ID, just skip to side audio
+ 
+     const safeName = (asana.english || "").replace(/[^a-zA-Z0-9]/g, "");
+     const candidates = [];
+     const pushId = (x) => {
+        if (!x) return;
+        const formatted = (String(x).length < 3) ? String(x).padStart(3, "0") : String(x);
+        candidates.push(`${AUDIO_BASE}${formatted}_${safeName}.mp3`);
+     };
+     pushId(idStr);
+     
+     let i = 0;
+     const tryNext = () => {
+        if (i >= candidates.length) {
+            // If all legacy guesses fail, still trigger callback so flow continues
+            if (onComplete) onComplete();
+            return; 
+        }
+        const src = candidates[i++];
+        const a = new Audio(src);
+        a.addEventListener("error", () => tryNext(), { once: true });
+        if (onComplete) a.onended = onComplete;
+        a.play().then(() => { currentAudio = a; }).catch(() => tryNext());
+     };
+  
+     tryNext();
+ }
 
 // #endregion
 // #region 3. HELPERS & FORMATTING
 /* ==========================================================================
    STRING & DATA FORMATTERS
    ========================================================================== */
+/**
+ * Converts the Asana Library object into an array for the Browse section.
+ * REQUIRED for applyBrowseFilters and renderBrowseList.
+ */
+function getAsanaIndex() {
+    // Safety check if library isn't loaded yet
+    if (!asanaLibrary) return [];
+    
+    return Object.keys(asanaLibrary).map(id => {
+        // Use the normalizeAsana helper we added earlier
+        return normalizeAsana(id, asanaLibrary[id]);
+    }).filter(Boolean); // Remove any nulls
+}
 
+   /**
+ * CRITICAL HELPER: Normalizes raw JSON data into a standard format the app expects.
+ * Missing this function causes "Uncaught ReferenceError: normalizeAsana is not defined"
+ */
+function normalizeAsana(id, asana) {
+    if (!asana) return null;
+    return {
+       ...asana,
+       asanaNo: id,
+       english: asana.name || "",
+       'Yogasana Name': asana.name || "",
+       variation: "", // Variations are now in variations object
+       inlineVariations: asana.variations ? Object.keys(asana.variations).map(key => ({
+          label: key,
+          text: asana.variations[key]
+       })) : [],
+       allPlates: [id] // For search compatibility
+    };
+ }
 function escapeHtml2(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;",
@@ -394,7 +447,13 @@ function renderMarkdownMinimal(md) {
    closeLists();
    return out;
 }
-
+/**
+ * UI Helper: Bridges the old function name to the new smart logic.
+ * Required for 'renderPlateSection' to work.
+ */
+function urlsForPlateToken(p) {
+    return smartUrlsForPoseId(p);
+}
 function formatHMS(totalSeconds) {
    const s = Math.max(0, Math.floor(totalSeconds || 0));
    const h = Math.floor(s / 3600);
@@ -575,171 +634,96 @@ async function loadJSON(url, fallback = null) {
  }
  
  /* ==========================================================================
-    IMAGE INDEXING & RESOLUTION
+    IMAGE INDEXING & RESOLUTION (GITHUB + ARROWROAD OPTIMIZED)
     ========================================================================== */
- 
- /**
-  * 1. Build the Image Map
-  * Scans your image folder and maps "218" -> ["images/218_dhyana.jpg"]
-  */
- async function buildImageIndexes() {
-     // 1. Load the manifest with a fallback of null
-     const manifest = await loadJSON(MANIFEST_URL, null);
-     
-     // 2. SAFETY CHECK: If manifest is missing, don't try to process it
-     if (!manifest) {
-        console.warn("Manifest not found at " + MANIFEST_URL + ". Images will not be indexed.");
-        asanaToUrls = {}; 
-        return; 
-     }
-  
-     const items = manifestToFileList(manifest);
-     asanaToUrls = {}; 
-  
-     items.forEach(item => {
-        const rel = manifestItemToPath(item);
-        if (!rel) return;
-  
-        const lower = rel.toLowerCase();
-        const validExt = [".png", ".jpg", ".jpeg", ".webp"].some(ext => lower.endsWith(ext));
-        if (!validExt) return;
-  
-        const rawID = primaryAsanaFromFilename(filenameFromUrl(rel));
-        const normalizedKey = rawID ? normalizePlate(rawID) : null;
-        
-        // Ensure normalizeImagePath handles the IMAGES_BASE correctly
-        const url = normalizeImagePath(rel);
-  
-        if (normalizedKey) {
-           if (!asanaToUrls[normalizedKey]) asanaToUrls[normalizedKey] = [];
-           if (!asanaToUrls[normalizedKey].includes(url)) {
-              asanaToUrls[normalizedKey].push(url);
-           }
-        }
-     });
-  
-     Object.keys(asanaToUrls).forEach(k => asanaToUrls[k].sort());
-     console.log("✓ Image indexing complete.");
-  }
- 
- /**
-  * 2. Find Image URL for a specific ID
-  */
- function smartUrlsForPoseId(idField) {
+
+/**
+ * 1. Build the Image Map
+ * Directly uses the simple array structure in your manifest.json
+ */
+async function buildImageIndexes() {
+    const manifest = await loadJSON(MANIFEST_URL, null);
+    
+    if (!manifest || !manifest.images) {
+       console.warn("Manifest images not found at " + MANIFEST_URL);
+       asanaToUrls = {}; 
+       return; 
+    }
+
+    asanaToUrls = {}; 
+    
+    // Your manifest.images is a flat array of filenames
+    manifest.images.forEach(filename => {
+       // Extract ID (e.g., "082" from "082_Eka_Pada_Sirsasana.webp")
+       const rawID = filename.split('_')[0];
+       const normalizedKey = normalizePlate(rawID);
+       
+       // Create the absolute Arrowroad URL
+       const url = `https://arrowroad.com.au/yoga/images/${filename}`;
+
+       if (normalizedKey) {
+          if (!asanaToUrls[normalizedKey]) asanaToUrls[normalizedKey] = [];
+          if (!asanaToUrls[normalizedKey].includes(url)) {
+             asanaToUrls[normalizedKey].push(url);
+          }
+       }
+    });
+
+    Object.keys(asanaToUrls).forEach(k => asanaToUrls[k].sort());
+    console.log("✓ Image indexing complete.");
+}
+
+/**
+ * 2. Find Image URL for a specific ID
+ */
+function smartUrlsForPoseId(idField) {
     let id = Array.isArray(idField) ? idField[0] : idField;
     id = normalizePlate(id);
     
     if (!id) return [];
- 
+
+    // Priority: Admin Overrides
     if (typeof imageOverrides !== 'undefined' && imageOverrides[id]) {
         let ov = imageOverrides[id];
-        if (ov && !ov.startsWith("images/") && !ov.startsWith("http") && !ov.startsWith("/")) {
-            ov = "images/" + ov;
+        // If it's just a filename, point it to arrowroad
+        if (!ov.startsWith("http")) {
+            return [`https://arrowroad.com.au/yoga/images/${ov.replace('images/', '')}`];
         }
         return [ov];
     }
- 
+
+    // Fallback: Manifest Index
     return asanaToUrls[id] || [];
- }
- 
- /**
-  * Helper: Convert asana from library to backward-compatible format
-  */
- function normalizeAsana(id, asana) {
-    if (!asana) return null;
-    return {
-       ...asana,
-       asanaNo: id,
-       english: asana.name || "",
-       'Yogasana Name': asana.name || "",
-       variation: "", // Variations are now in variations object
-       inlineVariations: asana.variations ? Object.keys(asana.variations).map(key => ({
-          label: key,
-          text: asana.variations[key]
-       })) : [],
-       allPlates: [id] // For search compatibility
-    };
- }
- 
- /**
-  * Helper: Get asana library as array (for browse/filter operations)
-  */
- function getAsanaIndex() {
-    return Object.keys(asanaLibrary).map(id => normalizeAsana(id, asanaLibrary[id])).filter(Boolean);
- }
- 
- /**
-  * 3. Find Asana Data for a specific ID (using JSON library)
-  */
- function findAsanaByIdOrPlate(idField) {
+}
+
+/**
+ * 3. Find Asana Data (Library Integration)
+ */
+function findAsanaByIdOrPlate(idField) {
     let id = Array.isArray(idField) ? idField[0] : idField;
     if (!id) return null;
- 
+
     id = normalizePlate(id);
-    const asana = asanaLibrary[id];
- 
+    const asana = asanaLibrary[id]; //
+
     if (!asana) return null;
- 
+
+    // Return combined object
     return normalizeAsana(id, asana);
- }
- 
- /**
-  * 4. Helper for UI
-  */
- function urlsForPlateToken(p) {
-    return smartUrlsForPoseId(p);
- }
- 
- // --- CORE UTILITIES ---
- 
- function manifestToFileList(manifest) {
-    if (Array.isArray(manifest)) return manifest;
-    if (!manifest || typeof manifest !== "object") return [];
- 
-    const looksLikePlateMap = (obj) => {
-       if (!obj || typeof obj !== "object" || Array.isArray(obj)) return false;
-       const keys = Object.keys(obj);
-       if (keys.length === 0) return false;
-       const digitKeys = keys.filter(k => /^\d+$/.test(String(k))).length;
-       return digitKeys >= Math.max(1, Math.floor(keys.length * 0.7));
-    };
- 
-    if (manifest.images && looksLikePlateMap(manifest.images)) {
-       return Object.entries(manifest.images).map(([plate, meta]) => {
-          return (meta && typeof meta === "object" && !Array.isArray(meta)) ? { plate, ...meta } : { plate, main: meta };
-       });
-    }
-    if (looksLikePlateMap(manifest)) {
-       return Object.entries(manifest).map(([plate, meta]) => {
-          return (meta && typeof meta === "object" && !Array.isArray(meta)) ? { plate, ...meta } : { plate, main: meta };
-       });
-    }
- 
-    const candidates = [manifest.files, manifest.images, manifest.items, manifest.main];
-    for (const c of candidates) { if (c && Array.isArray(c)) return c; }
-    return [];
- }
- 
- function manifestItemToPath(item) {
-    if (typeof item === "string") return item;
-    if (!item || typeof item !== "object") return null;
-    return item.filename || item.main || item.path || item.file || item.name || null;
- }
- 
- function normalizeImagePath(p) {
+}
+
+/**
+ * 4. Helper: Absolute Path Enforcement
+ */
+function normalizeImagePath(p) {
     if (!p) return null;
     const s = String(p).replace(/\\/g, "/").replace(/^\.?\//, "");
-    if (s.startsWith("http") || s.startsWith(IMAGES_BASE)) return s;
-    return IMAGES_BASE + s;
- }
- 
- async function fetchIdAliases() {
-     try {
-         const res = await fetch("id_aliases.json", { cache: "no-store" });
-         if (res.ok) idAliases = await res.json();
-     } catch (e) { idAliases = {}; }
- }
- 
+    
+    if (s.startsWith("http")) return s;
+    // Strip redundant "images/" if present in the filename string
+    const cleanFilename = s.replace("images/", "");
+    return `https://arrowroad.com.au/yoga/images/${cleanFilename}`;
+}
  // #endregion
 // #region 5. HISTORY & LOGGING
 /* ==========================================================================
@@ -970,7 +954,9 @@ function showResumePrompt(state) {
         display: flex; gap: 15px; align-items: center; font-size: 14px;
     `;
     
-    const seqName = sequences[state.sequenceIdx]?.title || "your previous session";
+    // Safety check if sequence still exists
+    const seqName = (sequences && sequences[state.sequenceIdx]) ? sequences[state.sequenceIdx].title : "your previous session";
+    
     banner.innerHTML = `
         <span>Resume <b>${seqName}</b> at pose ${state.poseIdx + 1}?</span>
         <button id="resumeYes" style="background:#4CAF50; color:white; border:none; padding:5px 12px; border-radius:15px; cursor:pointer;">Yes</button>
@@ -981,12 +967,19 @@ function showResumePrompt(state) {
 
     banner.querySelector("#resumeYes").onclick = () => {
         const sel = $("sequenceSelect");
-        sel.value = state.sequenceIdx;
-        sel.dispatchEvent(new Event('change'));
-        setTimeout(() => {
-            setPose(state.poseIdx);
-            banner.remove();
-        }, 100);
+        if (sel) {
+            sel.value = state.sequenceIdx;
+            sel.dispatchEvent(new Event('change'));
+            
+            // Increased delay to 500ms to allow DOM to render
+            setTimeout(() => {
+                // Double check that we actually switched sequences before setting pose
+                if (currentSequence) {
+                    setPose(state.poseIdx);
+                }
+                banner.remove();
+            }, 500); 
+        }
     };
 
     banner.querySelector("#resumeNo").onclick = () => {
@@ -999,7 +992,25 @@ function showResumePrompt(state) {
 /* ==========================================================================
    APP INITIALIZATION (Controller)
    ========================================================================== */
+   async function loadManifestAndPopulateLists() {
+    console.log("Fetching manifest from:", MANIFEST_URL); // Debug 1
+    const manifest = await loadJSON(MANIFEST_URL, null);
 
+    if (!manifest) {
+        console.warn("❌ Manifest failed to load (404 or Invalid JSON)");
+        return;
+    }
+
+    // Debug 2: See exactly what keys exist. 
+    // If you see "Images" (capital I) instead of "images", that's the bug.
+    console.log("Raw Manifest Data:", manifest); 
+
+    // Robust check for lowercase OR uppercase keys
+    window.serverAudioFiles = manifest.audio || manifest.Audio || [];
+    window.serverImageFiles = manifest.images || manifest.Images || [];
+
+    console.log(`Manifest loaded: ${window.serverAudioFiles.length} audio, ${window.serverImageFiles.length} images`);
+}
 async function init() {
     try {
         // 1. Core Config & Admin
@@ -1009,11 +1020,10 @@ async function init() {
         // 2. Load Overrides First (Sequence, Audio, Image)
         // This prevents the "Uncaught Error" by ensuring data is ready before UI renders
         await Promise.all([
+            typeof loadManifestAndPopulateLists === "function" ? loadManifestAndPopulateLists() : Promise.resolve(), 
             typeof fetchServerHistory === "function" ? fetchServerHistory() : Promise.resolve(),
             typeof fetchAudioOverrides === "function" ? fetchAudioOverrides() : Promise.resolve(),
             typeof fetchImageOverrides === "function" ? fetchImageOverrides() : Promise.resolve(),
-            typeof fetchServerAudioList === "function" ? fetchServerAudioList() : Promise.resolve(),
-            typeof fetchServerImageList === "function" ? fetchServerImageList() : Promise.resolve(),
             typeof fetchDescriptionOverrides === "function" ? fetchDescriptionOverrides() : Promise.resolve(),
             typeof fetchCategoryOverrides === "function" ? fetchCategoryOverrides() : Promise.resolve(),
             typeof fetchIdAliases === "function" ? fetchIdAliases() : Promise.resolve()
@@ -1064,44 +1074,57 @@ async function init() {
    ========================================================================== */
 
    function startTimer() {
-      if (!currentSequence) return;
-      if (running) {
-         stopTimer();
-         return;
-      }
-   
-      running = true;
-      enableWakeLock();
-      $("startStopBtn").textContent = "Pause";
-   
-      // Play audio immediately when starting
-      const currentPose = currentSequence.poses[currentIndex];
-      if (currentPose) {
-          const [idField, , poseLabel] = currentPose;
-          const plate = Array.isArray(idField) ? normalizePlate(idField[0]) : normalizePlate(idField);
+    if (!currentSequence) return;
+    if (running) {
+        stopTimer();
+        return;
+    }
 
-          // ⚡ STRICT FIX: Only use the strict lookup function
-          const asana = findAsanaByIdOrPlate(plate);
+    running = true;
+    enableWakeLock();
+    
+    // Update Button
+    const btn = $("startStopBtn");
+    if (btn) btn.textContent = "Pause";
 
-          if (asana) playAsanaAudio(asana, poseLabel);
-      }
-   
-      timer = setInterval(() => {
-         if (remaining > 0) remaining--;
-         updateTimerUI();
-         if (remaining <= 0) {
+    // FIX: Explicitly set status to Running (overwriting "Starting...")
+    const statusEl = document.getElementById("statusText");
+    if (statusEl) statusEl.textContent = "Running";
+
+    // Play audio immediately when starting (or resuming)
+    const currentPose = currentSequence.poses[currentIndex];
+    if (currentPose) {
+        const [idField, , poseLabel] = currentPose;
+        const plate = Array.isArray(idField) ? normalizePlate(idField[0]) : normalizePlate(idField);
+        const asana = findAsanaByIdOrPlate(plate);
+        // Pass 'false' to ensure side cues play (not browse context)
+        if (asana) playAsanaAudio(asana, poseLabel, false);
+    }
+
+    timer = setInterval(() => {
+        if (remaining > 0) remaining--;
+        updateTimerUI();
+        if (remaining <= 0) {
             if (running && currentPoseSeconds >= 60) playFaintGong();
-            nextPose(); 
-         }
-      }, 1000);
-   }
+            nextPose();
+        }
+    }, 1000);
+}
 
 function stopTimer() {
-   if (timer) clearInterval(timer);
-   timer = null;
-   running = false;
-   $("startStopBtn").textContent = "Start";
-   disableWakeLock();
+    if (timer) clearInterval(timer);
+    timer = null;
+    running = false;
+    
+    // Update Button
+    const btn = $("startStopBtn");
+    if (btn) btn.textContent = "Start";
+    
+    // FIX: Set status to Paused
+    const statusEl = document.getElementById("statusText");
+    if (statusEl) statusEl.textContent = "Paused";
+    
+    disableWakeLock();
 }
 
 function updateTimerUI() {
@@ -1394,7 +1417,6 @@ function updateTotalAndLastUI() {
     if (totalEl) {
         totalEl.textContent = `Total: ${formatHMS(total)}`;
     }
-    // CRITICAL: The duplicate $("totalTimePill")... line is DELETED here.
  
     // 3. Update History UI (Safely)
     const lastEl = document.getElementById("lastCompletedPill");
@@ -1420,7 +1442,6 @@ function updateTotalAndLastUI() {
         }
     }
  }
-
 function loadUserPersonalNote(idField) {
    const container = document.getElementById("poseDescBody");
    if (!container) return;
@@ -1488,10 +1509,43 @@ function descriptionForPose(asana, fullLabel) {
    ========================================================================== */
 
 function setupBrowseUI() {
+    // 1. Existing Buttons
     if ($("browseBtn")) $("browseBtn").addEventListener("click", openBrowse);
     if ($("browseCloseBtn")) $("browseCloseBtn").addEventListener("click", closeBrowse);
 
-    // Backdrop Click Logic (IIFE)
+    // 2. Hide "Show only finals" Checkbox
+    const finalsChk = $("browseFinalOnly");
+    if (finalsChk) {
+        if (finalsChk.parentElement && finalsChk.parentElement.tagName === "LABEL") {
+            finalsChk.parentElement.style.display = "none";
+        } else {
+            finalsChk.style.display = "none";
+        }
+    }
+
+    // 3. Inject "Sync to GitHub" Button into Browse Header
+    const closeBtn = $("browseCloseBtn");
+    if (closeBtn && !document.getElementById("browseSyncBtn")) {
+        const syncBtn = document.createElement("button");
+        syncBtn.id = "browseSyncBtn";
+        syncBtn.textContent = "💾 Sync Library to GitHub";
+        syncBtn.className = "tiny";
+        syncBtn.style.cssText = "background: #2e7d32; color: white; margin-right: 15px; margin-left: auto;";
+        
+        syncBtn.onclick = async () => {
+            if (confirm("Push all library changes (names, descriptions, techniques, categories) to GitHub?")) {
+                await syncDataToGitHub("asana_library.json", asanaLibrary);
+            }
+        };
+
+        if (closeBtn.parentNode) {
+            closeBtn.parentNode.insertBefore(syncBtn, closeBtn);
+            closeBtn.parentNode.style.display = "flex";
+            closeBtn.parentNode.style.alignItems = "center";
+        }
+    }
+
+    // 4. Backdrop Click Logic
     (function () {
         const bd = $("browseBackdrop");
         if (!bd) return;
@@ -1503,14 +1557,14 @@ function setupBrowseUI() {
         });
     })();
 
-    // ESC Key Support
+    // 5. ESC Key Support
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && $("browseBackdrop")?.style.display === "flex") {
             closeBrowse();
         }
     });
 
-    // Input Listeners with Debounce
+    // 6. Input Listeners with Debounce
     const onChange = () => applyBrowseFilters();
     const debounce = (fn, ms = 120) => {
         let t = null;
@@ -1524,7 +1578,6 @@ function setupBrowseUI() {
     if ($("browsePlate")) $("browsePlate").addEventListener("input", debounce(onChange, 120));
     if ($("browseAsanaNo")) $("browseAsanaNo").addEventListener("input", debounce(onChange, 120));
     if ($("browseCategory")) $("browseCategory").addEventListener("change", onChange);
-    if ($("browseFinalOnly")) $("browseFinalOnly").addEventListener("change", onChange);
 }
 
 function openBrowse() {
@@ -1539,17 +1592,11 @@ function openBrowse() {
 function closeBrowse() {
     const bd = $("browseBackdrop");
     if (!bd) return;
-    
     bd.style.display = "none";
     bd.setAttribute("aria-hidden", "true");
-    
-    // Ensure we exit detail mode so the list shows next time it's opened
     exitBrowseDetailMode();
-    
-    // Clear the detail content so it doesn't "flash" old data next time
     const d = $("browseDetail");
     if (d) d.innerHTML = "";
-
     if ($("browseBtn")) $("browseBtn").focus();
 }
 
@@ -1578,7 +1625,6 @@ function renderBrowseList(items) {
       const title = document.createElement("div");
       title.className = "title";
       
-      // Construct Title: Name + Variation (if present)
       let titleText = asma.english || asma['Yogasana Name'] || "(no name)";
       if (asma.variation) {
           titleText += ` <span style="font-weight:normal; color:#666; font-size:0.9em;">(${asma.variation})</span>`;
@@ -1678,14 +1724,17 @@ function showAsanaDetail(asma) {
       d.appendChild(back);
    }
 
-   // 3. Header
+   // 3. Header & Audio
    const h = document.createElement("h2");
    h.className = "detail-title";
    h.textContent = techniqueName;
    const audioBtn = document.createElement("button");
    audioBtn.textContent = "🔊";
    audioBtn.style.cssText = "margin-left:10px; cursor:pointer; border:none; background:transparent; font-size:1.2rem;";
-   audioBtn.onclick = () => playAsanaAudio(asma);
+   
+   // FIX: Pass 'true' as the 3rd argument to prevent side cues
+   audioBtn.onclick = () => playAsanaAudio(asma, null, true); 
+   
    h.appendChild(audioBtn);
    d.appendChild(h);
 
@@ -1706,22 +1755,17 @@ function showAsanaDetail(asma) {
    // 6. TABS & LAYOUT LOGIC
    let tabsSource = [];
    
-   // Priority 1: Inline Columns (L-AQ)
    if (asma.inlineVariations && asma.inlineVariations.length > 0) {
        tabsSource = asma.inlineVariations.map(iv => ({
            label: iv.label, text: iv.text, imagesId: asma.asanaNo, rowId: asma.asanaNo 
        }));
-   } 
-   // Priority 2: Row Variations
-   else if (rowVariations.length > 0) {
+   } else if (rowVariations.length > 0) {
        tabsSource = rowVariations.map((v, i) => ({
            label: v.variation || `Stage ${i+1}`,
            text: v.technique || v.description || "", 
            imagesId: v.asanaNo, rowId: v.asanaNo
        }));
-   } 
-   // Priority 3: Main Item
-   else {
+   } else {
        tabsSource = [{ label: "Main", text: asma.technique || "", imagesId: asma.asanaNo, rowId: asma.asanaNo }];
    }
 
@@ -1758,7 +1802,6 @@ function showAsanaDetail(asma) {
       bodyInst.innerHTML = `<strong>Instructions:</strong>\n` + (formatTechniqueText(tab.text) || "No instructions.");
       instructions.appendChild(bodyInst);
 
-      // C. CONDITIONAL APPEND (Restorative = Text First)
       if (isRestorative) {
           pane.appendChild(instructions);
           pane.appendChild(imgWrap);
@@ -1767,7 +1810,6 @@ function showAsanaDetail(asma) {
           pane.appendChild(instructions);
       }
 
-      // Tab Interaction
       btn.onclick = () => {
          Array.from(tabContainer.children).forEach(b => b.classList.remove('active'));
          Array.from(contentContainer.children).forEach(p => p.style.display = 'none');
@@ -1786,70 +1828,314 @@ function showAsanaDetail(asma) {
    // 7. ADMIN MENU INJECTION
    if (typeof adminMode !== 'undefined' && adminMode) {
       renderAdminDetailTools(d, asma, rowVariations);
+   } else if (window.enableEditing) {
+       // Also show if the new global flag is set
+       renderAdminDetailTools(d, asma, rowVariations);
    }
 }
 
 // Helper to inject Admin Tools into Detail View
 function renderAdminDetailTools(container, asma, rowVariations) {
-      const adminDetails = document.createElement("details");
-      adminDetails.style.marginTop = "20px";
-      adminDetails.style.borderTop = "1px solid #ccc";
-      adminDetails.style.paddingTop = "10px";
+    const adminDetails = document.createElement("details");
+    adminDetails.style.marginTop = "20px";
+    adminDetails.style.borderTop = "1px solid #ccc";
+    adminDetails.style.paddingTop = "10px";
+    adminDetails.open = true; // Keep open for easier editing
 
-      const adminSum = document.createElement("summary");
-      adminSum.textContent = "Advanced / Admin Options";
-      adminSum.style.cursor = "pointer";
-      adminSum.style.fontWeight = "bold";
-      adminDetails.appendChild(adminSum);
+    const adminSum = document.createElement("summary");
+    adminSum.textContent = "🔧 Admin / Editing Tools";
+    adminSum.style.cursor = "pointer";
+    adminSum.style.fontWeight = "bold";
+    adminSum.style.marginBottom = "10px";
+    adminDetails.appendChild(adminSum);
 
-      const adminContent = document.createElement("div");
-      adminContent.style.padding = "10px";
-      adminContent.style.background = "#f4f4f4";
+    const adminContent = document.createElement("div");
+    adminContent.style.padding = "15px";
+    adminContent.style.background = "#f4f4f4";
+    adminContent.style.borderRadius = "8px";
 
-      // A. Category Editor
-      const catDiv = document.createElement("div");
-      catDiv.style.marginBottom = "10px";
-      catDiv.innerHTML = "<strong>Category:</strong> ";
-      
-      const catLabels = { 
-          "": "(no category)", 
-          "01_Standing_and_Basic": "01 Standing & Basic", 
-          "02_Seated_and_Lotus_Variations": "02 Seated & Lotus", 
-          "03_Forward_Bends": "03 Forward Bends", 
-          "04_Inversions_Sirsasana_Sarvangasana": "04 Inversions", 
-          "05_Abdominal_and_Supine": "05 Abdominal & Supine", 
-          "06_Twists": "06 Twists", 
-          "07_Arm_Balances": "07 Arm Balances", 
-          "08_Advanced_Leg_behind_Head": "08 Leg Behind Head and Advanced", 
-          "09_Backbends": "09 Backbends", 
-          "10_Restorative_Pranayama": "10 Restorative/Pranayama" 
-      };
-      const catSel = document.createElement("select");
-      catSel.className = "tiny";
-      Object.entries(catLabels).forEach(([v, l]) => {
-         const o = document.createElement("option"); o.value = v; o.textContent = l; catSel.appendChild(o);
-      });
-      catSel.value = asma.category || "";
-      const saveCatBtn = document.createElement("button");
-      saveCatBtn.textContent = "Save"; 
-      saveCatBtn.className = "tiny";
-      saveCatBtn.style.marginLeft = "5px";
-      saveCatBtn.onclick = async () => {
-         await saveCategoryOverride(asma.asanaNo, catSel.value);
-         applyBrowseFilters();
-      };
-      catDiv.appendChild(catSel);
-      catDiv.appendChild(saveCatBtn);
-      adminContent.appendChild(catDiv);
+    // ---------------------------------------------------------
+    // A0. NAME / TITLE EDITOR (NEW!)
+    // ---------------------------------------------------------
+    const nameDiv = document.createElement("div");
+    nameDiv.style.marginBottom = "15px";
+    nameDiv.innerHTML = "<div style='font-size:0.85rem; font-weight:bold; margin-bottom:4px;'>🏷️ Pose Name</div>";
 
-      // B. Media Manager (Call Helper)
-      const mediaDiv = document.createElement("div");
-      mediaDiv.innerHTML = `<hr><strong>Manage Media</strong>`;
-      renderMediaManager(mediaDiv, asma, rowVariations);
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = asma.english || asma.name || "";
+    nameInput.style.cssText = "width:100%; padding:6px; border:1px solid #ccc; font-weight:bold;";
 
-      adminContent.appendChild(mediaDiv);
-      adminDetails.appendChild(adminContent);
-      container.appendChild(adminDetails);
+    const saveNameBtn = document.createElement("button");
+    saveNameBtn.textContent = "Rename Pose"; 
+    saveNameBtn.className = "tiny";
+    saveNameBtn.style.marginTop = "5px";
+    
+    saveNameBtn.onclick = async () => {
+        saveNameBtn.textContent = "Saving...";
+        await saveAsanaField(asma.asanaNo, "name", nameInput.value);
+        
+        // Update header immediately
+        const header = container.querySelector("h2");
+        if(header) header.childNodes[0].nodeValue = nameInput.value;
+        
+        saveNameBtn.textContent = "✓ Renamed";
+        setTimeout(() => saveNameBtn.textContent = "Rename Pose", 2000);
+    };
+    nameDiv.appendChild(nameInput);
+    nameDiv.appendChild(saveNameBtn);
+    adminContent.appendChild(nameDiv);
+
+    // ---------------------------------------------------------
+    // A. CATEGORY EDITOR
+    // ---------------------------------------------------------
+    const catDiv = document.createElement("div");
+    catDiv.style.marginBottom = "15px";
+    catDiv.innerHTML = "<div style='font-size:0.85rem; font-weight:bold; margin-bottom:4px;'>📂 Category</div>";
+    
+    const catLabels = { 
+        "": "(no category)", 
+        "01_Standing_and_Basic": "01 Standing & Basic", 
+        "02_Seated_and_Lotus_Variations": "02 Seated & Lotus", 
+        "03_Forward_Bends": "03 Forward Bends", 
+        "04_Inversions_Sirsasana_Sarvangasana": "04 Inversions", 
+        "05_Abdominal_and_Supine": "05 Abdominal & Supine", 
+        "06_Twists": "06 Twists", 
+        "07_Arm_Balances": "07 Arm Balances", 
+        "08_Advanced_Leg_behind_Head": "08 Leg Behind Head and Advanced", 
+        "09_Backbends": "09 Backbends", 
+        "10_Restorative_Pranayama": "10 Restorative/Pranayama" 
+    };
+    const catSel = document.createElement("select");
+    catSel.className = "tiny";
+    catSel.style.width = "100%";
+    
+    Object.entries(catLabels).forEach(([v, l]) => {
+        const o = document.createElement("option"); o.value = v; o.textContent = l; catSel.appendChild(o);
+    });
+    catSel.value = asma.category || "";
+    
+    const saveCatBtn = document.createElement("button");
+    saveCatBtn.textContent = "Save Category"; 
+    saveCatBtn.className = "tiny";
+    saveCatBtn.style.marginTop = "5px";
+    saveCatBtn.onclick = async () => {
+        saveCatBtn.textContent = "Saving...";
+        await saveAsanaField(asma.asanaNo, "category", catSel.value);
+        saveCatBtn.textContent = "✓ Saved";
+        setTimeout(() => saveCatBtn.textContent = "Save Category", 2000);
+        applyBrowseFilters();
+    };
+    catDiv.appendChild(catSel);
+    catDiv.appendChild(saveCatBtn);
+    adminContent.appendChild(catDiv);
+
+    // ---------------------------------------------------------
+    // B. DESCRIPTION EDITOR
+    // ---------------------------------------------------------
+    const descDiv = document.createElement("div");
+    descDiv.style.borderTop = "1px dashed #ccc";
+    descDiv.style.paddingTop = "15px";
+    descDiv.style.marginBottom = "15px";
+    descDiv.innerHTML = "<div style='font-size:0.85rem; font-weight:bold; margin-bottom:4px;'>📝 Description</div>";
+
+    const descArea = document.createElement("textarea");
+    descArea.style.cssText = "width:100%; height:80px; padding:8px; border:1px solid #ccc; font-family:inherit; font-size:0.9rem;";
+    descArea.value = asma.description || "";
+
+    const saveDescBtn = document.createElement("button");
+    saveDescBtn.textContent = "Save Description";
+    saveDescBtn.className = "tiny";
+    saveDescBtn.style.marginTop = "5px";
+    saveDescBtn.onclick = async () => {
+        saveDescBtn.textContent = "Saving...";
+        await saveAsanaField(asma.asanaNo, "description", descArea.value);
+        saveDescBtn.textContent = "✓ Saved";
+        setTimeout(() => saveDescBtn.textContent = "Save Description", 2000);
+    };
+    descDiv.appendChild(descArea);
+    descDiv.appendChild(saveDescBtn);
+    adminContent.appendChild(descDiv);
+
+    // ---------------------------------------------------------
+    // C. TECHNIQUE EDITOR
+    // ---------------------------------------------------------
+    const techDiv = document.createElement("div");
+    techDiv.style.borderTop = "1px dashed #ccc";
+    techDiv.style.paddingTop = "15px";
+    techDiv.style.marginBottom = "15px";
+    techDiv.innerHTML = "<div style='font-size:0.85rem; font-weight:bold; margin-bottom:4px;'>🧘 Technique Instructions</div>";
+
+    const techArea = document.createElement("textarea");
+    techArea.style.cssText = "width:100%; height:120px; padding:8px; border:1px solid #ccc; font-family:inherit; font-size:0.9rem;";
+    techArea.value = asma.technique || "";
+
+    const saveTechBtn = document.createElement("button");
+    saveTechBtn.textContent = "Save Technique";
+    saveTechBtn.className = "tiny";
+    saveTechBtn.style.marginTop = "5px";
+    saveTechBtn.onclick = async () => {
+        saveTechBtn.textContent = "Saving...";
+        await saveAsanaField(asma.asanaNo, "technique", techArea.value);
+        saveTechBtn.textContent = "✓ Saved";
+        setTimeout(() => saveTechBtn.textContent = "Save Technique", 2000);
+    };
+    techDiv.appendChild(techArea);
+    techDiv.appendChild(saveTechBtn);
+    adminContent.appendChild(techDiv);
+
+    // ---------------------------------------------------------
+    // D. MEDIA MANAGER
+    // ---------------------------------------------------------
+    const mediaDiv = document.createElement("div");
+    mediaDiv.style.borderTop = "1px dashed #ccc";
+    mediaDiv.style.paddingTop = "15px";
+    renderMediaManager(mediaDiv, asma, rowVariations);
+
+    adminContent.appendChild(mediaDiv);
+    adminDetails.appendChild(adminContent);
+    container.appendChild(adminDetails);
+}
+
+function renderMediaManager(container, asma, rowVariations) {
+    const audioFiles = window.serverAudioFiles || [];
+    const imageFiles = window.serverImageFiles || [];
+    
+    console.log(`MediaManager Init: Found ${audioFiles.length} audio, ${imageFiles.length} images.`);
+
+    const mediaDiv = document.createElement("div");
+    mediaDiv.style.marginTop = "8px";
+    mediaDiv.style.fontSize = "0.85rem";
+
+    mediaDiv.innerHTML = `
+          <div style="margin-bottom:12px; background:#fff; padding:5px; border:1px solid #ddd;">
+             <label style="font-size:0.8rem; color:#888;">TARGET FOR EDITING:</label>
+             <select id="mediaTargetKey" class="tiny" style="width:100%; margin-top:2px; font-weight:bold; border:1px solid #ccc;"></select>
+          </div>
+          <div style="display:flex; gap:10px;">
+             <div style="flex:1; padding-right:5px; border-right:1px solid #eee;">
+                <div style="font-weight:bold; margin-bottom:5px;">🎵 AUDIO</div>
+                <div id="currentAudioLabel" style="margin-bottom:8px; font-size:0.8rem; color:#666; min-height:1.2em;"></div>
+                <div style="margin-bottom:8px;">
+                   ${audioFiles.length === 0 ? 
+                     `<button id="retryManifestBtn" class="tiny" style="width:100%; background:#ffecb3;">⚠️ Lists Empty - Click to Retry</button>` : 
+                     `<select id="audioSelectServer" class="tiny" style="width:100%; margin-bottom:2px;"><option value="">Select server file...</option></select>`
+                   }
+                   <button id="linkAudioBtn" class="tiny" style="width:100%; margin-top:4px;">Link Selected</button>
+                </div>
+             </div>
+             <div style="flex:1; padding-left:5px;">
+                <div style="font-weight:bold; margin-bottom:5px;">🖼️ IMAGE</div>
+                <div id="currentImageLabel" style="margin-bottom:8px; font-size:0.8rem; color:#666; min-height:1.2em;"></div>
+                <div style="margin-bottom:8px;">
+                   ${imageFiles.length === 0 ? 
+                     `<div style="font-size:0.7rem; color:red;">No images found</div>` : 
+                     `<select id="imageSelectServer" class="tiny" style="width:100%; margin-bottom:2px;"><option value="">Select server file...</option></select>`
+                   }
+                   <button id="linkImageBtn" class="tiny" style="width:100%; margin-top:4px;">Link Selected</button>
+                </div>
+             </div>
+          </div>
+      `;
+
+    const retryBtn = mediaDiv.querySelector("#retryManifestBtn");
+    if (retryBtn) {
+        retryBtn.onclick = async () => {
+            retryBtn.textContent = "Loading...";
+            if (typeof loadManifestAndPopulateLists === "function") {
+                await loadManifestAndPopulateLists();
+                const parent = container.parentElement; 
+                container.innerHTML = ""; 
+                renderAdminDetailTools(container.parentElement.parentElement, asma, rowVariations); 
+            }
+        };
+    }
+
+    const audioSel = mediaDiv.querySelector("#audioSelectServer");
+    if (audioSel) {
+        audioFiles.forEach(f => {
+            const opt = document.createElement("option");
+            opt.value = f; opt.textContent = f; audioSel.appendChild(opt);
+        });
+    }
+
+    const imageSel = mediaDiv.querySelector("#imageSelectServer");
+    if (imageSel) {
+        imageFiles.forEach(f => {
+            const opt = document.createElement("option");
+            opt.value = f; opt.textContent = f; imageSel.appendChild(opt);
+        });
+    }
+
+    const targetSel = mediaDiv.querySelector("#mediaTargetKey");
+    const optMain = document.createElement("option");
+    const mainKey = normalizePlate(asma.asanaNo);
+    optMain.value = mainKey;
+    optMain.textContent = `Global (ID ${asma.asanaNo})`;
+    targetSel.appendChild(optMain);
+
+    if (rowVariations) {
+        rowVariations.forEach((v, idx) => {
+            const vName = (v.english || v['Yogasana Name'] || "").trim();
+            const vVar = (v.variation || v['Variation'] || "").trim();
+            if (vName) {
+                const specificKey = vVar ? `${vName} ${vVar}` : vName;
+                const displayLabel = vVar || `Variation ${idx + 1}`;
+                const opt = document.createElement("option");
+                opt.value = specificKey;
+                opt.textContent = `Specific: ${displayLabel}`;
+                targetSel.appendChild(opt);
+            }
+        });
+    }
+
+    const updateMediaLabels = () => {
+        const key = targetSel.value;
+        const audioLabel = mediaDiv.querySelector("#currentAudioLabel");
+        const imageLabel = mediaDiv.querySelector("#currentImageLabel");
+        
+        if(audioLabel) {
+            const curAudio = (typeof audioOverrides !== 'undefined' && audioOverrides[key]) ? audioOverrides[key] : "(Inherits Global)";
+            audioLabel.innerHTML = `Curr: <b>${curAudio}</b>`;
+        }
+        if(imageLabel) {
+            const curImage = (typeof imageOverrides !== 'undefined' && imageOverrides[key]) ? imageOverrides[key] : "(Default)";
+            imageLabel.innerHTML = `Curr: <b>${curImage}</b>`;
+        }
+    };
+    targetSel.onchange = updateMediaLabels;
+    updateMediaLabels();
+
+    const linkAudioBtn = mediaDiv.querySelector("#linkAudioBtn");
+    if(linkAudioBtn) linkAudioBtn.onclick = async () => {
+        if (!audioSel) return;
+        const val = audioSel.value;
+        const targetKey = targetSel.value;
+        if (!val) return alert("Select a file first.");
+        
+        if (typeof audioOverrides === 'undefined') audioOverrides = {};
+        audioOverrides[targetKey] = val;
+        
+        await syncDataToGitHub("audio_overrides.json", audioOverrides);
+        updateMediaLabels();
+    };
+
+    const linkImageBtn = mediaDiv.querySelector("#linkImageBtn");
+    if(linkImageBtn) linkImageBtn.onclick = async () => {
+        if (!imageSel) return;
+        const val = imageSel.value;
+        const targetKey = targetSel.value;
+        if (!val) return alert("Select a file first.");
+        
+        if (typeof imageOverrides === 'undefined') imageOverrides = {};
+        imageOverrides[targetKey] = val;
+        
+        await syncDataToGitHub("image_overrides.json", imageOverrides);
+        updateMediaLabels();
+        showAsanaDetail(asma);
+    };
+
+    container.appendChild(mediaDiv);
 }
 
 /* ==========================================================================
@@ -1881,7 +2167,8 @@ function renderPlateSection(title, plates, globalSeen, fallbackId) {
    const processIds = (idList) => {
        for (const p of idList) {
           if (!p || p === "undefined") continue;
-          const u = urlsForPlateToken(p);
+          // IMPORTANT: Requires helper from Region 3
+          const u = (typeof urlsForPlateToken === 'function') ? urlsForPlateToken(p) : [];
           
           if (!u.length) {
              missing.push(p);
@@ -1898,12 +2185,10 @@ function renderPlateSection(title, plates, globalSeen, fallbackId) {
        }
    };
 
-   // 1. Try explicit plates first
    processIds(targets);
 
-   // 2. FALLBACK LOGIC
    if (urls.length === 0 && fallbackId) {
-       const fallbackUrls = urlsForPlateToken(fallbackId);
+       const fallbackUrls = (typeof urlsForPlateToken === 'function') ? urlsForPlateToken(fallbackId) : [];
        if (fallbackUrls.length > 0) {
            fallbackUrls.forEach(x => {
                const g = globalSeen || null;
@@ -1917,7 +2202,6 @@ function renderPlateSection(title, plates, globalSeen, fallbackId) {
        }
    }
 
-   // 3. Render Metadata
    const meta = document.createElement("div");
    meta.className = "muted";
    meta.style.marginTop = "4px";
@@ -1927,7 +2211,6 @@ function renderPlateSection(title, plates, globalSeen, fallbackId) {
        wrap.appendChild(meta);
    }
 
-   // 4. Render Collage
    if (urls.length) {
       if (typeof renderCollage === "function") {
          wrap.appendChild(renderCollage(urls));
@@ -1936,7 +2219,6 @@ function renderPlateSection(title, plates, globalSeen, fallbackId) {
       }
    }
 
-   // 5. Render Missing Notice
    if (missing.length && urls.length === 0) {
       const m = document.createElement("div");
       m.className = "msg";
@@ -1952,7 +2234,7 @@ function renderCollage(urls) {
    const wrap = document.createElement("div");
    wrap.className = "collage";
    urls.forEach(u => {
-      const mob = mobileVariantUrl(u);
+      const mob = (typeof mobileVariantUrl === 'function') ? mobileVariantUrl(u) : u;
       const tile = document.createElement("div");
       tile.className = "tile";
       tile.innerHTML = `
@@ -1973,7 +2255,6 @@ function renderCourseUI() {
    const currentVal = sel.value;
    sel.innerHTML = `<option value="">Select a course</option>`;
 
-   // Group courses by category
    const grouped = {};
    courses.forEach((course, idx) => {
       const cat = course.category ? course.category.trim() : "Uncategorized";
@@ -1981,10 +2262,8 @@ function renderCourseUI() {
       grouped[cat].push({ course, idx });
    });
 
-   // Sort categories
    const categoryNames = Object.keys(grouped).sort();
 
-   // Render as optgroups for dropdown
    categoryNames.forEach(catName => {
       const groupEl = document.createElement("optgroup");
       groupEl.label = catName;
@@ -2000,7 +2279,6 @@ function renderCourseUI() {
    if (currentVal) sel.value = currentVal;
 }
 
-// Backwards compatibility alias
 function renderSequenceDropdown() {
    renderCourseUI();
 }
@@ -2104,96 +2382,210 @@ function exitBrowseDetailMode() {
         modal.classList.remove("detail-mode");
     }
 }
-// #endregion
-// #region 8. ADMIN & OVERRIDES
+
 /* ==========================================================================
-   ADMIN STATE & TOGGLES
+   CONSOLIDATED ADMIN / MANAGE UI
    ========================================================================== */
 
-function loadAdminMode() {
-    try {
-        adminMode = JSON.parse(localStorage.getItem(ADMIN_MODE_KEY) || "false") === true;
-    } catch (e) {
-        adminMode = false;
-    }
-    const cb = $("adminModeToggle");
-    if (cb) cb.checked = adminMode;
-    
-    const hint = $("adminHint");
-    if (hint) hint.style.display = adminMode ? "block" : "none";
-}
+   function toggleAdminUI(show) {
+    const backdrop = document.getElementById("manageSequencesBackdrop");
+    if (!backdrop) return;
 
-function setAdminMode(val) {
-    adminMode = !!val;
-    localStorage.setItem(ADMIN_MODE_KEY, JSON.stringify(adminMode));
-    
-    const cb = $("adminModeToggle");
-    if (cb) cb.checked = adminMode;
-    
-    const hint = $("adminHint");
-    if (hint) hint.style.display = adminMode ? "block" : "none";
-    
-    // Refresh view if looking at details
-    const currentNo = $("browseDetail")?.getAttribute("data-asana-no");
-    if (currentNo) {
-        const normalizedId = normalizePlate(currentNo);
-        const asma = findAsanaByIdOrPlate(normalizedId);
-        if (asma) showAsanaDetail(asma);
+    if (show) {
+        const title = backdrop.querySelector("h2");
+        if (title) title.textContent = "⚙️ Admin & Course Manager";
+        // Ensure the dashboard renderer exists
+        if (typeof renderAdminDashboard === 'function') {
+            renderAdminDashboard();
+        }
+        backdrop.style.display = "flex";
+    } else {
+        backdrop.style.display = "none";
     }
 }
+// CRITICAL FIX: Expose this function so the HTML onclick="..." can see it
+window.toggleAdminUI = toggleAdminUI; 
 
-window.toggleAdminUI = function(show) {
-    // 1. Target the container from your HTML
-    const panel = document.getElementById("adminContainer");
+const closeManBtn = document.getElementById("manageCloseBtn");
+if (closeManBtn) {
+    closeManBtn.onclick = () => toggleAdminUI(false);
+}
+
+function renderAdminDashboard() {
+    const list = document.getElementById("manageSequenceList");
+    if (!list) return;
+    list.innerHTML = "";
+
+    // --- SECTION A: GLOBAL TOOLS (Sync & Edit Mode) ---
+    const toolsDiv = document.createElement("div");
+    toolsDiv.style.cssText = "background:#f0f8ff; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #cceeff;";
     
-    if (!panel) {
-        console.error("❌ Error: <div id='adminContainer'> not found.");
+    // Check global flag (using window.enableEditing is fine as we explicitly set that)
+    const isEditing = window.enableEditing || false;
+
+    toolsDiv.innerHTML = `
+        <div style="font-weight:bold; margin-bottom:10px; color:#005580;">Global Tools</div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button id="adminSyncBtn" class="tiny" style="background:#2e7d32; color:white;">
+                💾 Sync All Data to GitHub
+            </button>
+            <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; cursor:pointer; user-select:none; margin-left:10px;">
+                <input type="checkbox" id="adminEditToggle" ${isEditing ? "checked" : ""}>
+                <span>Enable Library Editing</span>
+            </label>
+        </div>
+        <div style="font-size:0.75rem; color:#666; margin-top:8px;">
+            "Sync All" saves Courses, Categories, Audio links, and Library text changes.
+        </div>
+    `;
+    list.appendChild(toolsDiv);
+
+    // Wire up Sync
+    toolsDiv.querySelector("#adminSyncBtn").onclick = async () => {
+        if(confirm("Push ALL local changes (Courses, Library, Audio) to GitHub?")) {
+            const btn = toolsDiv.querySelector("#adminSyncBtn");
+            const oldText = btn.textContent;
+            btn.textContent = "Syncing...";
+            
+            try {
+                // FIX: Use 'sequences' variable directly, NOT window.sequences
+                await syncDataToGitHub("courses.json", sequences);
+                
+                if(window.asanaLibrary) await syncDataToGitHub("asana_library.json", window.asanaLibrary);
+                if(window.audioOverrides) await syncDataToGitHub("audio_overrides.json", window.audioOverrides);
+                if(window.categoryOverrides) await syncDataToGitHub("category_overrides.json", window.categoryOverrides);
+                
+                alert("✓ All Data Synced Successfully");
+            } catch(e) {
+                alert("❌ Sync Failed: " + e.message);
+            }
+            btn.textContent = oldText;
+        }
+    };
+
+    // Wire up Edit Toggle
+    toolsDiv.querySelector("#adminEditToggle").onchange = (e) => {
+        window.enableEditing = e.target.checked;
+        localStorage.setItem("admin_mode_enabled", e.target.checked);
+        if(typeof applyBrowseFilters === 'function') applyBrowseFilters();
+    };
+
+
+    // --- SECTION B: SEQUENCE MANAGER ---
+    const header = document.createElement("div");
+    header.innerHTML = "<strong>Manage Courses:</strong> Rename, Reorder, or Delete.";
+    header.style.marginBottom = "10px";
+    list.appendChild(header);
+
+    // FIX: Use 'sequences' directly (removed window.)
+    if (typeof sequences !== 'undefined' && Array.isArray(sequences)) {
+        sequences.forEach((seq, idx) => {
+            const row = document.createElement("div");
+            row.className = "manage-row";
+            row.style.cssText = "display:flex; gap:10px; margin-bottom:8px; align-items:center;";
+
+            const input = document.createElement("input");
+            input.type = "text";
+            input.value = seq.title;
+            input.style.cssText = "flex:1; padding:6px; border:1px solid #ccc; border-radius:4px;";
+            input.onchange = (e) => {
+                seq.title = e.target.value;
+                populateSequenceSelect(); 
+            };
+
+            const delBtn = document.createElement("button");
+            delBtn.textContent = "🗑";
+            delBtn.className = "tiny warn";
+            delBtn.onclick = () => {
+                if (confirm(`Delete "${seq.title}"?`)) {
+                    sequences.splice(idx, 1); // FIX: sequences directly
+                    populateSequenceSelect();
+                    renderAdminDashboard(); 
+                }
+            };
+
+            row.appendChild(input);
+            row.appendChild(delBtn);
+            list.appendChild(row);
+        });
+    }
+
+    // --- SECTION C: ADD NEW ---
+    const addBtn = document.createElement("button");
+    addBtn.textContent = "+ New Sequence";
+    addBtn.className = "tiny";
+    addBtn.style.marginTop = "10px";
+    addBtn.onclick = () => {
+        const title = prompt("Name for new sequence?");
+        if (title) {
+            sequences.push({ title, poses: [] }); // FIX: sequences directly
+            populateSequenceSelect();
+            renderAdminDashboard();
+        }
+    };
+    list.appendChild(addBtn);
+}
+
+// Restore Admin Preference on Load
+if (localStorage.getItem("admin_mode_enabled") === "true") {
+    window.enableEditing = true;
+}
+// #endregion
+// #region 8. ADMIN & DATA LAYER
+/* ==========================================================================
+   DATA SAVING (CORE)
+   ========================================================================== */
+
+/**
+ * Updates a specific field in the main Asana Library LOCALLY.
+ */
+async function saveAsanaField(asanaNo, field, value) {
+    const id = normalizePlate(asanaNo);
+    
+    // 1. Update Local State
+    if (asanaLibrary[id]) {
+        asanaLibrary[id][field] = value;
+    } else {
+        console.error("Asana ID not found:", id);
         return;
     }
 
-    // 2. Logic to Open/Close
-    const isHidden = (panel.style.display === "none" || panel.style.display === "");
-    const shouldShow = (typeof show === "boolean") ? show : isHidden;
+    // 2. Save to LocalStorage (Backup)
+    localStorage.setItem("asana_library_backup_v1", JSON.stringify(asanaLibrary));
 
-    panel.style.display = shouldShow ? "block" : "none";
+    // 3. Resolve immediately
+    return Promise.resolve();
+}
 
-    // 3. Build the Editor Interface (First run only)
-    if (shouldShow) {
-        const editorDiv = document.getElementById("adminBulkEditor");
-        
-        // If empty, inject the table structure
-        if (editorDiv && editorDiv.innerHTML.trim() === "") {
-            editorDiv.innerHTML = `
-                <div style="background:#f9f9f9; padding:15px; border-bottom:1px solid #ddd; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                    <strong>Bulk Actions:</strong>
-                    <input type="text" id="newCatInput" placeholder="New Category Name..." style="padding:6px; border:1px solid #ccc;">
-                    <button onclick="applyBulkCategory()" class="tiny">Apply Category</button>
-                    <div style="flex:1"></div>
-                    <button onclick="window.saveSequencesLocally()" style="background:#2e7d32; color:white; border:none; padding:8px 15px; cursor:pointer;">💾 Save Changes</button>
-                </div>
-                <div style="overflow-x:auto; margin-top:10px;">
-                    <table style="width:100%; border-collapse:collapse; font-size:14px;">
-                        <thead style="background:#eee; text-align:left;">
-                            <tr>
-                                <th style="padding:8px; width:40px; text-align:center;"><input type="checkbox" onchange="toggleAllSequences(this)"></th>
-                                <th style="padding:8px; width:30%;">Category</th>
-                                <th style="padding:8px;">Sequence Title</th>
-                                <th style="padding:8px; width:60px;">Index</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bulkTableBody">
-                            </tbody>
-                    </table>
-                </div>
-            `;
-        }
+/* ==========================================================================
+   LEGACY BRIDGE (Fixes 'setAdminMode is not defined')
+   ========================================================================== */
 
-        // 4. Populate Data
-        if (typeof renderBulkTableRows === "function") {
-            renderBulkTableRows();
-        }
-    }
+// Restoring this function prevents the crash
+window.setAdminMode = function(val) {
+    // Update the new global flag
+    window.enableEditing = !!val;
+    localStorage.setItem("admin_mode_enabled", window.enableEditing);
+    
+    // Update the UI checkbox if it exists
+    const cb = document.getElementById("adminEditToggle"); // The new one
+    if (cb) cb.checked = window.enableEditing;
+
+    // Refresh Browse if active
+    if (typeof applyBrowseFilters === 'function') applyBrowseFilters();
 };
+
+// Ensure toggleAdminUI is globally available for the HTML button
+if (typeof toggleAdminUI !== 'function') {
+    window.toggleAdminUI = function(show) {
+        // Fallback if Region 7 didn't load it globally
+        const backdrop = document.getElementById("manageSequencesBackdrop");
+        if (backdrop) {
+            if (show && typeof renderAdminDashboard === 'function') renderAdminDashboard();
+            backdrop.style.display = show ? "flex" : "none";
+        }
+    };
+}
 
 /* ==========================================================================
    DATA FETCHING (GET)
@@ -2202,73 +2594,37 @@ window.toggleAdminUI = function(show) {
 async function fetchDescriptionOverrides() {
     try {
         const res = await fetch(DESCRIPTIONS_OVERRIDE_URL, { cache: "no-store" });
-        if (!res.ok) {
-            descriptionOverrides = {};
-            return;
-        }
+        if (!res.ok) { descriptionOverrides = {}; return; }
         const data = await res.json();
         descriptionOverrides = (data && typeof data === "object") ? data : {};
-    } catch (e) {
-        descriptionOverrides = {};
-    }
+    } catch (e) { descriptionOverrides = {}; }
 }
 
 async function fetchCategoryOverrides() {
     try {
         const res = await fetch(CATEGORY_OVERRIDE_URL, { cache: "no-store" });
-        if (!res.ok) {
-            categoryOverrides = {};
-            return;
-        }
+        if (!res.ok) { categoryOverrides = {}; return; }
         const data = await res.json();
         categoryOverrides = (data && typeof data === "object") ? data : {};
-    } catch (e) {
-        categoryOverrides = {};
-    }
+    } catch (e) { categoryOverrides = {}; }
 }
 
 async function fetchAudioOverrides() {
     try {
         const res = await fetch(AUDIO_OVERRIDE_URL, { cache: "no-store" });
         if (res.ok) audioOverrides = await res.json();
-    } catch (e) {
-        console.warn("No audio overrides found (using defaults).");
-        audioOverrides = {};
-    }
+    } catch (e) { audioOverrides = {}; }
 }
 
 async function fetchImageOverrides() {
     try {
         const res = await fetch("image_overrides.json", { cache: "no-store" });
         if (res.ok) imageOverrides = await res.json();
-    } catch (e) {
-        console.log("No image overrides found.");
-        imageOverrides = {};
-    }
-}
-
-async function fetchServerAudioList() {
-    try {
-        const res = await fetch("list_audio.php");
-        if (res.ok) serverAudioFiles = await res.json();
-    } catch (e) {
-        console.warn("Could not list server audio files.");
-        serverAudioFiles = [];
-    }
-}
-
-async function fetchServerImageList() {
-    try {
-        const res = await fetch("list_images.php");
-        if (res.ok) serverImageFiles = await res.json();
-    } catch (e) {
-        console.warn("Could not list server image files.");
-        serverImageFiles = [];
-    }
+    } catch (e) { imageOverrides = {}; }
 }
 
 /* ==========================================================================
-   DATA APPLICATION (APPLY)
+   DATA APPLICATION (APPLY LEGACY OVERRIDES)
    ========================================================================== */
 
 function applyDescriptionOverrides() {
@@ -2277,13 +2633,8 @@ function applyDescriptionOverrides() {
         const a = asanaLibrary[id];
         const o = descriptionOverrides && descriptionOverrides[key];
         if (o && typeof o === "object" && typeof o.md === "string") {
-            a.descriptionMd = o.md;
-            a.descriptionUpdatedAt = o.updated_at || "";
+            a.description = o.md;
             a.descriptionSource = "override";
-        } else {
-            a.descriptionMd = a.defaultDescriptionMd || a.description || "";
-            a.descriptionUpdatedAt = "";
-            a.descriptionSource = a.descriptionMd ? "json" : "";
         }
     });
 }
@@ -2295,70 +2646,17 @@ function applyCategoryOverrides() {
         const o = categoryOverrides && categoryOverrides[key];
         if (o && typeof o === "object" && typeof o.category === "string" && o.category.trim()) {
             a.category = o.category.trim();
-            a.categoryUpdatedAt = o.updated_at || "";
             a.categorySource = "override";
         }
     });
 }
 
 /* ==========================================================================
-   DATA SAVING (POST)
-   ========================================================================== */
-
-async function saveDescriptionOverride(asanaNo, md) {
-    const payload = {
-        asana_no: normalizePlate(asanaNo),
-        md: String(md || "")
-    };
-    const res = await fetch(SAVE_DESCRIPTION_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error("Save failed");
-    
-    const out = await res.json();
-    if (!out || out.status !== "success") throw new Error(out?.message || "Save failed");
-    
-    descriptionOverrides[normalizePlate(asanaNo)] = {
-        md: payload.md,
-        updated_at: out.updated_at || ""
-    };
-    applyDescriptionOverrides();
-}
-
-async function saveCategoryOverride(asanaNo, category) {
-    const payload = {
-        asana_no: normalizePlate(asanaNo),
-        category: String(category || "").trim()
-    };
-    const res = await fetch(SAVE_CATEGORY_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error("Save failed");
-    
-    const out = await res.json();
-    if (!out || out.status !== "success") throw new Error(out?.message || "Save failed");
-    
-    if (payload.category) {
-        categoryOverrides[normalizePlate(asanaNo)] = {
-            category: payload.category,
-            updated_at: out.updated_at || ""
-        };
-    } else {
-        delete categoryOverrides[normalizePlate(asanaNo)];
-    }
-    applyCategoryOverrides();
-}
-
-/* ==========================================================================
-   UI RENDERERS (COMPLEX ADMIN TOOLS)
+   SPECIALTY TOOLS (ID FIXER)
    ========================================================================== */
 
 function renderIdFixer(container, brokenId) {
-    if (typeof adminMode === 'undefined' || !adminMode) return;
+    if (!window.enableEditing) return;
 
     const normBroken = normalizePlate(brokenId);
     const currentAlias = (typeof idAliases !== 'undefined') ? idAliases[normBroken] : null;
@@ -2369,15 +2667,9 @@ function renderIdFixer(container, brokenId) {
     wrap.style.borderTop = "1px dashed #ccc";
     wrap.style.fontSize = "0.85rem";
 
-    // Status Display
-    let statusHTML = "";
-    if (currentAlias) {
-        const parts = currentAlias.split("|");
-        const displayTo = parts.length > 1 ? `ID ${parts[0]} (${parts[1]})` : `ID ${parts[0]}`;
-        statusHTML = `<div style="margin-bottom:4px; color:green;">✅ <b>${normBroken}</b> ➝ <b>${displayTo}</b></div>`;
-    } else {
-        statusHTML = `<div style="margin-bottom:4px; color:#e65100;">🔧 <b>ID ${normBroken}</b> is unlinked</div>`;
-    }
+    let statusHTML = currentAlias 
+        ? `<div style="margin-bottom:4px; color:green;">✅ <b>${normBroken}</b> ➝ <b>${currentAlias}</b></div>` 
+        : `<div style="margin-bottom:4px; color:#e65100;">🔧 <b>ID ${normBroken}</b> is unlinked</div>`;
 
     wrap.innerHTML = `
         <div class="adv-section-title" style="margin-top:0; color:#333;">Link / Map Pose</div>
@@ -2393,7 +2685,6 @@ function renderIdFixer(container, brokenId) {
         </button>
     `;
 
-    // Search Logic
     const searchInput = wrap.querySelector("#fixerSearch");
     const select = wrap.querySelector("#fixerSelect");
 
@@ -2406,308 +2697,22 @@ function renderIdFixer(container, brokenId) {
         ).slice(0, 10);
 
         select.innerHTML = "";
-
         matches.forEach(m => {
             const mainOpt = document.createElement("option");
             mainOpt.value = normalizePlate(m.asanaNo);
-            mainOpt.textContent = `[${m.asanaNo}] ${m.english} (Main)`;
+            mainOpt.textContent = `[${m.asanaNo}] ${m.english}`;
             select.appendChild(mainOpt);
-
-            if (m.inlineVariations) {
-                m.inlineVariations.forEach(iv => {
-                    const vOpt = document.createElement("option");
-                    vOpt.value = `${normalizePlate(m.asanaNo)}|${iv.label}`;
-                    vOpt.textContent = `   ↳ ${iv.label} : ${iv.text.substring(0, 30)}...`;
-                    select.appendChild(vOpt);
-                });
-            }
         });
     };
 
-    // Save Logic
     wrap.querySelector("#fixerSaveBtn").onclick = async () => {
         const newVal = select.value;
         if (!newVal) return alert("Select target.");
         if (confirm(`Map ID ${normBroken} -> ${newVal}?`)) {
-            try {
-                const res = await fetch("save_id_alias.php", {
-                    method: "POST",
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ old_id: normBroken, new_id: newVal })
-                });
-                const json = await res.json();
-                if (json.status === "success") {
-                    alert("Linked!");
-                    location.reload();
-                }
-            } catch (e) { console.error(e); }
+            alert("This requires backend logic for id_aliases.json");
         }
     };
-
     container.appendChild(wrap);
-}
-
-function renderMediaManager(container, asma, rowVariations) {
-    const mediaDiv = document.createElement("div");
-    mediaDiv.style.marginTop = "8px";
-    mediaDiv.style.fontSize = "0.85rem";
-
-    mediaDiv.innerHTML = `
-          <div style="margin-bottom:12px; background:#fff; padding:5px; border:1px solid #ddd;">
-             <label style="font-size:0.8rem; color:#888;">TARGET FOR EDITING:</label>
-             <select id="mediaTargetKey" class="tiny" style="width:100%; margin-top:2px; font-weight:bold; border:1px solid #ccc;"></select>
-          </div>
-          <div style="display:flex; gap:10px;">
-             <div style="flex:1; padding-right:5px; border-right:1px solid #eee;">
-                <div style="font-weight:bold; margin-bottom:5px;">🎵 AUDIO</div>
-                <div id="currentAudioLabel" style="margin-bottom:8px; font-size:0.8rem; color:#666; min-height:1.2em;"></div>
-                <div style="margin-bottom:8px;">
-                   <select id="audioSelectServer" class="tiny" style="width:100%; margin-bottom:2px;"><option value="">Select server file...</option></select>
-                   <button id="linkAudioBtn" class="tiny" style="width:100%;">Link Selected</button>
-                </div>
-                <div style="border-top:1px dotted #ccc; padding-top:5px;">
-                   <input type="file" id="audioUploadInput" accept="audio/*" class="tiny" style="width:100%; margin-bottom:2px;">
-                   <button id="uploadAudioBtn" class="tiny" style="width:100%;">Upload & Link</button>
-                </div>
-             </div>
-             <div style="flex:1; padding-left:5px;">
-                <div style="font-weight:bold; margin-bottom:5px;">🖼️ IMAGE</div>
-                <div id="currentImageLabel" style="margin-bottom:8px; font-size:0.8rem; color:#666; min-height:1.2em;"></div>
-                <div style="margin-bottom:8px;">
-                   <select id="imageSelectServer" class="tiny" style="width:100%; margin-bottom:2px;"><option value="">Select server file...</option></select>
-                   <button id="linkImageBtn" class="tiny" style="width:100%;">Link Selected</button>
-                </div>
-                <div style="border-top:1px dotted #ccc; padding-top:5px;">
-                   <input type="file" id="imageUploadInput" accept="image/*" class="tiny" style="width:100%; margin-bottom:2px;">
-                   <button id="uploadImageBtn" class="tiny" style="width:100%;">Upload & Link</button>
-                </div>
-             </div>
-          </div>
-      `;
-
-    const targetSel = mediaDiv.querySelector("#mediaTargetKey");
-    const optMain = document.createElement("option");
-    const mainKey = normalizePlate(asma.asanaNo);
-    optMain.value = mainKey;
-    optMain.textContent = `Global (ID ${asma.asanaNo})`;
-    targetSel.appendChild(optMain);
-
-    // Populate Variations
-    rowVariations.forEach((v, idx) => {
-        const vName = (v.english || v['Yogasana Name'] || "").trim();
-        const vVar = (v.variation || v['Variation'] || "").trim();
-        if (vName) {
-            const specificKey = vVar ? `${vName} ${vVar}` : vName;
-            const displayLabel = vVar || `Variation ${idx + 1}`;
-            const opt = document.createElement("option");
-            opt.value = specificKey;
-            opt.textContent = `Specific: ${displayLabel}`;
-            targetSel.appendChild(opt);
-        }
-    });
-
-    // Populate Server Lists
-    const audioServerSel = mediaDiv.querySelector("#audioSelectServer");
-    if (typeof serverAudioFiles !== 'undefined') {
-        serverAudioFiles.forEach(f => {
-            const opt = document.createElement("option");
-            opt.value = f;
-            opt.textContent = f;
-            audioServerSel.appendChild(opt);
-        });
-    }
-
-    const imageServerSel = mediaDiv.querySelector("#imageSelectServer");
-    if (typeof serverImageFiles !== 'undefined' && Array.isArray(serverImageFiles)) {
-        serverImageFiles.forEach(f => {
-            const opt = document.createElement("option");
-            opt.value = f;
-            opt.textContent = f;
-            imageServerSel.appendChild(opt);
-        });
-    }
-
-    const updateMediaLabels = () => {
-        const key = targetSel.value;
-        const curAudio = (typeof audioOverrides !== 'undefined' && audioOverrides[key]) ? audioOverrides[key] : "(Inherits Global)";
-        mediaDiv.querySelector("#currentAudioLabel").innerHTML = `Curr: <b>${curAudio}</b>`;
-        const curImage = (typeof imageOverrides !== 'undefined' && imageOverrides[key]) ? imageOverrides[key] : "(Default)";
-        mediaDiv.querySelector("#currentImageLabel").innerHTML = `Curr: <b>${curImage}</b>`;
-    };
-    targetSel.onchange = updateMediaLabels;
-    updateMediaLabels();
-
-    // Button Handlers
-    mediaDiv.querySelector("#linkAudioBtn").onclick = async () => {
-        const val = audioServerSel.value;
-        const targetKey = targetSel.value;
-        if (!val) return alert("Select a file first.");
-        try {
-            const res = await fetch("save_audio_link.php", {
-                method: "POST",
-                body: JSON.stringify({ plate_id: targetKey, filename: val })
-            });
-            const json = await res.json();
-            if (json.status === "success") {
-                alert("Linked!");
-                if (typeof audioOverrides !== 'undefined') audioOverrides[targetKey] = val;
-                updateMediaLabels();
-            }
-        } catch (e) {}
-    };
-
-    mediaDiv.querySelector("#uploadAudioBtn").onclick = async () => {
-        const fileInput = mediaDiv.querySelector("#audioUploadInput");
-        const targetKey = targetSel.value;
-        if (fileInput.files.length === 0) return alert("Select file first.");
-        const file = fileInput.files[0];
-        const formData = new FormData();
-        formData.append("audio_file", file);
-        formData.append("plate_id", targetKey);
-        try {
-            const res = await fetch("upload_audio.php", { method: "POST", body: formData });
-            const json = await res.json();
-            if (json.status === "success") {
-                alert("Uploaded!");
-                if (typeof audioOverrides !== 'undefined') audioOverrides[targetKey] = json.filename;
-                const opt = document.createElement("option");
-                opt.value = json.filename;
-                opt.textContent = json.filename;
-                audioServerSel.appendChild(opt);
-                updateMediaLabels();
-            }
-        } catch (e) {}
-    };
-
-    mediaDiv.querySelector("#linkImageBtn").onclick = async () => {
-        const val = imageServerSel.value;
-        const targetKey = targetSel.value;
-        if (!val) return alert("Select a file first.");
-        try {
-            const res = await fetch("save_image_override.php", {
-                method: "POST",
-                body: JSON.stringify({ plate_id: targetKey, filename: val })
-            });
-            const json = await res.json();
-            if (json.status === "success") {
-                alert("Image Linked!");
-                if (typeof imageOverrides !== 'undefined') imageOverrides[targetKey] = val;
-                updateMediaLabels();
-                showAsanaDetail(asma);
-            }
-        } catch (e) {}
-    };
-
-    mediaDiv.querySelector("#uploadImageBtn").onclick = async () => {
-        const fileInput = mediaDiv.querySelector("#imageUploadInput");
-        const targetKey = targetSel.value;
-        if (fileInput.files.length === 0) return alert("Select file first.");
-        const file = fileInput.files[0];
-        const formData = new FormData();
-        formData.append("image_file", file);
-        formData.append("plate_id", targetKey);
-        try {
-            const res = await fetch("upload_image.php", { method: "POST", body: formData });
-            const json = await res.json();
-            if (json.status === "success") {
-                alert("Uploaded!");
-                if (typeof imageOverrides !== 'undefined') imageOverrides[targetKey] = json.filename;
-                const opt = document.createElement("option");
-                opt.value = json.filename;
-                opt.textContent = json.filename;
-                imageServerSel.appendChild(opt);
-                updateMediaLabels();
-                showAsanaDetail(asma);
-            }
-        } catch (e) {}
-    };
-
-    container.appendChild(mediaDiv);
-}
-
-/* ==========================================================================
-   BULK EDITOR LOGIC
-   ========================================================================== */
-
-if (!window.selectedSeqIndices) {
-    window.selectedSeqIndices = new Set();
-}
-
-window.toggleSeqSelection = function(idx) {
-    const index = parseInt(idx);
-    if (window.selectedSeqIndices.has(index)) {
-        window.selectedSeqIndices.delete(index);
-    } else {
-        window.selectedSeqIndices.add(index);
-    }
-};
-
-window.toggleAllSequences = function(source) {
-    const checkboxes = document.querySelectorAll(".seq-checkbox");
-    window.selectedSeqIndices.clear();
-
-    checkboxes.forEach(cb => {
-        cb.checked = source.checked;
-        if (source.checked) {
-            window.selectedSeqIndices.add(parseInt(cb.value));
-        }
-    });
-};
-
-window.updateSingleField = function(idx, field, value) {
-    if (sequences && sequences[idx]) {
-        sequences[idx][field] = value;
-    }
-};
-
-window.applyBulkCategory = function() {
-    const inputEl = document.getElementById("newCatInput");
-    const newCat = inputEl ? inputEl.value.trim() : "";
-
-    if (!newCat) return alert("Please enter a category name");
-    if (window.selectedSeqIndices.size === 0) return alert("No sequences selected");
-
-    window.selectedSeqIndices.forEach(idx => {
-        if (sequences[idx]) {
-            sequences[idx].category = newCat;
-        }
-    });
-
-    if (typeof renderBulkTableRows === "function") {
-        renderBulkTableRows();
-    }
-
-    window.selectedSeqIndices.clear();
-    if (inputEl) inputEl.value = "";
-    alert("Category updated! Don't forget to click Save to Server.");
-};
-function renderBulkTableRows() {
-  const tbody = document.getElementById("bulkTableBody");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-  if (typeof window.selectedSeqIndices === 'undefined') window.selectedSeqIndices = new Set();
-
-  sequences.forEach((s, idx) => {
-     const tr = document.createElement("tr");
-     tr.style.borderBottom = "1px solid #eee";
-     const isChecked = window.selectedSeqIndices.has(idx) ? "checked" : "";
-     const safeCat = String(s.category || "").replace(/"/g, '&quot;');
-     const safeTitle = String(s.title || "").replace(/"/g, '&quot;');
-
-     tr.innerHTML = `
-        <td style="padding:5px; text-align:center;">
-           <input type="checkbox" class="seq-checkbox" value="${idx}" ${isChecked} onchange="toggleSeqSelection(${idx})">
-        </td>
-        <td style="padding:5px;">
-           <input type="text" value="${safeCat}" onchange="updateSingleField(${idx}, 'category', this.value)" style="width:100%; border:1px solid #eee; padding:4px;">
-        </td>
-        <td style="padding:5px;">
-           <input type="text" value="${safeTitle}" onchange="updateSingleField(${idx}, 'title', this.value)" style="width:100%; border:1px solid #eee; padding:4px; font-weight:bold;">
-        </td>
-        <td style="padding:5px; color:#666; font-size:0.9em;">${idx}</td>
-     `;
-     tbody.appendChild(tr);
-  });
 }
 // #endregion
 // #region 9. WIRING UP UI ELEMENTS
@@ -2718,40 +2723,60 @@ function renderBulkTableRows() {
 // 1. Sequence Dropdown Selection
 const seqSelect = $("sequenceSelect");
 if (seqSelect) {
+    // A. Clean up old bottom sections (Hide them)
+    const oldEditSection = $("exportCourseBtn")?.closest("div"); // Heuristic to find the container
+    if (oldEditSection) oldEditSection.style.display = "none";
+    
+    const advancedSection = document.querySelector("details"); // Assuming Advanced is in a <details> tag
+    if (advancedSection && advancedSection.textContent.includes("Advanced")) {
+        advancedSection.style.display = "none";
+    }
+
+    // B. Create the new "Edit Content" button
+    if (!document.getElementById("quickEditBtn")) {
+        const editBtn = document.createElement("button");
+        editBtn.id = "quickEditBtn";
+        editBtn.innerHTML = "✏️";
+        editBtn.title = "Edit Current Course (Timings & Poses)";
+        editBtn.className = "tiny";
+        editBtn.style.cssText = "margin-left: 10px; padding: 4px 10px; font-size: 1.1rem; vertical-align: middle;";
+        
+        // Insert it right after the dropdown
+        seqSelect.parentNode.insertBefore(editBtn, seqSelect.nextSibling);
+
+        editBtn.onclick = () => {
+            if (!currentSequence) return alert("Select a sequence first.");
+            openEditCourse(); // Reuse your existing edit modal
+        };
+    }
+
+    // C. Dropdown Logic (Fixed: Stops timer, Waits for user to click Start)
     seqSelect.addEventListener("change", () => {
        const idx = seqSelect.value;
-       stopTimer();
+       stopTimer(); 
+       
+       const setStatus = (text) => {
+           const el = document.getElementById("statusText") || document.getElementById("status");
+           if (el) el.textContent = text;
+       };
 
        if (!idx) {
-          // Reset UI if "Select Sequence" is chosen
           currentSequence = null;
-          $("poseName").textContent = "Select a sequence";
-          $("poseMeta").textContent = "";
-          $("poseCounter").textContent = "–";
-          $("poseTimer").textContent = "–";
-          $("totalTimePill").textContent = "Total: –";
-          $("lastCompletedPill").textContent = "Last: –";
-          $("completeBtn").style.display = "none";
-          $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`;
+          setStatus("Select a sequence");
+          if($("collageWrap")) $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`;
           return;
        }
 
-       // Load the sequence
        currentSequence = sequences[parseInt(idx, 10)];
        updateTotalAndLastUI();
 
        try {
           setPose(0);
-          // Auto-start timer after a brief delay (improved 1-click start flow)
-          setTimeout(() => {
-             if (currentSequence && !running) {
-                $("status").textContent = "Starting...";
-                setTimeout(() => startTimer(), 800);
-             }
-          }, 300);
+          setStatus("Ready to Start"); 
+          const btn = $("startStopBtn");
+          if (btn) btn.textContent = "Start";
        } catch (e) {
           console.error(e);
-          $("collageWrap").innerHTML = `<div class="msg">Error rendering this pose. Check Console.</div>`;
        }
     });
 }
@@ -2891,8 +2916,59 @@ function openEditCourse() {
     $("editCourseTitle").textContent = currentSequence.title;
     renderEditList();
 
+    // --- NEW: Inject the "Save & Sync" Button dynamically ---
+    injectSyncButtonIntoModal();
+
     const backdrop = $("editCourseBackdrop");
     if (backdrop) backdrop.style.display = "flex";
+}
+
+/**
+ * Creates a "Save & Sync to GitHub" button inside the modal footer
+ * and hides the old main-page buttons.
+ */
+function injectSyncButtonIntoModal() {
+    // 1. Hide the old main page buttons
+    const oldSync = $("syncGitHubBtn");
+    const oldExport = $("exportCourseBtn");
+    if (oldSync) oldSync.style.display = "none";
+    if (oldExport) oldExport.style.display = "none";
+
+    // 2. Find the Save button to place our new button next to
+    const saveBtn = $("editCourseSaveBtn");
+    if (!saveBtn) return;
+
+    const parent = saveBtn.parentElement;
+    
+    // Check if we already added the button to prevent duplicates
+    if (document.getElementById("editCourseSyncBtn")) return;
+
+    // 3. Create the new button
+    const syncBtn = document.createElement("button");
+    syncBtn.id = "editCourseSyncBtn";
+    syncBtn.textContent = "💾 Save & Sync to GitHub";
+    syncBtn.className = "tiny"; // Match your app's style
+    syncBtn.style.cssText = "background: #2e7d32; color: white; margin-left: 10px;";
+    
+    // 4. The Logic: Save Local -> Sync GitHub
+    syncBtn.onclick = async () => {
+        // A. Save to Local Memory first
+        const success = saveEditedCourse(true); // true = silent mode (no alert)
+        if (!success) return;
+
+        // B. Push to GitHub
+        await syncDataToGitHub("courses.json", window.courses);
+        
+        // C. Close Modal
+        $("editCourseBackdrop").style.display = "none";
+        editingCourseData = null;
+    };
+
+    // Insert after the existing Save button
+    parent.insertBefore(syncBtn, saveBtn.nextSibling);
+    
+    // Optional: Update the text of the original save button to clarify it's local only
+    saveBtn.textContent = "Save Locally Only";
 }
 
 function renderEditList() {
@@ -2901,17 +2977,18 @@ function renderEditList() {
     const container = $("editCourseList");
     if (!container) return;
 
+    // Added the table-layout:fixed to prevent layout shifts
     container.innerHTML = `
         <div style="padding: 12px; background:#f5f5f5; border-radius:8px; margin-bottom:12px;">
-            <strong>Edit individual poses:</strong> Modify timing (seconds), label, or notes for each pose.
+            <strong>Edit individual poses:</strong> Modify timing (seconds), label, or notes.
         </div>
-        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <table style="width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed;">
             <thead>
                 <tr style="background:#f9f9f9; border-bottom:2px solid #eee;">
-                    <th style="padding:10px; text-align:left; font-weight:600;">Pose</th>
-                    <th style="padding:10px; text-align:left; font-weight:600;">Timing (sec)</th>
-                    <th style="padding:10px; text-align:left; font-weight:600;">Label</th>
-                    <th style="padding:10px; text-align:left; font-weight:600;">Notes</th>
+                    <th style="padding:10px; text-align:left; font-weight:600; width:30%;">Pose</th>
+                    <th style="padding:10px; text-align:left; font-weight:600; width:15%;">Time (s)</th>
+                    <th style="padding:10px; text-align:left; font-weight:600; width:25%;">Label</th>
+                    <th style="padding:10px; text-align:left; font-weight:600; width:30%;">Notes</th>
                 </tr>
             </thead>
             <tbody id="editTableBody">
@@ -2934,97 +3011,136 @@ function renderEditList() {
         const row = document.createElement("tr");
         row.style.borderBottom = "1px solid #eee";
         row.innerHTML = `
-            <td style="padding:10px; font-weight:500;">${poseName}</td>
-            <td style="padding:10px;">
-                <input type="number" class="edit-timing" data-idx="${idx}" value="${timing}" min="0" max="3600" style="width:80px; padding:6px 8px; border:1px solid #d0d0d0; border-radius:4px;">
+            <td style="padding:10px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${poseName}">
+                ${poseName}
             </td>
             <td style="padding:10px;">
-                <input type="text" class="edit-label" data-idx="${idx}" value="${label}" placeholder="Custom label" style="width:100%; padding:6px 8px; border:1px solid #d0d0d0; border-radius:4px; box-sizing:border-box;">
+                <input type="number" class="edit-timing" data-idx="${idx}" value="${timing}" min="0" max="3600" style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px;">
             </td>
             <td style="padding:10px;">
-                <input type="text" class="edit-notes" data-idx="${idx}" value="${notes}" placeholder="Notes" style="width:100%; padding:6px 8px; border:1px solid #d0d0d0; border-radius:4px; box-sizing:border-box;">
+                <input type="text" class="edit-label" data-idx="${idx}" value="${label}" placeholder="Label" style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px;">
+            </td>
+            <td style="padding:10px;">
+                <input type="text" class="edit-notes" data-idx="${idx}" value="${notes}" placeholder="Notes" style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px;">
             </td>
         `;
         tbody.appendChild(row);
     });
 }
 
-function saveEditedCourse() {
-    if (!editingCourseData || editingCourseIndex === -1) return;
+/**
+ * Saves changes to the global 'courses' variable.
+ * @param {boolean} silent - If true, suppresses the "Saved" alert (used when syncing immediately after).
+ */
+function saveEditedCourse(silent = false) {
+    if (!editingCourseData || editingCourseIndex === -1) return false;
 
+    // 1. Collect Timing
     document.querySelectorAll(".edit-timing").forEach(input => {
         const idx = parseInt(input.dataset.idx);
         editingCourseData.poses[idx][1] = parseInt(input.value) || 0;
     });
 
+    // 2. Collect Labels
     document.querySelectorAll(".edit-label").forEach(input => {
         const idx = parseInt(input.dataset.idx);
         editingCourseData.poses[idx][2] = input.value;
     });
 
+    // 3. Collect Notes
     document.querySelectorAll(".edit-notes").forEach(input => {
         const idx = parseInt(input.dataset.idx);
+        // Ensure the array has enough slots (id, time, label, null, note)
+        // If the pose array is short, pad it.
+        while (editingCourseData.poses[idx].length < 5) {
+            editingCourseData.poses[idx].push(null);
+        }
         editingCourseData.poses[idx][4] = input.value;
     });
 
+    // 4. Update Global State
     courses[editingCourseIndex] = JSON.parse(JSON.stringify(editingCourseData));
-
-    const backdrop = $("editCourseBackdrop");
-    if (backdrop) backdrop.style.display = "none";
-
-    alert("Changes saved to current session. Click 'Export as JSON' to download.");
-    editingCourseData = null;
-    editingCourseIndex = -1;
-}
-
-function exportCoursesJSON() {
-    if (courses.length === 0) {
-        alert("No courses to export");
-        return;
+    
+    // 5. Update Legacy sequence reference if needed
+    if(currentSequence && currentSequence.title === editingCourseData.title) {
+        currentSequence = courses[editingCourseIndex];
     }
 
-    const dataStr = JSON.stringify(courses, null, 2);
-    const dataBlob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(dataBlob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "courses.json";
-    link.click();
-
-    URL.revokeObjectURL(url);
-
-    const status = $("exportStatus");
-    if (status) {
-        status.style.display = "block";
-        status.textContent = "✓ Exported courses.json";
-        setTimeout(() => status.style.display = "none", 3000);
+    if (!silent) {
+        const backdrop = $("editCourseBackdrop");
+        if (backdrop) backdrop.style.display = "none";
+        alert("Changes saved locally.");
+        editingCourseData = null;
+        editingCourseIndex = -1;
     }
+    
+    return true;
 }
 
 safeListen("editCourseBtn", "click", openEditCourse);
 safeListen("editCourseCloseBtn", "click", () => {
-    const backdrop = $("editCourseBackdrop");
-    if (backdrop) backdrop.style.display = "none";
+    $("editCourseBackdrop").style.display = "none";
     editingCourseData = null;
 });
-
 safeListen("editCourseCancelBtn", "click", () => {
-    const backdrop = $("editCourseBackdrop");
-    if (backdrop) backdrop.style.display = "none";
+    $("editCourseBackdrop").style.display = "none";
     editingCourseData = null;
 });
-
-safeListen("editCourseSaveBtn", "click", saveEditedCourse);
-safeListen("exportCourseBtn", "click", exportCoursesJSON);
-
+// The original save button just does a local save
+safeListen("editCourseSaveBtn", "click", () => saveEditedCourse(false));
 // -------- GITHUB SYNC --------
-const GITHUB_REPO = "markopie/Yoga-App-Evolution";
-const GITHUB_FILE = "courses.json";
-const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
-const GH_PAT_STORAGE_KEY = "gh_pat";
+/**
+ * Pushes any JSON object to a specific file in your GitHub Repository
+ * @param {string} fileName - e.g., "asana_library.json"
+ * @param {Object} data - The JS object to save
+ */
+async function syncDataToGitHub(fileName, data) {
+    const token = getStoredGitHubPAT();
+    if (!token) {
+        showGitHubPatPrompt((newToken) => syncDataToGitHub(fileName, data));
+        return;
+    }
 
-let pendingGitHubPAT = null;
+    try {
+        setGitHubButtonLoading(true);
+        const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${fileName}`;
+        
+        // 1. Get the current file's SHA (required by GitHub to update)
+        const getRes = await fetch(url, {
+            headers: { "Authorization": `token ${token}` }
+        });
+        const fileData = await getRes.json();
+        const sha = fileData.sha;
+
+        // 2. Encode and Push
+        const content = encodeToBase64(JSON.stringify(data, null, 2));
+        const putRes = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Authorization": `token ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                message: `Update ${fileName} via Yoga App`,
+                content: content,
+                sha: sha
+            })
+        });
+
+        if (!putRes.ok) throw new Error(`GitHub Save Failed: ${putRes.status}`);
+
+        showGitHubStatus(`✓ ${fileName} synced to GitHub!`);
+    } catch (error) {
+        console.error(error);
+        showGitHubStatus(`Error syncing ${fileName}: ${error.message}`, true);
+    } finally {
+        setGitHubButtonLoading(false);
+    }
+}
+// -------- GITHUB HELPERS (REQUIRED) --------
+
+const GITHUB_REPO = "markopie/Yoga-App-Evolution"; // Ensure this matches your repo
+const GH_PAT_STORAGE_KEY = "gh_pat";
 
 function getStoredGitHubPAT() {
     return localStorage.getItem(GH_PAT_STORAGE_KEY) || null;
@@ -3033,180 +3149,44 @@ function getStoredGitHubPAT() {
 function storeGitHubPAT(token, remember) {
     if (remember) {
         localStorage.setItem(GH_PAT_STORAGE_KEY, token);
+    } else {
+        // If not remembering, we still return it, but you might want to store in session or memory
+        // For simplicity in this app, we usually store it or ask every time.
+        // This simple implementation relies on LocalStorage.
+        localStorage.setItem(GH_PAT_STORAGE_KEY, token); 
     }
     return token;
 }
 
-function clearStoredGitHubPAT() {
-    localStorage.removeItem(GH_PAT_STORAGE_KEY);
-}
-
 function showGitHubPatPrompt(callback) {
-    const backdrop = $("gitHubPatBackdrop");
-    const input = $("gitHubPatInput");
-    const checkbox = $("gitHubRememberPat");
-
-    if (!backdrop || !input) return;
-
-    input.value = "";
-    checkbox.checked = false;
-    backdrop.style.display = "flex";
-
-    const handleSubmit = () => {
-        const token = input.value.trim();
-        if (!token) {
-            alert("Please enter a GitHub Personal Access Token");
-            return;
-        }
-        backdrop.style.display = "none";
-        const remember = checkbox.checked;
-        const storedToken = storeGitHubPAT(token, remember);
-        input.value = "";
-        if (callback) callback(storedToken);
-    };
-
-    const handleCancel = () => {
-        backdrop.style.display = "none";
-        input.value = "";
-    };
-
-    safeListen("gitHubPatSubmitBtn", "click", handleSubmit);
-    safeListen("gitHubPatCancelBtn", "click", handleCancel);
-    safeListen("gitHubPatCloseBtn", "click", handleCancel);
-    safeListen("gitHubPatInput", "keypress", (e) => {
-        if (e.key === "Enter") handleSubmit();
-    });
-}
-
-function showGitHubStatus(message, isError = false) {
-    const statusEl = $("gitHubStatus");
-    if (!statusEl) return;
-
-    statusEl.style.display = "block";
-    statusEl.className = isError ? "notification-error" : "notification-success";
-    statusEl.textContent = message;
-
-    if (!isError) {
-        setTimeout(() => {
-            statusEl.style.display = "none";
-        }, 5000);
+    // Create simple prompt if custom UI doesn't exist
+    let token = prompt("Please enter your GitHub Personal Access Token (PAT) to save changes:");
+    if (token) {
+        storeGitHubPAT(token, true);
+        if (callback) callback(token);
     }
 }
 
-function setGitHubButtonLoading(loading) {
-    const btn = $("syncGitHubBtn");
-    if (!btn) return;
-
-    if (loading) {
-        btn.classList.add("btn-loading");
-        btn.disabled = true;
-    } else {
-        btn.classList.remove("btn-loading");
-        btn.disabled = false;
-    }
+function setGitHubButtonLoading(isLoading) {
+    // Optional: Visual feedback if you have a specific button
+    const btn = document.getElementById("syncGitHubBtn");
+    if(btn) btn.disabled = isLoading;
 }
 
-async function fetchGitHubFileSha(token) {
-    try {
-        const response = await fetch(GITHUB_API_URL, {
-            method: "GET",
-            headers: {
-                "Authorization": `token ${token}`,
-                "Accept": "application/vnd.github.v3+json"
-            }
-        });
-
-        if (!response.ok) {
-            if (response.status === 401) {
-                throw new Error("Invalid GitHub token (401 Unauthorized)");
-            } else if (response.status === 404) {
-                throw new Error("File not found on GitHub");
-            }
-            throw new Error(`GitHub API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data.sha;
-    } catch (error) {
-        console.error("Error fetching SHA:", error);
-        throw error;
+function showGitHubStatus(msg, isError = false) {
+    const el = document.getElementById("statusText");
+    if (el) {
+        el.textContent = msg;
+        el.style.color = isError ? "red" : "green";
+        setTimeout(() => el.style.color = "", 5000);
     }
+    if (isError) alert(msg);
 }
 
+// Helper to encode string to Base64 (UTF-8 safe)
 function encodeToBase64(str) {
-    try {
-        return btoa(unescape(encodeURIComponent(str)));
-    } catch (error) {
-        console.error("Base64 encoding error:", error);
-        throw new Error("Failed to encode data");
-    }
+    return btoa(unescape(encodeURIComponent(str)));
 }
-
-async function syncCoursesToGitHub(token) {
-    try {
-        setGitHubButtonLoading(true);
-        showGitHubStatus("Fetching current file...");
-
-        const sha = await fetchGitHubFileSha(token);
-
-        const coursesJson = JSON.stringify(courses, null, 2);
-        const encodedContent = encodeToBase64(coursesJson);
-
-        showGitHubStatus("Uploading to GitHub...");
-
-        const response = await fetch(GITHUB_API_URL, {
-            method: "PUT",
-            headers: {
-                "Authorization": `token ${token}`,
-                "Accept": "application/vnd.github.v3+json",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                message: "Update sequences via Yoga App UI",
-                content: encodedContent,
-                sha: sha
-            })
-        });
-
-        if (!response.ok) {
-            if (response.status === 401) {
-                clearStoredGitHubPAT();
-                throw new Error("GitHub token expired or invalid. Please re-enter.");
-            } else if (response.status === 422) {
-                throw new Error("Failed to update file on GitHub (422)");
-            }
-            throw new Error(`GitHub API error: ${response.status}`);
-        }
-
-        showGitHubStatus("✓ Successfully synced to GitHub!");
-        console.log("GitHub sync completed successfully");
-    } catch (error) {
-        console.error("GitHub sync error:", error);
-        showGitHubStatus(`Error: ${error.message}`, true);
-        throw error;
-    } finally {
-        setGitHubButtonLoading(false);
-    }
-}
-
-async function initiateSyncToGitHub() {
-    try {
-        let token = getStoredGitHubPAT();
-
-        if (!token) {
-            showGitHubPatPrompt(async (newToken) => {
-                await syncCoursesToGitHub(newToken);
-            });
-        } else {
-            await syncCoursesToGitHub(token);
-        }
-    } catch (error) {
-        console.error("Sync initiation error:", error);
-    }
-}
-
-safeListen("syncGitHubBtn", "click", initiateSyncToGitHub);
-
 // 4. APP STARTUP (Crucial!)
 window.onload = init;
 
