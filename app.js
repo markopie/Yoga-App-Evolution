@@ -8,7 +8,7 @@ const BASE_RAW_URL = "https://raw.githubusercontent.com/markopie/Yoga-App-Evolut
 const COURSES_URL = `${BASE_RAW_URL}courses.json`;
 const MANIFEST_URL = `${BASE_RAW_URL}manifest.json`;
 const ASANA_LIBRARY_URL = `${BASE_RAW_URL}asana_library.json`;
-const HISTORY_URL = `${BASE_RAW_URL}history.json`;
+const LIBRARY_URL = ASANA_LIBRARY_URL;
 
 // Overrides
 const DESCRIPTIONS_OVERRIDE_URL = `${BASE_RAW_URL}descriptions_override.json`;
@@ -252,90 +252,92 @@ function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
  }
  
  function playPoseMainAudio(asana, poseLabel = null, onComplete = null) {
-     // 1. Side Detection (Visual/Sound Effect only, not the voice cue)
-     if (poseLabel && !asana.requiresSides) {
-        const side = detectSide(poseLabel);
-        if (side) setTimeout(() => playSideCue(side), 100);
-     }
-  
-     // 2. Prepare IDs
-     const idStr = normalizePlate(asana.asanaNo);
-     console.log(`[Audio Debug] Playing ID: ${idStr}, Name: ${asana.name || asana.english}`);
+    // 1. Side Detection (Visual/Sound Effect only)
+    if (poseLabel && !asana.requiresSides) {
+       const side = detectSide(poseLabel);
+       if (side) setTimeout(() => playSideCue(side), 100);
+    }
  
-     // Helper to play and attach the 'onended' listener
-     const playSrc = (src) => {
-         const a = new Audio(src);
-         // CRITICAL: Attach the callback so side audio plays next
-         if (onComplete) {
-             a.onended = onComplete;
-         }
-         a.play()
-             .then(() => { currentAudio = a; console.log("[Audio Debug] Playing started..."); })
-             .catch(e => console.error("[Audio Debug] Playback failed:", e));
-     };
- 
-     // 3. Override Check
-     let overrideSrc = null;
-     if (typeof audioOverrides !== 'undefined') {
-         const norm = (s) => String(s || "").trim();
-         const mainName = (asana.english || asana.title || asana['Yogasana Name'] || "").trim();
-         const variation = (asana.variation || asana['Variation'] || "").trim();
-         const specificKey = variation ? `${mainName} ${variation}` : mainName;
- 
-         if (specificKey && audioOverrides[norm(specificKey)]) {
-             overrideSrc = audioOverrides[norm(specificKey)];
-         } else if (idStr && audioOverrides[idStr]) {
-             overrideSrc = audioOverrides[idStr];
-         }
-     }
- 
-     if (overrideSrc) {
-        console.log(`[Audio Debug] Using Override: ${overrideSrc}`);
-        const src = overrideSrc.includes("/") ? overrideSrc : (AUDIO_BASE + overrideSrc);
-        playSrc(src);
-        return; 
-     }
-  
-     // 4. SMART FALLBACK (Manifest Lookup)
-     const fileList = window.serverAudioFiles || [];
-     if (fileList.length > 0 && idStr) {
-         const match = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
-         if (match) {
-             console.log(`[Audio Debug] FOUND MATCH: ${match}`);
-             playSrc(AUDIO_BASE + match);
-             return;
-         }
-     }
- 
-     // 5. Legacy Fallback
-     console.log("[Audio Debug] Falling back to legacy guessing...");
-     if (!idStr) { if (onComplete) onComplete(); return; } // If no ID, just skip to side audio
- 
-     const safeName = (asana.english || "").replace(/[^a-zA-Z0-9]/g, "");
-     const candidates = [];
-     const pushId = (x) => {
-        if (!x) return;
-        const formatted = (String(x).length < 3) ? String(x).padStart(3, "0") : String(x);
-        candidates.push(`${AUDIO_BASE}${formatted}_${safeName}.mp3`);
-     };
-     pushId(idStr);
-     
-     let i = 0;
-     const tryNext = () => {
-        if (i >= candidates.length) {
-            // If all legacy guesses fail, still trigger callback so flow continues
-            if (onComplete) onComplete();
-            return; 
-        }
-        const src = candidates[i++];
+    // 2. Prepare IDs (THE FIX)
+    // Your library has 'id', but the player was looking for 'asanaNo'.
+    // We now check both.
+    const rawID = asana.asanaNo || asana.id; 
+    const idStr = normalizePlate(rawID);
+    
+    console.log(`[Audio Debug] Playing ID: ${idStr}, Name: ${asana.english || asana.name}`);
+
+    // Helper to play and attach the 'onended' listener
+    const playSrc = (src) => {
         const a = new Audio(src);
-        a.addEventListener("error", () => tryNext(), { once: true });
-        if (onComplete) a.onended = onComplete;
-        a.play().then(() => { currentAudio = a; }).catch(() => tryNext());
-     };
-  
-     tryNext();
- }
+        // CRITICAL: Attach the callback so side audio plays next
+        if (onComplete) {
+            a.onended = onComplete;
+        }
+        a.play()
+            .then(() => { currentAudio = a; })
+            .catch(e => {
+                console.warn(`[Audio Debug] Failed: ${src}`, e);
+                // If main audio fails, still trigger callback so flow continues
+                if (onComplete) onComplete();
+            });
+    };
+
+    // 3. Override Check
+    let overrideSrc = null;
+    if (typeof audioOverrides !== 'undefined') {
+        const norm = (s) => String(s || "").trim();
+        const mainName = (asana.english || asana.name || asana['Yogasana Name'] || "").trim();
+        const variation = (asana.variation || asana['Variation'] || "").trim();
+        const specificKey = variation ? `${mainName} ${variation}` : mainName;
+
+        if (specificKey && audioOverrides[norm(specificKey)]) {
+            overrideSrc = audioOverrides[norm(specificKey)];
+        } else if (idStr && audioOverrides[idStr]) {
+            overrideSrc = audioOverrides[idStr];
+        }
+    }
+
+    if (overrideSrc) {
+       console.log(`[Audio Debug] Using Override: ${overrideSrc}`);
+       const src = overrideSrc.includes("/") ? overrideSrc : (AUDIO_BASE + overrideSrc);
+       playSrc(src);
+       return; 
+    }
+ 
+    // 4. SMART FALLBACK (Manifest Lookup)
+    const fileList = window.serverAudioFiles || [];
+    
+    if (fileList.length > 0 && idStr) {
+        // Look for "001_Name.mp3" OR "001.mp3"
+        const match = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
+        
+        if (match) {
+            console.log(`[Audio Debug] FOUND MATCH: ${match}`);
+            playSrc(AUDIO_BASE + match);
+            return;
+        }
+    }
+
+    // 5. Legacy Fallback (If not in manifest)
+    console.log("[Audio Debug] Falling back to legacy guessing...");
+    
+    // If no ID found at all, skip
+    if (!idStr) { 
+        if (onComplete) onComplete(); 
+        return; 
+    } 
+
+    const safeName = (asana.english || asana.name || "").replace(/[^a-zA-Z0-9]/g, "");
+    // Try generic formats
+    const candidate = `${AUDIO_BASE}${idStr}_${safeName}.mp3`;
+    
+    const a = new Audio(candidate);
+    if (onComplete) a.onended = onComplete;
+    a.play().catch(() => {
+        console.warn("Legacy guess failed too.");
+        if (onComplete) onComplete();
+    });
+}
 
 // #endregion
 // #region 3. HELPERS & FORMATTING
@@ -528,216 +530,171 @@ function resolveId(id) {
 }
 
 // #endregion
-// #region 4. DATA LAYER & PARSING
+// #region 4. DATA LOADING
 /* ==========================================================================
-   DATA LOADING & PARSING
+   DATA LOADING & PARSING (FIXED)
    ========================================================================== */
 
-// 1. Generic JSON Loader with Robust Error Handling
+// 1. Generic JSON Loader
 async function loadJSON(url, fallback = null) {
     try {
-        const res = await fetch(HISTORY_URL + "?t=" + Date.now());
-                       if (!res.ok) {
-          console.warn(`Fetch failed ${res.status} for ${url}`);
-          return fallback;
-       }
-       const data = await res.json();
-       return data;
+        // ✅ FIX: Use the 'url' passed to the function, not HISTORY_URL
+        const res = await fetch(url);
+        if (!res.ok) {
+             console.warn(`Fetch failed ${res.status} for ${url}`);
+             return fallback;
+        }
+        return await res.json();
     } catch (e) {
-       console.error(`Error loading ${url}:`, e);
-       return fallback;
+        console.warn(`Error loading ${url}:`, e);
+        return fallback;
     }
- }
- 
- // 2. Load Courses with Robust Error Handling
- async function loadCourses() {
+}
+
+// 2. Load Courses
+async function loadCourses() {
+    // 1. Load Data
     const data = await loadJSON(COURSES_URL, []);
  
+    // 2. Validate
     if (!Array.isArray(data) || data.length === 0) {
        console.error("Failed to load courses.json - using empty array");
        courses = [];
        sequences = [];
-       if (typeof renderCourseUI === "function") renderCourseUI();
        return;
     }
  
-    // Validate each course has required fields
-    const validCourses = data.filter(course => {
-       if (!course || !course.title || !Array.isArray(course.poses)) {
-          console.warn("Invalid course detected, skipping:", course);
-          return false;
-       }
-       // Ensure category exists, default to empty string
-       if (!course.category) {
-          course.category = "";
-       }
-       return true;
-    });
- 
-    // Assign to global variables
-    courses = validCourses;
-    sequences = courses;     // For backwards compatibility
-    window.courses = courses; // CRITICAL: For GitHub Sync to work
- 
+    // 3. Assign Globals
+    // Filter out bad data and ensure global variables are set
+    courses = data.filter(c => c && c.title && Array.isArray(c.poses));
+    sequences = courses;
+    window.courses = courses; 
+    
     console.log(`Loaded ${courses.length} courses`);
- 
-    // Refresh UI
-    if (typeof renderCourseUI === "function") renderCourseUI();
- }
- 
- // 3. Local Sequence Editing (Save/Reset)
- function saveSequencesLocally() {
+
+    // 4. TRIGGER UI UPDATE (This was missing)
+    if (typeof renderSequenceDropdown === "function") {
+        renderSequenceDropdown();
+    } else if (typeof renderCourseUI === "function") {
+        renderCourseUI();
+    }
+}
+
+// 3. Local Sequence Editing (Save/Reset)
+function saveSequencesLocally() {
     if (!sequences || !sequences.length) return;
     if (typeof LOCAL_SEQ_KEY !== 'undefined') {
         localStorage.setItem(LOCAL_SEQ_KEY, JSON.stringify(sequences));
     }
-    if (typeof renderSequenceDropdown === "function") renderSequenceDropdown();
     alert("Changes saved to browser storage!");
- }
+}
  
- function resetToOriginalJSON() {
-    if(!confirm("This will erase all your custom edits and categories. Are you sure?")) return;
-    if (typeof LOCAL_SEQ_KEY !== 'undefined') {
-        localStorage.removeItem(LOCAL_SEQ_KEY);
-    }
+function resetToOriginalJSON() {
+    if(!confirm("Erase custom edits?")) return;
+    if (typeof LOCAL_SEQ_KEY !== 'undefined') localStorage.removeItem(LOCAL_SEQ_KEY);
     location.reload();
- }
- 
- // 4. Load Asana Library JSON
- async function loadAsanaLibrary() {
-    try {
-       const data = await loadJSON(ASANA_LIBRARY_URL, {});
- 
-       if (!data || typeof data !== 'object') {
-          console.error("Failed to load asana_library.json - invalid format");
-          return {};
-       }
- 
-       // Normalize all IDs in the library
-       const normalized = {};
-       Object.keys(data).forEach(rawId => {
-          const normalizedId = normalizePlate(rawId);
-          if (normalizedId) {
-             normalized[normalizedId] = data[rawId];
-             // Store the original ID reference for lookups
-             if (!normalized[normalizedId].id) {
-                normalized[normalizedId].id = normalizedId;
-             }
-          }
-       });
- 
-       console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
-       return normalized;
-    } catch (e) {
-       console.error("Failed to load asana_library.json:", e);
-       return {};
-    }
- }
- 
- /* ==========================================================================
-    IMAGE INDEXING & RESOLUTION (GITHUB + ARROWROAD OPTIMIZED)
-    ========================================================================== */
-
-/**
- * 1. Build the Image Map
- * Directly uses the simple array structure in your manifest.json
- */
-async function buildImageIndexes() {
-    const manifest = await loadJSON(MANIFEST_URL, null);
-    
-    if (!manifest || !manifest.images) {
-       console.warn("Manifest images not found at " + MANIFEST_URL);
-       asanaToUrls = {}; 
-       return; 
-    }
-
-    asanaToUrls = {}; 
-    
-    // Your manifest.images is a flat array of filenames
-    manifest.images.forEach(filename => {
-       // Extract ID (e.g., "082" from "082_Eka_Pada_Sirsasana.webp")
-       const rawID = filename.split('_')[0];
-       const normalizedKey = normalizePlate(rawID);
-       
-       // Create the absolute Arrowroad URL
-       const url = `https://arrowroad.com.au/yoga/images/${filename}`;
-
-       if (normalizedKey) {
-          if (!asanaToUrls[normalizedKey]) asanaToUrls[normalizedKey] = [];
-          if (!asanaToUrls[normalizedKey].includes(url)) {
-             asanaToUrls[normalizedKey].push(url);
-          }
-       }
-    });
-
-    Object.keys(asanaToUrls).forEach(k => asanaToUrls[k].sort());
-    console.log("✓ Image indexing complete.");
 }
 
-/**
- * 2. Find Image URL for a specific ID
- */
-function smartUrlsForPoseId(idField) {
-    let id = Array.isArray(idField) ? idField[0] : idField;
-    id = normalizePlate(id);
-    
-    if (!id) return [];
+// 4. Load Asana Library
+async function loadAsanaLibrary() {
+    // Now calls loadJSON correctly with ASANA_LIBRARY_URL
+    const data = await loadJSON(ASANA_LIBRARY_URL, {});
 
-    // Priority: Admin Overrides
+    if (!data || Object.keys(data).length === 0) {
+        console.error("Failed to load Library (or empty)");
+        return {};
+    }
+
+    // Normalize IDs (ensure "001" and "1" match)
+    const normalized = {};
+    Object.keys(data).forEach(key => {
+        // Use your existing normalizePlate function if available, else simple trim
+        const cleanId = (typeof normalizePlate === 'function') ? normalizePlate(key) : key.trim();
+        normalized[cleanId] = data[key];
+        // Ensure ID property exists
+        if (!normalized[cleanId].id) normalized[cleanId].id = cleanId;
+    });
+
+    console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
+    return normalized;
+}
+
+/* ==========================================================================
+   IMAGE INDEXING
+   ========================================================================== */
+
+async function buildImageIndexes() {
+    // Now calls loadJSON correctly with MANIFEST_URL
+    const manifest = await loadJSON(MANIFEST_URL, {});
+    
+    // Reset global map
+    window.asanaToUrls = {}; 
+
+    if (manifest && Array.isArray(manifest.images)) {
+        manifest.images.forEach(filename => {
+            // Extract ID (e.g. "082" from "082_Pose.jpg")
+            const parts = filename.split('_');
+            const rawID = parts[0];
+            
+            // Normalize
+            const cleanId = (typeof normalizePlate === 'function') ? normalizePlate(rawID) : rawID;
+            
+            // Build URL
+            const url = `https://arrowroad.com.au/yoga/images/${filename}`;
+
+            if (!window.asanaToUrls[cleanId]) window.asanaToUrls[cleanId] = [];
+            window.asanaToUrls[cleanId].push(url);
+        });
+        console.log(`✓ Image Indexing complete: ${manifest.images.length} files`);
+    } else {
+        console.warn("Manifest images not found or invalid format");
+    }
+}
+
+// Helper: Find URLs for a Pose
+function smartUrlsForPoseId(idField) {
+    if (!idField) return [];
+    let id = Array.isArray(idField) ? idField[0] : idField;
+    
+    // Normalize
+    if (typeof normalizePlate === 'function') id = normalizePlate(id);
+
+    // 1. Check Overrides
     if (typeof imageOverrides !== 'undefined' && imageOverrides[id]) {
         let ov = imageOverrides[id];
-        // If it's just a filename, point it to arrowroad
-        if (!ov.startsWith("http")) {
-            return [`https://arrowroad.com.au/yoga/images/${ov.replace('images/', '')}`];
-        }
+        if (!ov.startsWith("http")) return [`https://arrowroad.com.au/yoga/images/${ov}`];
         return [ov];
     }
 
-    // Fallback: Manifest Index
-    return asanaToUrls[id] || [];
-}
-
-/**
- * 3. Find Asana Data (Library Integration)
- */
-function findAsanaByIdOrPlate(idField) {
-    let id = Array.isArray(idField) ? idField[0] : idField;
-    if (!id) return null;
-
-    id = normalizePlate(id);
-    const asana = asanaLibrary[id]; //
-
-    if (!asana) return null;
-
-    // Return combined object
-    return normalizeAsana(id, asana);
-}
-
-/**
- * 4. Helper: Absolute Path Enforcement
- */
-function normalizeImagePath(p) {
-    if (!p) return null;
-    const s = String(p).replace(/\\/g, "/").replace(/^\.?\//, "");
+    // 2. Check Index
+    if (window.asanaToUrls && window.asanaToUrls[id]) {
+        return window.asanaToUrls[id];
+    }
     
-    if (s.startsWith("http")) return s;
-    // Strip redundant "images/" if present in the filename string
-    const cleanFilename = s.replace("images/", "");
-    return `https://arrowroad.com.au/yoga/images/${cleanFilename}`;
+    return [];
 }
+
+// Helper: Find Data
+function findAsanaByIdOrPlate(id) {
+    if (!id) return null;
+    if (typeof normalizePlate === 'function') id = normalizePlate(id);
+    return asanaLibrary[id] || null;
+}
+
+// History Loader (Clean version)
 async function setupHistory() {
     try {
-        // Fetch the file from GitHub/Server
+        // FIX: Only fetch history here. Use the history URL.
+        // We use a timestamp to prevent caching old data.
         const res = await fetch("history.json?t=" + Date.now()); 
         if (res.ok) {
             window.completionHistory = await res.json();
-            console.log("History loaded:", Object.keys(window.completionHistory).length, "sequences found.");
+            console.log(`History Loaded: ${Object.keys(window.completionHistory).length} sequences`);
         } else {
-            // If file missing, start empty
             window.completionHistory = {};
         }
     } catch (e) {
-        console.warn("History load failed, starting empty.", e);
+        console.warn("History not found (starting fresh)");
         window.completionHistory = {};
     }
 }
@@ -1030,17 +987,15 @@ function showResumePrompt(state) {
 }
 async function init() {
     try {
-        // 1. Core Config & Admin
+        const statusEl = $("statusText");
+        
+        // 1. Core Config
         if (typeof seedManualCompletionsOnce === "function") seedManualCompletionsOnce();
         if (typeof loadAdminMode === "function") loadAdminMode();
 
-        // 2. Load Overrides & History
+        // 2. Load Overrides (Parallel)
         await Promise.all([
-            typeof loadManifestAndPopulateLists === "function" ? loadManifestAndPopulateLists() : Promise.resolve(), 
-            
-            // ✅ CHANGED: Call our new history loader here
-            setupHistory(),
-
+            typeof loadManifestAndPopulateLists === "function" ? loadManifestAndPopulateLists() : Promise.resolve(),
             typeof fetchAudioOverrides === "function" ? fetchAudioOverrides() : Promise.resolve(),
             typeof fetchImageOverrides === "function" ? fetchImageOverrides() : Promise.resolve(),
             typeof fetchDescriptionOverrides === "function" ? fetchDescriptionOverrides() : Promise.resolve(),
@@ -1048,26 +1003,28 @@ async function init() {
             typeof fetchIdAliases === "function" ? fetchIdAliases() : Promise.resolve()
         ]);
 
-        // 3. Load Main Data
-        const statusEl = $("statusText");
-        if (statusEl) statusEl.textContent = "Loading asana library...";
+        // 3. Load Main Data (Sequential)
+        if (statusEl) statusEl.textContent = "Loading library...";
         asanaLibrary = await loadAsanaLibrary();
 
         if (statusEl) statusEl.textContent = "Loading courses...";
         await loadCourses();
 
-        if (statusEl) statusEl.textContent = "Loading images...";
+        if (statusEl) statusEl.textContent = "Processing images...";
         await buildImageIndexes();
 
-        // 4. Apply Logic
+        // 4. Apply Overrides
         if (typeof applyDescriptionOverrides === "function") applyDescriptionOverrides();
         if (typeof applyCategoryOverrides === "function") applyCategoryOverrides();
         
         if (typeof setupBrowseUI === "function") setupBrowseUI();
 
-        // 5. Final UI Polish
+        // 5. Finalize
         if (statusEl) statusEl.textContent = "Ready";
+        const loadText = $("loadingText");
+        if (loadText) loadText.textContent = "Select a course";
 
+        // 6. Resume Check
         const state = safeGetLocalStorage(RESUME_STATE_KEY, null);
         if (state && state.timestamp) {
             const fourHours = 4 * 60 * 60 * 1000;
@@ -1077,13 +1034,10 @@ async function init() {
                 clearProgress(); 
             }
         }
-
-        const loadText = $("loadingText");
-        if (loadText) loadText.textContent = "Select a course";
         
     } catch (e) {
         console.error("Init Error:", e);
-        if ($("statusText")) $("statusText").textContent = "Error";
+        if ($("statusText")) $("statusText").textContent = "Error loading app data";
     }
 }
 
@@ -1255,8 +1209,7 @@ function prevPose() {
 
       if (nameEl) {
           const jsonLabel = label ? String(label).trim() : "";
-          const csvName = asana ? (asana.english || asana['Yogasana Name'] || "").trim() : "";
-          let finalTitle = "";
+          const csvName = asana ? (asana.method_name || asana.English_Name || asana.name || asana.english || "").trim() : "";          let finalTitle = "";
 
           if (jsonLabel && csvName && jsonLabel !== csvName) {
               finalTitle = `${jsonLabel} - (${csvName})`;
@@ -2433,7 +2386,7 @@ function renderAdminDashboard() {
             await syncDataToGitHub("courses.json", sequences);
             
             // 2. Sync History (This is the new part!)
-            if (window.completionHistory) {
+            if (window.completionHistory && typeof HISTORY_URL !== 'undefined') {
                 await syncDataToGitHub(HISTORY_URL, window.completionHistory);
             }
 
@@ -3167,7 +3120,41 @@ function openEditCourse() {
     const backdrop = $("editCourseBackdrop");
     if (backdrop) backdrop.style.display = "flex";
 }
+/**
+ * Adds a blank row to the editing data and re-renders.
+ */
+function addNewPose() {
+    // Add a blank row structure: [ID, Time, Label, null, Notes]
+    editingCourseData.poses.push(["", 0, "", null, ""]);
+    renderEditList();
+}
 
+function deletePose(index) {
+    if (confirm("Remove this pose?")) {
+        editingCourseData.poses.splice(index, 1);
+        renderEditList();
+    }
+}
+
+function handlePoseSelection(inputElement) {
+    const val = inputElement.value.trim();
+    const idx = inputElement.dataset.idx;
+    
+    // Lookup in library by Name
+    const library = getAsanaIndex();
+    const match = library.find(a => 
+        (a.english && a.english.toLowerCase() === val.toLowerCase()) || 
+        (a['Yogasana Name'] && a['Yogasana Name'].toLowerCase() === val.toLowerCase())
+    );
+
+    if (match) {
+        // Auto-fill Label if it is currently empty
+        const labelInput = document.querySelector(`.edit-label[data-idx="${idx}"]`);
+        if (labelInput && !labelInput.value) {
+            labelInput.value = match.english || match['Yogasana Name'];
+        }
+    }
+}
 /**
  * Creates a "Save & Sync to GitHub" button inside the modal footer
  * and hides the old main-page buttons.
@@ -3222,54 +3209,127 @@ function renderEditList() {
     const container = $("editCourseList");
     if (!container) return;
 
-    // Added the table-layout:fixed to prevent layout shifts
+    // 1. GET LIBRARY: Reuse the existing reliable index
+    const library = getAsanaIndex();
+
+    // 2. BUILD SEARCH OPTIONS: Create the autocomplete list from the library
+    // We map over the library to create <option> tags for the inputs to use
+    const dataListOptions = library.map(a => {
+        // Try English, then Yogasana Name, then fall back to ID
+        const name = a.english || a['Yogasana Name'] || a.id || "";
+        // Clean quotes to prevent HTML errors
+        return `<option value="${name.replace(/"/g, '&quot;')}">`;
+    }).join("");
+
+    // 3. SETUP CONTAINER HTML
     container.innerHTML = `
         <div style="padding: 12px; background:#f5f5f5; border-radius:8px; margin-bottom:12px;">
-            <strong>Edit individual poses:</strong> Modify timing (seconds), label, or notes.
+            <strong>Edit Sequence:</strong> Add, remove, or modify poses. Search for poses by name.
         </div>
+        
+        <datalist id="asanaOptions">
+            ${dataListOptions}
+        </datalist>
+
         <table style="width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed;">
             <thead>
                 <tr style="background:#f9f9f9; border-bottom:2px solid #eee;">
-                    <th style="padding:10px; text-align:left; font-weight:600; width:30%;">Pose</th>
-                    <th style="padding:10px; text-align:left; font-weight:600; width:15%;">Time (s)</th>
-                    <th style="padding:10px; text-align:left; font-weight:600; width:25%;">Label</th>
-                    <th style="padding:10px; text-align:left; font-weight:600; width:30%;">Notes</th>
+                    <th style="padding:10px; width:5%; text-align:center;">#</th>
+                    <th style="padding:10px; text-align:left; width:35%;">Pose (Search)</th>
+                    <th style="padding:10px; text-align:left; width:15%;">Time (s)</th>
+                    <th style="padding:10px; text-align:left; width:20%;">Label</th>
+                    <th style="padding:10px; text-align:left; width:20%;">Notes</th>
+                    <th style="padding:10px; text-align:center; width:5%;"></th>
                 </tr>
             </thead>
             <tbody id="editTableBody">
             </tbody>
         </table>
+        
+        <div style="margin-top:15px; text-align:center;">
+             <button id="addPoseBtn" style="padding:8px 16px; cursor:pointer; background:#e0f7fa; border:1px solid #006064; border-radius:4px; color:#006064; font-weight:600;">
+                + Add Pose
+             </button>
+        </div>
     `;
 
     const tbody = container.querySelector("#editTableBody");
     if (!tbody) return;
 
+    // 4. RENDER ROWS
     editingCourseData.poses.forEach((pose, idx) => {
+        // Handle data structure safely
         const asanaId = Array.isArray(pose[0]) ? pose[0][0] : pose[0];
         const timing = pose[1] || 0;
         const label = pose[2] || "";
         const notes = pose[4] || "";
 
-        const asana = findAsanaByIdOrPlate(asanaId);
-        const poseName = asana ? asana.english || asana.name || asanaId : asanaId;
+        // -- LOGIC FIX: LOOKUP NAME LOCALLY --
+        // We search the library for a matching ID or asanaNo
+        const match = library.find(a => a.id == asanaId || a.asanaNo == asanaId);
+        
+        // Determine what to display in the input box
+        let poseName = "";
+        if (match) {
+            poseName = match.english || match['Yogasana Name'] || asanaId;
+        } else {
+            // If not found, show the ID (or blank if ID is null)
+            poseName = asanaId || ""; 
+        }
 
         const row = document.createElement("tr");
         row.style.borderBottom = "1px solid #eee";
         row.innerHTML = `
-            <td style="padding:10px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${poseName}">
-                ${poseName}
+            <td style="padding:10px; text-align:center; color:#888;">${idx + 1}</td>
+            
+            <td style="padding:10px;">
+                <input type="text" 
+                       class="edit-pose-name" 
+                       data-idx="${idx}" 
+                       list="asanaOptions" 
+                       value="${poseName.replace(/"/g, '&quot;')}" 
+                       placeholder="Type to search..."
+                       style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px;">
             </td>
+            
             <td style="padding:10px;">
                 <input type="number" class="edit-timing" data-idx="${idx}" value="${timing}" min="0" max="3600" style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px;">
             </td>
+            
             <td style="padding:10px;">
                 <input type="text" class="edit-label" data-idx="${idx}" value="${label}" placeholder="Label" style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px;">
             </td>
+            
             <td style="padding:10px;">
                 <input type="text" class="edit-notes" data-idx="${idx}" value="${notes}" placeholder="Notes" style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px;">
             </td>
+            
+            <td style="padding:10px; text-align:center;">
+                <button class="delete-pose-btn" data-idx="${idx}" style="background:none; border:none; color:#d32f2f; cursor:pointer; font-size:18px; font-weight:bold;">
+                    &times;
+                </button>
+            </td>
         `;
         tbody.appendChild(row);
+    });
+
+    // 5. ATTACH LISTENERS
+    
+    // Add Button
+    document.getElementById("addPoseBtn").addEventListener("click", addNewPose);
+
+    // Delete Buttons
+    document.querySelectorAll(".delete-pose-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            // Use closest to ensure we catch the click even if user clicks the icon
+            const idx = parseInt(e.target.closest('button').dataset.idx);
+            deletePose(idx);
+        });
+    });
+
+    // Smart Input (Auto-fill Label on selection)
+    document.querySelectorAll(".edit-pose-name").forEach(input => {
+        input.addEventListener("change", (e) => handlePoseSelection(e.target));
     });
 }
 
@@ -3280,33 +3340,49 @@ function renderEditList() {
 function saveEditedCourse(silent = false) {
     if (!editingCourseData || editingCourseIndex === -1) return false;
 
-    // 1. Collect Timing
-    document.querySelectorAll(".edit-timing").forEach(input => {
-        const idx = parseInt(input.dataset.idx);
-        editingCourseData.poses[idx][1] = parseInt(input.value) || 0;
-    });
+    const library = getAsanaIndex();
+    const newPoses = [];
+    const rowCount = document.querySelectorAll(".edit-pose-name").length;
 
-    // 2. Collect Labels
-    document.querySelectorAll(".edit-label").forEach(input => {
-        const idx = parseInt(input.dataset.idx);
-        editingCourseData.poses[idx][2] = input.value;
-    });
+    for (let i = 0; i < rowCount; i++) {
+        const nameInput = document.querySelector(`.edit-pose-name[data-idx="${i}"]`);
+        const timeInput = document.querySelector(`.edit-timing[data-idx="${i}"]`);
+        const labelInput = document.querySelector(`.edit-label[data-idx="${i}"]`);
+        const notesInput = document.querySelector(`.edit-notes[data-idx="${i}"]`);
 
-    // 3. Collect Notes
-    document.querySelectorAll(".edit-notes").forEach(input => {
-        const idx = parseInt(input.dataset.idx);
-        // Ensure the array has enough slots (id, time, label, null, note)
-        // If the pose array is short, pad it.
-        while (editingCourseData.poses[idx].length < 5) {
-            editingCourseData.poses[idx].push(null);
+        if (!nameInput) continue;
+
+        const nameVal = nameInput.value.trim();
+        let finalId = nameVal; // Default: keep the text if no ID found
+
+        // Reverse Lookup: Find ID based on Name
+        const match = library.find(a => 
+            (a.english && a.english.toLowerCase() === nameVal.toLowerCase()) || 
+            (a['Yogasana Name'] && a['Yogasana Name'].toLowerCase() === nameVal.toLowerCase())
+        );
+
+        if (match) {
+            // Prefer ID, fallback to asanaNo
+            finalId = match.id || match.asanaNo || nameVal;
         }
-        editingCourseData.poses[idx][4] = input.value;
-    });
 
-    // 4. Update Global State
+        // Skip completely empty rows
+        if (!finalId && !labelInput.value) continue;
+
+        newPoses.push([
+            finalId,
+            parseInt(timeInput.value) || 0,
+            labelInput.value,
+            null,
+            notesInput.value
+        ]);
+    }
+
+    // Save back to global object
+    editingCourseData.poses = newPoses;
     courses[editingCourseIndex] = JSON.parse(JSON.stringify(editingCourseData));
     
-    // 5. Update Legacy sequence reference if needed
+    // Update live sequence if it's the one currently open
     if(currentSequence && currentSequence.title === editingCourseData.title) {
         currentSequence = courses[editingCourseIndex];
     }
