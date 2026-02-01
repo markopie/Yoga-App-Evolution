@@ -509,3 +509,15 @@ th {
     }
     .modal-header { position: sticky; top: 0; z-index: 20; background: #fff; }
 }
+#poseShorthand {
+    font-family: 'Segoe UI', monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #2e7d32;
+    background: #e8f5e9;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 10px 0;
+    border-left: 5px solid #2e7d32;
+    line-height: 1.4;
+}

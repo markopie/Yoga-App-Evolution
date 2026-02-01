@@ -467,10 +467,12 @@ function formatHMS(totalSeconds) {
 }
 
 function formatTechniqueText(text) {
-   if (!text) return "";
-   let clean = text.replace(/^"|"$/g, '').trim();
-   return clean.replace(/\.(\s+|$)/g, '.\n\n');
-}
+    // SAFETY CHECK: If text is null, undefined, or an object, return empty string
+    if (!text || typeof text !== 'string') return "";
+    
+    let clean = text.replace(/^"|"$/g, '').trim();
+    return clean.replace(/\.(\s+|$)/g, '.\n\n');
+ }
 
 /* ==========================================================================
    ID & PLATE NORMALIZATION
@@ -1163,171 +1165,150 @@ function prevPose() {
    ========================================================================== */
 
    function setPose(idx, keepSamePose = false) {
-      if (!currentSequence) return;
-      const poses = currentSequence.poses || [];
-      if (idx < 0 || idx >= poses.length) return;
+    if (!currentSequence) return;
+    const poses = currentSequence.poses || [];
+    if (idx < 0 || idx >= poses.length) return;
 
-      // 1. SAVE PROGRESS
-      if (typeof saveCurrentProgress === "function") saveCurrentProgress();
+    // 1. SAVE PROGRESS
+    if (typeof saveCurrentProgress === "function") saveCurrentProgress();
 
-      currentIndex = idx;
+    currentIndex = idx;
 
-      // Reset side tracking when moving to a new pose
-      if (!keepSamePose) {
-         currentSide = "right";
-         needsSecondSide = false;
-      }
-      
-      // 2. DATA EXTRACTION
-      const currentPose = poses[idx]; 
-      const rawIdField = currentPose[0]; 
-      const seconds = currentPose[1];
-      const label    = currentPose[2]; 
-      const note     = currentPose[3] || "";
-   
-      let lookupId = Array.isArray(rawIdField) ? rawIdField[0] : rawIdField;
-      lookupId = normalizePlate(lookupId); 
-   
-      // ALIAS RESOLUTION
-      if (typeof idAliases !== 'undefined' && idAliases[lookupId]) {
-          let aliasVal = idAliases[lookupId];
-          if (aliasVal.includes("|")) aliasVal = aliasVal.split("|")[0]; 
-          lookupId = normalizePlate(aliasVal);
-      }
-   
-      // 3. SMART LOOKUP (Strict)
-      const asana = findAsanaByIdOrPlate(lookupId);
+    // Reset side tracking when moving to a new pose
+    if (!keepSamePose) {
+        currentSide = "right";
+        needsSecondSide = false;
+    }
 
-      // Check if this pose requires sides and set flag
-      if (asana && asana.requiresSides && !keepSamePose) {
-         needsSecondSide = true;
-      }
+    // 2. DATA EXTRACTION (Fixed Indexes)
+    const currentPose = poses[idx];
+    // Structure: [ID, Seconds, Label, VariationKey, Note]
+    const rawIdField = currentPose[0];
+    const seconds    = currentPose[1];
+    const label      = currentPose[2];
+    const varKey     = currentPose[3]; // Index 3 = Variation Key
+    const note       = currentPose[4] || ""; // Index 4 = Note
+    
+    let lookupId = Array.isArray(rawIdField) ? rawIdField[0] : rawIdField;
+    lookupId = normalizePlate(lookupId);
 
-      // 4. HEADER UI (RE-APPLIED)
-      
-      const nameEl = document.getElementById("poseName");
+    // ALIAS RESOLUTION
+    if (typeof idAliases !== 'undefined' && idAliases[lookupId]) {
+        let aliasVal = idAliases[lookupId];
+        if (aliasVal.includes("|")) aliasVal = aliasVal.split("|")[0];
+        lookupId = normalizePlate(aliasVal);
+    }
 
-      if (nameEl) {
-          const jsonLabel = label ? String(label).trim() : "";
-          const csvName = asana ? (asana.method_name || asana.English_Name || asana.name || asana.english || "").trim() : "";          let finalTitle = "";
+    // 3. SMART LOOKUP
+    const asana = findAsanaByIdOrPlate(lookupId);
 
-          if (jsonLabel && csvName && jsonLabel !== csvName) {
-              finalTitle = `${jsonLabel} - (${csvName})`;
-          } else {
-              finalTitle = jsonLabel || csvName || "Pose";
-          }
+    // Sides Check
+    if (asana && asana.requiresSides && !keepSamePose) {
+        needsSecondSide = true;
+    }
 
-          if (asana && asana.requiresSides) {
-              const sideSuffix = currentSide === "right" ? " (Right Side)" : " (Left Side)";
-              finalTitle += sideSuffix;
-          }
+    // --- NEW SHORTHAND EXTRACTION ---
+    let displayShorthand = "";
+    let displayTechnique = asana ? (asana.technique || "") : "";
 
-          nameEl.textContent = finalTitle; // No more crashing here!
-      }
-      
-      if (typeof updatePoseNote === "function") updatePoseNote(note);
-      if (typeof loadUserPersonalNote === "function") loadUserPersonalNote(lookupId);
-   
-      // 5. META UI
-      const idDisplay = lookupId; 
-      const metaContainer = document.getElementById("poseMeta");
-      if (metaContainer) {
-         let metaText = `ID: ${idDisplay} • ${seconds}s`;
-         metaContainer.innerHTML = metaText + " ";
-          
-         
-         if (asana) {
-            const speakBtn = document.createElement("button");
-            speakBtn.className = "tiny";
-            speakBtn.textContent = "🔊";
-            speakBtn.style.marginLeft = "10px";
-            speakBtn.onclick = (e) => { 
-               e.stopPropagation(); 
-               playAsanaAudio(asana); 
-            };
-            metaContainer.appendChild(speakBtn);
-         }
-      }
-   
-      const counterEl = document.getElementById("poseCounter");
-      if (counterEl) {
-        counterEl.textContent = `${idx + 1} / ${poses.length}`;
-     }
-   
-      // 6. TIMER LOGIC
-      currentPoseSeconds = parseInt(seconds, 10) || 0;
-      remaining = currentPoseSeconds;
-      updateTimerUI();
-   
-      // 7. IMAGE RENDERING
-      const urls = smartUrlsForPoseId(lookupId);
-      const wrap = document.getElementById("collageWrap");
-      if (wrap) {
-         wrap.innerHTML = "";
-         if (!urls || !urls.length) {
+    // Check if we have a variation object (The new standard)
+    if (asana && varKey && asana.variations && asana.variations[varKey]) {
+        const v = asana.variations[varKey];
+        // Handle both object and legacy string
+        if (typeof v === "string") {
+            displayTechnique = v;
+        } else {
+            displayShorthand = v.shorthand || "";
+            displayTechnique = v.technique || "";
+        }
+    }
+
+    // 4. HEADER UI
+    const nameEl = document.getElementById("poseName");
+    if (nameEl) {
+        // Use Label if present, else English name, else 'Pose'
+        let finalTitle = label || (asana ? (asana.english || asana.name) : "Pose");
+
+        // Append Side Suffix
+        if (asana && asana.requiresSides) {
+            finalTitle += (currentSide === "right" ? " (Right)" : " (Left)");
+        }
+        nameEl.textContent = finalTitle;
+    }
+
+    // 5. SHORTHAND UI (New)
+    const shEl = document.getElementById("poseShorthand");
+    if (shEl) {
+        shEl.textContent = displayShorthand;
+        shEl.style.display = displayShorthand ? "block" : "none";
+    }
+
+    // 6. GLOSSARY UI (New)
+    if (typeof renderSmartGlossary === "function") {
+        renderSmartGlossary(displayShorthand);
+    }
+
+    // 7. INSTRUCTIONS UI (Updated with <details>)
+    const textContainer = document.getElementById("poseInstructions");
+    if (textContainer) {
+        if (displayTechnique && typeof formatTechniqueText === 'function') {
+            textContainer.style.display = "block";
+            textContainer.innerHTML = `
+                <details>
+                    <summary style="cursor:pointer; color:#2e7d32; font-weight:600; padding:5px 0;">View Full Technique Instructions</summary>
+                    <div style="margin-top:10px; padding:10px; background:#f9f9f9; border-radius:8px; white-space: pre-wrap;">${formatTechniqueText(displayTechnique)}</div>
+                </details>`;
+        } else {
+            textContainer.style.display = "none";
+        }
+    }
+
+    // 8. NOTES UI
+    if (typeof updatePoseNote === "function") updatePoseNote(note);
+    // Legacy support if you still use this function:
+    if (typeof loadUserPersonalNote === "function") loadUserPersonalNote(lookupId);
+
+    // 9. META UI
+    const metaContainer = document.getElementById("poseMeta");
+    if (metaContainer) {
+        metaContainer.innerHTML = `ID: ${lookupId} • ${seconds}s `;
+        if (asana) {
+            const btn = document.createElement("button");
+            btn.className = "tiny";
+            btn.textContent = "🔊";
+            btn.onclick = (e) => { e.stopPropagation(); playAsanaAudio(asana); };
+            metaContainer.appendChild(btn);
+        }
+    }
+
+    if(document.getElementById("poseCounter")) {
+        document.getElementById("poseCounter").textContent = `${idx + 1} / ${poses.length}`;
+    }
+
+    // 10. TIMER & IMAGE LOGIC
+    currentPoseSeconds = parseInt(seconds, 10) || 0;
+    remaining = currentPoseSeconds;
+    updateTimerUI();
+
+    const wrap = document.getElementById("collageWrap");
+    if (wrap) {
+        wrap.innerHTML = "";
+        const urls = smartUrlsForPoseId(lookupId);
+        if (urls.length > 0) {
+            wrap.appendChild(renderCollage(urls));
+        } else {
             const div = document.createElement("div");
             div.className = "msg";
-            div.textContent = `No image found for: ${idDisplay}`;
+            div.textContent = `No image found for: ${lookupId}`;
             wrap.appendChild(div);
-         } else {
-            wrap.appendChild(renderCollage(urls));
-         }
-      }
-   
-      // 8. TEXT RENDERING
-      let instructionsText = "";
-      let targetVarName = null;
-   
-      if (asana) instructionsText = asana.technique || "";
-   
-      if (typeof idAliases !== 'undefined' && idAliases[lookupId]) {
-          const alias = idAliases[lookupId];
-          if (alias && alias.includes("|")) targetVarName = alias.split("|")[1].trim();
-      }
-      
-      if (currentPose.length > 3 && currentPose[3]) targetVarName = String(currentPose[3]).trim();
-   
-      if (targetVarName && asana && asana.inlineVariations) {
-          let match = asana.inlineVariations.find(v => v.label === targetVarName);
-          if (!match) match = asana.inlineVariations.find(v => v.label.toLowerCase() === targetVarName.toLowerCase());
-          if (match) instructionsText = match.text;
-      }
-   
-      const textContainer = document.getElementById("poseInstructions"); 
-      if (textContainer) {
-          if (instructionsText && instructionsText.trim().length > 0) {
-              textContainer.style.display = "block";
-              const formatted = (typeof formatTechniqueText === 'function') ? formatTechniqueText(instructionsText) : instructionsText;
-              const title = targetVarName ? `Instructions (${targetVarName}):` : "Instructions:";
-              textContainer.innerHTML = `<strong>${title}</strong>\n` + formatted;
-          } else {
-              textContainer.style.display = "none";
-              textContainer.textContent = "";
-          }
-      }
-   
-      // 9. BUTTON STATES & WAKE LOCK
-      const isFinal = (idx === poses.length - 1);
-      const compBtn = document.getElementById("completeBtn");
-      if (compBtn) compBtn.style.display = isFinal ? "inline-block" : "none";
-   
-      updateTotalAndLastUI();
-      if (running && asana) playAsanaAudio(asana, label);
-      if (wakeLockVisibilityHooked && typeof reacquireWakeLock === "function") reacquireWakeLock();
-      
-      // 10. ADMIN TOOL
-      if (typeof adminMode !== 'undefined' && adminMode) {
-          const toolSlot = document.getElementById("pose-admin-tools");
-          if (toolSlot && lookupId && typeof renderIdFixer === "function") {
-              toolSlot.innerHTML = ""; 
-              toolSlot.style.display = "block"; 
-              renderIdFixer(toolSlot, lookupId);
-          }
-      } else {
-          const toolSlot = document.getElementById("pose-admin-tools");
-          if (toolSlot) toolSlot.style.display = "none";
-      }
-   }
+        }
+    }
+
+    // 11. AUDIO TRIGGER
+    if (running && asana) {
+         playAsanaAudio(asana, label); 
+    }
+}
 
 /* ==========================================================================
    UI HELPERS (Notes & Stats)
@@ -1660,125 +1641,81 @@ function startBrowseAsana(asma) {
    closeBrowse();
 }
 
-function showAsanaDetail(asma) {
-   const d = document.getElementById("browseDetail");
-   if (!d) return;
-   d.innerHTML = "";
+function showAsanaDetail(asana) {
+    const d = document.getElementById("browseDetail");
+    if (!d) return;
 
-   const techniqueName = asma.english || asma['Yogasana Name'] || "(no name)";
-   const asanaIndex = getAsanaIndex();
-   const rowVariations = asanaIndex.filter(v => (v.english || v['Yogasana Name']) === techniqueName);
-   const isRestorative = (asma.category && asma.category.includes("Restorative"));
+    // 1. Basic Info
+    let content = `
+        <h2>${asana.english || asana.name}</h2>
+        <div class="muted">ID: ${asana.id || asana.asanaNo}</div>
+        <button id="playNameBtn" class="tiny" style="margin-top:10px;">🔊 Play Audio</button>
+        <hr>
+    `;
 
-   if (typeof isBrowseMobile === "function" && isBrowseMobile()) {
-      const back = document.createElement("button");
-      back.textContent = "← Back to list";
-      back.className = "tiny";
-      back.style.cssText = "margin-bottom:15px; width:100%;";
-      back.onclick = () => {
-         exitBrowseDetailMode();
-         const list = document.getElementById("browseList");
-         if (list) list.scrollTop = 0;
-      };
-      d.appendChild(back);
-   }
+    // 2. Images
+    const urls = smartUrlsForPoseId(asana.id || asana.asanaNo);
+    if (urls.length > 0) {
+        content += `<div class="browse-collage">`;
+        urls.forEach(src => {
+            content += `<img src="${src}" style="max-width:100%; border-radius:8px; margin-bottom:10px;">`;
+        });
+        content += `</div>`;
+    }
 
-   const h = document.createElement("h2");
-   h.className = "detail-title";
-   h.textContent = techniqueName;
-   const audioBtn = document.createElement("button");
-   audioBtn.textContent = "🔊";
-   audioBtn.style.cssText = "margin-left:10px; cursor:pointer; border:none; background:transparent; font-size:1.2rem;";
-   audioBtn.onclick = () => playAsanaAudio(asma, null, true); 
-   h.appendChild(audioBtn);
-   d.appendChild(h);
+    // 3. Technique (Base Pose)
+    if (asana.technique) {
+        content += `<h3>Technique</h3>
+        <div class="technique-text">${formatTechniqueText(asana.technique)}</div>`;
+    }
 
-   const sub = document.createElement("div");
-   sub.className = "sub";
-   sub.textContent = `${asma.iast || ""} • Asana # ${asma.asanaNo} • ${asma.category || ""}`;
-   d.appendChild(sub);
+    d.innerHTML = content;
 
-   if (asma.description) {
-       const descBlock = document.createElement("div");
-       descBlock.style.cssText = "margin: 10px 0; font-style: italic; color: #555; line-height: 1.4; border-left: 3px solid #eee; padding-left: 10px;";
-       descBlock.textContent = asma.description; 
-       d.appendChild(descBlock);
-   }
+    // 4. Variations Loop (The Fix for Objects)
+    if (asana.variations) {
+        const varSection = document.createElement("div");
+        varSection.innerHTML = "<hr><h3>Variations</h3>";
+        
+        Object.entries(asana.variations).forEach(([key, val]) => {
+            // DETECT: Is it a legacy string or a new object?
+            let techText = "";
+            let shortText = "";
 
-   let tabsSource = [];
-   if (asma.inlineVariations && asma.inlineVariations.length > 0) {
-       tabsSource = asma.inlineVariations.map(iv => ({
-           label: iv.label, text: iv.text, imagesId: asma.asanaNo, rowId: asma.asanaNo 
-       }));
-   } else if (rowVariations.length > 0) {
-       tabsSource = rowVariations.map((v, i) => ({
-           label: v.variation || `Stage ${i+1}`,
-           text: v.technique || v.description || "", 
-           imagesId: v.asanaNo, rowId: v.asanaNo
-       }));
-   } else {
-       tabsSource = [{ label: "Main", text: asma.technique || "", imagesId: asma.asanaNo, rowId: asma.asanaNo }];
-   }
+            if (typeof val === "string") {
+                techText = val;
+            } else if (val && typeof val === "object") {
+                techText = val.technique || "";
+                shortText = val.shorthand || "";
+            }
 
-   const tabContainer = document.createElement("div");
-   tabContainer.className = "variation-tabs";
-   const contentContainer = document.createElement("div");
-   contentContainer.className = "variation-content";
+            const wrapper = document.createElement("div");
+            wrapper.className = "variation-block";
+            wrapper.style.cssText = "background:#f9f9f9; padding:10px; margin-bottom:10px; border-radius:6px;";
+            
+            let html = `<h4>Stage ${key}</h4>`;
+            
+            // Show Shorthand if exists
+            if (shortText) {
+                html += `<div style="color:#2e7d32; font-weight:bold; margin-bottom:8px; font-family:monospace; font-size:1.1em;">
+                            ${shortText}
+                         </div>`;
+            }
+            
+            html += `<div class="technique-text">${formatTechniqueText(techText)}</div>`;
+            wrapper.innerHTML = html;
+            varSection.appendChild(wrapper);
+        });
+        
+        d.appendChild(varSection);
+    }
 
-   tabsSource.forEach((tab, idx) => {
-      const btn = document.createElement("button");
-      btn.className = idx === 0 ? "tab-btn active" : "tab-btn";
-      let rawLabel = tab.label || String(idx + 1);
-      btn.textContent = rawLabel.replace(/Variation|Stage/i, '').trim() || (idx + 1);
-      
-      const pane = document.createElement("div");
-      pane.className = "tab-pane";
-      pane.style.display = idx === 0 ? "block" : "none";
+    // Bind Audio Button
+    const btn = document.getElementById("playNameBtn");
+    if (btn) btn.onclick = () => playAsanaAudio(asana, null); // null label = browse context
 
-      const imgWrap = document.createElement("div");
-      imgWrap.className = "detail-images-wrapper";
-      const targets = [tab.imagesId];
-      const _seen = new Set();
-      imgWrap.appendChild(renderPlateSection("", targets, _seen, tab.imagesId));
-
-      const instructions = document.createElement("div");
-      instructions.className = "desc-text";
-      instructions.style.marginTop = "15px";
-      instructions.style.marginBottom = "15px";
-      const bodyInst = document.createElement("div");
-      bodyInst.style.whiteSpace = "pre-wrap"; 
-      bodyInst.style.lineHeight = "1.6";
-      bodyInst.innerHTML = `<strong>Instructions:</strong>\n` + (formatTechniqueText(tab.text) || "No instructions.");
-      instructions.appendChild(bodyInst);
-
-      if (isRestorative) {
-          pane.appendChild(instructions);
-          pane.appendChild(imgWrap);
-      } else {
-          pane.appendChild(imgWrap);
-          pane.appendChild(instructions);
-      }
-
-      btn.onclick = () => {
-         Array.from(tabContainer.children).forEach(b => b.classList.remove('active'));
-         Array.from(contentContainer.children).forEach(p => p.style.display = 'none');
-         btn.classList.add('active');
-         pane.style.display = 'block';
-      };
-
-      tabContainer.appendChild(btn);
-      contentContainer.appendChild(pane);
-   });
-
-   if (tabsSource.length > 1) d.appendChild(tabContainer);
-   d.appendChild(contentContainer);
-   d.setAttribute("data-asana-no", asma.asanaNo);
-
-   if (typeof adminMode !== 'undefined' && adminMode) {
-      renderAdminDetailTools(d, asma, rowVariations);
-   } else if (window.enableEditing) {
-       renderAdminDetailTools(d, asma, rowVariations);
-   }
+    // Admin Injector
+    const adminContainer = document.getElementById("adminFields"); // Logic for admin injection if needed
+    if (adminMode && adminContainer) renderAdminFields(d, asana);
 }
 
 function renderAdminDetailTools(container, asma, rowVariations) {
