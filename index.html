@@ -16,18 +16,28 @@
           <button type="button" onclick="toggleAdminUI(true)" style="font-size:0.9rem;">⚙️ Admin Dashboard</button>
        </div>
        
-       <div class="row" style="margin-top:10px">
-          <label class="muted" for="sequenceSelect">Course:</label>
+       <div class="row" style="margin-top:10px; gap: 8px;">
+         <select id="categoryFilter" style="max-width: 160px; font-weight:bold; color:#444;">
+            <option value="ALL">📂 All Collections</option>
+            </select>
 
-          <select id="sequenceSelect">
-             <option value="">Select a course</option>
-          </select>
-          
-          <button id="browseBtn" type="button" title="Browse / search asanas">Browse</button>
-
-          <span class="pill" id="poseCounter">–</span>
+         <select id="sequenceSelect" style="flex:1; min-width: 200px;">
+            <option value="">Select a course</option>
+         </select>
+         
+         <button id="browseBtn" type="button" title="Browse / search asanas">Browse</button>
+         
+         <span class="pill" id="poseCounter">–</span>
           <span class="pill" id="poseTimer">–</span>
-          <span class="pill" id="totalTimePill" title="Estimated total practice time for this sequence">Total: –</span>
+          
+          <div id="timeDashboard" class="time-capsule" title="Time Remaining / Total Time">
+             <div id="timeProgressFill"></div> 
+             <div class="time-content">
+                <span id="timeRemainingDisplay">--:--</span>
+                <span class="time-sep">/</span>
+                <span id="timeTotalDisplay">--:--</span>
+             </div>
+          </div>
           <span class="pill" id="lastCompletedPill" title="Last time you marked this sequence complete">Last: –</span>
 
           <div class="controls">
@@ -208,6 +218,20 @@
          </div>
       </div>
     </div>
+  </div>
+
+  <div id="focusOverlay" style="display:none;">
+   <div class="focus-header">
+     <div id="focusCourseTitle"></div>
+     <div id="focusTotalTime"></div>
+   </div>
+   
+   <div id="focusTimer">00:00</div>
+   <div id="focusPoseName"></div>
+   
+   <div id="focusImageWrap"></div>
+ 
+   <button id="focusPauseBtn">PAUSE</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

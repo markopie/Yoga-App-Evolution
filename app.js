@@ -1042,36 +1042,49 @@ async function init() {
         if ($("statusText")) $("statusText").textContent = "Error loading app data";
     }
 }
-
 /* ==========================================================================
-   TIMER ENGINE
+   TIMER ENGINE (Updated for Centered Focus Mode)
    ========================================================================== */
 
    function startTimer() {
     if (!currentSequence) return;
-    if (running) {
-        stopTimer();
-        return;
-    }
+    if (running) { stopTimer(); return; }
 
     running = true;
     enableWakeLock();
-    
-    // Update Button
-    const btn = $("startStopBtn");
-    if (btn) btn.textContent = "Pause";
 
-    // FIX: Explicitly set status to Running (overwriting "Starting...")
+    // --- ACTIVATE OVERLAY ---
+    const overlay = document.getElementById("focusOverlay");
+    if (overlay) {
+        overlay.style.display = "flex";
+        
+        // Setup Button Action
+        document.getElementById("focusPauseBtn").onclick = stopTimer;
+        
+        // Initial Data Populate
+        document.getElementById("focusCourseTitle").textContent = currentSequence.title;
+        // Trigger one UI update immediately to fill timer/images
+        updateTimerUI();
+        // Force image refresh for overlay
+        const imgWrap = document.getElementById("focusImageWrap");
+        const mainImg = document.querySelector("#collageWrap img");
+        if(imgWrap && mainImg) {
+             imgWrap.innerHTML = "";
+             imgWrap.appendChild(mainImg.cloneNode(true));
+        }
+        document.getElementById("focusPoseName").textContent = document.getElementById("poseName").textContent;
+    }
+    // ------------------------
+
     const statusEl = document.getElementById("statusText");
     if (statusEl) statusEl.textContent = "Running";
 
-    // Play audio immediately when starting (or resuming)
+    // Play Audio
     const currentPose = currentSequence.poses[currentIndex];
     if (currentPose) {
         const [idField, , poseLabel] = currentPose;
         const plate = Array.isArray(idField) ? normalizePlate(idField[0]) : normalizePlate(idField);
         const asana = findAsanaByIdOrPlate(plate);
-        // Pass 'false' to ensure side cues play (not browse context)
         if (asana) playAsanaAudio(asana, poseLabel, false);
     }
 
@@ -1089,64 +1102,135 @@ function stopTimer() {
     if (timer) clearInterval(timer);
     timer = null;
     running = false;
-    
-    // Update Button
-    const btn = $("startStopBtn");
-    if (btn) btn.textContent = "Start";
-    
-    // FIX: Set status to Paused
+
+    // --- DEACTIVATE OVERLAY ---
+    const overlay = document.getElementById("focusOverlay");
+    if (overlay) overlay.style.display = "none";
+    // --------------------------
+
+    updateTotalAndLastUI(); 
+
+    const btn = document.getElementById("startStopBtn");
+    if(btn) btn.textContent = "Start"; 
+
     const statusEl = document.getElementById("statusText");
     if (statusEl) statusEl.textContent = "Paused";
-    
+
     disableWakeLock();
 }
-
+// A. IMPROVED UPDATE TIMER UI
 function updateTimerUI() {
+    // --- 1. Main Pose Countdown ---
     const timerEl = document.getElementById("poseTimer");
-    if (!timerEl) return; // <--- This simple line prevents the crash
- 
-    if (!currentSequence) {
-       timerEl.textContent = "–";
-       timerEl.className = "";
-       return;
-    }
-    const mm = Math.floor(remaining / 60);
-    const ss = remaining % 60;
-    timerEl.textContent = `${mm}:${String(ss).padStart(2,"0")}`;
- 
-    // Add visual warning states
-    timerEl.className = "";
-    if (remaining <= 5 && remaining > 0) {
-       timerEl.className = "critical";
-    } else if (remaining <= 10 && remaining > 0) {
-       timerEl.className = "warning";
-    }
- }
+    if (timerEl) {
+        if (!currentSequence) {
+            timerEl.textContent = "–";
+            timerEl.className = "";
+        } else {
+            const mm = Math.floor(remaining / 60);
+            const ss = remaining % 60;
+            const timeStr = `${mm}:${String(ss).padStart(2,"0")}`;
+            timerEl.textContent = timeStr;
+            
+            // Sync Focus Overlay Timer
+            const focusTimer = document.getElementById("focusTimer");
+            if(focusTimer) focusTimer.textContent = timeStr;
 
+            // Visual Warnings
+            timerEl.className = "";
+            if (remaining <= 5 && remaining > 0) timerEl.className = "critical";
+            else if (remaining <= 10 && remaining > 0) timerEl.className = "warning";
+        }
+    }
+
+    // --- 2. Smart Dashboard Update ---
+    if (currentSequence) {
+        // Calculate Seconds Left (Start with CURRENT pose remaining)
+        let secondsLeft = remaining;
+
+        // FIX: Add pending 2nd side if currently on 1st side
+        if (needsSecondSide && currentSequence.poses[currentIndex]) {
+             const currentDur = Number(currentSequence.poses[currentIndex][1]) || 0;
+             secondsLeft += currentDur;
+        }
+
+        // Loop through FUTURE poses
+        const poses = currentSequence.poses;
+        for (let i = currentIndex + 1; i < poses.length; i++) {
+             const p = poses[i];
+             const dur = Number(p[1]) || 0;
+             const id = Array.isArray(p[0]) ? p[0][0] : p[0];
+             const asana = findAsanaByIdOrPlate(normalizePlate(id));
+             
+             // Account for Sides
+             secondsLeft += (asana && asana.requiresSides) ? dur * 2 : dur;
+        }
+        
+        const totalSeconds = calculateTotalSequenceTime();
+        
+        // Update Fixed Width Text Fields (No Jitter)
+        const remEl = document.getElementById("timeRemainingDisplay");
+        const totEl = document.getElementById("timeTotalDisplay");
+        
+        if (remEl) remEl.textContent = formatHMS(secondsLeft);
+        if (totEl) totEl.textContent = formatHMS(totalSeconds);
+
+        // Update Progress Bar
+        const bar = document.getElementById("timeProgressFill");
+        if (bar && totalSeconds > 0) {
+            const pct = Math.max(0, Math.min(100, (secondsLeft / totalSeconds) * 100));
+            bar.style.width = `${pct}%`;
+            bar.style.backgroundColor = pct < 10 ? "#ffccbc" : "#c8e6c9"; 
+        }
+        
+        // Sync Overlay Text
+        const focusTotal = document.getElementById("focusTotalTime");
+        if(focusTotal) {
+             focusTotal.textContent = `Time Left: ${formatHMS(secondsLeft)} / ${formatHMS(totalSeconds)}`;
+        }
+    }
+}
+
+// B. IMPROVED TOTAL TIME CALCULATION
+function calculateTotalSequenceTime() {
+    if (!currentSequence) return 0;
+    
+    return currentSequence.poses.reduce((acc, p) => {
+        const dur = Number(p[1]) || 0;
+        const id = Array.isArray(p[0]) ? p[0][0] : p[0];
+        const asana = findAsanaByIdOrPlate(normalizePlate(id));
+        
+        // Correctly calculate total based on whether pose needs sides
+        return acc + (asana && asana.requiresSides ? dur * 2 : dur);
+    }, 0);
+}
 /* ==========================================================================
    NAVIGATION
    ========================================================================== */
 
-function nextPose() {
+   function nextPose() {
     if (!currentSequence) return;
     const poses = currentSequence.poses || [];
 
-    // Check if current pose requires sides and we just finished right side
+    // SCENARIO 1: Currently on Right Side of a two-sided pose? Go to Left.
     const currentPose = poses[currentIndex];
+    
+    // We check needsSecondSide. 
+    // Note: In prevPose, we set this to TRUE if we moved back to the Right side.
     if (currentPose && needsSecondSide) {
-        // Play left side of the same pose
         currentSide = "left";
-        needsSecondSide = false;
-        setPose(currentIndex, true); // true = keep same pose, just switch side
+        needsSecondSide = false; // Next click will move to new pose
+        setPose(currentIndex, true); // Keep same pose index
         return;
     }
 
-    // Move to next pose
+    // SCENARIO 2: Move to Next Index
     if (currentIndex < poses.length - 1) {
-        currentSide = "right"; // Reset to right side for next pose
-        needsSecondSide = false;
+        currentSide = "right"; // Always start new poses on Right
+        needsSecondSide = false; // setPose will recalculate this based on the new pose data
         setPose(currentIndex + 1);
     } else {
+        // End of Sequence
         stopTimer();
         const compBtn = $("completeBtn");
         if (compBtn) compBtn.style.display = "inline-block";
@@ -1155,8 +1239,35 @@ function nextPose() {
 
 function prevPose() {
     if (!currentSequence) return;
+
+    // SCENARIO 1: Currently on Left Side? Go back to Right Side of SAME pose.
+    if (currentSide === "left") {
+        currentSide = "right";
+        needsSecondSide = true; // Re-enable the flag so "Next" will trigger Left again
+        setPose(currentIndex, true); // true = don't reset state, keep manual side override
+        return;
+    }
+
+    // SCENARIO 2: Go to Previous Index
     if (currentIndex > 0) {
-        setPose(currentIndex - 1);
+        const newIndex = currentIndex - 1;
+        
+        // Check the Previous Pose to see if it has sides
+        const prevPoseData = currentSequence.poses[newIndex];
+        const idField = prevPoseData[0];
+        const id = Array.isArray(idField) ? idField[0] : idField;
+        const cleanId = normalizePlate(id);
+        const asana = findAsanaByIdOrPlate(cleanId);
+
+        if (asana && asana.requiresSides) {
+            // It is two-sided. Since we are reversing, we land on the LEFT side.
+            currentSide = "left";
+            needsSecondSide = false; // We are on the final side, so next step is New Pose, not side switch
+            setPose(newIndex, true); // true = preserve the 'left' side we just set
+        } else {
+            // Standard pose
+            setPose(newIndex); // Standard reset
+        }
     }
 }
 
@@ -1268,15 +1379,28 @@ function prevPose() {
     // Legacy support if you still use this function:
     if (typeof loadUserPersonalNote === "function") loadUserPersonalNote(lookupId);
 
-    // 9. META UI
+    // 9. META UI & AUDIO BUTTON
     const metaContainer = document.getElementById("poseMeta");
     if (metaContainer) {
-        metaContainer.innerHTML = `ID: ${lookupId} • ${seconds}s `;
+        metaContainer.innerHTML = ""; // Clear previous
+
+        // Create a span for the text (so we can hide it via CSS)
+        const infoSpan = document.createElement("span");
+        infoSpan.className = "meta-text-only"; // CSS will hide this class in running-mode
+        infoSpan.textContent = `ID: ${lookupId} • ${seconds}s `;
+        metaContainer.appendChild(infoSpan);
+
+        // Add the Audio button (This stays visible because it's not inside infoSpan)
         if (asana) {
             const btn = document.createElement("button");
-            btn.className = "tiny";
-            btn.textContent = "🔊";
-            btn.onclick = (e) => { e.stopPropagation(); playAsanaAudio(asana); };
+            btn.className = "tiny"; // Keeps your existing design
+            btn.innerHTML = "🔊";   // Keeps your existing icon
+            btn.style.marginLeft = "10px";
+            // Prevent button from triggering other clicks
+            btn.onclick = (e) => { 
+                e.stopPropagation(); 
+                playAsanaAudio(asana); 
+            };
             metaContainer.appendChild(btn);
         }
     }
@@ -1303,6 +1427,27 @@ function prevPose() {
             wrap.appendChild(div);
         }
     }
+
+    // --- SYNC OVERLAY CONTENT (The critical fix) ---
+    const overlayName = document.getElementById("focusPoseName");
+    const overlayImageWrap = document.getElementById("focusImageWrap");
+    
+    // Sync Name
+    if (overlayName && nameEl) overlayName.textContent = nameEl.textContent;
+    
+    // Sync Image
+    if (overlayImageWrap) {
+        overlayImageWrap.innerHTML = ""; // Clear old image
+        // We re-use your smart URL logic to get fresh image source
+        const focusUrls = smartUrlsForPoseId(lookupId);
+        if (focusUrls.length > 0) {
+            // Create a fresh image tag for the overlay
+            const img = document.createElement("img");
+            img.src = focusUrls[0]; // Use primary image
+            overlayImageWrap.appendChild(img);
+        }
+    }
+    // ----------------------------
 
     // 11. AUDIO TRIGGER
     if (running && asana) {
@@ -1394,50 +1539,56 @@ function updateTotalAndLastUI() {
         }
     }
  }
-function loadUserPersonalNote(idField) {
-   const container = document.getElementById("poseDescBody");
-   if (!container) return;
-   container.innerHTML = ""; 
+ function loadUserPersonalNote(idField) {
+    const container = document.getElementById("poseDescBody");
+    if (!container) return;
+    container.innerHTML = ""; 
 
-   const rawId = Array.isArray(idField) ? idField[0] : idField;
-   const storageKey = `user_note_${normalizePlate(rawId)}`;
-   const savedNote = localStorage.getItem(storageKey) || "";
+    const rawId = Array.isArray(idField) ? idField[0] : idField;
+    // This key is already unique (e.g., "user_note_001")
+    const storageKey = `user_note_${normalizePlate(rawId)}`; 
+    const savedNote = localStorage.getItem(storageKey) || "";
 
-   const wrapper = document.createElement("div");
-   
-   const area = document.createElement("textarea");
-   area.style.width = "100%";
-   area.style.height = "80px";
-   area.style.padding = "8px";
-   area.style.border = "1px solid #ccc";
-   area.style.borderRadius = "4px";
-   area.style.fontFamily = "inherit";
-   area.placeholder = "Add your personal notes for this pose here (e.g. 'Use block under knee')...";
-   area.value = savedNote;
+    const wrapper = document.createElement("div");
+    
+    const area = document.createElement("textarea");
+    
+    // --- FIX: Add ID and Name attributes here ---
+    area.id = storageKey;    // Helps browser identify the field
+    area.name = storageKey;  // Helps browser identify the field
+    // --------------------------------------------
 
-   const status = document.createElement("div");
-   status.style.fontSize = "0.75rem";
-   status.style.marginTop = "4px";
-   status.style.color = "#888";
-   status.textContent = "Changes save automatically.";
+    area.style.width = "100%";
+    area.style.height = "80px";
+    area.style.padding = "8px";
+    area.style.border = "1px solid #ccc";
+    area.style.borderRadius = "4px";
+    area.style.fontFamily = "inherit";
+    area.placeholder = "Add your personal notes for this pose here (e.g. 'Use block under knee')...";
+    area.value = savedNote;
 
-   let timeout;
-   area.oninput = () => {
-       status.textContent = "Saving...";
-       clearTimeout(timeout);
-       timeout = setTimeout(() => {
-           localStorage.setItem(storageKey, area.value);
-           status.textContent = "✓ Saved to this device";
-           status.style.color = "green";
-           setTimeout(() => { status.style.color = "#888"; }, 2000);
-       }, 800); 
-   };
+    const status = document.createElement("div");
+    status.style.fontSize = "0.75rem";
+    status.style.marginTop = "4px";
+    status.style.color = "#888";
+    status.textContent = "Changes save automatically.";
 
-   wrapper.appendChild(area);
-   wrapper.appendChild(status);
-   container.appendChild(wrapper);
+    let timeout;
+    area.oninput = () => {
+        status.textContent = "Saving...";
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            localStorage.setItem(storageKey, area.value);
+            status.textContent = "✓ Saved to this device";
+            status.style.color = "green";
+            setTimeout(() => { status.style.color = "#888"; }, 2000);
+        }, 800); 
+    };
+
+    wrapper.appendChild(area);
+    wrapper.appendChild(status);
+    container.appendChild(wrapper);
 }
-
 function descriptionForPose(asana, fullLabel) {
    if (!asana) return "";
    
@@ -2032,131 +2183,205 @@ function renderMediaManager(container, asma, rowVariations) {
 /* ==========================================================================
    RENDERERS (COLLAGE & LISTS)
    ========================================================================== */
+/* ==========================================================================
+   RENDERERS (COLLAGE, LISTS & DROPDOWNS)
+   ========================================================================== */
 
-function renderPlateSection(title, plates, globalSeen, fallbackId) {
-   const wrap = document.createElement("div");
-   const header = document.createElement("div");
-   header.className = "section-title";
-   header.textContent = title;
-   wrap.appendChild(header);
-
-   let targets = (plates && plates.length) ? plates : [];
-   if (!targets.length && !fallbackId) {
-      const msg = document.createElement("div");
-      msg.className = "msg";
-      msg.textContent = "–";
-      wrap.appendChild(msg);
-      return wrap;
-   }
-
-   const urls = [];
-   const missing = [];
-   const seen = new Set();
-   
-   const processIds = (idList) => {
-       for (const p of idList) {
-          if (!p || p === "undefined") continue;
-          const u = (typeof urlsForPlateToken === 'function') ? urlsForPlateToken(p) : [];
-          if (!u.length) missing.push(p);
-          u.forEach(x => {
-             const g = globalSeen || null;
-             if (!seen.has(x) && !(g && g.has(x))) {
-                seen.add(x);
-                if (g) g.add(x);
-                urls.push(x);
-             }
-          });
-       }
-   };
-   processIds(targets);
-
-   if (urls.length === 0 && fallbackId) {
-       const fallbackUrls = (typeof urlsForPlateToken === 'function') ? urlsForPlateToken(fallbackId) : [];
-       if (fallbackUrls.length > 0) {
-           fallbackUrls.forEach(x => {
-               const g = globalSeen || null;
-               if (!seen.has(x) && !(g && g.has(x))) {
-                   seen.add(x);
-                   if (g) g.add(x);
-                   urls.push(x);
-               }
+   function renderPlateSection(title, plates, globalSeen, fallbackId) {
+    const wrap = document.createElement("div");
+    const header = document.createElement("div");
+    header.className = "section-title";
+    header.textContent = title;
+    wrap.appendChild(header);
+ 
+    let targets = (plates && plates.length) ? plates : [];
+    if (!targets.length && !fallbackId) {
+       const msg = document.createElement("div");
+       msg.className = "msg";
+       msg.textContent = "–";
+       wrap.appendChild(msg);
+       return wrap;
+    }
+ 
+    const urls = [];
+    const missing = [];
+    const seen = new Set();
+    
+    const processIds = (idList) => {
+        for (const p of idList) {
+           if (!p || p === "undefined") continue;
+           const u = (typeof urlsForPlateToken === 'function') ? urlsForPlateToken(p) : [];
+           if (!u.length) missing.push(p);
+           u.forEach(x => {
+              const g = globalSeen || null;
+              if (!seen.has(x) && !(g && g.has(x))) {
+                 seen.add(x);
+                 if (g) g.add(x);
+                 urls.push(x);
+              }
            });
-           while(missing.length > 0) missing.pop();
+        }
+    };
+    processIds(targets);
+ 
+    if (urls.length === 0 && fallbackId) {
+        const fallbackUrls = (typeof urlsForPlateToken === 'function') ? urlsForPlateToken(fallbackId) : [];
+        if (fallbackUrls.length > 0) {
+            fallbackUrls.forEach(x => {
+                const g = globalSeen || null;
+                if (!seen.has(x) && !(g && g.has(x))) {
+                    seen.add(x);
+                    if (g) g.add(x);
+                    urls.push(x);
+                }
+            });
+            while(missing.length > 0) missing.pop();
+        }
+    }
+ 
+    const meta = document.createElement("div");
+    meta.className = "muted";
+    meta.style.marginTop = "4px";
+    meta.style.fontSize = "0.8rem";
+    if (targets.length) {
+        meta.textContent = `Ref Plates: ${targets.join(", ")}`;
+        wrap.appendChild(meta);
+    }
+ 
+    if (urls.length) {
+       if (typeof renderCollage === "function") wrap.appendChild(renderCollage(urls));
+       else console.warn("renderCollage missing");
+    }
+ 
+    if (missing.length && urls.length === 0) {
+       const m = document.createElement("div");
+       m.className = "msg";
+       m.style.color = "#d9534f"; 
+       m.textContent = `⚠️ Image not found for Ref: ${missing.join(", ")}`;
+       wrap.appendChild(m);
+    }
+    return wrap;
+ }
+ 
+ function renderCollage(urls) {
+    const wrap = document.createElement("div");
+    wrap.className = "collage";
+    urls.forEach(u => {
+       const mob = (typeof mobileVariantUrl === 'function') ? mobileVariantUrl(u) : u;
+       const tile = document.createElement("div");
+       tile.className = "tile";
+       tile.innerHTML = `
+         <picture>
+           <source media="(max-width: 768px)" srcset="${mob}">
+           <img src="${u}" alt="" loading="lazy" decoding="async">
+         </picture>
+       `;
+       wrap.appendChild(tile);
+    });
+    return wrap;
+ }
+ 
+ // --- NEW: Category Filter Logic ---
+ function renderCategoryFilter() {
+    const filterEl = document.getElementById("categoryFilter");
+    if (!filterEl) return;
+ 
+    // 1. Get unique categories
+    const uniqueCats = new Set();
+    courses.forEach(c => {
+        const cat = c.category ? c.category.trim() : "Uncategorized";
+        uniqueCats.add(cat);
+    });
+ 
+    // 2. Save current selection
+    const currentVal = filterEl.value;
+ 
+    // 3. Rebuild Options
+    filterEl.innerHTML = `<option value="ALL">📂 All Collections</option>`;
+ 
+    Array.from(uniqueCats).sort().forEach(cat => {
+        const opt = document.createElement("option");
+        opt.value = cat;
+        
+        // Visual flair for your specific categories
+        let icon = "📁";
+        if (cat.includes("Asana")) icon = "🧘";
+        else if (cat.includes("Therapeutic")) icon = "❤️";
+        else if (cat.includes("Pranayama")) icon = "🌬️";
+        
+        opt.textContent = `${icon} ${cat}`;
+        filterEl.appendChild(opt);
+    });
+ 
+    // 4. Restore selection or default
+    filterEl.value = currentVal || "ALL";
+ 
+    // 5. Attach Listener
+    // Remove old listener to avoid duplicates
+    filterEl.onchange = () => renderCourseUI();
+ }
+ 
+ // --- UPDATED: Course Selector (Filters based on Category) ---
+ function renderCourseUI() {
+    const sel = document.getElementById("sequenceSelect");
+    const filterEl = document.getElementById("categoryFilter");
+    if (!sel) return;
+ 
+    const filterVal = filterEl ? filterEl.value : "ALL";
+    const currentVal = sel.value; 
+ 
+    sel.innerHTML = `<option value="">Select a course</option>`;
+ 
+    const grouped = {};
+    
+    courses.forEach((course, idx) => {
+       const cat = course.category ? course.category.trim() : "Uncategorized";
+       
+       // FILTER: Skip if category doesn't match (unless ALL is selected)
+       if (filterVal !== "ALL" && cat !== filterVal) return;
+ 
+       if (!grouped[cat]) grouped[cat] = [];
+       grouped[cat].push({ course, idx });
+    });
+ 
+    Object.keys(grouped).sort().forEach(catName => {
+       // Only show OptGroups if viewing ALL (otherwise it's redundant)
+       if (filterVal === "ALL") {
+           const groupEl = document.createElement("optgroup");
+           groupEl.label = catName;
+           grouped[catName].forEach(item => {
+              const opt = document.createElement("option");
+              opt.value = String(item.idx);
+              opt.textContent = item.course.title || `Course ${item.idx + 1}`;
+              groupEl.appendChild(opt);
+           });
+           sel.appendChild(groupEl);
+       } else {
+           // Flat list for specific categories
+           grouped[catName].forEach(item => {
+              const opt = document.createElement("option");
+              opt.value = String(item.idx);
+              opt.textContent = item.course.title || `Course ${item.idx + 1}`;
+              sel.appendChild(opt);
+           });
        }
-   }
-
-   const meta = document.createElement("div");
-   meta.className = "muted";
-   meta.style.marginTop = "4px";
-   meta.style.fontSize = "0.8rem";
-   if (targets.length) {
-       meta.textContent = `Ref Plates: ${targets.join(", ")}`;
-       wrap.appendChild(meta);
-   }
-
-   if (urls.length) {
-      if (typeof renderCollage === "function") wrap.appendChild(renderCollage(urls));
-      else console.warn("renderCollage missing");
-   }
-
-   if (missing.length && urls.length === 0) {
-      const m = document.createElement("div");
-      m.className = "msg";
-      m.style.color = "#d9534f"; 
-      m.textContent = `⚠️ Image not found for Ref: ${missing.join(", ")}`;
-      wrap.appendChild(m);
-   }
-   return wrap;
-}
-
-function renderCollage(urls) {
-   const wrap = document.createElement("div");
-   wrap.className = "collage";
-   urls.forEach(u => {
-      const mob = (typeof mobileVariantUrl === 'function') ? mobileVariantUrl(u) : u;
-      const tile = document.createElement("div");
-      tile.className = "tile";
-      tile.innerHTML = `
-        <picture>
-          <source media="(max-width: 768px)" srcset="${mob}">
-          <img src="${u}" alt="" loading="lazy" decoding="async">
-        </picture>
-      `;
-      wrap.appendChild(tile);
-   });
-   return wrap;
-}
-
-function renderCourseUI() {
-   const sel = $("sequenceSelect");
-   if (!sel) return;
-   const currentVal = sel.value;
-   sel.innerHTML = `<option value="">Select a course</option>`;
-
-   const grouped = {};
-   courses.forEach((course, idx) => {
-      const cat = course.category ? course.category.trim() : "Uncategorized";
-      if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push({ course, idx });
-   });
-
-   Object.keys(grouped).sort().forEach(catName => {
-      const groupEl = document.createElement("optgroup");
-      groupEl.label = catName;
-      grouped[catName].forEach(item => {
-         const opt = document.createElement("option");
-         opt.value = String(item.idx);
-         opt.textContent = item.course.title || `Course ${item.idx + 1}`;
-         groupEl.appendChild(opt);
-      });
-      sel.appendChild(groupEl);
-   });
-   if (currentVal) sel.value = currentVal;
-}
-
-function renderSequenceDropdown() {
-   renderCourseUI();
-}
+    });
+ 
+    if (currentVal) {
+        // Check if the previously selected value is still in the filtered list
+        const exists = Array.from(sel.options).some(o => o.value === currentVal);
+        if (exists) sel.value = currentVal;
+    }
+ }
+ 
+ // Main Entry Point for Dropdowns
+ function renderSequenceDropdown() {
+    renderCategoryFilter(); // Update filter options
+    renderCourseUI();       // Update course list
+ }
+ 
+ // Alias for Admin compatibility
+ const populateSequenceSelect = renderSequenceDropdown;
 
 /* ==========================================================================
    FILTER HELPERS
@@ -2254,8 +2479,11 @@ function exitBrowseDetailMode() {
 /* ==========================================================================
    CONSOLIDATED ADMIN / MANAGE UI
    ========================================================================== */
+/* ==========================================================================
+   CONSOLIDATED ADMIN / MANAGE UI
+   ========================================================================== */
 
-function toggleAdminUI(show) {
+   function toggleAdminUI(show) {
     const backdrop = document.getElementById("manageSequencesBackdrop");
     if (!backdrop) return;
     if (show) {
@@ -2277,11 +2505,7 @@ function renderAdminDashboard() {
     if (!list) return;
     list.innerHTML = "";
     
-    // Reset selection state on re-render
     if (!window.adminSelectedIndices) window.adminSelectedIndices = new Set();
-    // But clearing it every time might annoy users if we re-render on checkbox click.
-    // We will re-render intelligently or just use DOM updates. 
-    // For simplicity, we keep the Set global but don't clear it automatically unless closing.
 
     // A. GLOBAL TOOLS
     const toolsDiv = document.createElement("div");
@@ -2303,14 +2527,14 @@ function renderAdminDashboard() {
         <div style="margin-top:15px; padding-top:15px; border-top:1px solid #cceeff;">
             <div style="font-weight:bold; font-size:0.85rem; margin-bottom:5px;">Bulk Sequence Actions</div>
             <div style="display:flex; gap:5px;">
-                <input type="text" id="bulkCatInput" placeholder="New Category Name (e.g. Light on Yoga > Course 2)" style="flex:1; padding:5px; border:1px solid #ccc;">
+                <input type="text" id="bulkCatInput" placeholder="New Category Name" style="flex:1; padding:5px; border:1px solid #ccc;">
                 <button id="bulkApplyBtn" class="tiny" style="background:#007AFF; color:white;">Set Category for Selected</button>
             </div>
         </div>
     `;
     list.appendChild(toolsDiv);
 
-    // Wire up Sync (Updated to include History)
+    // Wire up Sync
     toolsDiv.querySelector("#adminSyncBtn").onclick = async () => {
         if(!confirm("Push ALL changes (Courses, Library, History) to GitHub?")) return;
         
@@ -2319,15 +2543,10 @@ function renderAdminDashboard() {
         btn.textContent = "Syncing...";
 
         try {
-            // 1. Sync Courses
             await syncDataToGitHub("courses.json", sequences);
-            
-            // 2. Sync History (This is the new part!)
             if (window.completionHistory && typeof HISTORY_URL !== 'undefined') {
                 await syncDataToGitHub(HISTORY_URL, window.completionHistory);
             }
-
-            // 3. Sync Other Files
             if(window.asanaLibrary) await syncDataToGitHub("asana_library.json", window.asanaLibrary);
             if(window.audioOverrides) await syncDataToGitHub("audio_overrides.json", window.audioOverrides);
 
@@ -2337,12 +2556,14 @@ function renderAdminDashboard() {
         }
         btn.textContent = oldText;
     };
+
     // Wire up Edit Toggle
     toolsDiv.querySelector("#adminEditToggle").onchange = (e) => {
         window.enableEditing = e.target.checked;
         localStorage.setItem("admin_mode_enabled", e.target.checked);
         if(typeof applyBrowseFilters === 'function') applyBrowseFilters();
     };
+
     // Wire up Bulk Apply
     toolsDiv.querySelector("#bulkApplyBtn").onclick = () => {
         const cat = toolsDiv.querySelector("#bulkCatInput").value.trim();
@@ -2354,8 +2575,9 @@ function renderAdminDashboard() {
             window.adminSelectedIndices.forEach(idx => {
                 if (sequences[idx]) sequences[idx].category = cat;
             });
-            populateSequenceSelect();
-            renderAdminDashboard(); // Refresh list to show new categories
+            // Update the UI immediately using our new smart renderers
+            renderSequenceDropdown(); 
+            renderAdminDashboard(); 
             alert("Updated! Remember to Sync.");
         }
     };
@@ -2371,7 +2593,6 @@ function renderAdminDashboard() {
     `;
     list.appendChild(header);
 
-    // Select All Logic
     header.querySelector("#selectAllSeqs").onchange = (e) => {
         const chk = e.target.checked;
         const boxes = list.querySelectorAll(".seq-chk");
@@ -2389,7 +2610,6 @@ function renderAdminDashboard() {
             row.className = "manage-row";
             row.style.cssText = "display:flex; gap:10px; padding:8px; border-bottom:1px solid #eee; align-items:center;";
 
-            // Checkbox
             const chkDiv = document.createElement("div");
             chkDiv.style.width = "30px";
             chkDiv.style.textAlign = "center";
@@ -2404,35 +2624,32 @@ function renderAdminDashboard() {
             };
             chkDiv.appendChild(chk);
 
-            // Category Input
             const catInput = document.createElement("input");
             catInput.type = "text";
             catInput.value = seq.category || "";
             catInput.style.cssText = "width:150px; padding:5px; border:1px solid #ccc; font-size:0.85rem;";
             catInput.onchange = (e) => {
                 seq.category = e.target.value;
-                populateSequenceSelect();
+                renderSequenceDropdown(); // Update main UI
             };
 
-            // Title Input
             const titleInput = document.createElement("input");
             titleInput.type = "text";
             titleInput.value = seq.title;
             titleInput.style.cssText = "flex:1; padding:5px; border:1px solid #ccc; font-weight:bold;";
             titleInput.onchange = (e) => {
                 seq.title = e.target.value;
-                populateSequenceSelect();
+                renderSequenceDropdown(); // Update main UI
             };
 
-            // Delete
             const delBtn = document.createElement("button");
             delBtn.textContent = "🗑";
             delBtn.className = "tiny warn";
             delBtn.onclick = () => {
                 if (confirm(`Delete "${seq.title}"?`)) {
                     sequences.splice(idx, 1);
-                    window.adminSelectedIndices.delete(idx); // Cleanup
-                    populateSequenceSelect();
+                    window.adminSelectedIndices.delete(idx);
+                    renderSequenceDropdown(); // Update main UI
                     renderAdminDashboard(); 
                 }
             };
@@ -2454,7 +2671,7 @@ function renderAdminDashboard() {
         const title = prompt("Name for new sequence?");
         if (title) {
             sequences.push({ title, category: "Uncategorized", poses: [] });
-            populateSequenceSelect();
+            renderSequenceDropdown(); // Update main UI
             renderAdminDashboard();
         }
     };
@@ -2464,6 +2681,8 @@ function renderAdminDashboard() {
 if (localStorage.getItem("admin_mode_enabled") === "true") {
     window.enableEditing = true;
 }
+
+
 // #endregion
 // #region 8. ADMIN & DATA LAYER
 /* ==========================================================================
