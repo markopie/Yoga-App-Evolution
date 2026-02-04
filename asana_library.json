@@ -2611,7 +2611,7 @@
     "category": "06_Twists",
     "description": "Malasana I or Garland pose I\nThe technique involves squatting, wrapping arms around bent legs and clasping behind, and resting the head on the floor.\nEffects: Relieves backaches, Tones abdominal organs.",
     "technique": "Stand with feet hip distance apart. Squat. Lower your hips toward the floor. Bring your arms inside your bent legs. Wrap your arms around your bent legs. Clasp your hands behind your back. Rest your head on the floor.",
-    "requiresSides": true,
+    "requiresSides": false,
     "plates": {
       "intermediate": [
         "317",
@@ -2636,7 +2636,7 @@
     "category": "06_Twists",
     "description": "Malasana II or Garland pose II\nThe technique involves squatting, catching the back of the ankles, and resting the forehead on the toes.\nEffects: Soothes back during menstrual periods, exercises abdominal organs, relieves menstrual back pain.",
     "technique": "Stand in Mountain Pose with feet and legs together. Spread the soles and toes of both feet. Bend your legs and keep your legs parallel. Press your heels into the floor. Maintain even weight on both feet. Once your knees are completely bent, spread your knees. Move your chest forward between your thighs. Squat down. Catch the back of your ankles. Rest your forehead on your toes.",
-    "requiresSides": true,
+    "requiresSides": false,
     "plates": {
       "intermediate": [],
       "final": [
@@ -5472,3 +5472,4 @@
   }
 
 }
+
