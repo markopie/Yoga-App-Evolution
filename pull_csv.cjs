@@ -1,4 +1,3 @@
-cat << 'EOF' > pull_csv.cjs
 const fs = require('fs');
 const https = require('https');
 
@@ -24,57 +23,48 @@ https.get(URL, (res) => {
 
 function convertToCSV(objData) {
     const rows = [];
-    // Force specific column order (ID first, then Name, then Shorthand)
-    const headers = new Set(["id", "english", "sanskrit", "shorthand"]); 
+    // Define exact column order
+    const headers = new Set(["id", "name", "iast", "category", "shorthand"]); 
 
     Object.entries(objData).forEach(([key, val]) => {
-        // 1. Create Base Row
         const rowData = { id: key, ...val };
 
-        // 2. EXTRACTION LOGIC: Pull 'shorthand' out of 'variations'
+        // --- LOGIC: Extract Shorthand from Variations ---
         if (val.variations && typeof val.variations === 'object') {
-            const shorthands = [];
+            const shorthandList = [];
             
-            // Loop through Stage I, Stage II, etc.
             Object.entries(val.variations).forEach(([stageKey, stageData]) => {
                 if (stageData.shorthand) {
-                    // Format: "Stage I: [The Shorthand]"
-                    shorthands.push(`${stageKey}: ${stageData.shorthand}`);
+                    // Format: "Stage I: [Text]"
+                    shorthandList.push(`${stageKey}: ${stageData.shorthand}`);
                 }
             });
 
-            // Join them with a newline so they stay in one cell but are readable
-            if (shorthands.length > 0) {
-                rowData["shorthand"] = shorthands.join("\n");
+            if (shorthandList.length > 0) {
+                rowData["shorthand"] = shorthandList.join("\n");
             }
         }
+        // ------------------------------------------------
 
-        // 3. Collect all other headers
         Object.keys(rowData).forEach(k => headers.add(k));
         rows.push(rowData);
     });
 
     const headerList = Array.from(headers);
 
-    // 4. Build CSV Rows
     const csvRows = rows.map(row => {
         return headerList.map(fieldName => {
-            let val = row[fieldName] || "";
+            let val = row[fieldName];
             
-            // If it's the remaining complex object (like the full variations data), stringify it
+            if (val === null || val === undefined) return "";
+            
+            // Stringify objects (like the leftover variations object)
             if (typeof val === 'object') val = JSON.stringify(val);
             
-            // Clean up string for CSV (escape quotes)
-            val = String(val).replace(/"/g, '""');
-            
-            // Wrap in quotes to handle the newlines we added
-            return `"${val}"`;
+            val = String(val).replace(/"/g, '""'); // Escape quotes
+            return `"${val}"`; // Wrap in quotes
         }).join(",");
     });
 
     return [headerList.join(","), ...csvRows].join("\n");
 }
-EOF
-
-# Run the script immediately
-node pull_csv.cjs
