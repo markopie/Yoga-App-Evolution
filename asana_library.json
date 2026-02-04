@@ -2331,7 +2331,7 @@
     "category": "04_Inversions_Sirsasana_Sarvangasana",
     "description": "Jathara Parivartanasana or Belly turning\nThe descriptive meaning of the name is Belly turning.\nEffects: Reduces excess fat, eradicates sluggishness of liver and spleen, eradicates pancreas sluggishness.",
     "technique": "Lie flat on your back. Stretch your arms out to the sides at shoulder level. Bring your legs perpendicular to your torso. Keep your core strong. Exhale and lower both legs sideways to the floor. Ensure your shoulders remain grounded. Continue twisting the abdomen and chest. Bring your toes toward your hand. Inhale and gently bring the legs back to the center. Exhale out completely.",
-    "requiresSides": false,
+    "requiresSides": true,
     "plates": {
       "intermediate": [
         "272",
@@ -5470,4 +5470,5 @@
     "variations": {},
     "id": "220"
   }
+
 }
