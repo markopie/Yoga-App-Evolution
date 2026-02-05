@@ -5487,8 +5487,137 @@
     },
     "variations": {},
     "id": "221"
+  },
+  "222": {
+    "name": "Sanchalana (Circulation Flow)",
+    "iast": "Sañcālana",
+    "page2001": "",
+    "page2015": "",
+    "intensity": "Low",
+    "note": "Always move the massage pressure toward the heart to support lymphatic and venous return.",
+    "category": "11_Ayurvedic_Toning",
+    "description": "Sanchalana (Circulation Flow)\nThis is a systematic full-body self-massage routine that moves from the feet and torso upward to the heart area.\nEffects: Enhances systemic circulation, stimulates lymphatic drainage, supports kidney and digestive function, and promotes a sense of grounded vitality.",
+    "technique": "Begin by placing the fingertips at the navel. Using both hands, press and release around the abdomen, gradually moving the pressure upward toward the heart. Shift the hands to the lower back and kidney area; continue the press-and-release motion over the ribs, moving upward toward the heart. Transition to the right foot. Grasp and massage the toes, soles, and the top of the foot. Continue the upward motion through the calves, thighs, and hips, then move across the stomach toward the heart. Repeat this sequence on the left side, starting from the left foot and moving up through the leg and hip, finishing at the heart. Maintain firm yet comfortable pressure throughout the routine to encourage the flow of energy and circulation.",
+    "requiresSides": false,
+    "plates": {
+      "intermediate": [],
+      "final": []
+    },
+    "variations": {},
+    "id": "222"
+  },
+  "223": {
+    "name": "Spinal Rock / Jhulana",
+    "iast": "Jhulana",
+    "page2001": "",
+    "page2015": "",
+    "intensity": "Low",
+    "note": "Keep the neck completely relaxed and the breath fluid during the rocking motion.",
+    "category": "11_Ayurvedic_Toning",
+    "description": "Spinal Rock / Jhulana\nThis is a simple, gentle supine exercise that uses a rocking motion to release tension and relax the spine and lower back.\nEffects: Massages the spinal column, releases tightness in the lumbar region, soothes the nervous system, and promotes physical relaxation before deeper asana practice.",
+    "technique": "Lie flat on the back, lengthening the spine and keeping the head and neck long and free. Draw the knees up to the chest and clasp the hands over the knees. Begin to roll slowly and easily from side to side. Maintain a relaxed neck and breathe normally throughout the movement. Perform five rolls to each side. To finish, release the arms and slowly extend the legs out from the hips, allowing the entire body to rest in a state of complete relaxation.",
+    "requiresSides": false,
+    "plates": {
+      "intermediate": [],
+      "final": []
+    },
+    "variations": {},
+    "id": "223"
+  },
+  "224": {
+    "name": "Seat Firming Pose—Vajrasana",
+    "iast": "Vajrāsana",
+    "page2001": "",
+    "page2015": "",
+    "intensity": "Low",
+    "note": "Focus on the synchronization of the breath with the lifting and lowering of the body.",
+    "category": "11_Ayurvedic_Toning",
+    "description": "Seat Firming Pose—Vajrasana\nThis exercise is a slow, rhythmic movement performed in a kneeling position, coordinated with deep breathing, that focuses on lengthening the spine and keeping the chest open.\nEffects: Strengthens the pelvic region, removes tension from the knees and ankles, and builds a strong foundation for the back.",
+    "technique": "Begin by kneeling and sitting with the buttocks on the heels. The feet should be slightly apart and the big toes crossed. Lengthen the spine, widen the rib cage, and slightly lift the chest while keeping the head and neck long and free. Look straight ahead and breathe easily, placing the hands in the lap with the right hand on top of the left, palms up. As you inhale, lift the buttocks off the heels and come up to a full kneeling position. Keep the spine lengthened, the chest open, and the shoulders relaxed. On the exhalation, slowly lower the body back down to the heels. Repeat the movement smoothly and slowly with even breaths, keeping the front and back of the body active and long.",
+    "requiresSides": false,
+    "plates": {
+      "intermediate": [],
+      "final": []
+    },
+    "variations": {},
+    "id": "224"
+  },
+  "225": {
+    "name": "Pranamasana (Prayer Pose)",
+    "iast": "Praṇāmāsana",
+    "page2001": "",
+    "page2015": "",
+    "intensity": "Low",
+    "note": "Focus on the firm connection between the palms and the grounding of the feet.",
+    "category": "11_Ayurvedic_Toning",
+    "description": "Pranamasana (Prayer Pose)\nPranamasana is a grounding posture symbolizing reverence, gratitude, and connection. It is used to center the mind and honor the inner self at the beginning or end of a practice.\nEffects: Fosters peace and humility, centers the mind, improves balance, and establishes a calm respiratory rhythm.",
+    "technique": "Stand tall with the feet together, rooting down firmly through the soles. Bring the palms together at the heart center in Anjali Mudra. Ensure the spine is straight, the core is lightly engaged, and the shoulders are relaxed away from the ears. Maintain a soft gaze straight ahead or gently close the eyes. Focus on deep, calm breaths to center the mind and express gratitude. Hold the position while maintaining a vertical line from the crown of the head through the center of the body to the heels, ensuring the weight is distributed evenly across both feet.",
+    "requiresSides": false,
+    "plates": {
+      "intermediate": [],
+      "final": []
+    },
+    "variations": {},
+    "id": "225"
+  },
+  "226": {
+    "name": "Hasta Uttanasana (Raised Hands Pose)",
+    "iast": "Hasta Uttānāsana",
+    "page2001": "",
+    "page2015": "",
+    "intensity": "Medium",
+    "note": "Keep the core engaged and legs strong to protect the lower back during the backbend.",
+    "category": "11_Ayurvedic_Toning",
+    "description": "Hasta Uttanasana (Raised Hands Pose)\nA standing posture that involves a gentle backward arch and overhead arm extension to open the front of the body.\nEffects: Intensely stretches the spine, chest, and abdomen, expands the lungs to improve breathing capacity, and energizes the entire system. It is a key movement in the Sun Salutation sequence.",
+    "technique": "Begin by standing tall in Tadasana (Mountain Pose) with the feet together and weight evenly distributed. On a deep inhalation, sweep the arms overhead and bring the palms together. Simultaneously lift the chest and gently arch the back, reaching up and slightly behind while lengthening the spine. Maintain a gaze toward the thumbs or slightly upward. Ensure the core remains engaged and the legs stay firm to support the torso. Hold the extension briefly, focusing on the expansion of the ribs, then exhale as you slowly return to a neutral standing position with arms at the sides.",
+    "requiresSides": false,
+    "plates": {
+      "intermediate": [],
+      "final": []
+    },
+    "variations": {},
+    "id": "226"
+  },
+  "227": {
+    "name": "Equestrian Pose (Ashwa Sanchalanasana)",
+    "iast": "Aśwa Sañcalanāsana",
+    "page2001": "",
+    "page2015": "",
+    "intensity": "Medium",
+    "note": "Ensure the front knee is directly above the ankle to protect the joint; use a blanket under the back knee for comfort if needed.",
+    "category": "11_Ayurvedic_Toning",
+    "description": "Equestrian Position (Ashwa Sanchalanasana)\nA foundational asymmetrical low lunge that stretches the hips and groin while grounding the body.\nEffects: Stretches the hip flexors and psoas muscles, tones the abdominal organs, improves balance, and promotes mental focus and stability.",
+    "technique": "Begin in a standing forward bend (Uttanasana) with the palms on the floor beside the feet. On an inhalation, step one leg far back, resting the knee and the ball of the foot on the mat. Align the front knee at a 90-degree angle directly above the ankle, keeping the thigh parallel to the floor. Place the fingertips or palms on the floor on either side of the front foot, shoulder-width apart. Roll the shoulders back and down to open the chest and lengthen the spine. Gently lower the hips and pelvis toward the floor. Tilt the head slightly backward and direct the gaze forward or slightly upward. Hold the posture while taking slow, deep breaths, sinking the hips further with each exhalation. To release, inhale and step the back foot forward to return to Uttanasana. Repeat the sequence by stepping the opposite leg back.",
+    "requiresSides": true,
+    "plates": {
+      "intermediate": [],
+      "final": [
+        "Ashwa_Sanchalanasana"
+      ]
+    },
+    "variations": {},
+    "id": "227"
+  },
+  "228": {
+    "name": "Eight Limbs Position (Ashtanga Namaskara)",
+    "iast": "Aṣṭāṅga Namaskāra",
+    "page2001": "",
+    "page2015": "",
+    "intensity": "Medium",
+    "note": "Ensure the hips and abdomen remain lifted; only the eight specific points should touch the floor.",
+    "category": "11_Ayurvedic_Toning",
+    "description": "Eight Limbs Position (Ashtanga Namaskara)\nA yoga posture where the body rests on eight points of contact with the floor: both feet, both knees, both hands, the chest, and the chin or forehead. It is a foundational transition in Sun Salutations.\nEffects: Strengthens the arms, chest, and core muscles, improves flexibility in the spine and neck, and serves as an excellent preparation for deeper backbending poses.",
+    "technique": "Begin from a plank or equestrian position. On an exhalation, lower the knees to the floor while keeping the toes tucked under. Keeping the elbows hugged tightly in toward the ribs, lower the chest and chin down to the floor between the hands. Ensure the chest touches the ground while the hips and abdomen remain lifted and angled toward the ceiling. Balance the body weight evenly across the eight points of contact: the palms, chin, chest, knees, and toes. Maintain smooth breathing and keep the core slightly engaged to support the lift of the midsection.",
+    "requiresSides": false,
+    "plates": {
+      "intermediate": [],
+      "final": []
+    },
+    "variations": {},
+    "id": "228"
   }
 
 }
+
 
 
