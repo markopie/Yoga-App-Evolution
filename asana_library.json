@@ -5469,7 +5469,26 @@
     },
     "variations": {},
     "id": "220"
+  },
+  "221": {
+    "name": "Abhyanga (Self-Massage)",
+    "iast": "Abhyaṅga",
+    "page2001": "",
+    "page2015": "",
+    "intensity": "Low",
+    "note": "Focus on moving the pressure in the direction of the heart.",
+    "category": "11_Ayurvedic_Toning",
+    "description": "Abhyanga (Self-Massage)\nThis is a seated self-massage routine that systematically targets the upper body, covering the head, face, neck, and chest, and includes toning massages for the arms.\nEffects: Invigorates and tones the body, improves circulation, enlivens the neuromuscular system, and prepares the mind and body for deeper meditation.",
+    "technique": "Find a comfortable sitting position with the spine tall. Use the palms and fingers of both hands to press the top of the head. Gradually press and release as the hands move forward over the face, down the neck, and onto the chest. Return to the top of the head and press and release while moving down the back of the neck and around to the chest. To tone the right arm, grasp the fingers of the right hand with the left hand. Press and release firmly and continuously upward along the top of the right arm to the shoulder and across the chest. Repeat the pressing and releasing along the underside of the right arm from the hand to the forearm, shoulder, and chest. Perform the same sequence on the left arm, ensuring both the top and underside are massaged. Maintain firm, gradual, and continuous pressure throughout the process. Complete the routine by allowing the body to feel invigorated and the breath to remain natural.",
+    "requiresSides": false,
+    "plates": {
+      "intermediate": [],
+      "final": []
+    },
+    "variations": {},
+    "id": "221"
   }
 
 }
+
 
