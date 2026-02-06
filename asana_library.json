@@ -5588,7 +5588,7 @@
     "category": "11_Ayurvedic_Toning",
     "description": "Equestrian Position (Ashwa Sanchalanasana)\nA foundational asymmetrical low lunge that stretches the hips and groin while grounding the body.\nEffects: Stretches the hip flexors and psoas muscles, tones the abdominal organs, improves balance, and promotes mental focus and stability.",
     "technique": "Begin in a standing forward bend (Uttanasana) with the palms on the floor beside the feet. On an inhalation, step one leg far back, resting the knee and the ball of the foot on the mat. Align the front knee at a 90-degree angle directly above the ankle, keeping the thigh parallel to the floor. Place the fingertips or palms on the floor on either side of the front foot, shoulder-width apart. Roll the shoulders back and down to open the chest and lengthen the spine. Gently lower the hips and pelvis toward the floor. Tilt the head slightly backward and direct the gaze forward or slightly upward. Hold the posture while taking slow, deep breaths, sinking the hips further with each exhalation. To release, inhale and step the back foot forward to return to Uttanasana. Repeat the sequence by stepping the opposite leg back.",
-    "requiresSides": true,
+    "requiresSides": false,
     "plates": {
       "intermediate": [],
       "final": [
@@ -5618,6 +5618,7 @@
   }
 
 }
+
 
 
 
