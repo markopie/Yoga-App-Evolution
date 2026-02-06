@@ -30200,92 +30200,11 @@
   {
     "courseId": "ayur_01",
     "title": "Ayurvedic Vitality Sequence (Three-Dosha Balance)",
+    "includeNamaskara": "seq_namaskar_01",
+    "namaskaraRepetitions": 6,
     "category": "",
     "poses": [
-      [
-        "225",
-        15,
-        "",
-        "",
-        "Action: Exhale, bring palms to heart center. Focus: Settle the breath; find stillness."
-      ],
-      [
-        "226",
-        15,
-        "",
-        "",
-        "Action: Inhale, sweep arms overhead. Focus: Lift ribs; look slightly up."
-      ],
-      [
-        "020",
-        30,
-        "",
-        "",
-        "Action: Exhale, fold forward. Focus: Relax neck; keep knees soft; hands to floor."
-      ],
-      [
-        "227",
-        20,
-        "",
-        "",
-        "Action: Inhale, step Left leg back, knee down. Focus: Open chest forward; keep front knee over ankle."
-      ],
-      [
-        "033",
-        30,
-        "",
-        "",
-        "Action: Exhale, step Right leg back to Down Dog. Focus: Lift hips high; press floor away."
-      ],
-      [
-        "228",
-        10,
-        "",
-        "",
-        "Action: Exhale, drop knees, chest, and chin. Focus: Keep hips slightly lifted; elbows in."
-      ],
-      [
-        "031",
-        20,
-        "",
-        "",
-        "Action: Inhale, slide forward and lift chest. Focus: Shoulders down; elbows close to ribs."
-      ],
-      [
-        "033",
-        30,
-        "",
-        "",
-        "Action: Exhale, lift hips back to Down Dog. Focus: Stretch heels down; lengthen spine."
-      ],
-      [
-        "227",
-        30,
-        "",
-        "",
-        "Action: Inhale, step Right leg forward, back knee down. Focus: Sink hips; lift heart."
-      ],
-      [
-        "020",
-        30,
-        "",
-        "",
-        "Action: Exhale, step Left leg forward and fold. Focus: Let the head hang heavy."
-      ],
-      [
-        "226",
-        15,
-        "",
-        "",
-        "Action: Inhale, sweep arms overhead to stand. Focus: Reach through fingertips."
-      ],
-      [
-        "225",
-        15,
-        "",
-        "",
-        "Action: Exhale, bring palms to heart center. Focus: Settle the breath; find stillness."
-      ],
+      
       [
         "221",
         40,

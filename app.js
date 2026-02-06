@@ -2872,6 +2872,48 @@ function renderIdFixer(container, brokenId) {
 /* ==========================================================================
    EVENT LISTENERS & INITIALIZATION
    ========================================================================== */
+/**
+ * Expands a course object if it references a Namaskara sequence.
+ * Injects the Namaskara poses X times before the main poses.
+ */
+function expandSequenceWithNamaskara(rawSeq) {
+    const processed = JSON.parse(JSON.stringify(rawSeq));
+
+    if (processed.includeNamaskara) {
+        const refSeq = courses.find(c => c.courseId === processed.includeNamaskara);
+
+        if (refSeq && refSeq.poses) {
+            const reps = parseInt(processed.namaskaraRepetitions) || 1;
+            let namaskaraBlock = [];
+
+            for (let i = 0; i < reps; i++) {
+                let roundPoses = JSON.parse(JSON.stringify(refSeq.poses));
+
+                roundPoses.forEach(p => {
+                    const id = Array.isArray(p[0]) ? p[0][0] : p[0];
+                    const asana = findAsanaByIdOrPlate(normalizePlate(id));
+                    
+                    // 1. Determine the base name (Use Label -> then Library English -> then "Pose")
+                    let baseName = p[2] || (asana ? (asana.english || asana.name) : "Pose");
+
+                    // 2. Append the Round number if more than 1 repetition exists
+                    if (reps > 1 && !baseName.includes("(Round")) {
+                        p[2] = `${baseName} (Round ${i + 1})`;
+                    } else {
+                        // Ensure it has at least the baseName even if 1 rep
+                        p[2] = baseName;
+                    }
+                });
+                namaskaraBlock = namaskaraBlock.concat(roundPoses);
+            }
+
+            processed.poses = namaskaraBlock.concat(processed.poses);
+            console.log(`[Sequence Expansion] Merged ${reps} rounds of ${processed.includeNamaskara}`);
+        }
+    }
+
+    return processed;
+}
 
 // 1. Sequence Dropdown Selection
 const seqSelect = $("sequenceSelect");
@@ -2920,8 +2962,13 @@ if (seqSelect) {
           return;
        }
 
-       currentSequence = sequences[parseInt(idx, 10)];
-       updateTotalAndLastUI();
+       // NEW CODE
+const rawSequence = sequences[parseInt(idx, 10)];
+
+// Run it through our new expander function
+currentSequence = expandSequenceWithNamaskara(rawSequence);
+
+updateTotalAndLastUI();
 
        try {
           setPose(0);
