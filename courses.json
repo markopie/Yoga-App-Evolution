@@ -30200,8 +30200,8 @@
   {
     "courseId": "ayur_01",
     "title": "Ayurvedic Vitality Sequence (Three-Dosha Balance)",
-    "includeNamaskara": "seq_namaskar_01",
-    "namaskaraRepetitions": 6,
+    "namaskaraLoop": ["seq_sun_right", "seq_sun_left"],
+    "namaskaraRepetitions": 3,
     "category": "",
     "poses": [
       
@@ -30299,94 +30299,49 @@
     ]
   },
   {
-  "courseId": "seq_namaskar_01",
-  "title": "Surya Namaskara Sequence",
-  "category": "Vinyasa / Flow",
-  "poses": [
-    [
-      "225",
-      10,
-      "",
-      "",
-      "Action: Exhale, bring palms to heart center. Focus: Settle the breath; find stillness."
-    ],
-    [
-      "226",
-      10,
-      "",
-      "",
-      "Action: Inhale, sweep arms overhead. Focus: Lift ribs; look slightly up."
-    ],
-    [
-      "020",
-      12,
-      "",
-      "",
-      "Action: Exhale, fold forward. Focus: Relax neck; keep knees soft; hands to floor."
-    ],
-    [
-      "227",
-      12,
-      "",
-      "",
-      "Action: Inhale, step Left leg back, knee down. Focus: Open chest forward; keep front knee over ankle."
-    ],
-    [
-      "033",
-      12,
-      "",
-      "",
-      "Action: Exhale, step Right leg back to Down Dog. Focus: Lift hips high; press floor away."
-    ],
-    [
-      "228",
-      8,
-      "",
-      "",
-      "Action: Exhale, drop knees, chest, and chin. Focus: Eight points on the floor; elbows in."
-    ],
-    [
-      "031",
-      12,
-      "",
-      "",
-      "Action: Inhale, slide forward and lift chest. Focus: Shoulders down; open the heart."
-    ],
-    [
-      "033",
-      12,
-      "",
-      "",
-      "Action: Exhale, lift hips back to Down Dog. Focus: Stretch heels down; lengthen spine."
-    ],
-    [
-      "227",
-      8,
-      "",
-      "",
-      "Action: Inhale, step Right leg forward, back knee down. Focus: Sink hips; lift heart."
-    ],
-    [
-      "020",
-      10,
-      "",
-      "",
-      "Action: Exhale, step Left leg forward and fold. Focus: Let the head hang heavy."
-    ],
-    [
-      "226",
-      5,
-      "",
-      "",
-      "Action: Inhale, sweep arms overhead to stand. Focus: Reach through fingertips."
-    ],
-    [
-      "225",
-      5,
-      "",
-      "",
-      "Action: Exhale, palms to heart. Focus: Settle the breath; acknowledge the sun."
+    "courseId": "seq_sun_right",
+    "title": "Sun Salutation (Right Side)",
+    "category": "Hidden",
+    "poses": [
+      ["225", 10, "Pranamasana", "", "Action: Exhale, bring palms to heart center. Focus: Settle the breath; find stillness."],
+      ["226", 10, "Hasta Uttanasana", "", "Action: Inhale, sweep arms overhead. Focus: Lift ribs; look slightly up."],
+      ["020", 12, "Uttanasana", "", "Action: Exhale, fold forward. Focus: Relax neck; keep knees soft; hands to floor."],
+      
+      ["227", 12, "Ashwa Sanchalanasana (Right Back)", "", "Action: Inhale, step Right leg back, knee down. Focus: Open chest forward; keep front knee over ankle.", "RightBack"],
+      
+      ["033", 12, "Adho Mukha Svanasana", "", "Action: Exhale, step Left leg back to Down Dog. Focus: Lift hips high; press floor away."],
+      ["228", 8,  "Ashtanga Namaskara", "", "Action: Exhale, drop knees, chest, and chin. Focus: Eight points on the floor; elbows in."],
+      ["031", 12, "Bhujangasana", "", "Action: Inhale, slide forward and lift chest. Focus: Shoulders down; open the heart."],
+      ["033", 12, "Adho Mukha Svanasana", "", "Action: Exhale, lift hips back to Down Dog. Focus: Stretch heels down; lengthen spine."],
+      
+      ["227", 8,  "Ashwa Sanchalanasana (Right Forward)", "", "Action: Inhale, step Right leg forward, back knee down. Focus: Sink hips; lift heart.", "RightForward"],
+      
+      ["020", 10, "Uttanasana", "", "Action: Exhale, step Left leg forward and fold. Focus: Let the head hang heavy."],
+      ["226", 5,  "Hasta Uttanasana", "", "Action: Inhale, sweep arms overhead to stand. Focus: Reach through fingertips."],
+      ["225", 5,  "Pranamasana", "", "Action: Exhale, palms to heart. Focus: Settle the breath; acknowledge the sun."]
     ]
-  ]
-}
+  },
+  {
+    "courseId": "seq_sun_left",
+    "title": "Sun Salutation (Left Side)",
+    "category": "Hidden",
+    "poses": [
+      ["225", 10, "Pranamasana", "", "Action: Exhale, bring palms to heart center. Focus: Settle the breath; find stillness."],
+      ["226", 10, "Hasta Uttanasana", "", "Action: Inhale, sweep arms overhead. Focus: Lift ribs; look slightly up."],
+      ["020", 12, "Uttanasana", "", "Action: Exhale, fold forward. Focus: Relax neck; keep knees soft; hands to floor."],
+      
+      ["227", 12, "Ashwa Sanchalanasana (Left Back)", "", "Action: Inhale, step Left leg back, knee down. Focus: Open chest forward; keep front knee over ankle.", "LeftBack"],
+      
+      ["033", 12, "Adho Mukha Svanasana", "", "Action: Exhale, step Right leg back to Down Dog. Focus: Lift hips high; press floor away."],
+      ["228", 8,  "Ashtanga Namaskara", "", "Action: Exhale, drop knees, chest, and chin. Focus: Eight points on the floor; elbows in."],
+      ["031", 12, "Bhujangasana", "", "Action: Inhale, slide forward and lift chest. Focus: Shoulders down; open the heart."],
+      ["033", 12, "Adho Mukha Svanasana", "", "Action: Exhale, lift hips back to Down Dog. Focus: Stretch heels down; lengthen spine."],
+      
+      ["227", 8,  "Ashwa Sanchalanasana (Left Forward)", "", "Action: Inhale, step Left leg forward, back knee down. Focus: Sink hips; lift heart.", "LeftForward"],
+      
+      ["020", 10, "Uttanasana", "", "Action: Exhale, step Right leg forward and fold. Focus: Let the head hang heavy."],
+      ["226", 5,  "Hasta Uttanasana", "", "Action: Inhale, sweep arms overhead to stand. Focus: Reach through fingertips."],
+      ["225", 5,  "Pranamasana", "", "Action: Exhale, palms to heart. Focus: Settle the breath; acknowledge the sun."]
+    ]
+  }
 ]
