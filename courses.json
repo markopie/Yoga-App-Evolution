@@ -30200,6 +30200,8 @@
   {
     "courseId": "ayur_01",
     "title": "Ayurvedic Vitality Sequence (Three-Dosha Balance)",
+    "includeNamaskara": "seq_namaskar_01",
+    "namaskaraRepetitions": 6,
     "category": "",
     "poses": [
       [
