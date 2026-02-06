@@ -5615,9 +5615,52 @@
     },
     "variations": {},
     "id": "228"
+  },
+  "229": {
+    "name": "Swastikasana (Auspicious Pose)",
+    "iast": "Svastikāsana",
+    "page2001": "",
+    "page2015": "",
+    "intensity": "Low",
+    "note": "A stable meditative seat; ensure the heels are not pressing against the pubic bone.",
+    "category": "12_Meditative_Asanas",
+    "description": "Swastikasana (Auspicious Pose)\nA classical cross-legged sitting posture used for meditation and pranayama. The name is derived from 'Svastika,' meaning auspicious or lucky.\nEffects: Keeps the spine straight and stable for long periods, calms the nervous system, and prepares the mind for deep concentration.",
+    "technique": "Sit on the floor with legs extended. Bend the left leg and place the sole against the right inner thigh. Bend the right leg and place the foot between the left thigh and calf muscle, so the feet are locked between the thighs and calves. Keep the spine, neck, and head erect. Rest the hands on the knees in Jnana Mudra or place them in the lap. Maintain a steady and comfortable posture while breathing naturally.",
+    "requiresSides": false,
+    "plates": {
+      "intermediate": [],
+      "final": [
+        "5",
+        "6"
+      ]
+    },
+    "variations": {},
+    "id": "229"
+  },
+  "230": {
+    "name": "Bhadrasana (Gracious Pose)",
+    "iast": "Bhadrāsana",
+    "page2001": "",
+    "page2015": "",
+    "intensity": "Low",
+    "note": "Also known as the Excellent or Happy Pose; do not force the knees if the hips are tight.",
+    "category": "12_Meditative_Asanas",
+    "description": "Half Lotus (Ardha Padmasana) is a yoga and meditation pose where one foot rests on the opposite thigh, while the other leg stays tucked underneath, requiring significant hip external rotation and flexibility, with benefits like calming the mind, improving circulation, and strengthening the back, but it's crucial to avoid knee pain by using props like cushions or blocks and practicing hip openers first. Proper execution involves flexing the knee, externally rotating the hip, bringing the heel towards the pelvis, and keeping the spine straight, using support to prevent strain.",
+    "technique": "Start in Staff Pose (Dandasana) sitting with the legs straight and the spine long. Bend the left knee fully and bring the foot toward the body. Gently guide the foot by externally rotating the hip so the outer edge of the foot rests on the opposite thigh, nestling the heel into the hip crease near the navel. Tuck the right foot under the left thigh, allowing the left knee to descend toward the floor. Maintain a tall spine and relaxed shoulders while pulling the navel gently inward. Use a cushion under the hips if necessary to ensure the lower back does not round.",
+    "requiresSides": false,
+    "plates": {
+      "intermediate": [],
+      "final": [
+        "7",
+        "8"
+      ]
+    },
+    "variations": {},
+    "id": "230"
   }
 
 }
+
 
 
 
