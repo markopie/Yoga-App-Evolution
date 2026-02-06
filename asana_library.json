@@ -5657,9 +5657,64 @@
     },
     "variations": {},
     "id": "230"
+  },
+  "232": {
+    "name": "Digital Pranayama (Nasa Mudra)",
+    "iast": "Nāsā Mudrā",
+    "page2001": "",
+    "page2015": "",
+    "intensity": "Low",
+    "note": "This entry focuses on the precise art of digital nostril control, rather than the breathing cycle itself.",
+    "category": "10_Restorative_Pranayama",
+    "description": "Digital Pranayama (Nasa Mudra)\nThe art of using the fingers (digits) to refine the flow of air. This technique focuses on the subtle placement and movement of the hand to control the nostrils without disturbing the equilibrium of the head or neck.\nEffects: Develops sensitivity in the fingertips, ensures an even flow of air through the nasal passages, and prepares the practitioner for the advanced stages of controlled respiration.",
+    "technique": "Sit with the spine erect. Raise the right hand and bend the index and middle fingers toward the palm (Vishnu Mudra). Place the thumb on the right side of the nose and the ring and little fingers on the left side, just below the nasal bone where the flesh is soft. The art of placement requires the fingers to move like a balance scale—as one side opens, the other narrows with subtle, firm, yet light pressure. Ensure the fingers do not pull the nose to either side; the bridge of the nose should remain centered. The elbow should be relaxed and tucked close to the chest to keep the hand steady and the arm from fatiguing.",
+    "requiresSides": false,
+    "plates": {
+      "intermediate": [
+        "109",
+        "110",
+        "111",
+        "112",
+        "113",
+        "114",
+        "115",
+        "116",
+        "117",
+        "118",
+        "119",
+        "120",
+        "121",
+        "122",
+        "123",
+        "124",
+        "125",
+        "126",
+        "127",
+        "128",
+        "129",
+        "130",
+        "131",
+        "132",
+        "133",
+        "134",
+        "135",
+        "136",
+        "137",
+        "138",
+        "139",
+        "140",
+        "141"
+      ],
+      "final": [
+        "142"
+      ]
+    },
+    "variations": {},
+    "id": "232"
   }
 
 }
+
 
 
 
