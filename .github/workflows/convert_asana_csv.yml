@@ -11,15 +11,20 @@ jobs:
 
       - name: Pre-process JSON with jq
         run: |
-          # Convert the object into a flat array and save to a file
+          # Create the clean JSON array
           jq -c 'to_entries | map({id: .key, name: .value.name, note: .value.note})' asana_library.json > processed.json
+          
+          # Read the file into a GitHub Environment variable safely
+          echo "CLEAN_JSON<<EOF" >> $GITHUB_ENV
+          cat processed.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Convert JSON to CSV
         uses: austenstone/json-to-csv@main
         id: csv_step
         with:
-          # Pointing directly to the file is safer than a variable
-          json: ./processed.json
+          # Now passing the actual content of the file
+          json: ${{ env.CLEAN_JSON }}
 
       - name: Create CSV File
         run: |
