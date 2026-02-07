@@ -1,0 +1,36 @@
+name: Convert Asana JSON to CSV
+on:
+  workflow_dispatch: # Allows you to run it manually from the Actions tab
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Pre-process JSON with jq
+        id: prepare_json
+        run: |
+          # Convert the object-based JSON into a flat array of objects
+          # This maps your "00#" keys to an "id" field and picks name/note
+          PROCESSED_JSON=$(jq -c 'to_entries | map({id: .key, name: .value.name, note: .value.note})' asana_library.json)
+          
+          # Save it to a temporary environment variable for the next step
+          echo "JSON_DATA=$PROCESSED_JSON" >> $GITHUB_ENV
+
+      - name: Convert JSON to CSV
+        uses: austenstone/json-to-csv@main
+        id: csv_step
+        with:
+          json: ${{ env.JSON_DATA }}
+
+      - name: Create CSV File
+        run: |
+          echo "${{ steps.csv_step.outputs.csv }}" > asana_tasks.csv
+
+      - name: Upload Result
+        uses: actions/upload-artifact@v4
+        with:
+          name: asana-csv-export
+          path: asana_tasks.csv
