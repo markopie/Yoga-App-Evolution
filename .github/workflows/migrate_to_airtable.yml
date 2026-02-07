@@ -15,8 +15,13 @@ jobs:
             (map(.value | keys) | flatten | unique) as $all_keys | 
             (["ID"] + $all_keys), 
             (.[] | . as $row | [$row.key] + ([ $all_keys[] as $k | $row.value[$k] | 
-              if type == "object" or type == "array" then tostring 
-              elif type == "string" then . | gsub("\n"; " ") # Replaces newlines with spaces
+              if $k == "plates" then 
+                (if .final then "Final: " + (.final | join(", ")) else "" end) + 
+                (if .intermediate and (.intermediate | length > 0) then " | Int: " + (.intermediate | join(", ")) else "" end)
+              elif $k == "variations" and type == "object" then
+                [.[] | .title + " (" + .shorthand + ")"] | join(" | ")
+              elif type == "object" or type == "array" then tostring 
+              elif type == "string" then . | gsub("\n"; " ")
               else . end 
             ])) | @csv' asana_library.json > asana_migration_master.csv
       - name: Upload Migration File
