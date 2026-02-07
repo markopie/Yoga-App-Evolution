@@ -9,21 +9,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Generate Dynamic Master CSV
+      - name: Generate Dual Migration Files
         run: |
+          # 1. Main Asanas Table (Clean and Metadata focused)
           jq -r 'to_entries | 
-            (map(.value | keys) | flatten | unique) as $all_keys | 
+            (map(.value | keys) | flatten | unique | map(select(. != "variations"))) as $all_keys | 
             (["ID"] + $all_keys), 
             (.[] | . as $row | [$row.key] + ([ $all_keys[] as $k | $row.value[$k] | 
-              if $k == "plates" then 
-                (if .final then "Final: " + (.final | join(", ")) else "" end) + 
-                (if .intermediate and (.intermediate | length > 0) then " | Int: " + (.intermediate | join(", ")) else "" end)
-              elif $k == "variations" and type == "object" then
-                [.[] | .title + " (" + .shorthand + ")"] | join(" | ")
-              elif type == "object" or type == "array" then tostring 
+              if $k == "plates" then (if .final then "Final: " + (.final | join(", ")) else "" end)
               elif type == "string" then . | gsub("\n"; " ")
               else . end 
-            ])) | @csv' asana_library.json > asana_migration_master.csv
+            ])) | @csv' asana_library.json > asanas_main.csv
+
+          # 2. Stages Table (Shorthand and Technique separated)
+          jq -r '["Parent_ID", "Stage_Name", "Title", "Shorthand", "Full_Technique"],
+            (to_entries[] | .key as $pid | .value.variations | to_entries[]? | 
+            [$pid, .key, .value.title, .value.shorthand, (.value.technique | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
       - name: Upload Migration File
         uses: actions/upload-artifact@v4
         with:
