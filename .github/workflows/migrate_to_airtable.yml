@@ -1,6 +1,6 @@
 name: Prepare Airtable Migration
 on:
-  workflow_dispatch: # Allows you to trigger this manually
+  workflow_dispatch: # Allows you to trigger this manually from the Actions tab
 
 jobs:
   export_master:
@@ -11,7 +11,7 @@ jobs:
 
       - name: Generate Dual Migration Files
         run: |
-          # 1. Main Asanas Table (Clean and Metadata focused)
+          # 1. Main Asanas Table (Metadata only, excludes the bulky variations)
           jq -r 'to_entries | 
             (map(.value | keys) | flatten | unique | map(select(. != "variations"))) as $all_keys | 
             (["ID"] + $all_keys), 
@@ -21,12 +21,15 @@ jobs:
               else . end 
             ])) | @csv' asana_library.json > asanas_main.csv
 
-          # 2. Stages Table (Shorthand and Technique separated)
+          # 2. Stages Table (Every variation becomes its own row linked by Parent_ID)
           jq -r '["Parent_ID", "Stage_Name", "Title", "Shorthand", "Full_Technique"],
             (to_entries[] | .key as $pid | .value.variations | to_entries[]? | 
             [$pid, .key, .value.title, .value.shorthand, (.value.technique | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
-      - name: Upload Migration File
+
+      - name: Upload Migration Files
         uses: actions/upload-artifact@v4
         with:
           name: airtable-ready-csv
-          path: asana_migration_master.csv
+          path: |
+            asanas_main.csv
+            asana_stages.csv
