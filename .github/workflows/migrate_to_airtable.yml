@@ -11,13 +11,11 @@ jobs:
 
       - name: Generate Dynamic Master CSV
         run: |
-          # This jq script identifies ALL unique keys across ALL objects 
-          # so no data is left behind, even if fields are inconsistent.
+          # This version converts nested objects/arrays to strings to avoid CSV errors
           jq -r 'to_entries | 
             (map(.value | keys) | flatten | unique) as $all_keys | 
             (["ID"] + $all_keys), 
-            (.[] | [.key] + ([.value[$all_keys[]]])) | @csv' asana_library.json > asana_migration_master.csv
-
+            (.[] | . as $row | [$row.key] + ([ $all_keys[] as $k | $row.value[$k] | if (type == "object" or type == "array") then tostring else . end ])) | @csv' asana_library.json > asana_migration_master.csv
       - name: Upload Migration File
         uses: actions/upload-artifact@v4
         with:
