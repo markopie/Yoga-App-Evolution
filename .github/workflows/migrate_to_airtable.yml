@@ -1,0 +1,25 @@
+name: Prepare Airtable Migration
+on:
+  workflow_dispatch: # Allows you to trigger this manually
+
+jobs:
+  export_master:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Generate Dynamic Master CSV
+        run: |
+          # This jq script identifies ALL unique keys across ALL objects 
+          # so no data is left behind, even if fields are inconsistent.
+          jq -r 'to_entries | 
+            (map(.value | keys) | flatten | unique) as $all_keys | 
+            (["ID"] + $all_keys), 
+            (.[] | [.key] + ([.value[$all_keys[]]])) | @csv' asana_library.json > asana_migration_master.csv
+
+      - name: Upload Migration File
+        uses: actions/upload-artifact@v4
+        with:
+          name: airtable-ready-csv
+          path: asana_migration_master.csv
