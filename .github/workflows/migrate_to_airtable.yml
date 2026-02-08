@@ -11,8 +11,8 @@ jobs:
 
       - name: Generate Migration Files
         run: |
-          # 1. Main Asanas Table (FIXED)
-          # Now includes Plate Numbers logic
+          # 1. Main Asanas Table (FINAL)
+          # Updates: Added Plate_Numbers logic
           jq -r 'to_entries | 
             (["ID", "Name", "Sanskrit", "IAST", "Plate_Numbers", "Intensity", "Requires_Sides", "Page_2001", "Page_2015", "Technique", "Category", "Note"]),
             (.[] | [
@@ -20,6 +20,7 @@ jobs:
               .value.name, 
               .value.sanskrit, 
               .value.iast, 
+              
               # LOGIC: Extract Plates (Handles Arrays or Objects)
               (.value.plates | 
                 if type == "array" then join(", ") 
@@ -29,6 +30,7 @@ jobs:
                     (if .intermediate and (.intermediate | length > 0) then "Int: " + (.intermediate | join(", ")) else empty end)
                   ] | join(" | "))
                 else "" end),
+
               .value.intensity, 
               .value.requiresSides, 
               .value.page2001, 
@@ -44,8 +46,7 @@ jobs:
             .value.variations | to_entries[]? | 
             [$pid, .key, .value.title, .value.shorthand, (if .value.technique | type == "array" then .value.technique | join(" ") else .value.technique // "" end | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
 
-          # 3. Courses Table (FINAL)
-          # Includes Namaskara settings
+          # 3. Courses Table
           jq -r '["Course_ID", "Course_Title", "Category", "Inc_Namaskara", "Namaskara_Reps", "Pose_Order", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
             (.[] | .courseId as $cid | .title as $ctitle | .category as $cat | .includeNamaskara as $incN | .namaskaraRepetitions as $repsN |
             foreach .poses[] as $p (0; . + 1; [
@@ -57,7 +58,7 @@ jobs:
           # 4. AUDIT: Final Verification
           echo "--- AUDIT REPORT ---" > audit_log.txt
           
-          # UPDATE: Added '.id' to the del() list to ignore the duplicate ID field
+          # We add 'plates' and 'id' to the delete list so they are ignored in the leftover report
           jq '[to_entries[] | {id: .key, extra: (.value | del(.id, .name, .title, .sanskrit, .english, .meaning, .benefits, .caution, .plates, .variations, .pronunciation, .type, .steps, .iast, .intensity, .requiresSides, .page2001, .page2015, .technique, .category, .note, .categorySource, .description, .descriptionSource) | keys)}] | map(select(.extra | length > 0))' asana_library.json > leftovers_asana_library.json
           
           jq '[.[] | {course: (.title // "Untitled"), extra: (del(.courseId, .title, .category, .poses, .includeNamaskara, .namaskaraRepetitions) | keys)}] | map(select(.extra | length > 0))' courses.json > leftovers_courses_global.json
