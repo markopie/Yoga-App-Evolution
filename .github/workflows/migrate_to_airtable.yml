@@ -11,18 +11,23 @@ jobs:
 
       - name: Generate Migration Files
         run: |
-          # 1. Main Asanas Table
-          jq -r 'to_entries | 
-            (map(.value | keys) | flatten | unique | map(select(. != "variations"))) as $all_keys | 
-            (["ID"] + $all_keys), 
-            (.[] | . as $row | [$row.key] + ([ $all_keys[] as $k | $row.value[$k] | 
-              if $k == "plates" then 
-                [(if .final and (.final | length > 0) then "Final: " + (.final | join(", ")) else empty end),
-                 (if .intermediate and (.intermediate | length > 0) then "Int: " + (.intermediate | join(", ")) else empty end)] | join(" | ")
-              elif type == "array" then . | join(" | ")
-              elif type == "string" then . | gsub("\n"; " ")
-              else . | tostring end 
-            ])) | @csv' asana_library.json > asanas_main.csv
+          # 1. Main Asanas Table (EXPANDED)
+            # This now explicitly captures the fields we found in the audit
+            jq -r 'to_entries | 
+              (["ID", "Name", "Sanskrit", "IAST", "Intensity", "Requires_Sides", "Page_2001", "Page_2015", "Technique", "Category", "Note"]),
+              (.[] | [
+                .key, 
+                .value.name, 
+                .value.sanskrit, 
+                .value.iast, 
+                .value.intensity, 
+                .value.requiresSides, 
+                .value.page2001, 
+                .value.page2015, 
+                (.value.technique | if type == "array" then join(" ") else . // "" end),
+                .value.category,
+                .value.note
+              ]) | @csv' asana_library.json > asanas_main.csv
 
           # 2. Stages Table
           jq -r '["Parent_ID", "Stage_Name", "Title", "Shorthand", "Full_Technique"],
@@ -30,19 +35,14 @@ jobs:
             .value.variations | to_entries[]? | 
             [$pid, .key, .value.title, .value.shorthand, (if .value.technique | type == "array" then .value.technique | join(" ") else .value.technique // "" end | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
 
-          # 3. Courses Table
-          jq -r '["Course_ID", "Course_Title", "Category", "Pose_Order", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
-            (.[] | .courseId as $cid | .title as $ctitle | .category as $cat | 
+          # 3. Courses Table (REVISED)
+          # I added 'Namaskara' settings to the header in case you want to import them to the Course List
+          jq -r '["Course_ID", "Course_Title", "Category", "Inc_Namaskara", "Namaskara_Reps", "Pose_Order", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
+            (.[] | .courseId as $cid | .title as $ctitle | .category as $cat | .includeNamaskara as $incN | .namaskaraRepetitions as $repsN |
             foreach .poses[] as $p (0; . + 1; [
-              $cid, 
-              $ctitle, 
-              ($cat // ""), 
-              ., 
-              (($p[0] | if type == "array" then .[0] else . end) | tostring | if length < 3 then ("000" + .)[-3:] else . end), 
-              ($p[1] | tostring), 
-              ($p[2] | tostring), 
-              ($p[3] | tostring), 
-              ($p[4] | tostring)
+              $cid, $ctitle, ($cat // ""), ($incN // ""), ($repsN // ""),
+              ., (($p[0] | if type == "array" then .[0] else . end) | tostring),
+              ($p[1] | tostring), ($p[2] | tostring), ($p[3] | tostring), ($p[4] | tostring)
             ])) | @csv' courses.json > courses_flat.csv
 
           # 4. AUDIT: Find "Leftover" fields not included in the CSVs
