@@ -24,13 +24,13 @@ jobs:
               else . | tostring end 
             ])) | @csv' asana_library.json > asanas_main.csv
 
-          # 2. Stages Table (Includes ID Padding 001)
+          # 2. Stages Table
           jq -r '["Parent_ID", "Stage_Name", "Title", "Shorthand", "Full_Technique"],
             (to_entries[] | (.key | tostring | if length < 3 then ("000" + .)[-3:] else . end) as $pid | 
             .value.variations | to_entries[]? | 
             [$pid, .key, .value.title, .value.shorthand, (if .value.technique | type == "array" then .value.technique | join(" ") else .value.technique // "" end | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
 
-          # 3. Courses Table (The "Cleaner" Version)
+          # 3. Courses Table
           jq -r '["Course_ID", "Course_Title", "Category", "Pose_Order", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
             (.[] | .courseId as $cid | .title as $ctitle | .category as $cat | 
             foreach .poses[] as $p (0; . + 1; [
@@ -38,7 +38,6 @@ jobs:
               $ctitle, 
               ($cat // ""), 
               ., 
-              # Clean Pose_ID: Flatten array if exists, then pad to 3 digits
               (($p[0] | if type == "array" then .[0] else . end) | tostring | if length < 3 then ("000" + .)[-3:] else . end), 
               ($p[1] | tostring), 
               ($p[2] | tostring), 
@@ -46,11 +45,25 @@ jobs:
               ($p[4] | tostring)
             ])) | @csv' courses.json > courses_flat.csv
 
+          # 4. AUDIT: Find "Leftover" fields not included in the CSVs
+          # This script checks every object. If it has a key NOT in our CSV list, it captures it.
+          echo "--- AUDIT REPORT ---" > audit_log.txt
+          
+          # Check asana_library for extra top-level keys
+          jq '[to_entries[] | {id: .key, extra: (.value | del(.title, .sanskrit, .english, .meaning, .benefits, .caution, .plates, .variations, .pronunciation, .type) | keys)}] | filter(.extra | length > 0)' asana_library.json > leftovers_asana_library.json
+          
+          # Check courses.json for extra top-level course keys
+          jq '[.[] | {course: .title, extra: (del(.courseId, .title, .category, .poses) | keys)}] | filter(.extra | length > 0)' courses.json > leftovers_courses_global.json
+
+          # Check courses.json poses for arrays longer than our 5 expected slots
+          jq '[.[] | .title as $t | .poses[] | select(length > 5) | {course: $t, pose_data: .}]' courses.json > leftovers_pose_details.json
+
       - name: Upload Migration Files
         uses: actions/upload-artifact@v4
         with:
-          name: airtable-ready-csv
+          name: airtable-migration-package
           path: |
             asanas_main.csv
             asana_stages.csv
             courses_flat.csv
+            leftovers_*.json
