@@ -1,7 +1,7 @@
 [
   {
     "title": "Ashtanga Primary Series (Full)",
-    "category": "",
+    "category": "General",
     "poses": [
       [
         [
@@ -655,7 +655,7 @@
   },
   {
     "title": "Restorative Sequence",
-    "category": "",
+    "category": "General",
     "poses": [
       [
         [
@@ -716,7 +716,7 @@
   },
   {
     "title": "Surya Namaskar (6 Rounds)",
-    "category": "",
+    "category": "General",
     "poses": [
       [
         [
@@ -7671,7 +7671,7 @@
     "category": "Light on Prānāyāma > Course 5 (Highly Intense)"
   },
   {
-    "title": "Course 5: Weekly Practice - Monday",
+    "title": "Weekly Practice - Monday",
     "poses": [
       [
         "205",
@@ -7698,7 +7698,7 @@
     "category": "Light on Prānāyāma > Course 5 (Weekly Practice)"
   },
   {
-    "title": "Course 5: Weekly Practice - Tuesday",
+    "title": "Weekly Practice - Tuesday",
     "poses": [
       [
         "213",
@@ -7725,7 +7725,7 @@
     "category": "Light on Prānāyāma > Course 5 (Weekly Practice)"
   },
   {
-    "title": "Course 5: Weekly Practice - Wednesday",
+    "title": "Weekly Practice - Wednesday",
     "poses": [
       [
         "205",
@@ -7752,7 +7752,7 @@
     "category": "Light on Prānāyāma > Course 5 (Weekly Practice)"
   },
   {
-    "title": "Course 5: Weekly Practice - Thursday",
+    "title": "Weekly Practice - Thursday",
     "poses": [
       [
         "217",
@@ -7779,7 +7779,7 @@
     "category": "Light on Prānāyāma > Course 5 (Weekly Practice)"
   },
   {
-    "title": "Course 5: Weekly Practice - Friday",
+    "title": "Weekly Practice - Friday",
     "poses": [
       [
         "203",
@@ -7806,7 +7806,7 @@
     "category": "Light on Prānāyāma > Course 5 (Weekly Practice)"
   },
   {
-    "title": "Course 5: Weekly Practice - Saturday",
+    "title": "Weekly Practice - Saturday",
     "poses": [
       [
         "213",
@@ -7834,7 +7834,7 @@
   },
   {
     "courseId": "loy_0",
-    "title": "Course 1 - Week 1 & 2",
+    "title": "Week 1 & 2",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -7911,7 +7911,7 @@
   },
   {
     "courseId": "loy_1",
-    "title": "Course 1 - Week 3 & 4",
+    "title": "Week 3 & 4",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -7988,7 +7988,7 @@
   },
   {
     "courseId": "loy_2",
-    "title": "Course 1 - Week 5 & 6",
+    "title": "Week 5 & 6",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -8086,7 +8086,7 @@
   },
   {
     "courseId": "loy_3",
-    "title": "Course 1 - Week 8",
+    "title": "Week 8",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -8205,7 +8205,7 @@
   },
   {
     "courseId": "loy_4",
-    "title": "Course 1 - Week 9 & 10",
+    "title": "Week 9 & 10",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -8359,7 +8359,7 @@
   },
   {
     "courseId": "loy_5",
-    "title": "Course 1 - Week 11 & 12",
+    "title": "Week 11 & 12",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -8534,7 +8534,7 @@
   },
   {
     "courseId": "loy_6",
-    "title": "Course 1 - Week 14 & 15",
+    "title": "Week 14 & 15",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -8786,7 +8786,7 @@
   },
   {
     "courseId": "loy_7",
-    "title": "Course 1 - Week 16 & 17",
+    "title": "Week 16 & 17",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -9101,7 +9101,7 @@
   },
   {
     "courseId": "loy_8",
-    "title": "Course 1 - Week 19 to 21",
+    "title": "Week 19 to 21",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -9416,7 +9416,7 @@
   },
   {
     "courseId": "loy_9",
-    "title": "Course 1 - Week 22 to 25",
+    "title": "Week 22 to 25",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -9773,7 +9773,7 @@
   },
   {
     "courseId": "loy_10",
-    "title": "Course 1 - Week 26 to 30",
+    "title": "Week 26 to 30",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -10130,7 +10130,7 @@
   },
   {
     "courseId": "loy_11",
-    "title": "Course 1 - Weekly Practice Day 1",
+    "title": "Weekly Practice Day 1",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -10291,7 +10291,7 @@
   },
   {
     "courseId": "loy_12",
-    "title": "Course 1 - Weekly Practice Day 2",
+    "title": " Weekly Practice Day 2",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -10592,7 +10592,7 @@
   },
   {
     "courseId": "loy_13",
-    "title": "Course 1 - Weekly Practice Day 3",
+    "title": "Weekly Practice Day 3",
     "category": "Light on Yoga > Course 1",
     "poses": [
       [
@@ -11054,7 +11054,7 @@
   },
   {
     "courseId": "loy_15",
-    "title": "Course 2 - Week 31 to 35",
+    "title": "Week 31 to 35",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -11544,7 +11544,7 @@
   },
   {
     "courseId": "loy_16",
-    "title": "Course 2 - Week 36 to 40",
+    "title": "Week 36 to 40",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -12104,7 +12104,7 @@
   },
   {
     "courseId": "loy_17",
-    "title": "Course 2 - Week 45 to 50",
+    "title": "Week 45 to 50",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -12601,7 +12601,7 @@
   },
   {
     "courseId": "loy_18",
-    "title": "Course 2 - Week 55 to 60",
+    "title": "Week 55 to 60",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -13147,7 +13147,7 @@
   },
   {
     "courseId": "loy_19",
-    "title": "Course 2 - Week 61 to 65",
+    "title": "Week 61 to 65",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -13686,7 +13686,7 @@
   },
   {
     "courseId": "loy_20",
-    "title": "Course 2 - Week 66 to 70",
+    "title": "Week 66 to 70",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -14239,7 +14239,7 @@
   },
   {
     "courseId": "loy_21",
-    "title": "Course 2 - Week 71 to 73",
+    "title": "Week 71 to 73",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -15289,7 +15289,7 @@
   },
   {
     "courseId": "loy_23",
-    "title": "Course 2 - Weekly Practice Day 1",
+    "title": "Weekly Practice Day 1",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -15730,7 +15730,7 @@
   },
   {
     "courseId": "loy_24",
-    "title": "Course 2 - Weekly Practice Day 2",
+    "title": "Weekly Practice Day 2",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -16122,7 +16122,7 @@
   },
   {
     "courseId": "loy_25",
-    "title": "Course 2 - Weekly Practice Day 3",
+    "title": "Weekly Practice Day 3",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -16402,7 +16402,7 @@
   },
   {
     "courseId": "loy_26",
-    "title": "Course 2 - Weekly Practice Day 4",
+    "title": "Weekly Practice Day 4",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -16871,7 +16871,7 @@
   },
   {
     "courseId": "loy_27",
-    "title": "Course 2 - Weekly Practice Day 5",
+    "title": "Weekly Practice Day 5",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -17305,7 +17305,7 @@
   },
   {
     "courseId": "loy_28",
-    "title": "Course 2 - Weekly Practice Day 6",
+    "title": "Weekly Practice Day 6",
     "category": "Light on Yoga > Course 2",
     "poses": [
       [
@@ -17466,7 +17466,7 @@
   },
   {
     "courseId": "loy_29",
-    "title": "Course 3 - Week 79 to 84",
+    "title": "Week 79 to 84",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -17844,7 +17844,7 @@
   },
   {
     "courseId": "loy_30",
-    "title": "Course 3 - Week 85 to 90",
+    "title": "Week 85 to 90",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -18474,7 +18474,7 @@
   },
   {
     "courseId": "loy_31",
-    "title": "Course 3 - Week 95 to 100",
+    "title": "Week 95 to 100",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -18943,7 +18943,7 @@
   },
   {
     "courseId": "loy_32",
-    "title": "Course 3 - Week 101 to 108",
+    "title": "Week 101 to 108",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -19419,7 +19419,7 @@
   },
   {
     "courseId": "loy_33",
-    "title": "Course 3 - Week 109 to 125",
+    "title": "Week 109 to 125",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -19902,7 +19902,7 @@
   },
   {
     "courseId": "loy_34",
-    "title": "Course 3 - Week 126 to 130",
+    "title": "Week 126 to 130",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -20434,7 +20434,7 @@
   },
   {
     "courseId": "loy_35",
-    "title": "Course 3 - Week 137 to 142",
+    "title": "Week 137 to 142",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -20931,7 +20931,7 @@
   },
   {
     "courseId": "loy_36",
-    "title": "Course 3 - Week 143 to 145",
+    "title": "Week 143 to 145",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -21442,7 +21442,7 @@
   },
   {
     "courseId": "loy_37",
-    "title": "Course 3 - Week 146 to 155",
+    "title": "Week 146 to 155",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -21932,7 +21932,7 @@
   },
   {
     "courseId": "loy_38",
-    "title": "Course 3 - Week 161 to 165",
+    "title": "Week 161 to 165",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -22436,7 +22436,7 @@
   },
   {
     "courseId": "loy_39",
-    "title": "Course 3 - Week 166 to 175",
+    "title": "Week 166 to 175",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -22800,7 +22800,7 @@
   },
   {
     "courseId": "loy_40",
-    "title": "Course 3 - Week 176 to 180",
+    "title": "Week 176 to 180",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -23192,7 +23192,7 @@
   },
   {
     "courseId": "loy_41",
-    "title": "Course 3 - Weekly Practice Day 1",
+    "title": "Weekly Practice Day 1",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -23416,7 +23416,7 @@
   },
   {
     "courseId": "loy_42",
-    "title": "Course 3 - Weekly Practice Day 2",
+    "title": "Weekly Practice Day 2",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -23885,7 +23885,7 @@
   },
   {
     "courseId": "loy_43",
-    "title": "Course 3 - Weekly Practice Day 3",
+    "title": "Weekly Practice Day 3",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -24375,7 +24375,7 @@
   },
   {
     "courseId": "loy_44",
-    "title": "Course 3 - Weekly Practice Day 4",
+    "title": "Weekly Practice Day 4",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -24809,7 +24809,7 @@
   },
   {
     "courseId": "loy_45",
-    "title": "Course 3 - Weekly Practice Day 5",
+    "title": "Weekly Practice Day 5",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -25005,7 +25005,7 @@
   },
   {
     "courseId": "loy_46",
-    "title": "Course 3 - Weekly Practice Day 6",
+    "title": "Weekly Practice Day 6",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -25341,7 +25341,7 @@
   },
   {
     "courseId": "loy_47",
-    "title": "Course 3 - Week 181 to 190",
+    "title": "Week 181 to 190",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -25838,7 +25838,7 @@
   },
   {
     "courseId": "loy_48",
-    "title": "Course 3 - Week 191 to 200",
+    "title": "Week 191 to 200",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -26160,7 +26160,7 @@
   },
   {
     "courseId": "loy_49",
-    "title": "Course 3 - Week 201 to 225",
+    "title": "Week 201 to 225",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -26440,7 +26440,7 @@
   },
   {
     "courseId": "loy_50",
-    "title": "Course 3 - Week 226 to 250",
+    "title": "Week 226 to 250",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -26755,7 +26755,7 @@
   },
   {
     "courseId": "loy_51",
-    "title": "Course 3 - Week 251 to 275",
+    "title": "Week 251 to 275",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -27273,7 +27273,7 @@
   },
   {
     "courseId": "loy_52",
-    "title": "Course 3 - Week 276 to 300",
+    "title": "Week 276 to 300",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -27833,7 +27833,7 @@
   },
   {
     "courseId": "loy_53",
-    "title": "Course 3 - Final Practice Day 1",
+    "title": "Final Practice Day 1",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -28204,7 +28204,7 @@
   },
   {
     "courseId": "loy_54",
-    "title": "Course 3 - Final Practice Day 2",
+    "title": "Final Practice Day 2",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -28645,7 +28645,7 @@
   },
   {
     "courseId": "loy_55",
-    "title": "Course 3 - Final Practice Day 3",
+    "title": "Final Practice Day 3",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -29051,7 +29051,7 @@
   },
   {
     "courseId": "loy_56",
-    "title": "Course 3 - Final Practice Day 4",
+    "title": "Final Practice Day 4",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -29387,7 +29387,7 @@
   },
   {
     "courseId": "loy_57",
-    "title": "Course 3 - Final Practice Day 5",
+    "title": "Final Practice Day 5",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -29772,7 +29772,7 @@
   },
   {
     "courseId": "loy_58",
-    "title": "Course 3 - Final Practice Day 6",
+    "title": "Final Practice Day 6",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -30157,7 +30157,7 @@
   },
   {
     "courseId": "loy_59",
-    "title": "Course 3 - Final Practice Day 7",
+    "title": "Final Practice Day 7",
     "category": "Light on Yoga > Course 3",
     "poses": [
       [
@@ -30199,12 +30199,11 @@
   },
   {
     "courseId": "ayur_01",
-    "title": "Ayurvedic Vitality Sequence (Three-Dosha Balance)",
+    "title": "Deepak Chopra Three Dosha",
     "includeNamaskara": "seq_namaskar_01",
     "namaskaraRepetitions": 6,
-    "category": "",
+    "category": "General",
     "poses": [
-      
       [
         "221",
         40,
@@ -30299,94 +30298,94 @@
     ]
   },
   {
-  "courseId": "seq_namaskar_01",
-  "title": "Surya Namaskara Sequence",
-  "category": "Vinyasa / Flow",
-  "poses": [
-    [
-      "225",
-      10,
-      "",
-      "",
-      "Action: Exhale, bring palms to heart center. Focus: Settle the breath; find stillness."
-    ],
-    [
-      "226",
-      10,
-      "",
-      "",
-      "Action: Inhale, sweep arms overhead. Focus: Lift ribs; look slightly up."
-    ],
-    [
-      "020",
-      12,
-      "",
-      "",
-      "Action: Exhale, fold forward. Focus: Relax neck; keep knees soft; hands to floor."
-    ],
-    [
-      "227",
-      12,
-      "",
-      "",
-      "Action: Inhale, step Left (right) leg back, knee down. Focus: Open chest forward; keep front knee over ankle."
-    ],
-    [
-      "033",
-      12,
-      "",
-      "",
-      "Action: Exhale, step Right (left) leg back to Down Dog. Focus: Lift hips high; press floor away."
-    ],
-    [
-      "228",
-      8,
-      "",
-      "",
-      "Action: Exhale, drop knees, chest, and chin. Focus: Eight points on the floor; elbows in."
-    ],
-    [
-      "031",
-      12,
-      "",
-      "",
-      "Action: Inhale, slide forward and lift chest. Focus: Shoulders down; open the heart."
-    ],
-    [
-      "033",
-      12,
-      "",
-      "",
-      "Action: Exhale, lift hips back to Down Dog. Focus: Stretch heels down; lengthen spine."
-    ],
-    [
-      "227",
-      12,
-      "",
-      "",
-      "Action: Inhale, step Right (left) leg forward, back knee down. Focus: Sink hips; lift heart."
-    ],
-    [
-      "020",
-      10,
-      "",
-      "",
-      "Action: Exhale, step Left (right) leg forward and fold. Focus: Let the head hang heavy."
-    ],
-    [
-      "226",
-      5,
-      "",
-      "",
-      "Action: Inhale, sweep arms overhead to stand. Focus: Reach through fingertips."
-    ],
-    [
-      "225",
-      5,
-      "",
-      "",
-      "Action: Exhale, palms to heart. Focus: Settle the breath; acknowledge the sun."
+    "courseId": "seq_namaskar_01",
+    "title": "Surya Namaskara Sequence (Ashtanga method)",
+    "category": "General",
+    "poses": [
+      [
+        "225",
+        10,
+        "",
+        "",
+        "Action: Exhale, bring palms to heart center. Focus: Settle the breath; find stillness."
+      ],
+      [
+        "226",
+        10,
+        "",
+        "",
+        "Action: Inhale, sweep arms overhead. Focus: Lift ribs; look slightly up."
+      ],
+      [
+        "020",
+        12,
+        "",
+        "",
+        "Action: Exhale, fold forward. Focus: Relax neck; keep knees soft; hands to floor."
+      ],
+      [
+        "227",
+        12,
+        "",
+        "",
+        "Action: Inhale, step Left (right) leg back, knee down. Focus: Open chest forward; keep front knee over ankle."
+      ],
+      [
+        "033",
+        12,
+        "",
+        "",
+        "Action: Exhale, step Right (left) leg back to Down Dog. Focus: Lift hips high; press floor away."
+      ],
+      [
+        "228",
+        8,
+        "",
+        "",
+        "Action: Exhale, drop knees, chest, and chin. Focus: Eight points on the floor; elbows in."
+      ],
+      [
+        "031",
+        12,
+        "",
+        "",
+        "Action: Inhale, slide forward and lift chest. Focus: Shoulders down; open the heart."
+      ],
+      [
+        "033",
+        12,
+        "",
+        "",
+        "Action: Exhale, lift hips back to Down Dog. Focus: Stretch heels down; lengthen spine."
+      ],
+      [
+        "227",
+        12,
+        "",
+        "",
+        "Action: Inhale, step Right (left) leg forward, back knee down. Focus: Sink hips; lift heart."
+      ],
+      [
+        "020",
+        10,
+        "",
+        "",
+        "Action: Exhale, step Left (right) leg forward and fold. Focus: Let the head hang heavy."
+      ],
+      [
+        "226",
+        5,
+        "",
+        "",
+        "Action: Inhale, sweep arms overhead to stand. Focus: Reach through fingertips."
+      ],
+      [
+        "225",
+        5,
+        "",
+        "",
+        "Action: Exhale, palms to heart. Focus: Settle the breath; acknowledge the sun."
+      ]
     ]
-  ]
-}
+  }
 ]
