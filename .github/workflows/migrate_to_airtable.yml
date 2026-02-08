@@ -1,6 +1,6 @@
 name: Prepare Airtable Migration
 on:
-  workflow_dispatch: # Allows you to trigger this manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   export_master:
@@ -9,9 +9,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Generate Dual Migration Files
+      - name: Generate Migration Files
         run: |
-          # 1. Main Asanas Table (Metadata only, now properly handling ALL plates)
+          # 1. Main Asanas Table
           jq -r 'to_entries | 
             (map(.value | keys) | flatten | unique | map(select(. != "variations"))) as $all_keys | 
             (["ID"] + $all_keys), 
@@ -23,10 +23,16 @@ jobs:
               else . end 
             ])) | @csv' asana_library.json > asanas_main.csv
 
-          # 2. Stages Table (Every variation becomes its own row linked by Parent_ID)
+          # 2. Stages Table
           jq -r '["Parent_ID", "Stage_Name", "Title", "Shorthand", "Full_Technique"],
             (to_entries[] | .key as $pid | .value.variations | to_entries[]? | 
             [$pid, .key, .value.title, .value.shorthand, (.value.technique | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
+
+          # 3. Courses Table (Updated Index Mapping)
+          # [0]=ID, [1]=Duration, [2]=Label, [3]=Variations, [4]=Notes
+          jq -r '["Course_ID", "Course_Title", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
+            (.[] | .courseId as $cid | .title as $ctitle | .poses[] | 
+            [$cid, $ctitle, .[0], .[1], .[2], .[3], .[4]]) | @csv' courses.json > courses_flat.csv
 
       - name: Upload Migration Files
         uses: actions/upload-artifact@v4
@@ -35,3 +41,4 @@ jobs:
           path: |
             asanas_main.csv
             asana_stages.csv
+            courses_flat.csv
