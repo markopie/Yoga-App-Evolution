@@ -24,13 +24,13 @@ jobs:
               else . | tostring end 
             ])) | @csv' asana_library.json > asanas_main.csv
 
-          # 2. Stages Table
+          # 2. Stages Table (Includes ID Padding 001)
           jq -r '["Parent_ID", "Stage_Name", "Title", "Shorthand", "Full_Technique"],
             (to_entries[] | (.key | tostring | if length < 3 then ("000" + .)[-3:] else . end) as $pid | 
             .value.variations | to_entries[]? | 
             [$pid, .key, .value.title, .value.shorthand, (if .value.technique | type == "array" then .value.technique | join(" ") else .value.technique // "" end | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
 
-          # 3. Courses Table
+          # 3. Courses Table (Includes ID Padding 001 and Category)
           jq -r '["Course_ID", "Course_Title", "Category", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
             (.[] | .courseId as $cid | .title as $ctitle | .category as $cat | .poses[] | 
             [
@@ -43,10 +43,10 @@ jobs:
               (.[3] | tostring), 
               (.[4] | tostring)
             ]) | @csv' courses.json > courses_flat.csv
-            
-                  - name: Upload Migration Files
-                    uses: actions/upload-artifact@v4
-                    with:
+
+      - name: Upload Migration Files
+        uses: actions/upload-artifact@v4
+        with:
           name: airtable-ready-csv
           path: |
             asanas_main.csv
