@@ -11,8 +11,8 @@ jobs:
 
       - name: Generate Migration Files
         run: |
-          # 1. Main Asanas Table (EXPANDED)
-          # Updates: Added gsub for newlines in technique to prevent CSV breakage
+          # 1. Main Asanas Table (FINAL)
+          # Captures all data including IAST, Intensity, Pages, etc.
           jq -r 'to_entries | 
             (["ID", "Name", "Sanskrit", "IAST", "Intensity", "Requires_Sides", "Page_2001", "Page_2015", "Technique", "Category", "Note"]),
             (.[] | [
@@ -35,8 +35,8 @@ jobs:
             .value.variations | to_entries[]? | 
             [$pid, .key, .value.title, .value.shorthand, (if .value.technique | type == "array" then .value.technique | join(" ") else .value.technique // "" end | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
 
-          # 3. Courses Table (REVISED)
-          # Updates: Extracts Namaskara settings and loops through poses
+          # 3. Courses Table (FINAL)
+          # Includes Namaskara settings
           jq -r '["Course_ID", "Course_Title", "Category", "Inc_Namaskara", "Namaskara_Reps", "Pose_Order", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
             (.[] | .courseId as $cid | .title as $ctitle | .category as $cat | .includeNamaskara as $incN | .namaskaraRepetitions as $repsN |
             foreach .poses[] as $p (0; . + 1; [
@@ -45,18 +45,14 @@ jobs:
               ($p[1] | tostring), ($p[2] | tostring), ($p[3] | tostring), ($p[4] | tostring)
             ])) | @csv' courses.json > courses_flat.csv
 
-          # 4. AUDIT: Find "Leftover" fields not included in the CSVs
+          # 4. AUDIT: Final Verification
           echo "--- AUDIT REPORT ---" > audit_log.txt
           
-          # Check asana_library for extra keys
-          # UPDATE: Added all the new fields (iast, intensity, etc) to the 'del' list so they are ignored
-          jq '[to_entries[] | {id: .key, extra: (.value | del(.name, .title, .sanskrit, .english, .meaning, .benefits, .caution, .plates, .variations, .pronunciation, .type, .steps, .iast, .intensity, .requiresSides, .page2001, .page2015, .technique, .category, .note, .categorySource, .description, .descriptionSource) | keys)}] | map(select(.extra | length > 0))' asana_library.json > leftovers_asana_library.json
+          # UPDATE: Added '.id' to the del() list to ignore the duplicate ID field
+          jq '[to_entries[] | {id: .key, extra: (.value | del(.id, .name, .title, .sanskrit, .english, .meaning, .benefits, .caution, .plates, .variations, .pronunciation, .type, .steps, .iast, .intensity, .requiresSides, .page2001, .page2015, .technique, .category, .note, .categorySource, .description, .descriptionSource) | keys)}] | map(select(.extra | length > 0))' asana_library.json > leftovers_asana_library.json
           
-          # Check courses.json for extra top-level course keys
-          # UPDATE: Added includeNamaskara and namaskaraRepetitions to the 'del' list
           jq '[.[] | {course: (.title // "Untitled"), extra: (del(.courseId, .title, .category, .poses, .includeNamaskara, .namaskaraRepetitions) | keys)}] | map(select(.extra | length > 0))' courses.json > leftovers_courses_global.json
 
-          # Check courses.json poses for arrays longer than our 5 expected slots
           jq '[.[] | .title as $t | .poses[] | select(length > 5) | {course: $t, pose_data: .}]' courses.json > leftovers_pose_details.json
 
       - name: Upload Migration Files
