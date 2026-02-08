@@ -11,17 +11,17 @@ jobs:
 
       - name: Generate Migration Files
         run: |
-          # 1. Main Asanas Table (FINAL)
-          # Logic: Captures Plate Numbers, handles text arrays, and maps new fields.
+          # 1. Main Asanas Table
+          # Logic: Captures Plate Numbers, Sanskrit, etc.
           jq -r 'to_entries | 
             (["ID", "Name", "Sanskrit", "IAST", "Plate_Numbers", "Intensity", "Requires_Sides", "Page_2001", "Page_2015", "Technique", "Category", "Note"]),
             (.[] | [
               .key, 
-              .value.name, 
-              .value.sanskrit, 
-              .value.iast, 
+              (.value.name // .value.english // ""), 
+              (.value.sanskrit // .value.iast // ""), 
+              (.value.iast // ""), 
               
-              # LOGIC: Extract Plates (Handles Arrays or Objects)
+              # Plates Logic
               (.value.plates | 
                 if type == "array" then join(", ") 
                 elif type == "object" then 
@@ -40,33 +40,35 @@ jobs:
               .value.note
             ]) | @csv' asana_library.json > asanas_main.csv
 
-          # 2. Stages Table
-          # Logic: Pads Parent_ID to 3 digits to ensure linking works.
+          # 2. Stages Table (Standard)
           jq -r '["Parent_ID", "Stage_Name", "Title", "Shorthand", "Full_Technique"],
             (to_entries[] | (.key | tostring | if length < 3 then ("000" + .)[-3:] else . end) as $pid | 
             .value.variations | to_entries[]? | 
             [$pid, .key, .value.title, .value.shorthand, (if .value.technique | type == "array" then .value.technique | join(" ") else .value.technique // "" end | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
 
-          # 3. Courses Table
-          # Logic: Extracts Namaskara settings and flattens the pose array.
-          jq -r '["Course_ID", "Course_Title", "Category", "Inc_Namaskara", "Namaskara_Reps", "Pose_Order", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
-            (.[] | .courseId as $cid | .title as $ctitle | .category as $cat | .includeNamaskara as $incN | .namaskaraRepetitions as $repsN |
-            foreach .poses[] as $p (0; . + 1; [
-              $cid, $ctitle, ($cat // ""), ($incN // ""), ($repsN // ""),
-              ., (($p[0] | if type == "array" then .[0] else . end) | tostring),
-              ($p[1] | tostring), ($p[2] | tostring), ($p[3] | tostring), ($p[4] | tostring)
-            ])) | @csv' courses.json > courses_flat.csv
+          # 3. Courses Table (DOCUMENT STYLE - One Row Per Course)
+          # Updates: 
+          # - Auto-generates ID if missing.
+          # - Collapses all poses into one "Sequence_Text" column.
+          jq -r '["Course_ID", "Course_Title", "Category", "Inc_Namaskara", "Namaskara_Reps", "Sequence_Text"],
+            (.[] | 
+              # ID Logic: Use courseId OR generate slug from title if missing
+              (.courseId // (.title | ascii_downcase | gsub("[^a-z0-9]+"; "_") | sub("^_"; "") | sub("_$"; ""))) as $cid |
+              
+              # Sequence Logic: Map all poses to "ID | Duration | Notes" lines
+              (.poses | map(
+                (.[0] | if type == "array" then .[0] else . end | tostring) + " | " + 
+                (.[1] | tostring) + " | " + 
+                (.[4] | tostring | gsub("[\n\r]"; " "))
+              ) | join("\n")) as $seq |
+
+              [$cid, .title, .category, .includeNamaskara, .namaskaraRepetitions, $seq]
+            ) | @csv' courses.json > courses_summary.csv
 
           # 4. AUDIT: Final Verification
-          # Logic: Checks for any data NOT exported to CSVs. 
-          # The 'del' list includes all fields we have successfully mapped.
           echo "--- AUDIT REPORT ---" > audit_log.txt
-          
           jq '[to_entries[] | {id: .key, extra: (.value | del(.id, .name, .title, .sanskrit, .english, .meaning, .benefits, .caution, .plates, .variations, .pronunciation, .type, .steps, .iast, .intensity, .requiresSides, .page2001, .page2015, .technique, .category, .note, .categorySource, .description, .descriptionSource) | keys)}] | map(select(.extra | length > 0))' asana_library.json > leftovers_asana_library.json
-          
           jq '[.[] | {course: (.title // "Untitled"), extra: (del(.courseId, .title, .category, .poses, .includeNamaskara, .namaskaraRepetitions) | keys)}] | map(select(.extra | length > 0))' courses.json > leftovers_courses_global.json
-
-          jq '[.[] | .title as $t | .poses[] | select(length > 5) | {course: $t, pose_data: .}]' courses.json > leftovers_pose_details.json
 
       - name: Upload Migration Files
         uses: actions/upload-artifact@v4
@@ -75,5 +77,5 @@ jobs:
           path: |
             asanas_main.csv
             asana_stages.csv
-            courses_flat.csv
+            courses_summary.csv
             leftovers_*.json
