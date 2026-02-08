@@ -29,23 +29,23 @@ jobs:
             (to_entries[] | .key as $pid | .value.variations | to_entries[]? | 
             [$pid, .key, .value.title, .value.shorthand, (if .value.technique | type == "array" then .value.technique | join(" ") else .value.technique // "" end | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
 
-          # 3. Courses Table (Updated with safety checks for index 0-4)
-          # We use (.[i] | if type == "array" then join("|") else . end) to prevent the "array is not valid" error
-          jq -r '["Course_ID", "Course_Title", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
-            (.[] | .courseId as $cid | .title as $ctitle | .poses[] | 
-            [
-              $cid, 
-              $ctitle, 
-              (.[0] | if type == "array" then join("|") else . end), 
-              (.[1] | if type == "array" then join("|") else . end), 
-              (.[2] | if type == "array" then join("|") else . end), 
-              (.[3] | if type == "array" then join("|") else . end), 
-              (.[4] | if type == "array" then join("|") else . end)
-            ]) | @csv' courses.json > courses_flat.csv
-
-      - name: Upload Migration Files
-        uses: actions/upload-artifact@v4
-        with:
+          # 3. Courses Table (Updated to include Category and ID Padding)
+            jq -r '["Course_ID", "Course_Title", "Category", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
+              (.[] | .courseId as $cid | .title as $ctitle | .category as $cat | .poses[] | 
+              [
+                $cid, 
+                $ctitle, 
+                ($cat // ""), 
+                (.[0] | tostring | if length < 3 then ("000" + .)[-3:] else . end), 
+                (.[1] | if type == "array" then join("|") else . end), 
+                (.[2] | if type == "array" then join("|") else . end), 
+                (.[3] | if type == "array" then join("|") else . end), 
+                (.[4] | if type == "array" then join("|") else . end)
+              ]) | @csv' courses.json > courses_flat.csv
+            
+                  - name: Upload Migration Files
+                    uses: actions/upload-artifact@v4
+                    with:
           name: airtable-ready-csv
           path: |
             asanas_main.csv
