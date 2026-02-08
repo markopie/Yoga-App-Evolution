@@ -11,15 +11,24 @@ jobs:
 
       - name: Generate Migration Files
         run: |
-          # 1. Main Asanas Table (FINAL)
-          # Captures all data including IAST, Intensity, Pages, etc.
+          # 1. Main Asanas Table (FIXED)
+          # Now includes Plate Numbers logic
           jq -r 'to_entries | 
-            (["ID", "Name", "Sanskrit", "IAST", "Intensity", "Requires_Sides", "Page_2001", "Page_2015", "Technique", "Category", "Note"]),
+            (["ID", "Name", "Sanskrit", "IAST", "Plate_Numbers", "Intensity", "Requires_Sides", "Page_2001", "Page_2015", "Technique", "Category", "Note"]),
             (.[] | [
               .key, 
               .value.name, 
               .value.sanskrit, 
               .value.iast, 
+              # LOGIC: Extract Plates (Handles Arrays or Objects)
+              (.value.plates | 
+                if type == "array" then join(", ") 
+                elif type == "object" then 
+                  ([
+                    (if .final and (.final | length > 0) then "Final: " + (.final | join(", ")) else empty end),
+                    (if .intermediate and (.intermediate | length > 0) then "Int: " + (.intermediate | join(", ")) else empty end)
+                  ] | join(" | "))
+                else "" end),
               .value.intensity, 
               .value.requiresSides, 
               .value.page2001, 
