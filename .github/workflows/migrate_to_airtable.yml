@@ -11,7 +11,7 @@ jobs:
 
       - name: Generate Migration Files
         run: |
-          # 1. Main Asanas Table
+          # 1. Main Asanas Table (Robust version with array-flattening)
           jq -r 'to_entries | 
             (map(.value | keys) | flatten | unique | map(select(. != "variations"))) as $all_keys | 
             (["ID"] + $all_keys), 
@@ -19,20 +19,29 @@ jobs:
               if $k == "plates" then 
                 [(if .final and (.final | length > 0) then "Final: " + (.final | join(", ")) else empty end),
                  (if .intermediate and (.intermediate | length > 0) then "Int: " + (.intermediate | join(", ")) else empty end)] | join(" | ")
+              elif type == "array" then . | join(" | ")
               elif type == "string" then . | gsub("\n"; " ")
-              else . end 
+              else . | tostring end 
             ])) | @csv' asana_library.json > asanas_main.csv
 
           # 2. Stages Table
           jq -r '["Parent_ID", "Stage_Name", "Title", "Shorthand", "Full_Technique"],
             (to_entries[] | .key as $pid | .value.variations | to_entries[]? | 
-            [$pid, .key, .value.title, .value.shorthand, (.value.technique | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
+            [$pid, .key, .value.title, .value.shorthand, (if .value.technique | type == "array" then .value.technique | join(" ") else .value.technique // "" end | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
 
-          # 3. Courses Table (Updated Index Mapping)
-          # [0]=ID, [1]=Duration, [2]=Label, [3]=Variations, [4]=Notes
+          # 3. Courses Table (Updated with safety checks for index 0-4)
+          # We use (.[i] | if type == "array" then join("|") else . end) to prevent the "array is not valid" error
           jq -r '["Course_ID", "Course_Title", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
             (.[] | .courseId as $cid | .title as $ctitle | .poses[] | 
-            [$cid, $ctitle, .[0], .[1], .[2], .[3], .[4]]) | @csv' courses.json > courses_flat.csv
+            [
+              $cid, 
+              $ctitle, 
+              (.[0] | if type == "array" then join("|") else . end), 
+              (.[1] | if type == "array" then join("|") else . end), 
+              (.[2] | if type == "array" then join("|") else . end), 
+              (.[3] | if type == "array" then join("|") else . end), 
+              (.[4] | if type == "array" then join("|") else . end)
+            ]) | @csv' courses.json > courses_flat.csv
 
       - name: Upload Migration Files
         uses: actions/upload-artifact@v4
