@@ -46,16 +46,17 @@ jobs:
             ])) | @csv' courses.json > courses_flat.csv
 
           # 4. AUDIT: Find "Leftover" fields not included in the CSVs
-          # This script checks every object. If it has a key NOT in our CSV list, it captures it.
           echo "--- AUDIT REPORT ---" > audit_log.txt
           
           # Check asana_library for extra top-level keys
-          jq '[to_entries[] | {id: .key, extra: (.value | del(.title, .sanskrit, .english, .meaning, .benefits, .caution, .plates, .variations, .pronunciation, .type) | keys)}] | filter(.extra | length > 0)' asana_library.json > leftovers_asana_library.json
+          # We use 'select' instead of 'filter'
+          jq '[to_entries[] | {id: .key, extra: (.value | del(.title, .sanskrit, .english, .meaning, .benefits, .caution, .plates, .variations, .pronunciation, .type, .steps) | keys)}] | map(select(.extra | length > 0))' asana_library.json > leftovers_asana_library.json
           
           # Check courses.json for extra top-level course keys
-          jq '[.[] | {course: .title, extra: (del(.courseId, .title, .category, .poses) | keys)}] | filter(.extra | length > 0)' courses.json > leftovers_courses_global.json
+          jq '[.[] | {course: (.title // "Untitled"), extra: (del(.courseId, .title, .category, .poses) | keys)}] | map(select(.extra | length > 0))' courses.json > leftovers_courses_global.json
 
           # Check courses.json poses for arrays longer than our 5 expected slots
+          # This catches if a pose has [ID, Dur, Label, Var, Notes, EXTRA_STUFF]
           jq '[.[] | .title as $t | .poses[] | select(length > 5) | {course: $t, pose_data: .}]' courses.json > leftovers_pose_details.json
 
       - name: Upload Migration Files
