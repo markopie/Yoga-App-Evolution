@@ -30,19 +30,21 @@ jobs:
             .value.variations | to_entries[]? | 
             [$pid, .key, .value.title, .value.shorthand, (if .value.technique | type == "array" then .value.technique | join(" ") else .value.technique // "" end | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
 
-          # 3. Courses Table (Includes ID Padding 001 and Category)
-          jq -r '["Course_ID", "Course_Title", "Category", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
-            (.[] | .courseId as $cid | .title as $ctitle | .category as $cat | .poses[] | 
-            [
+          # 3. Courses Table (Updated with Pose_Order/Sequence Identifier)
+          jq -r '["Course_ID", "Course_Title", "Category", "Pose_Order", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
+            (.[] | .courseId as $cid | .title as $ctitle | .category as $cat | 
+            # We use foreach to create a counter (idx) for each pose in the array
+            foreach .poses[] as $p (0; . + 1; [
               $cid, 
               $ctitle, 
               ($cat // ""), 
-              (.[0] | tostring | if length < 3 then ("000" + .)[-3:] else . end), 
-              (.[1] | tostring), 
-              (.[2] | tostring), 
-              (.[3] | tostring), 
-              (.[4] | tostring)
-            ]) | @csv' courses.json > courses_flat.csv
+              ., # This is the current counter index (1, 2, 3...)
+              ($p[0] | tostring | if length < 3 then ("000" + .)[-3:] else . end), 
+              ($p[1] | tostring), 
+              ($p[2] | tostring), 
+              ($p[3] | tostring), 
+              ($p[4] | tostring)
+            ])) | @csv' courses.json > courses_flat.csv
 
       - name: Upload Migration Files
         uses: actions/upload-artifact@v4
