@@ -12,22 +12,22 @@ jobs:
       - name: Generate Migration Files
         run: |
           # 1. Main Asanas Table (EXPANDED)
-            # This now explicitly captures the fields we found in the audit
-            jq -r 'to_entries | 
-              (["ID", "Name", "Sanskrit", "IAST", "Intensity", "Requires_Sides", "Page_2001", "Page_2015", "Technique", "Category", "Note"]),
-              (.[] | [
-                .key, 
-                .value.name, 
-                .value.sanskrit, 
-                .value.iast, 
-                .value.intensity, 
-                .value.requiresSides, 
-                .value.page2001, 
-                .value.page2015, 
-                (.value.technique | if type == "array" then join(" ") else . // "" end),
-                .value.category,
-                .value.note
-              ]) | @csv' asana_library.json > asanas_main.csv
+          # Updates: Added gsub for newlines in technique to prevent CSV breakage
+          jq -r 'to_entries | 
+            (["ID", "Name", "Sanskrit", "IAST", "Intensity", "Requires_Sides", "Page_2001", "Page_2015", "Technique", "Category", "Note"]),
+            (.[] | [
+              .key, 
+              .value.name, 
+              .value.sanskrit, 
+              .value.iast, 
+              .value.intensity, 
+              .value.requiresSides, 
+              .value.page2001, 
+              .value.page2015, 
+              (.value.technique | if type == "array" then join(" ") else . // "" end | gsub("\n"; " ")),
+              .value.category,
+              .value.note
+            ]) | @csv' asana_library.json > asanas_main.csv
 
           # 2. Stages Table
           jq -r '["Parent_ID", "Stage_Name", "Title", "Shorthand", "Full_Technique"],
@@ -36,7 +36,7 @@ jobs:
             [$pid, .key, .value.title, .value.shorthand, (if .value.technique | type == "array" then .value.technique | join(" ") else .value.technique // "" end | gsub("\n"; " "))]) | @csv' asana_library.json > asana_stages.csv
 
           # 3. Courses Table (REVISED)
-          # I added 'Namaskara' settings to the header in case you want to import them to the Course List
+          # Updates: Extracts Namaskara settings and loops through poses
           jq -r '["Course_ID", "Course_Title", "Category", "Inc_Namaskara", "Namaskara_Reps", "Pose_Order", "Pose_ID", "Duration", "Label", "Variations", "Notes"],
             (.[] | .courseId as $cid | .title as $ctitle | .category as $cat | .includeNamaskara as $incN | .namaskaraRepetitions as $repsN |
             foreach .poses[] as $p (0; . + 1; [
@@ -48,15 +48,15 @@ jobs:
           # 4. AUDIT: Find "Leftover" fields not included in the CSVs
           echo "--- AUDIT REPORT ---" > audit_log.txt
           
-          # Check asana_library for extra top-level keys
-          # We use 'select' instead of 'filter'
-          jq '[to_entries[] | {id: .key, extra: (.value | del(.title, .sanskrit, .english, .meaning, .benefits, .caution, .plates, .variations, .pronunciation, .type, .steps) | keys)}] | map(select(.extra | length > 0))' asana_library.json > leftovers_asana_library.json
+          # Check asana_library for extra keys
+          # UPDATE: Added all the new fields (iast, intensity, etc) to the 'del' list so they are ignored
+          jq '[to_entries[] | {id: .key, extra: (.value | del(.name, .title, .sanskrit, .english, .meaning, .benefits, .caution, .plates, .variations, .pronunciation, .type, .steps, .iast, .intensity, .requiresSides, .page2001, .page2015, .technique, .category, .note, .categorySource, .description, .descriptionSource) | keys)}] | map(select(.extra | length > 0))' asana_library.json > leftovers_asana_library.json
           
           # Check courses.json for extra top-level course keys
-          jq '[.[] | {course: (.title // "Untitled"), extra: (del(.courseId, .title, .category, .poses) | keys)}] | map(select(.extra | length > 0))' courses.json > leftovers_courses_global.json
+          # UPDATE: Added includeNamaskara and namaskaraRepetitions to the 'del' list
+          jq '[.[] | {course: (.title // "Untitled"), extra: (del(.courseId, .title, .category, .poses, .includeNamaskara, .namaskaraRepetitions) | keys)}] | map(select(.extra | length > 0))' courses.json > leftovers_courses_global.json
 
           # Check courses.json poses for arrays longer than our 5 expected slots
-          # This catches if a pose has [ID, Dur, Label, Var, Notes, EXTRA_STUFF]
           jq '[.[] | .title as $t | .poses[] | select(length > 5) | {course: $t, pose_data: .}]' courses.json > leftovers_pose_details.json
 
       - name: Upload Migration Files
