@@ -28,8 +28,8 @@ const COMPLETION_LOG_URL = "completion_log.php";
 const LOCAL_SEQ_KEY = "yoga_sequences_v1";
 
 // 5. Supabase Configuration
-const SUPABASE_URL = "https://yonzdrhewxwaowfyuglx.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlvbnpkcmhld3h3YW93Znl1Z2x4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMDE5MjcsImV4cCI6MjA4NDY3NzkyN30.I3L9kAXs-5Ggq1TxnE-GZoYWGITg9kUcUCTw0l-LvG8";
+const SUPABASE_URL = "https://qrcpiyncvfmpmeuyhsha.supabase.co";
+const SUPABASE_ANON_KEY = "sbp_41c95a06d397102faa0b43dc4afd2a1e12905299";
 const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 
@@ -555,31 +555,117 @@ async function loadJSON(url, fallback = null) {
 
 // 2. Load Courses
 async function loadCourses() {
-    // 1. Load Data
-    const data = await loadJSON(COURSES_URL, []);
- 
-    // 2. Validate
-    if (!Array.isArray(data) || data.length === 0) {
-       console.error("Failed to load courses.json - using empty array");
-       courses = [];
-       sequences = [];
-       return;
+    if (!supabase) {
+        console.error("Supabase client not initialized");
+        courses = [];
+        sequences = [];
+        return;
     }
- 
-    // 3. Assign Globals
-    // Filter out bad data and ensure global variables are set
-    courses = data.filter(c => c && c.title && Array.isArray(c.poses));
-    sequences = courses;
-    window.courses = courses; 
-    
-    console.log(`Loaded ${courses.length} courses`);
 
-    // 4. TRIGGER UI UPDATE (This was missing)
-    if (typeof renderSequenceDropdown === "function") {
-        renderSequenceDropdown();
-    } else if (typeof renderCourseUI === "function") {
-        renderCourseUI();
+    try {
+        // Fetch courses from Supabase
+        const { data: coursesData, error: coursesError } = await supabase
+            .from('courses')
+            .select('*');
+
+        if (coursesError) {
+            console.error("Error fetching courses:", coursesError);
+            courses = [];
+            sequences = [];
+            return;
+        }
+
+        if (!coursesData || coursesData.length === 0) {
+            console.warn("No courses found in database");
+            courses = [];
+            sequences = [];
+            return;
+        }
+
+        console.log(`Fetched ${coursesData.length} courses`);
+
+        // Transform courses into legacy format
+        const transformedCourses = [];
+
+        coursesData.forEach(row => {
+            const courseObj = {
+                title: row.course_title || '',
+                category: row.category || '',
+                poses: parseSequenceText(row.sequence_text || '')
+            };
+
+            // Only include courses with valid poses
+            if (courseObj.title && Array.isArray(courseObj.poses) && courseObj.poses.length > 0) {
+                transformedCourses.push(courseObj);
+            }
+        });
+
+        // Assign to globals
+        courses = transformedCourses;
+        sequences = courses;
+        window.courses = courses;
+
+        console.log(`Loaded ${courses.length} courses`);
+
+        // Trigger UI update
+        if (typeof renderSequenceDropdown === "function") {
+            renderSequenceDropdown();
+        } else if (typeof renderCourseUI === "function") {
+            renderCourseUI();
+        }
+
+    } catch (e) {
+        console.error("Exception loading courses:", e);
+        courses = [];
+        sequences = [];
     }
+}
+
+// Helper function to parse sequence text into poses array
+// Input format: "074 | 60 |\n215 | 600 | [Pratiloma IVb]\n203 | 300 | [Ujjāyī II (lying)]"
+// Output format: [[id], duration, label, variationKey, note]
+function parseSequenceText(sequenceText) {
+    if (!sequenceText || typeof sequenceText !== 'string') {
+        return [];
+    }
+
+    const lines = sequenceText.split('\n').map(line => line.trim()).filter(line => line);
+    const poses = [];
+
+    lines.forEach(line => {
+        // Split by pipe character
+        const parts = line.split('|').map(p => p.trim());
+
+        if (parts.length < 2) {
+            return; // Skip invalid lines
+        }
+
+        const id = parts[0] || '';
+        const duration = parseInt(parts[1], 10) || 0;
+        const noteSection = parts[2] || '';
+
+        // Parse the note section for variation key
+        // Example: "[Pratiloma IVb]" -> variationKey = "IVb", note = "[Pratiloma IVb]"
+        let variationKey = '';
+        let note = noteSection;
+
+        // Extract variation key from brackets (look for patterns like "IVb", "II", "IIa", etc.)
+        const variationMatch = noteSection.match(/\[.*?\b([IVX]+[a-z]?)\]/);
+        if (variationMatch) {
+            variationKey = variationMatch[1];
+        }
+
+        // Create pose entry in legacy format: [[id], duration, label, variationKey, note]
+        poses.push([
+            [id.padStart(3, '0')], // ID as array with padding
+            duration,
+            '', // label (empty string as per legacy format)
+            variationKey,
+            note
+        ]);
+    });
+
+    return poses;
 }
 
 // 3. Local Sequence Editing (Save/Reset)
@@ -599,26 +685,125 @@ function resetToOriginalJSON() {
 
 // 4. Load Asana Library
 async function loadAsanaLibrary() {
-    // Now calls loadJSON correctly with ASANA_LIBRARY_URL
-    const data = await loadJSON(ASANA_LIBRARY_URL, {});
-
-    if (!data || Object.keys(data).length === 0) {
-        console.error("Failed to load Library (or empty)");
+    if (!supabase) {
+        console.error("Supabase client not initialized");
         return {};
     }
 
-    // Normalize IDs (ensure "001" and "1" match)
-    const normalized = {};
-    Object.keys(data).forEach(key => {
-        // Use your existing normalizePlate function if available, else simple trim
-        const cleanId = (typeof normalizePlate === 'function') ? normalizePlate(key) : key.trim();
-        normalized[cleanId] = data[key];
-        // Ensure ID property exists
-        if (!normalized[cleanId].id) normalized[cleanId].id = cleanId;
-    });
+    try {
+        // Fetch asanas from Supabase
+        const { data: asanasData, error: asanasError } = await supabase
+            .from('asanas')
+            .select('*');
 
-    console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
-    return normalized;
+        if (asanasError) {
+            console.error("Error fetching asanas:", asanasError);
+            return {};
+        }
+
+        if (!asanasData || asanasData.length === 0) {
+            console.warn("No asanas found in database");
+            return {};
+        }
+
+        console.log(`Fetched ${asanasData.length} asanas`);
+
+        // Transform asanas into legacy format (object keyed by padded ID)
+        const normalized = {};
+
+        asanasData.forEach(row => {
+            // Ensure ID is padded to 3 digits
+            const paddedId = String(row.id || "").trim().padStart(3, '0');
+
+            // Parse plates from "Final: 1, 2" format
+            const platesObj = parsePlates(row.plate_numbers);
+
+            normalized[paddedId] = {
+                id: paddedId,
+                name: row.name || '',
+                iast: row.iast || '',
+                english: row.english_name || '',
+                technique: row.technique || '',
+                requiresSides: row.requires_sides || false,
+                plates: platesObj,
+                page2001: row.page_2001 || '',
+                page2015: row.page_2015 || '',
+                intensity: row.intensity || '',
+                note: row.note || '',
+                category: row.category || '',
+                description: row.description || '',
+                variations: {}
+            };
+        });
+
+        // Fetch stages (variations) from Supabase
+        const { data: stagesData, error: stagesError } = await supabase
+            .from('stages')
+            .select('*');
+
+        if (stagesError) {
+            console.error("Error fetching stages:", stagesError);
+        } else if (stagesData && stagesData.length > 0) {
+            console.log(`Fetched ${stagesData.length} stages`);
+
+            // Inject stages into their parent asanas
+            stagesData.forEach(stage => {
+                const parentIds = stage.parent_id;
+                if (!parentIds || !Array.isArray(parentIds) || parentIds.length === 0) {
+                    return;
+                }
+
+                // Get the first parent ID and normalize it
+                const parentId = String(parentIds[0] || "").trim().padStart(3, '0');
+
+                if (normalized[parentId]) {
+                    const stageKey = stage.stage_name || '';
+                    if (stageKey) {
+                        normalized[parentId].variations[stageKey] = {
+                            technique: stage.full_technique || '',
+                            shorthand: stage.shorthand || '',
+                            title: stage.title || `Stage ${stageKey}`
+                        };
+                    }
+                }
+            });
+        }
+
+        console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
+        return normalized;
+
+    } catch (e) {
+        console.error("Exception loading asana library:", e);
+        return {};
+    }
+}
+
+// Helper function to parse plates string like "Final: 1, 2" or "Intermediate: 3"
+function parsePlates(plateStr) {
+    const result = {
+        intermediate: [],
+        final: []
+    };
+
+    if (!plateStr || typeof plateStr !== 'string') {
+        return result;
+    }
+
+    // Split by common delimiters and look for "Final:" and "Intermediate:"
+    const finalMatch = plateStr.match(/Final:\s*([^,\n]+(?:,\s*[^,\n]+)*)/i);
+    const intermediateMatch = plateStr.match(/Intermediate:\s*([^,\n]+(?:,\s*[^,\n]+)*)/i);
+
+    if (finalMatch) {
+        const plates = finalMatch[1].split(',').map(s => s.trim()).filter(s => s);
+        result.final = plates;
+    }
+
+    if (intermediateMatch) {
+        const plates = intermediateMatch[1].split(',').map(s => s.trim()).filter(s => s);
+        result.intermediate = plates;
+    }
+
+    return result;
 }
 
 /* ==========================================================================
