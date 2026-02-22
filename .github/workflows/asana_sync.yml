@@ -1,0 +1,32 @@
+name: Sync Airtable Asanas
+on:
+  workflow_dispatch: # This adds the "Run workflow" button for manual triggers
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install pyairtable
+
+      - name: Run sync script
+        env:
+          AIRTABLE_PAT: ${{ secrets.AIRTABLE_PAT }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+        run: python sync_asanas.py
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git add data/asanas.json
+          git commit -m "Update asana data from Airtable" || exit 0
+          git push
