@@ -2,34 +2,39 @@ import os
 import json
 from pyairtable import Api
 
-# Access secrets from GitHub Environment
+# Fetch secrets
 api_key = os.environ['AIRTABLE_PAT']
 base_id = os.environ['AIRTABLE_BASE_ID']
 
 api = Api(api_key)
 
-# 1. Fetch data from all three tables
-asana_records = api.table(base_id, 'Asanas').all()
-stage_records = api.table(base_id, 'Stages').all()
-course_records = api.table(base_id, 'Courses').all()
+def get_table_data(table_name):
+    table = api.table(base_id, table_name)
+    # This gets all records and strips them down to just the fields + Airtable ID
+    return [{"id": r["id"], **r["fields"]} for r in table.all()]
 
-# 2. Format for asana_library.json (Combined Asanas and Stages)
+# Fetching all three tables
+asanas = get_table_data('Asanas')
+stages = get_table_data('Stages')
+courses = get_table_data('Courses')
+
+# 1. Create asana_library.json
+# We keep them separate but in one file so your JS can cross-reference the IDs
 asana_library = {
-    "Asanas": [r['fields'] for r in asana_records],
-    "Stages": [r['fields'] for r in stage_records]
+    "Asanas": asanas,
+    "Stages": stages
 }
 
-# 3. Format for courses.json (List of courses)
-courses_data = [r['fields'] for r in course_records]
+# 2. Create courses.json
+courses_data = courses
 
-# Ensure the data folder exists (or wherever your JSONs are housed)
+# Save logic
 os.makedirs('data', exist_ok=True)
 
-# 4. Save files
 with open('data/asana_library.json', 'w', encoding='utf-8') as f:
     json.dump(asana_library, f, indent=4, ensure_ascii=False)
 
 with open('data/courses.json', 'w', encoding='utf-8') as f:
     json.dump(courses_data, f, indent=4, ensure_ascii=False)
 
-print("Sync Complete: generated asana_library.json and courses.json")
+print("✅ Success: asana_library.json and courses.json updated.")
