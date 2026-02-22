@@ -1,1076 +1,920 @@
 [
-    {
-        "id": "rec0ii8Teg22g1CFp",
-        "Course_ID": 153,
-        "Course_Title": "Weekly Practice Day 6",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n067 | 60 |\n146 | 60 | One minute on each way changing legs\n147 | 60 | Half a minute each way\n114 | 60 |\n120 | 60 |\n121 | 60 |\n117 | 60 |\n118 | 60 |\n119 | 60 |\n122 | 60 |\n122 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n175 | 60 |\n173 | 60 |\n200 | 60 | "
-    },
-    {
-        "id": "rec1Dwn9CPT9BiE7b",
-        "Course_ID": 40,
-        "Course_Title": "Menstrual Disorders",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n067 | 120 | [Paschimottanasana]\n020 | 120 |\n033 | 120 |\n055 | 60 |\n066 | 120 |\n044 | 120 |\n041 | 120 |\n134 | 120 |\n116 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "rec1NpCqd7MtocjzT",
-        "Course_ID": 87,
-        "Course_Title": "Weeks 196 to 200",
-        "Category": "Light on Prānāyāma > Course 5 (Highly Intense)",
-        "Sequence_Text": "205 | 600 | [Nāḍī śodhana IVa]\n214 | 600 | [Nāḍī śodhana IVb]\n203 | 600 | [Ujjāyī II (lying)]"
-    },
-    {
-        "id": "rec2M2JgJRBENtHcQ",
-        "Course_ID": 59,
-        "Course_Title": "Week 19 and 22",
-        "Category": "Light on Pranayama > Course 1 (Preparatory)",
-        "Sequence_Text": "203 | 300 | [Ujjāyī VI]\n203 | 300 | [Ujjāyī VII]\n213 | 300 | [Viloma I]\n213 | 300 | [Viloma II]"
-    },
-    {
-        "id": "rec2RHiwdArRoAl3x",
-        "Course_ID": 123,
-        "Course_Title": "Final Practice Day 1",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n126 | 60 |\n123 | 60 |\n123 | 60 |\n152 | 60 |\n153 | 60 |\n154 | 60 |\n155 | 60 |\n158 | 60 |\n159 | 60 |\n161 | 60 |\n162 | 60 |\n160 | 60 |\n156 | 60 |\n173 | 60 | Finish each asana 488-499 with Viparita Chakrasana\n173 | 60 |\n132 | 60 |\n130 | 60 |\n127 | 60 |\n067 | 300 |\n200 | 60 |\n045 | 60 |\n045 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "rec2Vc78Wf4zTCzyO",
-        "Course_ID": 139,
-        "Course_Title": "Week 161 to 165",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n154 | 60 |\n152 | 60 |\n153 | 60 |\n156 | 60 |\n156 | 60 |\n157 | 60 |\n158 | 60 |\n159 | 60 |\n132 | 60 |\n130 | 60 |\n173 | 60 |\n173 | 60 |\n123 | 60 |\n123 | 60 |\n126 | 60 |\n149 | 60 |\n151 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n147 | 60 |\n148 | 60 |\n146 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n121 | 60 |\n121 | 60 |\n119 | 60 |\n163 | 60 |\n164 | 60 | "
-    },
-    {
-        "id": "rec2cXBrvTXbqvvrZ",
-        "Course_ID": 140,
-        "Course_Title": "Week 166 to 175",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 600 |\n087 | 600 |\n091 | 300 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n154 | 60 |\n152 | 60 |\n153 | 60 |\n156 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n173 | 60 |\n173 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n147 | 60 |\n146 | 60 |\n163 | 60 |\n164 | 60 |\n165 | 60 |\n165 | 60 |\n166 | 60 |\n167 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n180 | 60 |\n175 | 60 |\n176 | 60 |\n116 | 60 |\n120 | 60 |\n121 | 60 |\n119 | 60 |\n200 | 60 |\n205 | 600 |\n218 | 300 | "
-    },
-    {
-        "id": "rec3CMjnooQ2JCCKT",
-        "Course_ID": 132,
-        "Course_Title": "Week 95 to 100",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n139 | 60 |\n136 | 60 |\n141 | 60 |\n141 | 60 |\n130 | 60 |\n131 | 60 |\n127 | 60 |\n129 | 60 |\n126 | 60 |\n152 | 60 |\n132 | 60 |\n149 | 60 |\n151 | 60 |\n172a | 60 |\n172a | 60 |\n177 | 60 |\n175 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n119 | 60 |\n020 | 60 |\n200 | 60 |\n205 | 600 |\n218 | 300 | "
-    },
-    {
-        "id": "rec3rCM9IZ2AV5WdO",
-        "Course_ID": 24,
-        "Course_Title": "Giddiness",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n067 | 180 | [Paschimottanasana]\n046 | 300 |\n600 | 300 | [Nadi Sodhana (No Retention)]\n200 | 600 | [Savasana]"
-    },
-    {
-        "id": "rec4CIJBEpFL8ViO0",
-        "Course_ID": 125,
-        "Course_Title": "Final Practice Day 3",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n180 | 60 |\n175 | 60 |\n176 | 60 |\n182 | 60 |\n189 | 60 |\n190 | 60 |\n191 | 60 |\n192 | 60 |\n193 | 60 |\n184 | 60 |\n186 | 60 |\n185 | 60 |\n195 | 60 | Sirsapadasana and Ganda Bherundasana, Viparita Salabhasana, and Tiryang Mukhottanasana all done together\n196 | 60 |\n196 | 60 |\n197 | 60 |\n198 | 60 |\n067 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n200 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "rec4gT1cNCnd1B1bz",
-        "Course_ID": 71,
-        "Course_Title": "Weeks 76 to 80",
-        "Category": "Light on Prānāyāma > Course 3 (Intermediate)",
-        "Sequence_Text": "214 | 600 | [Anuloma IIb]\n215 | 600 | [Pratiloma IIb]\n204 | 600 | [Sūrya Bhedana II]\n217 | 600 | [II]\n205 | 600 | [Nāḍī Śodhana II]"
-    },
-    {
-        "id": "rec4jdVVC7OFtc7U3",
-        "Course_ID": 10,
-        "Course_Title": "Arthritis (Lower Back/Lumbar)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "003 | 30 | [Utthita Trikonasana]\n005 | 30 | [Utthita Parsvakonasana]\n007 | 30 |\n004 | 30 |\n012 | 45 |\n074 | 300 |\n087 | 300 |\n112 | 60 | [Bharadwajasana I]\n114 | 60 |\n015 | 45 |\n025 | 30 |\n027 | 30 |\n016 | 45 |\n111 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana (Chair Backbend)]\n132 | 30 | [Handstand]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "rec50w6XGZA7gP9YS",
-        "Course_ID": 79,
-        "Course_Title": "Weeks 143 to 148",
-        "Category": "Light on Prānāyāma > Course 4 (Advanced)",
-        "Sequence_Text": "217 | 600 | [II]\n205 | 900 | [Nāḍī śodhana Ib]"
-    },
-    {
-        "id": "rec5L3IjPrJV2N04n",
-        "Course_ID": 109,
-        "Course_Title": "Important Asanas in Course 2",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "011 | 60 |\n024 | 60 |\n030 | 60 |\n030 | 60 |\n043 | 60 |\n050 | 60 |\n053 | 60 |\n056 | 60 |\n057 | 60 |\n060 | 60 |\n063 | 60 |\n063 | 60 |\n066 | 60 |\n068 | 60 |\n073 | 60 |\n073 | 60 |\n075 | 60 |\n074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n109 | 60 |\n111 | 60 |\n119 | 60 |\n119 | 60 |\n123 | 60 |\n123 | 60 |\n126 | 60 |\n127 | 60 |\n132 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n152 | 60 |\n172a | 60 | "
-    },
-    {
-        "id": "rec5QqxrFItIa8nmM",
-        "Course_ID": 27,
-        "Course_Title": "Hamstrings & Leg Deformity",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "1 | 120 | [All Standing Poses (Focus on legs)]\n105 | 60 |\n108 | 60 |\n109 | 60 | [Anantasana]\n067 | 120 | [Paschimottanasana]\n072 | 30 |\n066 | 60 |\n073 | 45 |\n133 | 45 |\n016 | 45 |\n169 | 45 |\n170 | 45 |\n171 | 45 |\n074 | 180 |\n087 | 180 |\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "rec6PFcR3BFiSMCNH",
-        "Course_ID": 7,
-        "Course_Title": "Acidity & Digestion",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "003 | 30 | [Utthita Trikonasana]\n004 | 30 |\n005 | 30 | [Utthita Parsvakonasana]\n006 | 30 |\n007 | 30 |\n010 | 30 |\n012 | 30 |\n020 | 60 |\n074 | 300 |\n087 | 300 |\n105 | 60 |\n034 | 30 |\n059 | 60 |\n060 | 60 |\n067 | 120 | [Paschimottanasana]\n116 | 60 |\n119 | 60 |\n027 | 30 |\n486 | 60 | [Urdhva Dhanurasana]\n201 | 60 |\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "rec6qXCYc2bf2rHEO",
-        "Course_ID": 50,
-        "Course_Title": "Varicose Veins",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "184 | 600 | [Salamba Sirsasana (10 min)]\n234 | 600 | [Salamba Sarvangasana (10 min)]\n091 | 300 |\n040 | 120 |\n041 | 180 |\n043 | 60 |\n200 | 300 | [Savasana (Legs elevated on bolster)]"
-    },
-    {
-        "id": "rec7N3v7XiDPL7nyT",
-        "Course_ID": 128,
-        "Course_Title": "Final Practice Day 6",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n067 | 60 |\n146 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n169 | 60 |\n170 | 60 |\n171 | 60 |\n165 | 60 |\n168 | 60 |\n181 | 60 |\n175 | 60 |\n182 | 60 |\n190 | 60 |\n184 | 60 |\n185 | 60 |\n195 | 60 |\n196 | 60 |\n196 | 60 |\n020 | 60 |\n200 | 300 |\n045 | 60 |\n045 | 60 |\n201 | 60 | "
-    },
-    {
-        "id": "rec8GZMNnin8u0W1N",
-        "Course_ID": 58,
-        "Course_Title": "Week 16 and 18",
-        "Category": "Light on Pranayama > Course 1 (Preparatory)",
-        "Sequence_Text": "203 | 300 | [Ujjāyī VI]\n203 | 300 | [Ujjāyī VII]\n213 | 300 | [Viloma I]\n213 | 300 | [Viloma II]"
-    },
-    {
-        "id": "rec8KnbR6lQ9cQqlm",
-        "Course_ID": 103,
-        "Course_Title": "Week 16 & 17",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "074 | 300 |\n003 | 40 |\n004 | 40 |\n005 | 40 |\n006 | 40 |\n007 | 40 |\n008 | 40 |\n009 | 40 |\n010 | 40 |\n012 | 40 |\n013 | 60 |\n014 | 60 |\n018 | 30 |\n019 | 30 |\n020 | 60 |\n021 | 40 |\n017 | 40 |\n015 | 40 |\n016 | 40 |\n025 | 30 |\n026 | 30 |\n027 | 30 |\n029 | 30 |\n031 | 30 |\n032 | 30 |\n033 | 60 |\n040 | 60 |\n087 | 300 |\n091 | 300 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 40 |\n096 | 40 |\n105 | 60 |\n106 | 60 |\n034 | 60 |\n036 | 60 |\n058 | 240 |\n059 | 40 |\n067 | 120 |\n072 | 30 |\n200 | 300 |\n203 | 300 | Do Ujjayi Pranayama (#203) without inhalation retention in Siddhasana."
-    },
-    {
-        "id": "rec8mq2pqy8gWGlk1",
-        "Course_ID": 142,
-        "Course_Title": "Week 181 to 190",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n149 | 60 |\n151 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n146 | 60 |\n147 | 60 |\n148 | 60 |\n163 | 60 |\n165 | 60 |\n116 | 60 |\n119 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n175 | 60 |\n176 | 60 |\n184 | 60 |\n169 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "rec9BliSUCWPUkAN9",
-        "Course_ID": 28,
-        "Course_Title": "Headache & Migraine",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "184 | 600 | [Salamba Sirsasana (Bandage eyes)]\n087 | 600 |\n091 | 300 |\n067 | 300 | [Paschimottanasana (Head supported)]\n020 | 180 | [Head supported]\n046 | 300 | [Seated]\n600 | 600 | [Nadi Sodhana (No Retention)]\n209 | 300 | [Cooling]\n200 | 600 | [Savasana]"
-    },
-    {
-        "id": "rec9jPWNbreYA6xsq",
-        "Course_ID": 12,
-        "Course_Title": "Arthritis (Upper Back/Dorsal)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "104 | 120 | [Padmasana Cycle]\n040 | 60 |\n042 | 60 |\n037 | 60 |\n015 | 45 |\n067 | 120 | [Paschimottanasana]\n031 | 45 |\n032 | 30 |\n033 | 60 |\n130 | 45 |\n074 | 180 |\n087 | 180 |\n112 | 60 | [Bharadwajasana I]\n116 | 60 |\n119 | 60 |\n016 | 45 |\n027 | 45 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n512 | 60 | [Kapotasana]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recA3NOntDT7VUTUb",
-        "Course_ID": 11,
-        "Course_Title": "Arthritis (Shoulder & Dorsal)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "003 | 30 | [Utthita Trikonasana]\n007 | 30 |\n074 | 180 |\n087 | 180 |\n037 | 60 |\n022 | 60 |\n061 | 60 |\n055 | 60 |\n056 | 60 |\n152 | 30 |\n126 | 30 |\n130 | 30 |\n132 | 30 |\n112 | 60 | [Bharadwajasana I]\n116 | 60 |\n119 | 60 |\n163 | 60 |\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recBuNWw43CGx6Kt9",
-        "Course_ID": 63,
-        "Course_Title": "Week 32 to 34",
-        "Category": "Light on Prānāyāma > Course 2 (Primary)",
-        "Sequence_Text": "213 | 420 | [Viloma III]\n214 | 420 | [Anuloma Ib]\n203 | 300 | [Ujjāyī IX]"
-    },
-    {
-        "id": "recCTFV9zoVdBUZkb",
-        "Course_ID": 64,
-        "Course_Title": "Week 35 to 38",
-        "Category": "Light on Prānāyāma > Course 2 (Primary)",
-        "Sequence_Text": "214 | 600 | [Anuloma Ia]\n215 | 600 | [Pratiloma Ia]\n203 | 300 | [Ujjāyī IV]"
-    },
-    {
-        "id": "recCW8BELq5jjBhEh",
-        "Course_ID": 23,
-        "Course_Title": "Epilepsy & Nervous System",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n058 | 60 | [Mahamudra]\n067 | 180 | [Paschimottanasana]\n046 | 300 |\n600 | 300 | [Ujjayi (Inhalation Retention)]\n600 | 300 | [Nadi Sodhana (No Retention)]\n209 | 300 |\n200 | 600 | [Savasana]"
-    },
-    {
-        "id": "recCWcrPUCfj5qPLu",
-        "Course_ID": 54,
-        "Course_Title": "Week 7 and 8",
-        "Category": "Light on Pranayama > Course 1 (Preparatory)",
-        "Sequence_Text": "203 | 300 | [Ujjāyī I]\n203 | 300 | [Ujjāyī II]\n203 | 300 | [Ujjāyī III]\n213 | 300 | [Viloma I]\n213 | 300 | [Viloma II]"
-    },
-    {
-        "id": "recCswMnGiskQlMwL",
-        "Course_ID": 136,
-        "Course_Title": "Week 137 to 142",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n154 | 60 |\n152 | 60 |\n076 | 60 |\n153 | 60 |\n156 | 60 |\n156 | 60 |\n132 | 60 |\n130 | 60 |\n127 | 60 |\n149 | 60 |\n150 | 60 |\n150 | 60 |\n151 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n136 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n074 | 60 |\n177 | 60 |\n181 | 60 |\n175 | 60 |\n173 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n020 | 60 |\n200 | 60 |\n205 | 600 |\n218 | 300 | "
-    },
-    {
-        "id": "recD95igPZuzNDBru",
-        "Course_ID": 44,
-        "Course_Title": "Pleurisy & Pneumonia (Recovery)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n067 | 120 | [Paschimottanasana]\n020 | 120 |\n040 | 120 |\n047 | 60 |\n051 | 60 |\n203 | 300 | [No Retention]\n600 | 300 | [Nadi Sodhana (No Retention)]\n200 | 600 | [Savasana]"
-    },
-    {
-        "id": "recDqFvjeuVlUi9gD",
-        "Course_ID": 33,
-        "Course_Title": "Indigestion",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n105 | 60 |\n106 | 60 |\n034 | 30 |\n058 | 60 | [Mahamudra]\n025 | 30 |\n027 | 30 |\n067 | 120 | [Paschimottanasana]\n146 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n041 | 120 |\n593 | 60 | [Uddiyana & Nauli]\n206 | 300 |\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recDrFLyBwMrA4hjQ",
-        "Course_ID": 96,
-        "Course_Title": "Week 1 & 2",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "001 | 60 |\n002 | 60 |\n003 | 60 |\n005 | 60 |\n007 | 60 |\n008 | 60 |\n012 | 60 |\n087 | 600 |\n091 | 300 |\n200 | 300 | "
-    },
-    {
-        "id": "recEKBO78I56JLOj9",
-        "Course_ID": 89,
-        "Course_Title": "Weekly Practice - Monday",
-        "Category": "Light on Prānāyāma > Course 5 (Weekly Practice)",
-        "Sequence_Text": "205 | 1200 | [Nāḍī śodhana Ib]\n203 | 1200 | [Ujjāyī XI]\n200 | 600 | [Śavāsana]"
-    },
-    {
-        "id": "recFGaKlmoTy3zC6h",
-        "Course_ID": 26,
-        "Course_Title": "Halitosis (Bad Breath)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n020 | 120 |\n105 | 60 |\n067 | 120 | [Paschimottanasana]\n109 | 60 | [Simhasana I & II]\n209 | 300 | [With Kaka Mudra]\n201 | 60 |\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recFkjX9cnbFnzAtr",
-        "Course_ID": 31,
-        "Course_Title": "Hunchback & Coccyx",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "029 | 30 |\n025 | 30 |\n027 | 30 |\n016 | 45 |\n031 | 45 |\n033 | 60 |\n112 | 60 | [Bharadwajasana I]\n064 | 60 |\n042 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n098 | 60 |\n130 | 30 |\n132 | 30 |\n516 | 60 | [Dwipada Viparita Dandasana]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recG23aVdmw6V1CUY",
-        "Course_ID": 34,
-        "Course_Title": "Insomnia",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "184 | 600 | [Salamba Sirsasana (10 min)]\n234 | 600 | [Salamba Sarvangasana (10 min)]\n067 | 300 | [Paschimottanasana (5 min)]\n020 | 180 | [3 min]\n046 | 300 |\n600 | 600 | [Nadi Sodhana (No Retention)]\n200 | 600 | [Savasana (10 min)]"
-    },
-    {
-        "id": "recGmEd22MkRYBY5f",
-        "Course_ID": 95,
-        "Course_Title": "Important Asanas in Course 1",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "003 | 60 |\n004 | 60 |\n005 | 60 |\n006 | 60 |\n007 | 60 |\n009 | 60 |\n010 | 60 |\n012 | 60 |\n013 | 60 |\n016 | 60 |\n020 | 60 |\n025 | 60 |\n027 | 60 |\n033 | 60 |\n034 | 60 |\n036 | 60 |\n039 | 60 |\n040 | 60 |\n044 | 60 |\n045 | 60 |\n051 | 60 |\n059 | 60 |\n067 | 60 |\n074 | 60 |\n087 | 60 |\n091 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n200 | 60 | "
-    },
-    {
-        "id": "recHUDf2Yvwlgvugb",
-        "Course_ID": 107,
-        "Course_Title": "Weekly Practice Day 1",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "074 | 600 |\n087 | 600 |\n091 | 300 |\n105 | 30 | half a minute on right side\n034 | 60 |\n036 | 30 |\n067 | 300 |\n114 | 30 |\n114 | 30 |\n116 | 30 |\n116 | 30 |\n047 | 60 |\n051 | 30 |\n025 | 30 |\n027 | 30 |\n032 | 30 |\n033 | 60 |\n020 | 120 |\n200 | 300 |\n205 | 600 | Nadi Sodhana Pranayama in Padmasana (104) or in Virasana (89) or in Siddbasana (84) with inhalation retention for 10 minutes\n201 | 60 | 6 times\n200 | 600 | "
-    },
-    {
-        "id": "recHUSdlxZQ3UhKBv",
-        "Course_ID": 148,
-        "Course_Title": "Weekly Practice Day 1",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 600 |\n087 | 600 |\n091 | 300 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n126 | 60 |\n123 | 60 |\n132 | 60 |\n130 | 60 |\n127 | 60 |\n129 | 60 |\n154 | 60 |\n155 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n156 | 60 |\n173 | 60 |\n173 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 |\n201 | 60 | 8 times\n202 | 60 | 8 times"
-    },
-    {
-        "id": "recHh4XtNoqQywg9y",
-        "Course_ID": 85,
-        "Course_Title": "Weeks 186 to 190",
-        "Category": "Light on Prānāyāma > Course 5 (Highly Intense)",
-        "Sequence_Text": "204 | 600 | [Sūrya bhedana IV]\n205 | 900 | [Nāḍī śodhana IIIb]\n203 | 600 | [Ujjāyī II (lying)]"
-    },
-    {
-        "id": "recHjLhJ0uGYOpwhZ",
-        "Course_ID": 60,
-        "Course_Title": "Week 23 and 25",
-        "Category": "Light on Pranayama > Course 1 (Preparatory)",
-        "Sequence_Text": "203 | 480 | [Ujjāyī VI]\n203 | 480 | [Ujjāyī VII]\n213 | 480 | [Viloma IV]\n213 | 480 | [Viloma V]"
-    },
-    {
-        "id": "recIVWNmhVQyp0plU",
-        "Course_ID": 70,
-        "Course_Title": "Weeks 73 to 75",
-        "Category": "Light on Prānāyāma > Course 3 (Intermediate)",
-        "Sequence_Text": "203 | 300 | [Ujjāyī VIII]\n214 | 360 | [Anuloma VIb]\n215 | 360 | [Pratiloma II]\n205 | 600 | [Nāḍī Śodhana Ib]"
-    },
-    {
-        "id": "recJUzfP0ZUtkkz1H",
-        "Course_ID": 41,
-        "Course_Title": "Palpitation",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n067 | 180 | [Paschimottanasana]\n020 | 120 |\n033 | 60 |\n516 | 60 | [Dwipada Viparita Dandasana]\n040 | 120 |\n041 | 120 |\n600 | 300 | [Ujjayi (Start No Retention)]\n600 | 300 | [Nadi Sodhana (Start No Retention)]\n200 | 600 | [Savasana]"
-    },
-    {
-        "id": "recJu2wxRJJEANaUw",
-        "Course_ID": 47,
-        "Course_Title": "Thrombosis (Legs)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "087 | 600 | [10 min]\n091 | 300 |\n040 | 180 |\n039 | 180 |\n044 | 180 |\n600 | 300 | [Ujjayi & Nadi Sodhana]\n200 | 600 | [Savasana]"
-    },
-    {
-        "id": "recL5YCZgjwAJ4jMT",
-        "Course_ID": 152,
-        "Course_Title": "Weekly Practice Day 5",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 600 |\n087 | 600 |\n091 | 300 |\n067 | 300 |\n149 | 60 |\n150 | 60 |\n151 | 60 |\n155 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 | All these balancing asanas at one stretch\n162 | 60 |\n163 | 60 |\n165 | 60 |\n166 | 60 |\n167 | 60 |\n177 | 60 |\n181 | 60 |\n175 | 60 |\n067 | 300 |\n020 | 180 |\n200 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "recLGisIFLmMftH4d",
-        "Course_ID": 32,
-        "Course_Title": "Hydrocele",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n132 | 45 |\n130 | 45 |\n033 | 60 |\n105 | 60 |\n108 | 60 |\n044 | 60 |\n066 | 60 |\n067 | 120 | [Paschimottanasana]\n146 | 45 |\n163 | 45 |\n462 | 45 | [Mulabandhasana]\n169 | 45 |\n593 | 60 | [Uddiyana & Nauli]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recLP04feGUD2y7H6",
-        "Course_ID": 138,
-        "Course_Title": "Week 146 to 155",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n154 | 60 |\n152 | 60 |\n153 | 60 |\n156 | 60 |\n156 | 60 |\n157 | 60 |\n132 | 60 |\n130 | 60 |\n173 | 60 |\n173 | 60 |\n149 | 60 |\n150 | 60 |\n150 | 60 |\n151 | 60 |\n087 | 60 |\n104 | 60 |\n102 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n141 | 60 |\n141 | 60 |\n142 | 60 |\n143 | 60 |\n144 | 60 |\n145 | 60 |\n147 | 60 |\n148 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n121 | 60 |\n121 | 60 |\n177 | 60 |\n181 | 60 |\n181 | 60 |\n175 | 60 |\n178 | 60 |\n180 | 60 |\n200 | 60 |\n045 | 60 |\n201 | 60 | 8 times\n202 | 60 | 8 times\n218 | 30 | "
-    },
-    {
-        "id": "recLSRMJ5m0Ahr2YR",
-        "Course_ID": 113,
-        "Course_Title": "Week 55 to 60",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 300 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 300 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n106 | 60 |\n106 | 60 |\n106 | 60 |\n067 | 60 |\n068 | 60 |\n069 | 60 |\n073 | 60 |\n073 | 60 |\n126 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n045 | 60 |\n046 | 60 |\n047 | 60 |\n048 | 60 |\n049 | 60 |\n050 | 60 |\n051 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n055 | 60 |\n056 | 60 |\n057 | 60 |\n043 | 60 |\n044 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n117 | 60 |\n119 | 60 |\n119 | 60 |\n110 | 60 |\n111 | 60 |\n172a | 60 | Urdhva Dhanurasana II for 12 times in technique II\n020 | 60 |\n200 | 300 |\n205 | 300 |\n206 | 300 |\n039 | 300 | "
-    },
-    {
-        "id": "recLagKR8Xh06dOnh",
-        "Course_ID": 20,
-        "Course_Title": "Colitis & Constipation",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n020 | 120 |\n067 | 180 | [Paschimottanasana]\n105 | 60 |\n034 | 30 |\n040 | 60 |\n041 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n025 | 30 |\n027 | 30 |\n486 | 60 | [Urdhva Dhanurasana]\n205 | 300 |\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recLol4YDpzfRl0zZ",
-        "Course_ID": 78,
-        "Course_Title": "Weeks 137 to 142",
-        "Category": "Light on Prānāyāma > Course 4 (Advanced)",
-        "Sequence_Text": "204 | 600 | [Sūrya bhedana II]\n205 | 900 | [Nāḍī śodhana IIb]"
-    },
-    {
-        "id": "recLzgQUQPoD3GRw4",
-        "Course_ID": 16,
-        "Course_Title": "Blood Pressure (Low)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n092 | 60 |\n067 | 180 | [Paschimottanasana]\n040 | 60 |\n039 | 60 |\n044 | 60 |\n600 | 300 | [Nadi Sodhana (Start no retention)]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recMMZgWMxMffjCWS",
-        "Course_ID": 108,
-        "Course_Title": "Weekly Practice Day 3",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "074 | 600 |\n003 | 30 | [Utthita Trikonasana]\n004 | 30 |\n005 | 40 | [Utthita Parsvakonasana]\n006 | 40 |\n007 | 15 |\n008 | 15 |\n009 | 15 |\n010 | 40 |\n012 | 60 |\n013 | 60 |\n018 | 30 |\n019 | 30 |\n020 | 60 |\n021 | 30 |\n023 | 20 |\n017 | 30 |\n015 | 30 |\n016 | 40 |\n031 | 30 |\n040 | 40 |\n041 | 40 |\n042 | 40 |\n045 | 30 |\n047 | 30 |\n048 | 30 |\n051 | 30 |\n037 | 30 |\n038 | 60 |\n049 | 20 |\n067 | 300 |\n205 | 600 | Ujjayi Pranayama (Section 203) or Nadi Sodhana Pranayama (Section 205) without Kumbhaka or retention\n200 | 300 | "
-    },
-    {
-        "id": "recMw4hXddjREc09V",
-        "Course_ID": 17,
-        "Course_Title": "Brain, Memory & Nervous System",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 600 | [10 min]\n087 | 600 | [10 min]\n020 | 180 | [Head supported]\n067 | 300 | [Paschimottanasana]\n168 | 60 | [Urdhva Mukha Paschimottanasana]\n033 | 120 |\n133 | 60 |\n146 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n046 | 300 |\n600 | 300 | [Nadi Sodhana (Retention)]\n600 | 300 | [Bhastrika]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recNJb05JYQbqF9A8",
-        "Course_ID": 2,
-        "Course_Title": "Deepak Chopra Three Dosha",
-        "Category": "General",
-        "Inc_Namaskara": "4",
-        "Namaskara_Reps": 6,
-        "Sequence_Text": "221 | 40 | Action: Press-and-release massage from head to arms. Focus: Move toward the heart; awaken circulation.\n222 | 40 | Action: Massage belly, back, and legs. Focus: Firm pressure upward; move energy to the heart.\n223 | 40 | Action: Hug knees to chest; rock side to side. Focus: Massage the lower back; keep neck free.\n224 | 60 | Action: Inhale, rise to kneeling; Exhale, sit on heels. Focus: Fluid, slow movement; vertical spine.\n059 | 60 | Action: Fold over one straight leg. Focus: Reach through the heel; lengthen from the lower back.\n087 | 180 | Action: Lift legs and hips; support back with hands. Focus: Stillness in the throat; gaze at toes.\n091 | 60 | Action: Lower feet over head. Focus: Stretch through heels; do not strain the neck.\n031 | 30 | Action: Lie on belly; lift chest. Focus: Use back muscles; expand the ribs.\n025 | 45 | Action: Lift legs and chest off floor. Focus: Lengthen the spine; breathe into the belly.\n114 | 60 | Action: Sit and twist toward the upright knee. Focus: Twist on the exhale; keep chest open.\n020 | 60 | Action: Stand and fold forward. Focus: Gravity pulls the spine long; knees relaxed.\n200 | 120 | Action: Lie flat on back; palms up. Focus: Total surrender; let the body absorb the practice.\n205 | 300 | Action: Alternate nostril breathing. Focus: Natural rhythm; balance the left and right brain.",
-        "Last_Edited": "2026-02-14T05:14:39.000Z"
-    },
-    {
-        "id": "recNqh4fbZNEFLzPM",
-        "Course_ID": 73,
-        "Course_Title": "Weeks 91 to 120: Second Week",
-        "Category": "Light on Prānāyāma > Course 3 (Mastery Phase)",
-        "Sequence_Text": "217 | 1500 | [Monday:  I]\n214 | 1500 | [Tuesday: Anuloma IIa]\n215 | 1500 | [Wednesday: Pratiloma IIb]\n203 | 1500 | [Thursday: Ujjāyī X]\n205 | 1500 | [Friday: Nāḍī śodhana Ib]\n213 | 1500 | [Saturday: Viloma Vb]\n213 | 1500 | [Sunday: Viloma III]"
-    },
-    {
-        "id": "recNsfGoRis8BBWAL",
-        "Course_ID": 83,
-        "Course_Title": "Weeks 176 to 180",
-        "Category": "Light on Prānāyāma > Course 5 (Highly Intense)",
-        "Sequence_Text": "213 | 600 | [Viloma IX]\n215 | 600 | [Pratiloma IVa]"
-    },
-    {
-        "id": "recO9VZMITrk9rnqX",
-        "Course_ID": 134,
-        "Course_Title": "Week 109 to 125",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "173 | 60 | Work towards practising this 15 times a day\n074 | 60 |\n177 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n139 | 60 |\n136 | 60 |\n141 | 60 |\n141 | 60 |\n130 | 60 |\n131 | 60 |\n127 | 60 |\n129 | 60 |\n126 | 60 |\n152 | 60 |\n132 | 60 |\n149 | 60 |\n151 | 60 |\n172a | 60 |\n172a | 60 |\n177 | 60 |\n175 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n119 | 60 |\n020 | 60 |\n200 | 60 |\n205 | 600 |\n218 | 300 | "
-    },
-    {
-        "id": "recORQHNMYGDwLrRX",
-        "Course_ID": 9,
-        "Course_Title": "Ankles, Heels & Flatfoot",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "1 | 60 | [Standing Poses (Tadasana to Parsvottanasana)]\n040 | 120 |\n041 | 120 |\n043 | 60 |\n164 | 60 |\n321 | 60 | [Malasana]\n037 | 60 |\n044 | 60 |\n063 | 60 |\n033 | 60 |\n108 | 60 |\n055 | 60 |\n462 | 30 | [Mulabandhasana]\n025 | 30 |\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recOfTSQbrY8UDtTE",
-        "Course_ID": 122,
-        "Course_Title": "Weekly Practice Day 6",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n087 | 60 |\n091 | 60 |\n067 | 60 |\n069 | 60 |\n034 | 60 |\n036 | 60 |\n041 | 60 |\n063 | 60 |\n063 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n116 | 60 |\n116 | 60 |\n119 | 60 |\n119 | 60 |\n132 | 60 |\n127 | 60 |\n172a | 60 |\n200 | 60 | "
-    },
-    {
-        "id": "recOvKhxWL70MafXN",
-        "Course_ID": 62,
-        "Course_Title": "Week 29 to 31",
-        "Category": "Light on Prānāyāma > Course 2 (Primary)",
-        "Sequence_Text": "203 | 600 | [Ujjāyī IX]\n214 | 600 | [Anuloma Ia]\n213 | 300 | [Viloma II]"
-    },
-    {
-        "id": "recPS1WmTBWc6sIFC",
-        "Course_ID": 102,
-        "Course_Title": "Week 14 & 15",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "074 | 300 |\n003 | 40 |\n004 | 40 |\n005 | 40 |\n006 | 40 |\n007 | 40 |\n008 | 40 |\n009 | 40 |\n010 | 40 |\n012 | 40 |\n013 | 60 |\n014 | 60 |\n018 | 30 |\n019 | 30 |\n020 | 60 |\n015 | 60 |\n025 | 30 |\n026 | 30 |\n027 | 30 |\n031 | 30 |\n106 | 30 |\n034 | 30 |\n036 | 30 |\n087 | 300 |\n091 | 300 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 40 |\n105 | 60 |\n058 | 240 |\n059 | 40 |\n035 | 60 |\n067 | 180 |\n200 | 300 | Ujjayi with inhalation retention"
-    },
-    {
-        "id": "recQD77vRIM2u354L",
-        "Course_ID": 120,
-        "Course_Title": "Weekly Practice Day 4",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 300 |\n045 | 60 |\n046 | 60 |\n047 | 60 |\n048 | 60 |\n049 | 60 |\n050 | 60 |\n051 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n055 | 60 |\n056 | 60 |\n057 | 60 |\n040 | 60 |\n041 | 60 |\n042 | 60 |\n066 | 60 |\n044 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n119 | 60 |\n119 | 60 |\n110 | 60 |\n111 | 60 |\n172a | 60 | Urdhva Dhanurasana I for 12 times staying 20 seconds each time\n200 | 60 |\n205 | 60 |\n218 | 60 | "
-    },
-    {
-        "id": "recQWRz24EZmEwVnn",
-        "Course_ID": 82,
-        "Course_Title": "Weeks 171 to 175",
-        "Category": "Light on Prānāyāma > Course 5 (Highly Intense)",
-        "Sequence_Text": "205 | 600 | [Nāḍī śodhana Ib]\n203 | 600 | [Ujjāyī XIII]\n214 | 600 | [Anuloma VIIIa]"
-    },
-    {
-        "id": "recQffK2jvOTz97Gm",
-        "Course_ID": 93,
-        "Course_Title": "Weekly Practice - Wednesday",
-        "Category": "Light on Prānāyāma > Course 5 (Weekly Practice)",
-        "Sequence_Text": "205 | 1200 | [Nāḍī śodhana IIb]\n214 | 1200 | [Anuloma VIIb]\n200 | 600 | [Śavāsana]"
-    },
-    {
-        "id": "recQj8u0oJUh8XAO9",
-        "Course_ID": 46,
-        "Course_Title": "Spinal Disc Displacement",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "1 | 60 | [Standing Poses (Careful alignment)]\n016 | 45 |\n025 | 30 |\n027 | 30 |\n031 | 30 |\n032 | 30 |\n110 | 45 |\n111 | 60 |\n087 | 300 |\n098 | 60 |\n132 | 45 |\n130 | 45 |\n041 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n203 | 300 |\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recRQOGiZXEdqxwMD",
-        "Course_ID": 127,
-        "Course_Title": "Final Practice Day 5",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n161 | 60 |\n162 | 60 |\n160 | 60 |\n156 | 60 |\n172a | 60 |\n149 | 60 |\n150 | 60 |\n151 | 60 |\n155 | 60 |\n175 | 60 |\n182 | 60 |\n190 | 60 |\n191 | 60 |\n195 | 60 |\n196 | 60 |\n196 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "recRS8qLRR7frZXeZ",
-        "Course_ID": 8,
-        "Course_Title": "Anaemia & Fatigue",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n067 | 300 | [Paschimottanasana]\n071 | 60 |\n020 | 180 |\n033 | 60 |\n116 | 60 |\n118 | 60 |\n516 | 60 | [Dwipada Viparita Dandasana]\n046 | 180 |\n600 | 600 | [Nadi Sodhana (No Retention)]\n200 | 600 | [Savasana]"
-    },
-    {
-        "id": "recRSbl8ANLyhfY8P",
-        "Course_ID": 135,
-        "Course_Title": "Week 126 to 130",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n154 | 60 |\n152 | 60 |\n076 | 60 |\n132 | 60 |\n130 | 60 |\n172a | 60 |\n173 | 60 | 6 times minimum\n173 | 60 |\n126 | 60 |\n123 | 60 |\n123 | 60 |\n127 | 60 |\n129 | 60 |\n149 | 60 |\n150 | 60 |\n150 | 60 |\n151 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n136 | 60 |\n139 | 60 |\n140 | 60 |\n141 | 60 |\n141 | 60 |\n177 | 60 |\n074 | 60 |\n175 | 60 |\n173 | 60 |\n173 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n119 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 |\n218 | 300 | "
-    },
-    {
-        "id": "recRe0Owd9Zej4Ben",
-        "Course_ID": 97,
-        "Course_Title": "Week 3 & 4",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "003 | 60 |\n005 | 60 |\n007 | 60 |\n008 | 60 |\n004 | 60 |\n012 | 60 |\n013 | 60 |\n087 | 600 |\n091 | 300 |\n200 | 300 | "
-    },
-    {
-        "id": "recRkPk2lg4NkeOJy",
-        "Course_ID": 14,
-        "Course_Title": "Backache (General)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "003 | 30 | [Utthita Trikonasana]\n005 | 30 | [Utthita Parsvakonasana]\n012 | 45 |\n33 | 45 | [Prasarita Padottanasana]\n105 | 60 |\n108 | 60 |\n059 | 60 |\n060 | 60 |\n067 | 120 | [Paschimottanasana]\n068 | 60 |\n114 | 60 |\n116 | 60 |\n321 | 60 | [Malasana]\n033 | 60 |\n016 | 45 |\n025 | 30 |\n027 | 30 |\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recSkcuPC7tGJMczv",
-        "Course_ID": 151,
-        "Course_Title": "Weekly Practice Day 4",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n132 | 60 |\n130 | 60 |\n131 | 60 |\n127 | 60 |\n129 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n144 | 60 |\n144 | 60 |\n145 | 60 |\n146 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n180 | 60 |\n176 | 60 |\n175 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 |\n039 | 60 | "
-    },
-    {
-        "id": "recTMaV3UuLi32lsr",
-        "Course_ID": 45,
-        "Course_Title": "Sciatica",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "003 | 30 | [Utthita Trikonasana]\n005 | 30 | [Utthita Parsvakonasana]\n012 | 45 |\n105 | 60 |\n108 | 60 | [Side Stretch]\n109 | 60 | [Anantasana]\n067 | 60 | [Paschimottanasana]\n112 | 60 | [Bharadwajasana I]\n114 | 60 |\n116 | 60 |\n119 | 60 |\n016 | 45 |\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recTQU5dP3n2X6qFR",
-        "Course_ID": 143,
-        "Course_Title": "Week 191 to 200",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n087 | 60 |\n091 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n173 | 60 |\n173 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n180 | 60 |\n175 | 60 |\n184 | 60 |\n169 | 60 |\n170 | 60 |\n163 | 60 |\n165 | 60 |\n149 | 60 |\n151 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n168 | 60 |\n200 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "recTXxNJ7T9NxJpv7",
-        "Course_ID": 86,
-        "Course_Title": "Weeks 191 to 195",
-        "Category": "Light on Prānāyāma > Course 5 (Highly Intense)",
-        "Sequence_Text": "217 | 600 | [IV]\n215 | 600 | [Pratiloma IVb]\n213 | 600 | [Viloma II (lying)]"
-    },
-    {
-        "id": "recTiejj45hdRPIdo",
-        "Course_ID": 15,
-        "Course_Title": "Blood Pressure (High)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "091 | 300 | [Support thighs if needed]\n059 | 90 | [Head supported]\n061 | 90 |\n062 | 90 | [Triang Mukha Eka Pada Paschimottanasana]\n067 | 300 | [Paschimottanasana (Head supported)]\n040 | 120 | [Spine Erect]\n039 | 120 |\n045 | 120 |\n600 | 600 | [Nadi Sodhana (No Retention)]\n200 | 600 | [Savasana (Eyes covered)]"
-    },
-    {
-        "id": "recUHTnEXjdTAuSix",
-        "Course_ID": 112,
-        "Course_Title": "Week 45 to 50",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 300 | Stay for 5 minutes then the rest of the Sirsasana variations are done in a stretch\n076 | 60 |\n077 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n079 | 60 |\n080 | 60 |\n080 | 60 |\n081 | 60 |\n081 | 60 |\n082 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 300 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 300 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n067 | 300 |\n068 | 60 |\n059 | 60 |\n060 | 60 |\n063 | 60 |\n063 | 60 |\n073 | 60 |\n073 | 60 |\n055 | 60 |\n056 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n050 | 60 |\n051 | 60 |\n041 | 60 |\n043 | 60 |\n044 | 60 |\n116 | 60 |\n116 | 60 |\n114 | 60 |\n114 | 60 |\n115 | 60 |\n117 | 60 |\n110 | 60 |\n172 | 60 | Urdhva Dhanurasana I for 6 times\n200 | 60 |\n205 | 600 |\n206 | 180 |\n201 | 60 | Uddiyana for 8 times"
-    },
-    {
-        "id": "recUqXoJat5imK3aZ",
-        "Course_ID": 3,
-        "Course_Title": "Restorative Sequence",
-        "Category": "General",
-        "Sequence_Text": "176 | 600 | [Sirsasana (10 min)]\n219 | 600 | [Sarvangasana (10 min)]\n091 | 300 | [5 min]\n067 | 300 | [Paschimottanasana (5 min)]\n600 | 900 | [Nadi Shodhana Pranayama (15 min)]\n200 | 300 | [Savasana (Rest)]"
-    },
-    {
-        "id": "recVCKiYt5Yg3tQen",
-        "Course_ID": 90,
-        "Course_Title": "Weekly Practice - Saturday",
-        "Category": "Light on Prānāyāma > Course 5 (Weekly Practice)",
-        "Sequence_Text": "213 | 600 | [Viloma VII]\n205 | 1200 | [Nāḍī śodhana Ib]\n200 | 600 | [Śavāsana]"
-    },
-    {
-        "id": "recVM0zyinteZ0yl0",
-        "Course_ID": 129,
-        "Course_Title": "Final Practice Day 7",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n087 | 60 |\n091 | 60 |\n067 | 60 |\n205 | 1800 | "
-    },
-    {
-        "id": "recW8DkFdETSaW0cX",
-        "Course_ID": 35,
-        "Course_Title": "Kidneys",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n003 | 30 | [Utthita Trikonasana]\n033 | 60 |\n027 | 45 |\n068 | 60 |\n066 | 60 |\n105 | 60 |\n116 | 60 |\n119 | 60 |\n516 | 60 | [Dwipada Viparita Dandasana]\n512 | 60 | [Kapotasana]\n537 | 30 | [Vrschikasana (Scorpion)]\n593 | 60 | [Uddiyana]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recWLsYYM3htLq6KZ",
-        "Course_ID": 104,
-        "Course_Title": "Week 19 to 21",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "074 | 300 |\n080 | 40 |\n082 | 40 |\n087 | 300 |\n088 | 90 |\n089 | 90 |\n090 | 90 |\n091 | 240 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 40 |\n096 | 40 |\n106 | 60 |\n105 | 40 |\n107 | 60 |\n034 | 30 |\n036 | 30 |\n017 | 40 |\n016 | 40 |\n040 | 60 |\n025 | 30 |\n027 | 30 |\n029 | 30 |\n031 | 30 |\n032 | 30 |\n033 | 90 |\n058 | 240 |\n059 | 40 |\n062 | 40 |\n061 | 40 |\n064 | 40 |\n065 | 40 |\n070 | 40 |\n069 | 40 |\n067 | 180 |\n072 | 30 |\n112 | 40 |\n113 | 40 |\n118 | 120 |\n044 | 120 |\n200 | 300 |\n039 | 300 | Ujjayi wtthout retention\n200 | 300 | "
-    },
-    {
-        "id": "recWrvuO4ESB9RsHs",
-        "Course_ID": 68,
-        "Course_Title": "Weeks 63 to 67",
-        "Category": "Light on Prānāyāma > Course 3 (Intermediate)",
-        "Sequence_Text": "213 | 300 | [Viloma III]\n203 | 480 | [Ujjāyī XI]\n213 | 300 | [Viloma VI]\n214 | 300 | [Anuloma IIa]\n215 | 300 | [Pratiloma IIa]\n214 | 300 | [Anuloma VIa]\n204 | 300 | [Sūrya Bhedana II]\n217 | 300 | [II]"
-    },
-    {
-        "id": "recXDqZCcaLbp2WHJ",
-        "Course_ID": 119,
-        "Course_Title": "Weekly Practice Day 3",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 60 |\n087 | 60 |\n091 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n106 | 60 |\n106 | 60 |\n106 | 60 |\n106 | 60 |\n034 | 60 |\n036 | 60 |\n059 | 60 |\n060 | 60 |\n061 | 60 |\n062 | 60 |\n063 | 60 |\n063 | 60 |\n064 | 60 |\n067 | 60 |\n069 | 60 |\n071 | 60 |\n068 | 60 |\n073 | 60 |\n073 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n172a | 60 | Urdhva Dhanurasana I for 15 times in technique I\n174 | 60 |\n174 | 60 |\n020 | 60 |\n200 | 60 |\n204 | 600 |\n203 | 60 |\n206 | 60 |\n218 | 60 | "
-    },
-    {
-        "id": "recXSvqxOapmDaKRE",
-        "Course_ID": 37,
-        "Course_Title": "Labour Pain (Relief)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "040 | 120 |\n044 | 120 | [Bound Angle]\n066 | 120 | [Seated]\n203 | 300 | [Retention]\n600 | 300 | [Nadi Sodhana (No Retention)]\n200 | 600 | [Savasana]"
-    },
-    {
-        "id": "recXtZG1aeQ2Uynxy",
-        "Course_ID": 4,
-        "Course_Title": "Surya Namaskar (6 Rounds)",
-        "Category": "General",
-        "Sequence_Text": "001 | 10 | [Tadasana (Inhale)]\n020 | 10 | [Exhale]\n029 | 10 | [Exhale]\n032 | 10 | [Inhale]\n029 | 10 | [Exhale]\n033 | 10 | [Exhale, then Inhale]\n020 | 10 | [Exhale]\n001 | 10 | [Tadasana (Inhale)]"
-    },
-    {
-        "id": "recYpRph9GEoEktrF",
-        "Course_ID": 146,
-        "Course_Title": "Week 251 to 275",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n161 | 60 |\n162 | 60 |\n160 | 60 |\n173 | 60 |\n173 | 60 |\n177 | 60 |\n181 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n175 | 60 |\n182 | 60 |\n189 | 60 |\n190 | 60 |\n191 | 60 |\n192 | 60 |\n193 | 60 |\n184 | 60 |\n186 | 60 |\n187 | 60 |\n188 | 60 |\n196 | 60 |\n199 | 60 |\n199 | 60 |\n169 | 60 |\n170 | 60 |\n171 | 60 |\n163 | 60 |\n165 | 60 |\n168 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n146 | 60 |\n147 | 60 |\n067 | 60 |\n200 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "recZwS7Pluco4cZlo",
-        "Course_ID": 6,
-        "Course_Title": "Abdominal Organs & Arm Strength",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "029 | 30 |\n030 | 30 | [Crocodile Hops]\n032 | 30 |\n033 | 60 |\n038 | 30 |\n048 | 30 |\n050 | 30 |\n127 | 30 |\n129 | 30 |\n123 | 30 |\n126 | 30 |\n130 | 45 |\n132 | 45 |\n152 | 30 |\n154 | 30 |\n488 | 60 | [Viparita Chakrasana]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "reca2sChewsiGcXis",
-        "Course_ID": 19,
-        "Course_Title": "Cold, Cough & Tonsillitis (ENT)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n051 | 60 |\n109 | 30 | [Simhasana (Lion Pose)]\n067 | 180 | [Paschimottanasana]\n020 | 120 |\n116 | 60 |\n119 | 60 |\n032 | 30 |\n486 | 60 | [Urdhva Dhanurasana]\n203 | 300 | [Retention]\n600 | 300 | [Bhastrika Pranayama (If no fever)]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recaY0fz8HE94kOc2",
-        "Course_ID": 38,
-        "Course_Title": "Lungs",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n104 | 120 | [Padmasana Cycle]\n040 | 120 |\n041 | 120 |\n042 | 60 |\n4 | 60 | [Standing Poses (Chest Openers)]\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n600 | 600 | [All Pranayama (With Retention)]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recb4lzhzqvQwkDtr",
-        "Course_ID": 98,
-        "Course_Title": "Week 5 & 6",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "003 | 60 |\n005 | 60 |\n007 | 60 |\n008 | 60 |\n004 | 60 |\n012 | 60 |\n013 | 90 |\n106 | 120 |\n034 | 60 |\n036 | 60 |\n087 | 600 |\n091 | 300 |\n200 | 300 | Ujjayi in Mrtasana"
-    },
-    {
-        "id": "recb4yTidsp40tySG",
-        "Course_ID": 130,
-        "Course_Title": "Week 79 to 84",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 300 |\n075 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 300 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 300 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n067 | 180 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n139 | 60 |\n146 | 60 |\n126 | 60 |\n152 | 60 |\n123 | 60 |\n132 | 60 |\n130 | 60 |\n127 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n120 | 60 |\n111 | 60 |\n172a | 60 |\n177 | 60 |\n174 | 60 |\n174 | 60 |\n020 | 120 |\n200 | 300 |\n205 | 600 |\n218 | 300 | Sit in Siddhasana (84) or VIrasana (89) or Padmasana (104) or Baddha Konasana (102)."
-    },
-    {
-        "id": "recbBW3TbPhBFbuIQ",
-        "Course_ID": 65,
-        "Course_Title": "Week 39 to 42",
-        "Category": "Light on Prānāyāma > Course 2 (Primary)",
-        "Sequence_Text": "203 | 540 | [Ujjāyī X]\n214 | 420 | [Anuloma Ib]\n215 | 420 | [Pratiloma Ib]\n213 | 300 | [Viloma III]"
-    },
-    {
-        "id": "recbSPm7fNXY4EcDP",
-        "Course_ID": 137,
-        "Course_Title": "Week 143 to 145",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n154 | 60 |\n152 | 60 |\n076 | 60 |\n153 | 60 |\n156 | 60 |\n156 | 60 |\n132 | 60 |\n130 | 60 |\n127 | 60 |\n149 | 60 |\n150 | 60 |\n150 | 60 |\n151 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n136 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n144 | 60 |\n144 | 60 |\n145 | 60 |\n177 | 60 |\n181 | 60 |\n175 | 60 |\n173 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n020 | 60 |\n200 | 60 |\n205 | 60 |\n218 | 60 | "
-    },
-    {
-        "id": "reccN1zkk585YOVUC",
-        "Course_ID": 145,
-        "Course_Title": "Week 226 to 250",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n087 | 60 |\n091 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n173 | 60 |\n173 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n180 | 60 |\n175 | 60 |\n184 | 60 |\n186 | 60 |\n191 | 60 |\n189 | 60 |\n190 | 60 |\n182 | 60 |\n183 | 60 |\n192 | 60 |\n193 | 60 |\n194 | 60 |\n169 | 60 |\n170 | 60 |\n171 | 60 |\n163 | 60 |\n165 | 60 |\n168 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n146 | 60 |\n147 | 60 |\n067 | 60 |\n200 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "reccggNQbEWpUd7ZY",
-        "Course_ID": 1,
-        "Course_Title": "Ashtanga Primary Series (Full)",
-        "Category": "General",
-        "Sequence_Text": "1 | 30 | [Samasthiti (Focus)]\n1 | 300 | [Surya Namaskara A (5 Rounds)]\n1 | 300 | [Surya Namaskara B (5 Rounds)]\n018 | 30 | [Big Toe Hold]\n019 | 30 | [Padahastasana (Hands Under Feet)]\n003 | 30 | [Utthita Trikonasana (Right)]\n003 | 30 | [Utthita Trikonasana (Left)]\n004 | 30 | [Right]\n004 | 30 | [Left]\n005 | 30 | [Utthita Parsvakonasana (Right)]\n005 | 30 | [Utthita Parsvakonasana (Left)]\n006 | 30 | [Right]\n006 | 30 | [Left]\n29 | 30 | [Prasarita Padottanasana A]\n29 | 30 | [Prasarita Padottanasana B (Hands Waist)]\n29 | 30 | [Prasarita Padottanasana C (Interlaced)]\n29 | 30 | [Prasarita Padottanasana D (Toes)]\n012 | 30 | [Right]\n012 | 30 | [Left]\n20 | 30 | [Utthita Hasta Padangusthasana (Right)]\n20 | 30 | [Utthita Hasta Padangusthasana (Left)]\n022 | 30 | [Right]\n022 | 30 | [Left]\n017 | 45 | [Chair]\n007 | 45 | [Right & Left) (Enter via Vinyasa]\n008 | 45 | [Right & Left) (Enter via Vinyasa]\n035 | 15 | [Staff Pose]\n153 | 60 | [Paschimottanasana A & B]\n072 | 30 | [Reverse Plank]\n061 | 30 | [Right]\n061 | 30 | [Left]\n062 | 30 | [Triang Mukhaikapada Paschimottanasana (Right)]\n062 | 30 | [Triang Mukhaikapada Paschimottanasana (Left)]\n126 | 30 | [Janu Sirsasana A (Right)]\n126 | 30 | [Janu Sirsasana A (Left)]\n127 | 30 | [Janu Sirsasana B (Heel to Perineum)]\n127 | 30 | [Janu Sirsasana C (Toe tuck)]\n143 | 30 | [Marichyasana A (Right)]\n143 | 30 | [Marichyasana A (Left)]\n145 | 30 | [Marichyasana B (Lotus - Right)]\n145 | 30 | [Marichyasana B (Lotus - Left)]\n301 | 30 | [Marichyasana C (Twist - Right)]\n301 | 30 | [Marichyasana C (Twist - Left)]\n302 | 30 | [Marichyasana D (Bound Twist - Right)]\n302 | 30 | [Marichyasana D (Bound Twist - Left)]\n78 | 90 | [Navasana (Boat - 5 Rounds)]\n126 | 45 |\n119 | 45 | [Kurmasana / Supta Kurmasana]\n053 | 45 | [Embryo]\n101 | 60 | [Baddha Konasana A & B]\n98 | 60 | [Upavistha Konasana A & B]\n093 | 45 |\n108 | 30 | [Right]\n108 | 30 | [Left]\n070 | 45 |\n168 | 45 | [Urdhva Mukha Paschimottanasana]\n111 | 45 |\n259 | 90 | [Urdhva Dhanurasana (Wheel - 3x)]\n067 | 60 | [Paschimottanasana (Counter)]\n219 | 180 | [Salamba Sarvangasana (Shoulderstand)]\n091 | 90 | [Plow]\n092 | 60 | [Ear Pressure]\n261 | 60 | [Urdhva Padmasana]\n268 | 60 | [Pindasana]\n051 | 60 | [Fish]\n110 | 45 |\n176 | 300 | [Sirsasana (Headstand)]\n222 | 60 | [Balasana (Child's Pose)]\n055 | 60 | [Yoga Mudra]\n045 | 60 | [Jnana Mudra]\n108 | 60 | [Utpluthih (Lift Up)]\n200 | 1200 | [Savasana (Rest)]"
-    },
-    {
-        "id": "recchlXY68qhuom2T",
-        "Course_ID": 94,
-        "Course_Title": " Weekly Practice Day 2",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "074 | 600 |\n080 | 20 |\n080 | 20 |\n082 | 15 |\n082 | 15 |\n084 | 20 |\n086 | 30 |\n087 | 600 |\n088 | 30 |\n089 | 30 |\n090 | 30 |\n091 | 300 |\n092 | 30 |\n093 | 20 |\n094 | 20 |\n095 | 30 | 15 seconds each side\n096 | 30 | 15 seconds each side\n100 | 20 |\n103 | 20 |\n105 | 15 |\n106 | 120 | 15 seconds on each position\n106 | 60 |\n106 | 60 |\n106 | 60 |\n058 | 120 | 30 seconds on each side\n059 | 40 | 20 seconds on each side\n061 | 40 | 20 seconds on each side\n062 | 40 | 20 seconds on each side\n064 | 40 | 20 seconds on each side\n065 | 40 | 20 seconds on each side\n065 | 60 |\n067 | 180 |\n069 | 60 |\n114 | 30 |\n114 | 30 |\n116 | 30 |\n116 | 30 |\n044 | 60 |\n020 | 120 |\n200 | 300 |\n205 | 480 | Ujjayi Pranayama (Section 203) or Nadi Sodhana Pranayama  (Section 205) for 8 minutes in any comfortable asana\n200 | 300 | "
-    },
-    {
-        "id": "reccw0SER3giZ2zdr",
-        "Course_ID": 117,
-        "Course_Title": "Weekly Practice Day 1",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 300 |\n075 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n067 | 60 |\n003 | 60 |\n004 | 60 |\n005 | 60 |\n006 | 60 |\n007 | 60 |\n008 | 60 |\n009 | 60 |\n010 | 60 |\n011 | 60 |\n012 | 60 |\n013 | 60 |\n014 | 60 |\n022 | 60 |\n018 | 60 |\n019 | 60 |\n020 | 60 |\n065 | 60 |\n114 | 60 |\n114 | 60 |\n115 | 60 |\n116 | 60 |\n116 | 60 |\n117 | 60 |\n118 | 60 |\n119 | 60 |\n119 | 60 |\n172a | 60 |\n200 | 60 |\n045 | 60 |\n218 | 60 | "
-    },
-    {
-        "id": "recdDLg2ZQXcgVrlL",
-        "Course_ID": 36,
-        "Course_Title": "Knees",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "003 | 30 | [Utthita Trikonasana]\n005 | 30 | [Utthita Parsvakonasana]\n007 | 30 |\n059 | 60 |\n062 | 60 | [Triang Mukha Eka Pada Paschimottanasana]\n063 | 60 |\n064 | 60 |\n040 | 120 |\n041 | 120 |\n043 | 60 |\n044 | 120 |\n321 | 60 | [Malasana]\n169 | 60 |\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recdI2vOFBIHgFvc8",
-        "Course_ID": 131,
-        "Course_Title": "Week 85 to 90",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n106 | 60 |\n106 | 60 |\n106 | 60 |\n106 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n059 | 60 |\n060 | 60 |\n061 | 60 |\n062 | 60 |\n063 | 60 |\n063 | 60 |\n064 | 60 |\n067 | 60 |\n068 | 60 |\n066 | 60 |\n044 | 60 |\n055 | 60 |\n056 | 60 |\n052 | 60 |\n053 | 60 |\n050 | 60 |\n054 | 60 |\n051 | 60 |\n057 | 60 |\n040 | 60 |\n041 | 60 |\n042 | 60 |\n043 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n139 | 60 |\n136 | 60 |\n141 | 60 |\n141 | 60 |\n126 | 60 |\n152 | 60 |\n130 | 60 |\n132 | 60 |\n127 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n117 | 60 |\n118 | 60 |\n119 | 60 |\n119 | 60 |\n177 | 60 |\n172a | 60 | 8 times\n200 | 60 |\n205 | 600 |\n218 | 300 | "
-    },
-    {
-        "id": "recddKCEqnolZVenl",
-        "Course_ID": 13,
-        "Course_Title": "Asthma & Respiratory",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n058 | 60 | [Mahamudra]\n059 | 60 |\n067 | 120 | [Paschimottanasana]\n031 | 45 |\n027 | 45 |\n032 | 30 |\n033 | 60 |\n041 | 180 |\n051 | 60 |\n111 | 60 |\n116 | 60 |\n016 | 45 |\n486 | 90 | [Urdhva Dhanurasana]\n516 | 90 | [Dwipada Viparita Dandasana]\n203 | 300 | [In Savasana]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recdjkbrvPU4SmxST",
-        "Course_ID": 105,
-        "Course_Title": "Week 22 to 25",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "074 | 300 |\n080 | 60 |\n082 | 60 |\n087 | 300 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 300 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n106 | 60 |\n105 | 60 |\n107 | 60 |\n025 | 60 |\n027 | 60 |\n029 | 60 |\n031 | 60 |\n032 | 60 |\n033 | 90 |\n059 | 60 |\n061 | 60 |\n062 | 60 |\n064 | 60 |\n065 | 60 |\n067 | 300 |\n070 | 60 |\n069 | 60 |\n038 | 60 |\n037 | 60 |\n049 | 60 |\n045 | 60 |\n047 | 60 |\n048 | 60 |\n040 | 60 |\n041 | 60 |\n042 | 60 |\n016 | 60 |\n017 | 60 |\n020 | 120 |\n112 | 60 |\n113 | 60 |\n114 | 60 |\n116 | 60 |\n118 | 60 |\n044 | 60 |\n200 | 300 |\n039 | 300 | Ujjayi without retention"
-    },
-    {
-        "id": "receKXIqPQCYtmJVv",
-        "Course_ID": 43,
-        "Course_Title": "Piles (Hemorrhoids)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n105 | 60 |\n108 | 60 |\n051 | 60 |\n050 | 30 |\n025 | 30 |\n027 | 30 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n201 | 60 |\n600 | 300 | [Nadi Sodhana (Retention)]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "receQF7STTX8ap5Pk",
-        "Course_ID": 116,
-        "Course_Title": "Week 71 to 73",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n132 | 60 |\n127 | 60 |\n128 | 60 |\n030 | 60 |\n030 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n110 | 60 |\n111 | 60 |\n172a | 60 |\n174 | 60 |\n174 | 60 |\n132 | 60 |\n001 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n119 | 60 |\n119 | 60 |\n126 | 60 |\n123 | 60 |\n123 | 60 |\n152 | 60 |\n067 | 60 |\n068 | 60 |\n066 | 60 |\n073 | 60 |\n073 | 60 |\n045 | 60 |\n046 | 60 |\n047 | 60 |\n048 | 60 |\n049 | 60 |\n050 | 60 |\n051 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n055 | 60 |\n056 | 60 |\n057 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n044 | 60 |\n043 | 60 |\n041 | 60 |\n200 | 60 |\n045 | 60 |\n045 | 60 |\n201 | 60 |\n202 | 60 |\n218 | 60 | "
-    },
-    {
-        "id": "recec129iIvTOeuvG",
-        "Course_ID": 101,
-        "Course_Title": "Week 11 & 12",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "003 | 40 |\n004 | 40 |\n005 | 40 |\n006 | 40 |\n007 | 40 |\n008 | 40 |\n009 | 40 |\n010 | 40 |\n012 | 40 |\n013 | 60 |\n014 | 60 |\n018 | 30 |\n019 | 30 |\n020 | 60 |\n015 | 40 |\n106 | 60 |\n034 | 30 |\n036 | 30 |\n087 | 600 |\n091 | 300 |\n092 | 60 |\n095 | 30 |\n105 | 30 |\n200 | 300 | Ujjayi with inhalation retention"
-    },
-    {
-        "id": "recfcjlqXvN9UGLi9",
-        "Course_ID": 150,
-        "Course_Title": "Weekly Practice Day 3",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n003 | 60 |\n004 | 60 |\n005 | 60 |\n006 | 60 |\n007 | 60 |\n008 | 60 |\n009 | 60 |\n010 | 60 |\n011 | 60 |\n012 | 60 |\n012 | 60 |\n013 | 60 |\n014 | 60 |\n027 | 60 |\n025 | 60 |\n029 | 60 |\n032 | 60 |\n033 | 60 |\n067 | 60 |\n068 | 60 |\n073 | 60 |\n073 | 60 |\n110 | 60 |\n111 | 60 |\n114 | 60 |\n114 | 60 |\n115 | 60 |\n116 | 60 |\n119 | 60 |\n127 | 60 |\n146 | 60 |\n147 | 60 |\n177 | 60 |\n181 | 60 |\n175 | 60 |\n173 | 60 | 8 times\n173 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "recgOCXSkYBRj1hc8",
-        "Course_ID": 114,
-        "Course_Title": "Week 61 to 65",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n067 | 60 |\n068 | 60 |\n073 | 60 |\n073 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n126 | 60 |\n123 | 60 |\n123 | 60 |\n124 | 60 |\n125 | 60 |\n132 | 60 |\n045 | 60 |\n046 | 60 |\n047 | 60 |\n048 | 60 |\n049 | 60 |\n050 | 60 |\n051 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n055 | 60 |\n056 | 60 |\n057 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n119 | 60 |\n119 | 60 |\n110 | 60 |\n111 | 60 |\n172a | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 |\n039 | 60 | "
-    },
-    {
-        "id": "recgOLIu3jNyUmXsE",
-        "Course_ID": 21,
-        "Course_Title": "Diabetes",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n058 | 60 | [Mahamudra]\n067 | 120 | [Paschimottanasana]\n041 | 60 |\n025 | 30 |\n027 | 30 |\n073 | 45 |\n105 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n127 | 30 |\n593 | 60 | [Uddiyana & Nauli]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recgmLWwOLv8975fx",
-        "Course_ID": 147,
-        "Course_Title": "Week 276 to 300",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n161 | 60 |\n162 | 60 |\n160 | 60 |\n173 | 60 |\n173 | 60 |\n177 | 60 |\n181 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n175 | 60 |\n182 | 60 |\n189 | 60 |\n190 | 60 |\n191 | 60 |\n192 | 60 |\n193 | 60 |\n184 | 60 |\n185 | 60 |\n186 | 60 |\n187 | 60 |\n188 | 60 |\n195 | 60 |\n196 | 60 | Ganda Bherundasana and Viparita Shalabhasana together (580, 581, and 584) in one stretch, then go to Urdhva Dhanurasana (486) to do Tiryang Mukhottanasana (586).\n196 | 60 |\n197 | 60 |\n172a | 60 |\n198 | 60 |\n199 | 60 |\n199 | 60 |\n169 | 60 |\n170 | 60 |\n171 | 60 |\n163 | 60 |\n165 | 60 |\n168 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n146 | 60 |\n147 | 60 |\n067 | 60 |\n200 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "rechvq4IAaaDqnhNz",
-        "Course_ID": 48,
-        "Course_Title": "Ulcers (Gastric/Duodenal) & Colic",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 180 |\n087 | 180 |\n058 | 60 | [Mahamudra]\n059 | 60 |\n067 | 120 | [Paschimottanasana]\n133 | 45 |\n134 | 45 |\n146 | 45 |\n114 | 45 |\n116 | 45 |\n119 | 45 |\n516 | 60 | [Dwipada Viparita Dandasana]\n593 | 60 | [Uddiyana]\n600 | 300 | [Ujjayi & Nadi Sodhana]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "reciDuo6Gnbq4Bem5",
-        "Course_ID": 52,
-        "Course_Title": "Week 3 and 4",
-        "Category": "Light on Pranayama > Course 1 (Preparatory)",
-        "Sequence_Text": "203 | 480 | [Ujjāyī II]\n203 | 480 | [Ujjāyī III]"
-    },
-    {
-        "id": "reciQ68Ea9vSmK6Sp",
-        "Course_ID": 39,
-        "Course_Title": "Men's Health (Prostate/Impotency)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n105 | 60 |\n034 | 30 |\n059 | 60 |\n040 | 60 |\n044 | 60 |\n045 | 60 |\n133 | 60 |\n082 | 60 |\n146 | 60 |\n116 | 60 |\n462 | 30 | [Mulabandhasana]\n168 | 30 |\n169 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n593 | 60 | [Uddiyana & Nauli]\n600 | 300 | [Nadi Sodhana (Retention)]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recimT7TcfMd8A5F2",
-        "Course_ID": 29,
-        "Course_Title": "Heart Trouble (Restorative)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "1 | 60 | [Note: Do not strain. Rest if tired.]\n203 | 600 | [Supine]\n600 | 600 | [Nadi Sodhana (No Retention)]\n104 | 300 | [Meditation in Padmasana]\n200 | 900 | [Savasana (15 mins)]"
-    },
-    {
-        "id": "recjC7xamcZhTiCax",
-        "Course_ID": 121,
-        "Course_Title": "Weekly Practice Day 5",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 60 |\n076 | 60 |\n077 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n079 | 60 |\n080 | 60 |\n080 | 60 |\n081 | 60 |\n081 | 60 |\n082 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n068 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n126 | 60 |\n123 | 60 |\n123 | 60 |\n127 | 60 |\n128 | 60 |\n032 | 60 |\n152 | 60 |\n038 | 60 |\n132 | 60 |\n033 | 60 |\n029 | 60 |\n030 | 60 |\n030 | 60 |\n172a | 60 | Urdhva Dhanurasana I for 15 to 20 times\n200 | 60 |\n205 | 60 |\n218 | 60 | "
-    },
-    {
-        "id": "recjL69cnyfzqeq5Y",
-        "Course_ID": 141,
-        "Course_Title": "Week 176 to 180",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n087 | 60 |\n091 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n154 | 60 |\n155 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n156 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n173 | 60 |\n173 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n147 | 60 |\n146 | 60 |\n163 | 60 |\n164 | 60 |\n165 | 60 |\n165 | 60 |\n166 | 60 |\n167 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n180 | 60 |\n175 | 60 |\n176 | 60 |\n116 | 60 |\n120 | 60 |\n121 | 60 |\n119 | 60 |\n122 | 60 |\n122 | 60 |\n200 | 60 |\n205 | 60 |\n218 | 60 | "
-    },
-    {
-        "id": "recjMbQ8WNYcF1YXU",
-        "Course_ID": 66,
-        "Course_Title": "Week 51 to 54",
-        "Category": "Light on Prānāyāma > Course 2 (Primary)",
-        "Sequence_Text": "214 | 300 | [Anuloma Va]\n215 | 300 | [Pratiloma Ia]\n204 | 600 | [Sūrya Bhedana I]"
-    },
-    {
-        "id": "recjfhIFYv71sv3n5",
-        "Course_ID": 88,
-        "Course_Title": "Weekly Practice - Friday",
-        "Category": "Light on Prānāyāma > Course 5 (Weekly Practice)",
-        "Sequence_Text": "203 | 1200 | [Ujjāyī VIII]\n205 | 1200 | [Nāḍī śodhana IVb]\n200 | 600 | [Śavāsana]"
-    },
-    {
-        "id": "reckMAIXl9L67AUJv",
-        "Course_ID": 53,
-        "Course_Title": "Week 5 and 6",
-        "Category": "Light on Pranayama > Course 1 (Preparatory)",
-        "Sequence_Text": "203 | 300 | [Ujjāyī II]\n203 | 300 | [Ujjāyī III]\n213 | 300 | [Viloma I]\n213 | 300 | [Viloma II]"
-    },
-    {
-        "id": "reckSm3bWdtYqlfEj",
-        "Course_ID": 126,
-        "Course_Title": "Final Practice Day 4",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n067 | 60 |\n146 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n163 | 60 |\n165 | 60 |\n168 | 60 |\n169 | 60 |\n170 | 60 |\n171 | 60 |\n069 | 60 |\n071 | 60 |\n200 | 60 |\n045 | 60 |\n045 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "reckyiZa0qDyh4WxF",
-        "Course_ID": 22,
-        "Course_Title": "Diarrhoea & Dysentery",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n058 | 60 | [Mahamudra]\n059 | 60 |\n600 | 600 | [Nadi Sodhana (No Retention)]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "reclSOSYAkpQHSBYq",
-        "Course_ID": 118,
-        "Course_Title": "Weekly Practice Day 2",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n106 | 60 |\n106 | 60 |\n106 | 60 |\n067 | 60 |\n068 | 60 |\n069 | 60 |\n073 | 60 |\n073 | 60 |\n126 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n172a | 60 | Urdhva Dhanurasana I for 12 times in technique I\n200 | 60 |\n201 | 60 |\n202 | 60 |\n045 | 60 |\n218 | 300 | "
-    },
-    {
-        "id": "reclaZRwVj9J5aWcg",
-        "Course_ID": 77,
-        "Course_Title": "Weeks 131 to 136",
-        "Category": "Light on Prānāyāma > Course 4 (Advanced)",
-        "Sequence_Text": "214 | 600 | [Anuloma VIIa]\n205 | 600 | [Nāḍī śodhana IIa]\n213 | 300 | [Viloma VIII]"
-    },
-    {
-        "id": "recm6xHz4Q9GnyOuU",
-        "Course_ID": 49,
-        "Course_Title": "Urinary & Bladder",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n041 | 180 |\n051 | 60 |\n050 | 30 |\n058 | 60 | [Mahamudra]\n044 | 120 |\n201 | 60 |\n600 | 300 | [Nadi Sodhana (With Retention)]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recmGolKZMVfuH84w",
-        "Course_ID": 99,
-        "Course_Title": "Week 8",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "003 | 60 |\n005 | 60 |\n007 | 60 |\n008 | 60 |\n009 | 60 |\n010 | 60 |\n004 | 60 |\n012 | 60 |\n013 | 60 |\n014 | 60 |\n106 | 60 |\n034 | 60 |\n036 | 60 |\n087 | 60 |\n091 | 60 |\n203 | 300 | Ujjayi"
-    },
-    {
-        "id": "recn5IS52KRZGcALK",
-        "Course_ID": 57,
-        "Course_Title": "Week 13 and 15",
-        "Category": "Light on Pranayama > Course 1 (Preparatory)",
-        "Sequence_Text": "203 | 300 | [Ujjāyī V]\n203 | 300 | [Ujjāyī VI]\n203 | 300 | [Ujjāyī VII]\n213 | 600 | [Viloma II]"
-    },
-    {
-        "id": "recnFUojSSqUOk4i1",
-        "Course_ID": 76,
-        "Course_Title": "Weeks 126 to 130",
-        "Category": "Light on Prānāyāma > Course 4 (Advanced)",
-        "Sequence_Text": "217 | 300 | [I]\n214 | 600 | [Anuloma IIIa]\n215 | 600 | [Pratiloma IIIa]\n213 | 300 | [Viloma VIII]"
-    },
-    {
-        "id": "recnf0zVnFwsEqxRH",
-        "Course_ID": 30,
-        "Course_Title": "Hernia (Inguinal & Umbilical)",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n070 | 60 |\n168 | 60 | [Urdhva Mukha Paschimottanasana]\n034 | 30 |\n108 | 60 |\n066 | 60 |\n044 | 60 |\n462 | 30 | [Mulabandhasana]\n169 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n201 | 60 |\n200 | 300 | [Savasana (After Baddha Konasana)]"
-    },
-    {
-        "id": "recnkTAHVc7gJlCCw",
-        "Course_ID": 67,
-        "Course_Title": "Week 55 to 58",
-        "Category": "Light on Prānāyāma > Course 2 (Primary)",
-        "Sequence_Text": "214 | 300 | [Anuloma Vb]\n215 | 600 | [Pratiloma Ib]\n217 | 300 | [I]"
-    },
-    {
-        "id": "recnkrLMU9aiDlAau",
-        "Course_ID": 111,
-        "Course_Title": "Week 36 to 40",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n080 | 60 |\n080 | 60 |\n081 | 60 |\n081 | 60 |\n082 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n100 | 60 |\n103 | 60 |\n104 | 60 |\n104 | 60 |\n098 | 60 |\n099 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n003 | 60 |\n004 | 60 |\n005 | 60 |\n006 | 60 |\n007 | 60 |\n009 | 60 |\n010 | 60 |\n012 | 60 |\n018 | 60 |\n019 | 60 |\n020 | 60 |\n011 | 60 |\n022 | 60 |\n024 | 60 |\n059 | 60 |\n060 | 60 |\n061 | 60 |\n063 | 60 |\n063 | 60 |\n064 | 60 |\n067 | 60 |\n069 | 60 |\n071 | 60 |\n055 | 60 |\n056 | 60 |\n052 | 60 |\n053 | 60 |\n050 | 60 |\n051 | 60 |\n044 | 60 |\n066 | 60 |\n073 | 60 |\n073 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n110 | 60 |\n025 | 60 |\n027 | 60 |\n028 | 60 |\n172 | 60 |\n200 | 60 |\n045 | 60 |\n045 | 60 |\n201 | 60 | Uddiyana for 8 times"
-    },
-    {
-        "id": "recoEB1uClXnSSf98",
-        "Course_ID": 91,
-        "Course_Title": "Weekly Practice - Thursday",
-        "Category": "Light on Prānāyāma > Course 5 (Weekly Practice)",
-        "Sequence_Text": "217 | 600 | [II and III]\n217 | 600 | [II and III]\n215 | 1200 | [Pratiloma IIIb]\n200 | 600 | [Śavāsana]"
-    },
-    {
-        "id": "recojAnu2JyzlbGy4",
-        "Course_ID": 55,
-        "Course_Title": "Week 9 and 10",
-        "Category": "Light on Pranayama > Course 1 (Preparatory)",
-        "Sequence_Text": "203 | 300 | [Ujjāyī IV]\n203 | 300 | [Ujjāyī V]\n213 | 300 | [Viloma IV]\n213 | 300 | [Viloma I]"
-    },
-    {
-        "id": "recpLK7aBI62smVTD",
-        "Course_ID": 80,
-        "Course_Title": "Weeks 149 to 155",
-        "Category": "Light on Prānāyāma > Course 4 (Advanced)",
-        "Sequence_Text": "204 | 600 | [Sūrya bhedana III]\n214 | 480 | [Anuloma IIIb]\n215 | 480 | [Pratiloma IIIb]"
-    },
-    {
-        "id": "recrjJFPtYDrU5Osq",
-        "Course_ID": 56,
-        "Course_Title": "Week 11 and 12",
-        "Category": "Light on Pranayama > Course 1 (Preparatory)",
-        "Sequence_Text": "203 | 300 | [Ujjāyī V]\n203 | 300 | [Ujjāyī VI]\n213 | 600 | [Viloma II]"
-    },
-    {
-        "id": "recsHT79TxEVidjpE",
-        "Course_ID": 106,
-        "Course_Title": "Week 26 to 30",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "074 | 300 |\n080 | 30 |\n082 | 30 |\n084 | 60 |\n086 | 60 |\n087 | 300 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n100 | 60 |\n103 | 60 |\n105 | 60 |\n034 | 60 |\n036 | 60 |\n059 | 60 |\n061 | 60 |\n062 | 60 |\n064 | 60 |\n067 | 300 |\n069 | 60 |\n037 | 60 |\n038 | 60 |\n049 | 60 |\n045 | 60 |\n047 | 60 |\n048 | 60 |\n051 | 60 |\n040 | 60 |\n041 | 60 |\n042 | 60 |\n114 | 60 |\n116 | 60 |\n044 | 120 |\n033 | 60 |\n032 | 60 |\n029 | 60 |\n025 | 60 |\n027 | 60 |\n016 | 60 |\n017 | 60 |\n020 | 180 |\n023 | 60 |\n200 | 300 |\n203 | 600 | Ujjayi with Antar Kumbhaka (inhalation retention)"
-    },
-    {
-        "id": "rectFofHVzMnW4gKU",
-        "Course_ID": 18,
-        "Course_Title": "Bronchitis & Respiratory",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "074 | 300 |\n087 | 300 |\n067 | 120 | [Paschimottanasana]\n105 | 60 |\n059 | 60 |\n031 | 60 |\n033 | 60 |\n040 | 60 |\n041 | 60 |\n321 | 60 | [Malasana]\n133 | 60 |\n134 | 60 |\n016 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n600 | 300 | [Ujjayi (Inhalation Retention)]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "rectGrySaC2ZgEwdK",
-        "Course_ID": 25,
-        "Course_Title": "Gout",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "1 | 60 | [Standing Poses (Basic)]\n040 | 60 |\n041 | 60 |\n015 | 45 |\n023 | 30 |\n037 | 30 |\n067 | 120 | [Paschimottanasana]\n070 | 45 |\n073 | 45 |\n063 | 45 |\n163 | 45 |\n043 | 45 |\n169 | 45 |\n074 | 180 |\n087 | 180 |\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "rectLVFTk5lqCW5Pd",
-        "Course_ID": 115,
-        "Course_Title": "Week 66 to 70",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n132 | 60 |\n127 | 60 |\n128 | 60 |\n030 | 60 |\n030 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n110 | 60 |\n111 | 60 |\n172a | 60 |\n132 | 60 |\n001 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n119 | 60 |\n119 | 60 |\n126 | 60 |\n123 | 60 |\n123 | 60 |\n152 | 60 |\n067 | 60 |\n068 | 60 |\n066 | 60 |\n073 | 60 |\n073 | 60 |\n045 | 60 |\n046 | 60 |\n047 | 60 |\n048 | 60 |\n049 | 60 |\n050 | 60 |\n051 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n055 | 60 |\n056 | 60 |\n057 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n044 | 60 |\n043 | 60 |\n041 | 60 |\n200 | 60 | "
-    },
-    {
-        "id": "rectoiBKVikYZobN3",
-        "Course_ID": 92,
-        "Course_Title": "Weekly Practice - Tuesday",
-        "Category": "Light on Prānāyāma > Course 5 (Weekly Practice)",
-        "Sequence_Text": "213 | 1200 | [Viloma V and VI]\n204 | 1200 | [Sūrya bhedana II and III]\n200 | 600 | [Śavāsana]"
-    },
-    {
-        "id": "rectrAmHhN7FGjpG8",
-        "Course_ID": 149,
-        "Course_Title": "Weekly Practice Day 2",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n059 | 60 |\n060 | 60 |\n061 | 60 |\n062 | 60 |\n063 | 60 |\n064 | 60 |\n065 | 60 |\n066 | 60 |\n067 | 60 |\n045 | 60 |\n046 | 60 |\n047 | 60 |\n048 | 60 |\n049 | 60 |\n050 | 60 |\n051 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n055 | 60 |\n056 | 60 |\n057 | 60 |\n044 | 60 |\n040 | 60 |\n024 | 60 |\n034 | 60 |\n036 | 60 |\n037 | 60 |\n069 | 60 |\n146 | 60 |\n200 | 60 |\n045 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "rectvbmvCZWwkLBlw",
-        "Course_ID": 100,
-        "Course_Title": "Week 9 & 10",
-        "Category": "Light on Yoga > Course 1",
-        "Sequence_Text": "003 | 60 |\n005 | 60 |\n007 | 60 |\n008 | 60 |\n009 | 60 |\n010 | 60 |\n004 | 60 |\n006 | 60 |\n012 | 60 |\n013 | 90 |\n014 | 90 |\n015 | 60 |\n106 | 60 |\n034 | 60 |\n036 | 60 |\n087 | 60 |\n091 | 60 |\n092 | 60 |\n095 | 60 |\n105 | 60 |\n203 | 300 | Ujjayi with inhalation retention"
-    },
-    {
-        "id": "recul8xpYvqz2APum",
-        "Course_ID": 84,
-        "Course_Title": "Weeks 181 to 185",
-        "Category": "Light on Prānāyāma > Course 5 (Highly Intense)",
-        "Sequence_Text": "205 | 600 | [Nāḍī śodhana IIIa]\n214 | 600 | [Anuloma VIIIb]\n203 | 480 | [Ujjāyī XII (lying)]"
-    },
-    {
-        "id": "recvAoGkdJBX9FuBH",
-        "Course_ID": 81,
-        "Course_Title": "Weeks 156 to 160",
-        "Category": "Light on Prānāyāma > Course 4 (Advanced)",
-        "Sequence_Text": "217 | 600 | [III]\n214 | 480 | [Anuloma VIIb]\n215 | 480 | [Pratiloma IIIa]\n205 | 600 | [Nāḍī śodhana IIb]"
-    },
-    {
-        "id": "recvFW3KEdjMeGyrx",
-        "Course_ID": 51,
-        "Course_Title": "Week 1 and 2",
-        "Category": "Light on Pranayama > Course 1 (Preparatory)",
-        "Sequence_Text": "203 | 480 | [Ujjāyī I]\n203 | 480 | [Ujjāyī II]"
-    },
-    {
-        "id": "recvMabSY8UljXGrh",
-        "Course_ID": 124,
-        "Course_Title": "Final Practice Day 2",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n105 | 60 |\n067 | 60 |\n073 | 60 |\n073 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n144 | 60 |\n145 | 60 |\n147 | 60 |\n146 | 60 |\n163 | 60 |\n165 | 60 |\n166 | 60 |\n167 | 60 |\n168 | 60 |\n169 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 |\n201 | 60 | 8 times\n202 | 60 | 8 times"
-    },
-    {
-        "id": "recvTVGKbNTpnu2iu",
-        "Course_ID": 72,
-        "Course_Title": "Weeks 91 to 120: First Week",
-        "Category": "Light on Prānāyāma > Course 3 (Mastery Phase)",
-        "Sequence_Text": "203 | 1500 | [Monday: Ujjāyī VIII]\n204 | 1500 | [Tuesday: Sūrya bhedana I]\n214 | 1500 | [Wednesday: Anuloma Ib]\n213 | 750 | [Thursday: Viloma I and II]\n213 | 750 | [Thursday: Viloma I and II]\n215 | 1500 | [Friday: Pratiloma Ib]\n205 | 1500 | [Saturday: Nāḍī śodhana Ib]\n213 | 1500 | [Sunday: Viloma II]"
-    },
-    {
-        "id": "recviW1ybj5Er4vK5",
-        "Course_ID": 69,
-        "Course_Title": "Weeks 68 to 72",
-        "Category": "Light on Prānāyāma > Course 3 (Intermediate)",
-        "Sequence_Text": "213 | 300 | [Viloma VII]\n214 | 480 | [Anuloma IIb]\n215 | 480 | [Pratiloma IIb]\n205 | 600 | [Nāḍī Śodhana Ia]"
-    },
-    {
-        "id": "recwNXNr4nJQ8a7zy",
-        "Course_ID": 144,
-        "Course_Title": "Week 201 to 225",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n087 | 60 |\n091 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n173 | 60 |\n173 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n180 | 60 |\n175 | 60 |\n184 | 60 |\n186 | 60 |\n191 | 60 |\n189 | 60 |\n190 | 60 |\n169 | 60 |\n170 | 60 |\n171 | 60 |\n163 | 60 |\n165 | 60 |\n168 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n146 | 60 |\n147 | 60 |\n067 | 60 |\n200 | 60 |\n045 | 60 | "
-    },
-    {
-        "id": "recwbQnfxZCmfeFJ3",
-        "Course_ID": 42,
-        "Course_Title": "Paralysis & Polio",
-        "Category": "Light on Yoga > Therapeutic",
-        "Sequence_Text": "1 | 60 | [Standing Poses (Supported if needed)]\n018 | 60 |\n020 | 60 |\n025 | 30 |\n027 | 30 |\n031 | 30 |\n074 | 180 |\n087 | 180 |\n091 | 120 |\n093 | 60 |\n108 | 60 |\n106 | 60 |\n600 | 300 | [Ujjayi & Nadi Sodhana]\n200 | 300 | [Savasana]"
-    },
-    {
-        "id": "recwvWbosm7RoR6MT",
-        "Course_ID": 74,
-        "Course_Title": "Weeks 91 to 120: Third Week",
-        "Category": "Light on Prānāyāma > Course 3 (Mastery Phase)",
-        "Sequence_Text": "204 | 1500 | [Monday: Sūrya bhedana II]\n217 | 1500 | [Tuesday:  II]\n213 | 1500 | [Wednesday: Viloma VII]\n214 | 1500 | [Thursday: Anuloma Vb]\n215 | 1500 | [Friday: Pratiloma Ia]\n205 | 1500 | [Saturday: Nāḍī śodhana Ia]\n203 | 1500 | [Sunday: Ujjāyī X]"
-    },
-    {
-        "id": "recxeqbXrk2QZDNvN",
-        "Course_ID": 61,
-        "Course_Title": "Week 26 to 28",
-        "Category": "Light on Prānāyāma > Course 2 (Primary)",
-        "Sequence_Text": "203 | 600 | [Ujjāyī VIII]\n213 | 600 | [Viloma III]"
-    },
-    {
-        "id": "recxsP8GIy6ddsmYO",
-        "Course_ID": 75,
-        "Course_Title": "Weeks 121 to 125",
-        "Category": "Light on Prānāyāma > Course 4 (Advanced)",
-        "Sequence_Text": "204 | 300 | [Sūrya bhedana I]\n203 | 600 | [Ujjāyī XII]\n213 | 600 | [Viloma VIII]"
-    },
-    {
-        "id": "recyZeXiOK8FAnuPf",
-        "Course_ID": 5,
-        "Course_Title": "Surya Namaskara Sequence (Ashtanga method)",
-        "Category": "General",
-        "Sequence_Text": "225 | 10 | Action: Exhale, bring palms to heart center. Focus: Settle the breath; find stillness.\n226 | 10 | Action: Inhale, sweep arms overhead. Focus: Lift ribs; look slightly up.\n020 | 12 | Action: Exhale, fold forward. Focus: Relax neck; keep knees soft; hands to floor.\n227 | 12 | Action: Inhale, step Left (right) leg back, knee down. Focus: Open chest forward; keep front knee over ankle.\n033 | 12 | Action: Exhale, step Right (left) leg back to Down Dog. Focus: Lift hips high; press floor away.\n228 | 8 | Action: Exhale, drop knees, chest, and chin. Focus: Eight points on the floor; elbows in.\n031 | 12 | Action: Inhale, slide forward and lift chest. Focus: Shoulders down; open the heart.\n033 | 12 | Action: Exhale, lift hips back to Down Dog. Focus: Stretch heels down; lengthen spine.\n227 | 12 | Action: Inhale, step Right (left) leg forward, back knee down. Focus: Sink hips; lift heart.\n020 | 10 | Action: Exhale, step Left (right) leg forward and fold. Focus: Let the head hang heavy.\n226 | 5 | Action: Inhale, sweep arms overhead to stand. Focus: Reach through fingertips.\n225 | 5 | Action: Exhale, palms to heart. Focus: Settle the breath; acknowledge the sun."
-    },
-    {
-        "id": "recz9z8MBd6wjfBJQ",
-        "Course_ID": 133,
-        "Course_Title": "Week 101 to 108",
-        "Category": "Light on Yoga > Course 3",
-        "Sequence_Text": "074 | 60 |\n177 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n139 | 60 |\n136 | 60 |\n141 | 60 |\n141 | 60 |\n130 | 60 |\n131 | 60 |\n127 | 60 |\n129 | 60 |\n126 | 60 |\n152 | 60 |\n132 | 60 |\n149 | 60 |\n151 | 60 |\n172a | 60 |\n172a | 60 |\n177 | 60 |\n175 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n119 | 60 |\n020 | 60 |\n200 | 60 |\n205 | 60 |\n218 | 60 | "
-    },
-    {
-        "id": "reczive58mntmNMZX",
-        "Course_ID": 110,
-        "Course_Title": "Week 31 to 35",
-        "Category": "Light on Yoga > Course 2",
-        "Sequence_Text": "074 | 60 |\n075 | 60 |\n080 | 60 |\n080 | 60 |\n081 | 60 |\n081 | 60 |\n082 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n100 | 60 |\n103 | 60 |\n104 | 60 |\n104 | 60 |\n098 | 60 |\n099 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n107 | 60 |\n107 | 60 |\n107 | 60 |\n107 | 60 |\n034 | 60 |\n036 | 60 |\n016 | 60 |\n040 | 60 |\n041 | 60 |\n042 | 60 |\n059 | 60 |\n061 | 60 |\n062 | 60 |\n063 | 60 |\n063 | 60 |\n064 | 60 |\n067 | 60 |\n055 | 60 | All the Padmasana Cycle can be done at a stretch\n056 | 60 |\n047 | 60 |\n052 | 60 |\n053 | 60 |\n066 | 60 |\n073 | 60 |\n073 | 60 |\n044 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n025 | 60 |\n027 | 60 |\n028 | 60 |\n020 | 60 |\n205 | 600 | Nadi Sodhana Pranayama (Section 205) without inhalation retention for 10 minutes\n200 | 60 | "
-    }
+  {
+    "Course_ID": 153,
+    "Course_Title": "Weekly Practice Day 6",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n067 | 60 |\n146 | 60 | One minute on each way changing legs\n147 | 60 | Half a minute each way\n114 | 60 |\n120 | 60 |\n121 | 60 |\n117 | 60 |\n118 | 60 |\n119 | 60 |\n122 | 60 |\n122 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n175 | 60 |\n173 | 60 |\n200 | 60 | "
+  },
+  {
+    "Course_ID": 40,
+    "Course_Title": "Menstrual Disorders",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n067 | 120 | [Paschimottanasana]\n020 | 120 |\n033 | 120 |\n055 | 60 |\n066 | 120 |\n044 | 120 |\n041 | 120 |\n134 | 120 |\n116 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 87,
+    "Course_Title": "Weeks 196 to 200",
+    "Category": "Light on Prānāyāma > Course 5 (Highly Intense)",
+    "Sequence_Text": "205 | 600 | [Nāḍī śodhana IVa]\n214 | 600 | [Nāḍī śodhana IVb]\n203 | 600 | [Ujjāyī II (lying)]"
+  },
+  {
+    "Course_ID": 59,
+    "Course_Title": "Week 19 and 22",
+    "Category": "Light on Pranayama > Course 1 (Preparatory)",
+    "Sequence_Text": "203 | 300 | [Ujjāyī VI]\n203 | 300 | [Ujjāyī VII]\n213 | 300 | [Viloma I]\n213 | 300 | [Viloma II]"
+  },
+  {
+    "Course_ID": 123,
+    "Course_Title": "Final Practice Day 1",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n126 | 60 |\n123 | 60 |\n123 | 60 |\n152 | 60 |\n153 | 60 |\n154 | 60 |\n155 | 60 |\n158 | 60 |\n159 | 60 |\n161 | 60 |\n162 | 60 |\n160 | 60 |\n156 | 60 |\n173 | 60 | Finish each asana 488-499 with Viparita Chakrasana\n173 | 60 |\n132 | 60 |\n130 | 60 |\n127 | 60 |\n067 | 300 |\n200 | 60 |\n045 | 60 |\n045 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 139,
+    "Course_Title": "Week 161 to 165",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n154 | 60 |\n152 | 60 |\n153 | 60 |\n156 | 60 |\n156 | 60 |\n157 | 60 |\n158 | 60 |\n159 | 60 |\n132 | 60 |\n130 | 60 |\n173 | 60 |\n173 | 60 |\n123 | 60 |\n123 | 60 |\n126 | 60 |\n149 | 60 |\n151 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n147 | 60 |\n148 | 60 |\n146 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n121 | 60 |\n121 | 60 |\n119 | 60 |\n163 | 60 |\n164 | 60 | "
+  },
+  {
+    "Course_ID": 140,
+    "Course_Title": "Week 166 to 175",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 600 |\n087 | 600 |\n091 | 300 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n154 | 60 |\n152 | 60 |\n153 | 60 |\n156 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n173 | 60 |\n173 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n147 | 60 |\n146 | 60 |\n163 | 60 |\n164 | 60 |\n165 | 60 |\n165 | 60 |\n166 | 60 |\n167 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n180 | 60 |\n175 | 60 |\n176 | 60 |\n116 | 60 |\n120 | 60 |\n121 | 60 |\n119 | 60 |\n200 | 60 |\n205 | 600 |\n218 | 300 | "
+  },
+  {
+    "Course_ID": 132,
+    "Course_Title": "Week 95 to 100",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n139 | 60 |\n136 | 60 |\n141 | 60 |\n141 | 60 |\n130 | 60 |\n131 | 60 |\n127 | 60 |\n129 | 60 |\n126 | 60 |\n152 | 60 |\n132 | 60 |\n149 | 60 |\n151 | 60 |\n172a | 60 |\n172a | 60 |\n177 | 60 |\n175 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n119 | 60 |\n020 | 60 |\n200 | 60 |\n205 | 600 |\n218 | 300 | "
+  },
+  {
+    "Course_ID": 24,
+    "Course_Title": "Giddiness",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n067 | 180 | [Paschimottanasana]\n046 | 300 |\n600 | 300 | [Nadi Sodhana (No Retention)]\n200 | 600 | [Savasana]"
+  },
+  {
+    "Course_ID": 125,
+    "Course_Title": "Final Practice Day 3",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n180 | 60 |\n175 | 60 |\n176 | 60 |\n182 | 60 |\n189 | 60 |\n190 | 60 |\n191 | 60 |\n192 | 60 |\n193 | 60 |\n184 | 60 |\n186 | 60 |\n185 | 60 |\n195 | 60 | Sirsapadasana and Ganda Bherundasana, Viparita Salabhasana, and Tiryang Mukhottanasana all done together\n196 | 60 |\n196 | 60 |\n197 | 60 |\n198 | 60 |\n067 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n200 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 71,
+    "Course_Title": "Weeks 76 to 80",
+    "Category": "Light on Prānāyāma > Course 3 (Intermediate)",
+    "Sequence_Text": "214 | 600 | [Anuloma IIb]\n215 | 600 | [Pratiloma IIb]\n204 | 600 | [Sūrya Bhedana II]\n217 | 600 | [II]\n205 | 600 | [Nāḍī Śodhana II]"
+  },
+  {
+    "Course_ID": 10,
+    "Course_Title": "Arthritis (Lower Back/Lumbar)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "003 | 30 | [Utthita Trikonasana]\n005 | 30 | [Utthita Parsvakonasana]\n007 | 30 |\n004 | 30 |\n012 | 45 |\n074 | 300 |\n087 | 300 |\n112 | 60 | [Bharadwajasana I]\n114 | 60 |\n015 | 45 |\n025 | 30 |\n027 | 30 |\n016 | 45 |\n111 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana (Chair Backbend)]\n132 | 30 | [Handstand]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 79,
+    "Course_Title": "Weeks 143 to 148",
+    "Category": "Light on Prānāyāma > Course 4 (Advanced)",
+    "Sequence_Text": "217 | 600 | [II]\n205 | 900 | [Nāḍī śodhana Ib]"
+  },
+  {
+    "Course_ID": 109,
+    "Course_Title": "Important Asanas in Course 2",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "011 | 60 |\n024 | 60 |\n030 | 60 |\n030 | 60 |\n043 | 60 |\n050 | 60 |\n053 | 60 |\n056 | 60 |\n057 | 60 |\n060 | 60 |\n063 | 60 |\n063 | 60 |\n066 | 60 |\n068 | 60 |\n073 | 60 |\n073 | 60 |\n075 | 60 |\n074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n109 | 60 |\n111 | 60 |\n119 | 60 |\n119 | 60 |\n123 | 60 |\n123 | 60 |\n126 | 60 |\n127 | 60 |\n132 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n152 | 60 |\n172a | 60 | "
+  },
+  {
+    "Course_ID": 27,
+    "Course_Title": "Hamstrings & Leg Deformity",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "1 | 120 | [All Standing Poses (Focus on legs)]\n105 | 60 |\n108 | 60 |\n109 | 60 | [Anantasana]\n067 | 120 | [Paschimottanasana]\n072 | 30 |\n066 | 60 |\n073 | 45 |\n133 | 45 |\n016 | 45 |\n169 | 45 |\n170 | 45 |\n171 | 45 |\n074 | 180 |\n087 | 180 |\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 7,
+    "Course_Title": "Acidity & Digestion",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "003 | 30 | [Utthita Trikonasana]\n004 | 30 |\n005 | 30 | [Utthita Parsvakonasana]\n006 | 30 |\n007 | 30 |\n010 | 30 |\n012 | 30 |\n020 | 60 |\n074 | 300 |\n087 | 300 |\n105 | 60 |\n034 | 30 |\n059 | 60 |\n060 | 60 |\n067 | 120 | [Paschimottanasana]\n116 | 60 |\n119 | 60 |\n027 | 30 |\n486 | 60 | [Urdhva Dhanurasana]\n201 | 60 |\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 50,
+    "Course_Title": "Varicose Veins",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "184 | 600 | [Salamba Sirsasana (10 min)]\n234 | 600 | [Salamba Sarvangasana (10 min)]\n091 | 300 |\n040 | 120 |\n041 | 180 |\n043 | 60 |\n200 | 300 | [Savasana (Legs elevated on bolster)]"
+  },
+  {
+    "Course_ID": 128,
+    "Course_Title": "Final Practice Day 6",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n067 | 60 |\n146 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n169 | 60 |\n170 | 60 |\n171 | 60 |\n165 | 60 |\n168 | 60 |\n181 | 60 |\n175 | 60 |\n182 | 60 |\n190 | 60 |\n184 | 60 |\n185 | 60 |\n195 | 60 |\n196 | 60 |\n196 | 60 |\n020 | 60 |\n200 | 300 |\n045 | 60 |\n045 | 60 |\n201 | 60 | "
+  },
+  {
+    "Course_ID": 58,
+    "Course_Title": "Week 16 and 18",
+    "Category": "Light on Pranayama > Course 1 (Preparatory)",
+    "Sequence_Text": "203 | 300 | [Ujjāyī VI]\n203 | 300 | [Ujjāyī VII]\n213 | 300 | [Viloma I]\n213 | 300 | [Viloma II]"
+  },
+  {
+    "Course_ID": 103,
+    "Course_Title": "Week 16 & 17",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "074 | 300 |\n003 | 40 |\n004 | 40 |\n005 | 40 |\n006 | 40 |\n007 | 40 |\n008 | 40 |\n009 | 40 |\n010 | 40 |\n012 | 40 |\n013 | 60 |\n014 | 60 |\n018 | 30 |\n019 | 30 |\n020 | 60 |\n021 | 40 |\n017 | 40 |\n015 | 40 |\n016 | 40 |\n025 | 30 |\n026 | 30 |\n027 | 30 |\n029 | 30 |\n031 | 30 |\n032 | 30 |\n033 | 60 |\n040 | 60 |\n087 | 300 |\n091 | 300 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 40 |\n096 | 40 |\n105 | 60 |\n106 | 60 |\n034 | 60 |\n036 | 60 |\n058 | 240 |\n059 | 40 |\n067 | 120 |\n072 | 30 |\n200 | 300 |\n203 | 300 | Do Ujjayi Pranayama (#203) without inhalation retention in Siddhasana."
+  },
+  {
+    "Course_ID": 142,
+    "Course_Title": "Week 181 to 190",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n149 | 60 |\n151 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n146 | 60 |\n147 | 60 |\n148 | 60 |\n163 | 60 |\n165 | 60 |\n116 | 60 |\n119 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n175 | 60 |\n176 | 60 |\n184 | 60 |\n169 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 28,
+    "Course_Title": "Headache & Migraine",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "184 | 600 | [Salamba Sirsasana (Bandage eyes)]\n087 | 600 |\n091 | 300 |\n067 | 300 | [Paschimottanasana (Head supported)]\n020 | 180 | [Head supported]\n046 | 300 | [Seated]\n600 | 600 | [Nadi Sodhana (No Retention)]\n209 | 300 | [Cooling]\n200 | 600 | [Savasana]"
+  },
+  {
+    "Course_ID": 12,
+    "Course_Title": "Arthritis (Upper Back/Dorsal)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "104 | 120 | [Padmasana Cycle]\n040 | 60 |\n042 | 60 |\n037 | 60 |\n015 | 45 |\n067 | 120 | [Paschimottanasana]\n031 | 45 |\n032 | 30 |\n033 | 60 |\n130 | 45 |\n074 | 180 |\n087 | 180 |\n112 | 60 | [Bharadwajasana I]\n116 | 60 |\n119 | 60 |\n016 | 45 |\n027 | 45 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n512 | 60 | [Kapotasana]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 11,
+    "Course_Title": "Arthritis (Shoulder & Dorsal)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "003 | 30 | [Utthita Trikonasana]\n007 | 30 |\n074 | 180 |\n087 | 180 |\n037 | 60 |\n022 | 60 |\n061 | 60 |\n055 | 60 |\n056 | 60 |\n152 | 30 |\n126 | 30 |\n130 | 30 |\n132 | 30 |\n112 | 60 | [Bharadwajasana I]\n116 | 60 |\n119 | 60 |\n163 | 60 |\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 63,
+    "Course_Title": "Week 32 to 34",
+    "Category": "Light on Prānāyāma > Course 2 (Primary)",
+    "Sequence_Text": "213 | 420 | [Viloma III]\n214 | 420 | [Anuloma Ib]\n203 | 300 | [Ujjāyī IX]"
+  },
+  {
+    "Course_ID": 64,
+    "Course_Title": "Week 35 to 38",
+    "Category": "Light on Prānāyāma > Course 2 (Primary)",
+    "Sequence_Text": "214 | 600 | [Anuloma Ia]\n215 | 600 | [Pratiloma Ia]\n203 | 300 | [Ujjāyī IV]"
+  },
+  {
+    "Course_ID": 23,
+    "Course_Title": "Epilepsy & Nervous System",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n058 | 60 | [Mahamudra]\n067 | 180 | [Paschimottanasana]\n046 | 300 |\n600 | 300 | [Ujjayi (Inhalation Retention)]\n600 | 300 | [Nadi Sodhana (No Retention)]\n209 | 300 |\n200 | 600 | [Savasana]"
+  },
+  {
+    "Course_ID": 54,
+    "Course_Title": "Week 7 and 8",
+    "Category": "Light on Pranayama > Course 1 (Preparatory)",
+    "Sequence_Text": "203 | 300 | [Ujjāyī I]\n203 | 300 | [Ujjāyī II]\n203 | 300 | [Ujjāyī III]\n213 | 300 | [Viloma I]\n213 | 300 | [Viloma II]"
+  },
+  {
+    "Course_ID": 136,
+    "Course_Title": "Week 137 to 142",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n154 | 60 |\n152 | 60 |\n076 | 60 |\n153 | 60 |\n156 | 60 |\n156 | 60 |\n132 | 60 |\n130 | 60 |\n127 | 60 |\n149 | 60 |\n150 | 60 |\n150 | 60 |\n151 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n136 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n074 | 60 |\n177 | 60 |\n181 | 60 |\n175 | 60 |\n173 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n020 | 60 |\n200 | 60 |\n205 | 600 |\n218 | 300 | "
+  },
+  {
+    "Course_ID": 44,
+    "Course_Title": "Pleurisy & Pneumonia (Recovery)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n067 | 120 | [Paschimottanasana]\n020 | 120 |\n040 | 120 |\n047 | 60 |\n051 | 60 |\n203 | 300 | [No Retention]\n600 | 300 | [Nadi Sodhana (No Retention)]\n200 | 600 | [Savasana]"
+  },
+  {
+    "Course_ID": 33,
+    "Course_Title": "Indigestion",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n105 | 60 |\n106 | 60 |\n034 | 30 |\n058 | 60 | [Mahamudra]\n025 | 30 |\n027 | 30 |\n067 | 120 | [Paschimottanasana]\n146 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n041 | 120 |\n593 | 60 | [Uddiyana & Nauli]\n206 | 300 |\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 96,
+    "Course_Title": "Week 1 & 2",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "001 | 60 |\n002 | 60 |\n003 | 60 |\n005 | 60 |\n007 | 60 |\n008 | 60 |\n012 | 60 |\n087 | 600 |\n091 | 300 |\n200 | 300 | "
+  },
+  {
+    "Course_ID": 89,
+    "Course_Title": "Weekly Practice - Monday",
+    "Category": "Light on Prānāyāma > Course 5 (Weekly Practice)",
+    "Sequence_Text": "205 | 1200 | [Nāḍī śodhana Ib]\n203 | 1200 | [Ujjāyī XI]\n200 | 600 | [Śavāsana]"
+  },
+  {
+    "Course_ID": 26,
+    "Course_Title": "Halitosis (Bad Breath)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n020 | 120 |\n105 | 60 |\n067 | 120 | [Paschimottanasana]\n109 | 60 | [Simhasana I & II]\n209 | 300 | [With Kaka Mudra]\n201 | 60 |\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 31,
+    "Course_Title": "Hunchback & Coccyx",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "029 | 30 |\n025 | 30 |\n027 | 30 |\n016 | 45 |\n031 | 45 |\n033 | 60 |\n112 | 60 | [Bharadwajasana I]\n064 | 60 |\n042 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n098 | 60 |\n130 | 30 |\n132 | 30 |\n516 | 60 | [Dwipada Viparita Dandasana]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 34,
+    "Course_Title": "Insomnia",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "184 | 600 | [Salamba Sirsasana (10 min)]\n234 | 600 | [Salamba Sarvangasana (10 min)]\n067 | 300 | [Paschimottanasana (5 min)]\n020 | 180 | [3 min]\n046 | 300 |\n600 | 600 | [Nadi Sodhana (No Retention)]\n200 | 600 | [Savasana (10 min)]"
+  },
+  {
+    "Course_ID": 95,
+    "Course_Title": "Important Asanas in Course 1",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "003 | 60 |\n004 | 60 |\n005 | 60 |\n006 | 60 |\n007 | 60 |\n009 | 60 |\n010 | 60 |\n012 | 60 |\n013 | 60 |\n016 | 60 |\n020 | 60 |\n025 | 60 |\n027 | 60 |\n033 | 60 |\n034 | 60 |\n036 | 60 |\n039 | 60 |\n040 | 60 |\n044 | 60 |\n045 | 60 |\n051 | 60 |\n059 | 60 |\n067 | 60 |\n074 | 60 |\n087 | 60 |\n091 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n200 | 60 | "
+  },
+  {
+    "Course_ID": 107,
+    "Course_Title": "Weekly Practice Day 1",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "074 | 600 |\n087 | 600 |\n091 | 300 |\n105 | 30 | half a minute on right side\n034 | 60 |\n036 | 30 |\n067 | 300 |\n114 | 30 |\n114 | 30 |\n116 | 30 |\n116 | 30 |\n047 | 60 |\n051 | 30 |\n025 | 30 |\n027 | 30 |\n032 | 30 |\n033 | 60 |\n020 | 120 |\n200 | 300 |\n205 | 600 | Nadi Sodhana Pranayama in Padmasana (104) or in Virasana (89) or in Siddbasana (84) with inhalation retention for 10 minutes\n201 | 60 | 6 times\n200 | 600 | "
+  },
+  {
+    "Course_ID": 148,
+    "Course_Title": "Weekly Practice Day 1",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 600 |\n087 | 600 |\n091 | 300 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n126 | 60 |\n123 | 60 |\n132 | 60 |\n130 | 60 |\n127 | 60 |\n129 | 60 |\n154 | 60 |\n155 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n156 | 60 |\n173 | 60 |\n173 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 |\n201 | 60 | 8 times\n202 | 60 | 8 times"
+  },
+  {
+    "Course_ID": 85,
+    "Course_Title": "Weeks 186 to 190",
+    "Category": "Light on Prānāyāma > Course 5 (Highly Intense)",
+    "Sequence_Text": "204 | 600 | [Sūrya bhedana IV]\n205 | 900 | [Nāḍī śodhana IIIb]\n203 | 600 | [Ujjāyī II (lying)]"
+  },
+  {
+    "Course_ID": 60,
+    "Course_Title": "Week 23 and 25",
+    "Category": "Light on Pranayama > Course 1 (Preparatory)",
+    "Sequence_Text": "203 | 480 | [Ujjāyī VI]\n203 | 480 | [Ujjāyī VII]\n213 | 480 | [Viloma IV]\n213 | 480 | [Viloma V]"
+  },
+  {
+    "Course_ID": 70,
+    "Course_Title": "Weeks 73 to 75",
+    "Category": "Light on Prānāyāma > Course 3 (Intermediate)",
+    "Sequence_Text": "203 | 300 | [Ujjāyī VIII]\n214 | 360 | [Anuloma VIb]\n215 | 360 | [Pratiloma II]\n205 | 600 | [Nāḍī Śodhana Ib]"
+  },
+  {
+    "Course_ID": 41,
+    "Course_Title": "Palpitation",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n067 | 180 | [Paschimottanasana]\n020 | 120 |\n033 | 60 |\n516 | 60 | [Dwipada Viparita Dandasana]\n040 | 120 |\n041 | 120 |\n600 | 300 | [Ujjayi (Start No Retention)]\n600 | 300 | [Nadi Sodhana (Start No Retention)]\n200 | 600 | [Savasana]"
+  },
+  {
+    "Course_ID": 47,
+    "Course_Title": "Thrombosis (Legs)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "087 | 600 | [10 min]\n091 | 300 |\n040 | 180 |\n039 | 180 |\n044 | 180 |\n600 | 300 | [Ujjayi & Nadi Sodhana]\n200 | 600 | [Savasana]"
+  },
+  {
+    "Course_ID": 152,
+    "Course_Title": "Weekly Practice Day 5",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 600 |\n087 | 600 |\n091 | 300 |\n067 | 300 |\n149 | 60 |\n150 | 60 |\n151 | 60 |\n155 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 | All these balancing asanas at one stretch\n162 | 60 |\n163 | 60 |\n165 | 60 |\n166 | 60 |\n167 | 60 |\n177 | 60 |\n181 | 60 |\n175 | 60 |\n067 | 300 |\n020 | 180 |\n200 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 32,
+    "Course_Title": "Hydrocele",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n132 | 45 |\n130 | 45 |\n033 | 60 |\n105 | 60 |\n108 | 60 |\n044 | 60 |\n066 | 60 |\n067 | 120 | [Paschimottanasana]\n146 | 45 |\n163 | 45 |\n462 | 45 | [Mulabandhasana]\n169 | 45 |\n593 | 60 | [Uddiyana & Nauli]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 138,
+    "Course_Title": "Week 146 to 155",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n154 | 60 |\n152 | 60 |\n153 | 60 |\n156 | 60 |\n156 | 60 |\n157 | 60 |\n132 | 60 |\n130 | 60 |\n173 | 60 |\n173 | 60 |\n149 | 60 |\n150 | 60 |\n150 | 60 |\n151 | 60 |\n087 | 60 |\n104 | 60 |\n102 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n141 | 60 |\n141 | 60 |\n142 | 60 |\n143 | 60 |\n144 | 60 |\n145 | 60 |\n147 | 60 |\n148 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n121 | 60 |\n121 | 60 |\n177 | 60 |\n181 | 60 |\n181 | 60 |\n175 | 60 |\n178 | 60 |\n180 | 60 |\n200 | 60 |\n045 | 60 |\n201 | 60 | 8 times\n202 | 60 | 8 times\n218 | 30 | "
+  },
+  {
+    "Course_ID": 113,
+    "Course_Title": "Week 55 to 60",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 300 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 300 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n106 | 60 |\n106 | 60 |\n106 | 60 |\n067 | 60 |\n068 | 60 |\n069 | 60 |\n073 | 60 |\n073 | 60 |\n126 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n045 | 60 |\n046 | 60 |\n047 | 60 |\n048 | 60 |\n049 | 60 |\n050 | 60 |\n051 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n055 | 60 |\n056 | 60 |\n057 | 60 |\n043 | 60 |\n044 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n117 | 60 |\n119 | 60 |\n119 | 60 |\n110 | 60 |\n111 | 60 |\n172a | 60 | Urdhva Dhanurasana II for 12 times in technique II\n020 | 60 |\n200 | 300 |\n205 | 300 |\n206 | 300 |\n039 | 300 | "
+  },
+  {
+    "Course_ID": 20,
+    "Course_Title": "Colitis & Constipation",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n020 | 120 |\n067 | 180 | [Paschimottanasana]\n105 | 60 |\n034 | 30 |\n040 | 60 |\n041 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n025 | 30 |\n027 | 30 |\n486 | 60 | [Urdhva Dhanurasana]\n205 | 300 |\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 78,
+    "Course_Title": "Weeks 137 to 142",
+    "Category": "Light on Prānāyāma > Course 4 (Advanced)",
+    "Sequence_Text": "204 | 600 | [Sūrya bhedana II]\n205 | 900 | [Nāḍī śodhana IIb]"
+  },
+  {
+    "Course_ID": 16,
+    "Course_Title": "Blood Pressure (Low)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n092 | 60 |\n067 | 180 | [Paschimottanasana]\n040 | 60 |\n039 | 60 |\n044 | 60 |\n600 | 300 | [Nadi Sodhana (Start no retention)]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 108,
+    "Course_Title": "Weekly Practice Day 3",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "074 | 600 |\n003 | 30 | [Utthita Trikonasana]\n004 | 30 |\n005 | 40 | [Utthita Parsvakonasana]\n006 | 40 |\n007 | 15 |\n008 | 15 |\n009 | 15 |\n010 | 40 |\n012 | 60 |\n013 | 60 |\n018 | 30 |\n019 | 30 |\n020 | 60 |\n021 | 30 |\n023 | 20 |\n017 | 30 |\n015 | 30 |\n016 | 40 |\n031 | 30 |\n040 | 40 |\n041 | 40 |\n042 | 40 |\n045 | 30 |\n047 | 30 |\n048 | 30 |\n051 | 30 |\n037 | 30 |\n038 | 60 |\n049 | 20 |\n067 | 300 |\n205 | 600 | Ujjayi Pranayama (Section 203) or Nadi Sodhana Pranayama (Section 205) without Kumbhaka or retention\n200 | 300 | "
+  },
+  {
+    "Course_ID": 17,
+    "Course_Title": "Brain, Memory & Nervous System",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 600 | [10 min]\n087 | 600 | [10 min]\n020 | 180 | [Head supported]\n067 | 300 | [Paschimottanasana]\n168 | 60 | [Urdhva Mukha Paschimottanasana]\n033 | 120 |\n133 | 60 |\n146 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n046 | 300 |\n600 | 300 | [Nadi Sodhana (Retention)]\n600 | 300 | [Bhastrika]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 2,
+    "Course_Title": "Deepak Chopra Three Dosha",
+    "Category": "General",
+    "Sequence_Text": "221 | 40 | Action: Press-and-release massage from head to arms. Focus: Move toward the heart; awaken circulation.\n222 | 40 | Action: Massage belly, back, and legs. Focus: Firm pressure upward; move energy to the heart.\n223 | 40 | Action: Hug knees to chest; rock side to side. Focus: Massage the lower back; keep neck free.\n224 | 60 | Action: Inhale, rise to kneeling; Exhale, sit on heels. Focus: Fluid, slow movement; vertical spine.\n059 | 60 | Action: Fold over one straight leg. Focus: Reach through the heel; lengthen from the lower back.\n087 | 180 | Action: Lift legs and hips; support back with hands. Focus: Stillness in the throat; gaze at toes.\n091 | 60 | Action: Lower feet over head. Focus: Stretch through heels; do not strain the neck.\n031 | 30 | Action: Lie on belly; lift chest. Focus: Use back muscles; expand the ribs.\n025 | 45 | Action: Lift legs and chest off floor. Focus: Lengthen the spine; breathe into the belly.\n114 | 60 | Action: Sit and twist toward the upright knee. Focus: Twist on the exhale; keep chest open.\n020 | 60 | Action: Stand and fold forward. Focus: Gravity pulls the spine long; knees relaxed.\n200 | 120 | Action: Lie flat on back; palms up. Focus: Total surrender; let the body absorb the practice.\n205 | 300 | Action: Alternate nostril breathing. Focus: Natural rhythm; balance the left and right brain."
+  },
+  {
+    "Course_ID": 73,
+    "Course_Title": "Weeks 91 to 120: Second Week",
+    "Category": "Light on Prānāyāma > Course 3 (Mastery Phase)",
+    "Sequence_Text": "217 | 1500 | [Monday:  I]\n214 | 1500 | [Tuesday: Anuloma IIa]\n215 | 1500 | [Wednesday: Pratiloma IIb]\n203 | 1500 | [Thursday: Ujjāyī X]\n205 | 1500 | [Friday: Nāḍī śodhana Ib]\n213 | 1500 | [Saturday: Viloma Vb]\n213 | 1500 | [Sunday: Viloma III]"
+  },
+  {
+    "Course_ID": 83,
+    "Course_Title": "Weeks 176 to 180",
+    "Category": "Light on Prānāyāma > Course 5 (Highly Intense)",
+    "Sequence_Text": "213 | 600 | [Viloma IX]\n215 | 600 | [Pratiloma IVa]"
+  },
+  {
+    "Course_ID": 134,
+    "Course_Title": "Week 109 to 125",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "173 | 60 | Work towards practising this 15 times a day\n074 | 60 |\n177 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n139 | 60 |\n136 | 60 |\n141 | 60 |\n141 | 60 |\n130 | 60 |\n131 | 60 |\n127 | 60 |\n129 | 60 |\n126 | 60 |\n152 | 60 |\n132 | 60 |\n149 | 60 |\n151 | 60 |\n172a | 60 |\n172a | 60 |\n177 | 60 |\n175 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n119 | 60 |\n020 | 60 |\n200 | 60 |\n205 | 600 |\n218 | 300 | "
+  },
+  {
+    "Course_ID": 9,
+    "Course_Title": "Ankles, Heels & Flatfoot",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "1 | 60 | [Standing Poses (Tadasana to Parsvottanasana)]\n040 | 120 |\n041 | 120 |\n043 | 60 |\n164 | 60 |\n321 | 60 | [Malasana]\n037 | 60 |\n044 | 60 |\n063 | 60 |\n033 | 60 |\n108 | 60 |\n055 | 60 |\n462 | 30 | [Mulabandhasana]\n025 | 30 |\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 122,
+    "Course_Title": "Weekly Practice Day 6",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n087 | 60 |\n091 | 60 |\n067 | 60 |\n069 | 60 |\n034 | 60 |\n036 | 60 |\n041 | 60 |\n063 | 60 |\n063 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n116 | 60 |\n116 | 60 |\n119 | 60 |\n119 | 60 |\n132 | 60 |\n127 | 60 |\n172a | 60 |\n200 | 60 | "
+  },
+  {
+    "Course_ID": 62,
+    "Course_Title": "Week 29 to 31",
+    "Category": "Light on Prānāyāma > Course 2 (Primary)",
+    "Sequence_Text": "203 | 600 | [Ujjāyī IX]\n214 | 600 | [Anuloma Ia]\n213 | 300 | [Viloma II]"
+  },
+  {
+    "Course_ID": 102,
+    "Course_Title": "Week 14 & 15",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "074 | 300 |\n003 | 40 |\n004 | 40 |\n005 | 40 |\n006 | 40 |\n007 | 40 |\n008 | 40 |\n009 | 40 |\n010 | 40 |\n012 | 40 |\n013 | 60 |\n014 | 60 |\n018 | 30 |\n019 | 30 |\n020 | 60 |\n015 | 60 |\n025 | 30 |\n026 | 30 |\n027 | 30 |\n031 | 30 |\n106 | 30 |\n034 | 30 |\n036 | 30 |\n087 | 300 |\n091 | 300 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 40 |\n105 | 60 |\n058 | 240 |\n059 | 40 |\n035 | 60 |\n067 | 180 |\n200 | 300 | Ujjayi with inhalation retention"
+  },
+  {
+    "Course_ID": 120,
+    "Course_Title": "Weekly Practice Day 4",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 300 |\n045 | 60 |\n046 | 60 |\n047 | 60 |\n048 | 60 |\n049 | 60 |\n050 | 60 |\n051 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n055 | 60 |\n056 | 60 |\n057 | 60 |\n040 | 60 |\n041 | 60 |\n042 | 60 |\n066 | 60 |\n044 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n119 | 60 |\n119 | 60 |\n110 | 60 |\n111 | 60 |\n172a | 60 | Urdhva Dhanurasana I for 12 times staying 20 seconds each time\n200 | 60 |\n205 | 60 |\n218 | 60 | "
+  },
+  {
+    "Course_ID": 82,
+    "Course_Title": "Weeks 171 to 175",
+    "Category": "Light on Prānāyāma > Course 5 (Highly Intense)",
+    "Sequence_Text": "205 | 600 | [Nāḍī śodhana Ib]\n203 | 600 | [Ujjāyī XIII]\n214 | 600 | [Anuloma VIIIa]"
+  },
+  {
+    "Course_ID": 93,
+    "Course_Title": "Weekly Practice - Wednesday",
+    "Category": "Light on Prānāyāma > Course 5 (Weekly Practice)",
+    "Sequence_Text": "205 | 1200 | [Nāḍī śodhana IIb]\n214 | 1200 | [Anuloma VIIb]\n200 | 600 | [Śavāsana]"
+  },
+  {
+    "Course_ID": 46,
+    "Course_Title": "Spinal Disc Displacement",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "1 | 60 | [Standing Poses (Careful alignment)]\n016 | 45 |\n025 | 30 |\n027 | 30 |\n031 | 30 |\n032 | 30 |\n110 | 45 |\n111 | 60 |\n087 | 300 |\n098 | 60 |\n132 | 45 |\n130 | 45 |\n041 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n203 | 300 |\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 127,
+    "Course_Title": "Final Practice Day 5",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n161 | 60 |\n162 | 60 |\n160 | 60 |\n156 | 60 |\n172a | 60 |\n149 | 60 |\n150 | 60 |\n151 | 60 |\n155 | 60 |\n175 | 60 |\n182 | 60 |\n190 | 60 |\n191 | 60 |\n195 | 60 |\n196 | 60 |\n196 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 8,
+    "Course_Title": "Anaemia & Fatigue",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n067 | 300 | [Paschimottanasana]\n071 | 60 |\n020 | 180 |\n033 | 60 |\n116 | 60 |\n118 | 60 |\n516 | 60 | [Dwipada Viparita Dandasana]\n046 | 180 |\n600 | 600 | [Nadi Sodhana (No Retention)]\n200 | 600 | [Savasana]"
+  },
+  {
+    "Course_ID": 135,
+    "Course_Title": "Week 126 to 130",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n154 | 60 |\n152 | 60 |\n076 | 60 |\n132 | 60 |\n130 | 60 |\n172a | 60 |\n173 | 60 | 6 times minimum\n173 | 60 |\n126 | 60 |\n123 | 60 |\n123 | 60 |\n127 | 60 |\n129 | 60 |\n149 | 60 |\n150 | 60 |\n150 | 60 |\n151 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n136 | 60 |\n139 | 60 |\n140 | 60 |\n141 | 60 |\n141 | 60 |\n177 | 60 |\n074 | 60 |\n175 | 60 |\n173 | 60 |\n173 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n119 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 |\n218 | 300 | "
+  },
+  {
+    "Course_ID": 97,
+    "Course_Title": "Week 3 & 4",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "003 | 60 |\n005 | 60 |\n007 | 60 |\n008 | 60 |\n004 | 60 |\n012 | 60 |\n013 | 60 |\n087 | 600 |\n091 | 300 |\n200 | 300 | "
+  },
+  {
+    "Course_ID": 14,
+    "Course_Title": "Backache (General)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "003 | 30 | [Utthita Trikonasana]\n005 | 30 | [Utthita Parsvakonasana]\n012 | 45 |\n33 | 45 | [Prasarita Padottanasana]\n105 | 60 |\n108 | 60 |\n059 | 60 |\n060 | 60 |\n067 | 120 | [Paschimottanasana]\n068 | 60 |\n114 | 60 |\n116 | 60 |\n321 | 60 | [Malasana]\n033 | 60 |\n016 | 45 |\n025 | 30 |\n027 | 30 |\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 151,
+    "Course_Title": "Weekly Practice Day 4",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n132 | 60 |\n130 | 60 |\n131 | 60 |\n127 | 60 |\n129 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n144 | 60 |\n144 | 60 |\n145 | 60 |\n146 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n180 | 60 |\n176 | 60 |\n175 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 |\n039 | 60 | "
+  },
+  {
+    "Course_ID": 45,
+    "Course_Title": "Sciatica",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "003 | 30 | [Utthita Trikonasana]\n005 | 30 | [Utthita Parsvakonasana]\n012 | 45 |\n105 | 60 |\n108 | 60 | [Side Stretch]\n109 | 60 | [Anantasana]\n067 | 60 | [Paschimottanasana]\n112 | 60 | [Bharadwajasana I]\n114 | 60 |\n116 | 60 |\n119 | 60 |\n016 | 45 |\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 143,
+    "Course_Title": "Week 191 to 200",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n087 | 60 |\n091 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n173 | 60 |\n173 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n180 | 60 |\n175 | 60 |\n184 | 60 |\n169 | 60 |\n170 | 60 |\n163 | 60 |\n165 | 60 |\n149 | 60 |\n151 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n168 | 60 |\n200 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 86,
+    "Course_Title": "Weeks 191 to 195",
+    "Category": "Light on Prānāyāma > Course 5 (Highly Intense)",
+    "Sequence_Text": "217 | 600 | [IV]\n215 | 600 | [Pratiloma IVb]\n213 | 600 | [Viloma II (lying)]"
+  },
+  {
+    "Course_ID": 15,
+    "Course_Title": "Blood Pressure (High)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "091 | 300 | [Support thighs if needed]\n059 | 90 | [Head supported]\n061 | 90 |\n062 | 90 | [Triang Mukha Eka Pada Paschimottanasana]\n067 | 300 | [Paschimottanasana (Head supported)]\n040 | 120 | [Spine Erect]\n039 | 120 |\n045 | 120 |\n600 | 600 | [Nadi Sodhana (No Retention)]\n200 | 600 | [Savasana (Eyes covered)]"
+  },
+  {
+    "Course_ID": 112,
+    "Course_Title": "Week 45 to 50",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 300 | Stay for 5 minutes then the rest of the Sirsasana variations are done in a stretch\n076 | 60 |\n077 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n079 | 60 |\n080 | 60 |\n080 | 60 |\n081 | 60 |\n081 | 60 |\n082 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 300 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 300 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n067 | 300 |\n068 | 60 |\n059 | 60 |\n060 | 60 |\n063 | 60 |\n063 | 60 |\n073 | 60 |\n073 | 60 |\n055 | 60 |\n056 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n050 | 60 |\n051 | 60 |\n041 | 60 |\n043 | 60 |\n044 | 60 |\n116 | 60 |\n116 | 60 |\n114 | 60 |\n114 | 60 |\n115 | 60 |\n117 | 60 |\n110 | 60 |\n172 | 60 | Urdhva Dhanurasana I for 6 times\n200 | 60 |\n205 | 600 |\n206 | 180 |\n201 | 60 | Uddiyana for 8 times"
+  },
+  {
+    "Course_ID": 3,
+    "Course_Title": "Restorative Sequence",
+    "Category": "General",
+    "Sequence_Text": "176 | 600 | [Sirsasana (10 min)]\n219 | 600 | [Sarvangasana (10 min)]\n091 | 300 | [5 min]\n067 | 300 | [Paschimottanasana (5 min)]\n600 | 900 | [Nadi Shodhana Pranayama (15 min)]\n200 | 300 | [Savasana (Rest)]"
+  },
+  {
+    "Course_ID": 90,
+    "Course_Title": "Weekly Practice - Saturday",
+    "Category": "Light on Prānāyāma > Course 5 (Weekly Practice)",
+    "Sequence_Text": "213 | 600 | [Viloma VII]\n205 | 1200 | [Nāḍī śodhana Ib]\n200 | 600 | [Śavāsana]"
+  },
+  {
+    "Course_ID": 129,
+    "Course_Title": "Final Practice Day 7",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n087 | 60 |\n091 | 60 |\n067 | 60 |\n205 | 1800 | "
+  },
+  {
+    "Course_ID": 35,
+    "Course_Title": "Kidneys",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n003 | 30 | [Utthita Trikonasana]\n033 | 60 |\n027 | 45 |\n068 | 60 |\n066 | 60 |\n105 | 60 |\n116 | 60 |\n119 | 60 |\n516 | 60 | [Dwipada Viparita Dandasana]\n512 | 60 | [Kapotasana]\n537 | 30 | [Vrschikasana (Scorpion)]\n593 | 60 | [Uddiyana]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 104,
+    "Course_Title": "Week 19 to 21",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "074 | 300 |\n080 | 40 |\n082 | 40 |\n087 | 300 |\n088 | 90 |\n089 | 90 |\n090 | 90 |\n091 | 240 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 40 |\n096 | 40 |\n106 | 60 |\n105 | 40 |\n107 | 60 |\n034 | 30 |\n036 | 30 |\n017 | 40 |\n016 | 40 |\n040 | 60 |\n025 | 30 |\n027 | 30 |\n029 | 30 |\n031 | 30 |\n032 | 30 |\n033 | 90 |\n058 | 240 |\n059 | 40 |\n062 | 40 |\n061 | 40 |\n064 | 40 |\n065 | 40 |\n070 | 40 |\n069 | 40 |\n067 | 180 |\n072 | 30 |\n112 | 40 |\n113 | 40 |\n118 | 120 |\n044 | 120 |\n200 | 300 |\n039 | 300 | Ujjayi wtthout retention\n200 | 300 | "
+  },
+  {
+    "Course_ID": 68,
+    "Course_Title": "Weeks 63 to 67",
+    "Category": "Light on Prānāyāma > Course 3 (Intermediate)",
+    "Sequence_Text": "213 | 300 | [Viloma III]\n203 | 480 | [Ujjāyī XI]\n213 | 300 | [Viloma VI]\n214 | 300 | [Anuloma IIa]\n215 | 300 | [Pratiloma IIa]\n214 | 300 | [Anuloma VIa]\n204 | 300 | [Sūrya Bhedana II]\n217 | 300 | [II]"
+  },
+  {
+    "Course_ID": 119,
+    "Course_Title": "Weekly Practice Day 3",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 60 |\n087 | 60 |\n091 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n106 | 60 |\n106 | 60 |\n106 | 60 |\n106 | 60 |\n034 | 60 |\n036 | 60 |\n059 | 60 |\n060 | 60 |\n061 | 60 |\n062 | 60 |\n063 | 60 |\n063 | 60 |\n064 | 60 |\n067 | 60 |\n069 | 60 |\n071 | 60 |\n068 | 60 |\n073 | 60 |\n073 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n172a | 60 | Urdhva Dhanurasana I for 15 times in technique I\n174 | 60 |\n174 | 60 |\n020 | 60 |\n200 | 60 |\n204 | 600 |\n203 | 60 |\n206 | 60 |\n218 | 60 | "
+  },
+  {
+    "Course_ID": 37,
+    "Course_Title": "Labour Pain (Relief)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "040 | 120 |\n044 | 120 | [Bound Angle]\n066 | 120 | [Seated]\n203 | 300 | [Retention]\n600 | 300 | [Nadi Sodhana (No Retention)]\n200 | 600 | [Savasana]"
+  },
+  {
+    "Course_ID": 4,
+    "Course_Title": "Surya Namaskar (6 Rounds)",
+    "Category": "General",
+    "Sequence_Text": "001 | 10 | [Tadasana (Inhale)]\n020 | 10 | [Exhale]\n029 | 10 | [Exhale]\n032 | 10 | [Inhale]\n029 | 10 | [Exhale]\n033 | 10 | [Exhale, then Inhale]\n020 | 10 | [Exhale]\n001 | 10 | [Tadasana (Inhale)]"
+  },
+  {
+    "Course_ID": 146,
+    "Course_Title": "Week 251 to 275",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n161 | 60 |\n162 | 60 |\n160 | 60 |\n173 | 60 |\n173 | 60 |\n177 | 60 |\n181 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n175 | 60 |\n182 | 60 |\n189 | 60 |\n190 | 60 |\n191 | 60 |\n192 | 60 |\n193 | 60 |\n184 | 60 |\n186 | 60 |\n187 | 60 |\n188 | 60 |\n196 | 60 |\n199 | 60 |\n199 | 60 |\n169 | 60 |\n170 | 60 |\n171 | 60 |\n163 | 60 |\n165 | 60 |\n168 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n146 | 60 |\n147 | 60 |\n067 | 60 |\n200 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 6,
+    "Course_Title": "Abdominal Organs & Arm Strength",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "029 | 30 |\n030 | 30 | [Crocodile Hops]\n032 | 30 |\n033 | 60 |\n038 | 30 |\n048 | 30 |\n050 | 30 |\n127 | 30 |\n129 | 30 |\n123 | 30 |\n126 | 30 |\n130 | 45 |\n132 | 45 |\n152 | 30 |\n154 | 30 |\n488 | 60 | [Viparita Chakrasana]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 19,
+    "Course_Title": "Cold, Cough & Tonsillitis (ENT)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n091 | 180 |\n051 | 60 |\n109 | 30 | [Simhasana (Lion Pose)]\n067 | 180 | [Paschimottanasana]\n020 | 120 |\n116 | 60 |\n119 | 60 |\n032 | 30 |\n486 | 60 | [Urdhva Dhanurasana]\n203 | 300 | [Retention]\n600 | 300 | [Bhastrika Pranayama (If no fever)]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 38,
+    "Course_Title": "Lungs",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n104 | 120 | [Padmasana Cycle]\n040 | 120 |\n041 | 120 |\n042 | 60 |\n4 | 60 | [Standing Poses (Chest Openers)]\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n600 | 600 | [All Pranayama (With Retention)]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 98,
+    "Course_Title": "Week 5 & 6",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "003 | 60 |\n005 | 60 |\n007 | 60 |\n008 | 60 |\n004 | 60 |\n012 | 60 |\n013 | 90 |\n106 | 120 |\n034 | 60 |\n036 | 60 |\n087 | 600 |\n091 | 300 |\n200 | 300 | Ujjayi in Mrtasana"
+  },
+  {
+    "Course_ID": 130,
+    "Course_Title": "Week 79 to 84",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 300 |\n075 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 300 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 300 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n067 | 180 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n139 | 60 |\n146 | 60 |\n126 | 60 |\n152 | 60 |\n123 | 60 |\n132 | 60 |\n130 | 60 |\n127 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n120 | 60 |\n111 | 60 |\n172a | 60 |\n177 | 60 |\n174 | 60 |\n174 | 60 |\n020 | 120 |\n200 | 300 |\n205 | 600 |\n218 | 300 | Sit in Siddhasana (84) or VIrasana (89) or Padmasana (104) or Baddha Konasana (102)."
+  },
+  {
+    "Course_ID": 65,
+    "Course_Title": "Week 39 to 42",
+    "Category": "Light on Prānāyāma > Course 2 (Primary)",
+    "Sequence_Text": "203 | 540 | [Ujjāyī X]\n214 | 420 | [Anuloma Ib]\n215 | 420 | [Pratiloma Ib]\n213 | 300 | [Viloma III]"
+  },
+  {
+    "Course_ID": 137,
+    "Course_Title": "Week 143 to 145",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n154 | 60 |\n152 | 60 |\n076 | 60 |\n153 | 60 |\n156 | 60 |\n156 | 60 |\n132 | 60 |\n130 | 60 |\n127 | 60 |\n149 | 60 |\n150 | 60 |\n150 | 60 |\n151 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n136 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n144 | 60 |\n144 | 60 |\n145 | 60 |\n177 | 60 |\n181 | 60 |\n175 | 60 |\n173 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n020 | 60 |\n200 | 60 |\n205 | 60 |\n218 | 60 | "
+  },
+  {
+    "Course_ID": 145,
+    "Course_Title": "Week 226 to 250",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n087 | 60 |\n091 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n173 | 60 |\n173 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n180 | 60 |\n175 | 60 |\n184 | 60 |\n186 | 60 |\n191 | 60 |\n189 | 60 |\n190 | 60 |\n182 | 60 |\n183 | 60 |\n192 | 60 |\n193 | 60 |\n194 | 60 |\n169 | 60 |\n170 | 60 |\n171 | 60 |\n163 | 60 |\n165 | 60 |\n168 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n146 | 60 |\n147 | 60 |\n067 | 60 |\n200 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 1,
+    "Course_Title": "Ashtanga Primary Series (Full)",
+    "Category": "General",
+    "Sequence_Text": "1 | 30 | [Samasthiti (Focus)]\n1 | 300 | [Surya Namaskara A (5 Rounds)]\n1 | 300 | [Surya Namaskara B (5 Rounds)]\n018 | 30 | [Big Toe Hold]\n019 | 30 | [Padahastasana (Hands Under Feet)]\n003 | 30 | [Utthita Trikonasana (Right)]\n003 | 30 | [Utthita Trikonasana (Left)]\n004 | 30 | [Right]\n004 | 30 | [Left]\n005 | 30 | [Utthita Parsvakonasana (Right)]\n005 | 30 | [Utthita Parsvakonasana (Left)]\n006 | 30 | [Right]\n006 | 30 | [Left]\n29 | 30 | [Prasarita Padottanasana A]\n29 | 30 | [Prasarita Padottanasana B (Hands Waist)]\n29 | 30 | [Prasarita Padottanasana C (Interlaced)]\n29 | 30 | [Prasarita Padottanasana D (Toes)]\n012 | 30 | [Right]\n012 | 30 | [Left]\n20 | 30 | [Utthita Hasta Padangusthasana (Right)]\n20 | 30 | [Utthita Hasta Padangusthasana (Left)]\n022 | 30 | [Right]\n022 | 30 | [Left]\n017 | 45 | [Chair]\n007 | 45 | [Right & Left) (Enter via Vinyasa]\n008 | 45 | [Right & Left) (Enter via Vinyasa]\n035 | 15 | [Staff Pose]\n153 | 60 | [Paschimottanasana A & B]\n072 | 30 | [Reverse Plank]\n061 | 30 | [Right]\n061 | 30 | [Left]\n062 | 30 | [Triang Mukhaikapada Paschimottanasana (Right)]\n062 | 30 | [Triang Mukhaikapada Paschimottanasana (Left)]\n126 | 30 | [Janu Sirsasana A (Right)]\n126 | 30 | [Janu Sirsasana A (Left)]\n127 | 30 | [Janu Sirsasana B (Heel to Perineum)]\n127 | 30 | [Janu Sirsasana C (Toe tuck)]\n143 | 30 | [Marichyasana A (Right)]\n143 | 30 | [Marichyasana A (Left)]\n145 | 30 | [Marichyasana B (Lotus - Right)]\n145 | 30 | [Marichyasana B (Lotus - Left)]\n301 | 30 | [Marichyasana C (Twist - Right)]\n301 | 30 | [Marichyasana C (Twist - Left)]\n302 | 30 | [Marichyasana D (Bound Twist - Right)]\n302 | 30 | [Marichyasana D (Bound Twist - Left)]\n78 | 90 | [Navasana (Boat - 5 Rounds)]\n126 | 45 |\n119 | 45 | [Kurmasana / Supta Kurmasana]\n053 | 45 | [Embryo]\n101 | 60 | [Baddha Konasana A & B]\n98 | 60 | [Upavistha Konasana A & B]\n093 | 45 |\n108 | 30 | [Right]\n108 | 30 | [Left]\n070 | 45 |\n168 | 45 | [Urdhva Mukha Paschimottanasana]\n111 | 45 |\n259 | 90 | [Urdhva Dhanurasana (Wheel - 3x)]\n067 | 60 | [Paschimottanasana (Counter)]\n219 | 180 | [Salamba Sarvangasana (Shoulderstand)]\n091 | 90 | [Plow]\n092 | 60 | [Ear Pressure]\n261 | 60 | [Urdhva Padmasana]\n268 | 60 | [Pindasana]\n051 | 60 | [Fish]\n110 | 45 |\n176 | 300 | [Sirsasana (Headstand)]\n222 | 60 | [Balasana (Child's Pose)]\n055 | 60 | [Yoga Mudra]\n045 | 60 | [Jnana Mudra]\n108 | 60 | [Utpluthih (Lift Up)]\n200 | 1200 | [Savasana (Rest)]"
+  },
+  {
+    "Course_ID": 94,
+    "Course_Title": " Weekly Practice Day 2",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "074 | 600 |\n080 | 20 |\n080 | 20 |\n082 | 15 |\n082 | 15 |\n084 | 20 |\n086 | 30 |\n087 | 600 |\n088 | 30 |\n089 | 30 |\n090 | 30 |\n091 | 300 |\n092 | 30 |\n093 | 20 |\n094 | 20 |\n095 | 30 | 15 seconds each side\n096 | 30 | 15 seconds each side\n100 | 20 |\n103 | 20 |\n105 | 15 |\n106 | 120 | 15 seconds on each position\n106 | 60 |\n106 | 60 |\n106 | 60 |\n058 | 120 | 30 seconds on each side\n059 | 40 | 20 seconds on each side\n061 | 40 | 20 seconds on each side\n062 | 40 | 20 seconds on each side\n064 | 40 | 20 seconds on each side\n065 | 40 | 20 seconds on each side\n065 | 60 |\n067 | 180 |\n069 | 60 |\n114 | 30 |\n114 | 30 |\n116 | 30 |\n116 | 30 |\n044 | 60 |\n020 | 120 |\n200 | 300 |\n205 | 480 | Ujjayi Pranayama (Section 203) or Nadi Sodhana Pranayama  (Section 205) for 8 minutes in any comfortable asana\n200 | 300 | "
+  },
+  {
+    "Course_ID": 117,
+    "Course_Title": "Weekly Practice Day 1",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 300 |\n075 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n067 | 60 |\n003 | 60 |\n004 | 60 |\n005 | 60 |\n006 | 60 |\n007 | 60 |\n008 | 60 |\n009 | 60 |\n010 | 60 |\n011 | 60 |\n012 | 60 |\n013 | 60 |\n014 | 60 |\n022 | 60 |\n018 | 60 |\n019 | 60 |\n020 | 60 |\n065 | 60 |\n114 | 60 |\n114 | 60 |\n115 | 60 |\n116 | 60 |\n116 | 60 |\n117 | 60 |\n118 | 60 |\n119 | 60 |\n119 | 60 |\n172a | 60 |\n200 | 60 |\n045 | 60 |\n218 | 60 | "
+  },
+  {
+    "Course_ID": 36,
+    "Course_Title": "Knees",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "003 | 30 | [Utthita Trikonasana]\n005 | 30 | [Utthita Parsvakonasana]\n007 | 30 |\n059 | 60 |\n062 | 60 | [Triang Mukha Eka Pada Paschimottanasana]\n063 | 60 |\n064 | 60 |\n040 | 120 |\n041 | 120 |\n043 | 60 |\n044 | 120 |\n321 | 60 | [Malasana]\n169 | 60 |\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 131,
+    "Course_Title": "Week 85 to 90",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n106 | 60 |\n106 | 60 |\n106 | 60 |\n106 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n059 | 60 |\n060 | 60 |\n061 | 60 |\n062 | 60 |\n063 | 60 |\n063 | 60 |\n064 | 60 |\n067 | 60 |\n068 | 60 |\n066 | 60 |\n044 | 60 |\n055 | 60 |\n056 | 60 |\n052 | 60 |\n053 | 60 |\n050 | 60 |\n054 | 60 |\n051 | 60 |\n057 | 60 |\n040 | 60 |\n041 | 60 |\n042 | 60 |\n043 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n139 | 60 |\n136 | 60 |\n141 | 60 |\n141 | 60 |\n126 | 60 |\n152 | 60 |\n130 | 60 |\n132 | 60 |\n127 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n117 | 60 |\n118 | 60 |\n119 | 60 |\n119 | 60 |\n177 | 60 |\n172a | 60 | 8 times\n200 | 60 |\n205 | 600 |\n218 | 300 | "
+  },
+  {
+    "Course_ID": 13,
+    "Course_Title": "Asthma & Respiratory",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n058 | 60 | [Mahamudra]\n059 | 60 |\n067 | 120 | [Paschimottanasana]\n031 | 45 |\n027 | 45 |\n032 | 30 |\n033 | 60 |\n041 | 180 |\n051 | 60 |\n111 | 60 |\n116 | 60 |\n016 | 45 |\n486 | 90 | [Urdhva Dhanurasana]\n516 | 90 | [Dwipada Viparita Dandasana]\n203 | 300 | [In Savasana]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 105,
+    "Course_Title": "Week 22 to 25",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "074 | 300 |\n080 | 60 |\n082 | 60 |\n087 | 300 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 300 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n106 | 60 |\n105 | 60 |\n107 | 60 |\n025 | 60 |\n027 | 60 |\n029 | 60 |\n031 | 60 |\n032 | 60 |\n033 | 90 |\n059 | 60 |\n061 | 60 |\n062 | 60 |\n064 | 60 |\n065 | 60 |\n067 | 300 |\n070 | 60 |\n069 | 60 |\n038 | 60 |\n037 | 60 |\n049 | 60 |\n045 | 60 |\n047 | 60 |\n048 | 60 |\n040 | 60 |\n041 | 60 |\n042 | 60 |\n016 | 60 |\n017 | 60 |\n020 | 120 |\n112 | 60 |\n113 | 60 |\n114 | 60 |\n116 | 60 |\n118 | 60 |\n044 | 60 |\n200 | 300 |\n039 | 300 | Ujjayi without retention"
+  },
+  {
+    "Course_ID": 43,
+    "Course_Title": "Piles (Hemorrhoids)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n105 | 60 |\n108 | 60 |\n051 | 60 |\n050 | 30 |\n025 | 30 |\n027 | 30 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n201 | 60 |\n600 | 300 | [Nadi Sodhana (Retention)]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 116,
+    "Course_Title": "Week 71 to 73",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n132 | 60 |\n127 | 60 |\n128 | 60 |\n030 | 60 |\n030 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n110 | 60 |\n111 | 60 |\n172a | 60 |\n174 | 60 |\n174 | 60 |\n132 | 60 |\n001 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n119 | 60 |\n119 | 60 |\n126 | 60 |\n123 | 60 |\n123 | 60 |\n152 | 60 |\n067 | 60 |\n068 | 60 |\n066 | 60 |\n073 | 60 |\n073 | 60 |\n045 | 60 |\n046 | 60 |\n047 | 60 |\n048 | 60 |\n049 | 60 |\n050 | 60 |\n051 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n055 | 60 |\n056 | 60 |\n057 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n044 | 60 |\n043 | 60 |\n041 | 60 |\n200 | 60 |\n045 | 60 |\n045 | 60 |\n201 | 60 |\n202 | 60 |\n218 | 60 | "
+  },
+  {
+    "Course_ID": 101,
+    "Course_Title": "Week 11 & 12",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "003 | 40 |\n004 | 40 |\n005 | 40 |\n006 | 40 |\n007 | 40 |\n008 | 40 |\n009 | 40 |\n010 | 40 |\n012 | 40 |\n013 | 60 |\n014 | 60 |\n018 | 30 |\n019 | 30 |\n020 | 60 |\n015 | 40 |\n106 | 60 |\n034 | 30 |\n036 | 30 |\n087 | 600 |\n091 | 300 |\n092 | 60 |\n095 | 30 |\n105 | 30 |\n200 | 300 | Ujjayi with inhalation retention"
+  },
+  {
+    "Course_ID": 150,
+    "Course_Title": "Weekly Practice Day 3",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n003 | 60 |\n004 | 60 |\n005 | 60 |\n006 | 60 |\n007 | 60 |\n008 | 60 |\n009 | 60 |\n010 | 60 |\n011 | 60 |\n012 | 60 |\n012 | 60 |\n013 | 60 |\n014 | 60 |\n027 | 60 |\n025 | 60 |\n029 | 60 |\n032 | 60 |\n033 | 60 |\n067 | 60 |\n068 | 60 |\n073 | 60 |\n073 | 60 |\n110 | 60 |\n111 | 60 |\n114 | 60 |\n114 | 60 |\n115 | 60 |\n116 | 60 |\n119 | 60 |\n127 | 60 |\n146 | 60 |\n147 | 60 |\n177 | 60 |\n181 | 60 |\n175 | 60 |\n173 | 60 | 8 times\n173 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 114,
+    "Course_Title": "Week 61 to 65",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n067 | 60 |\n068 | 60 |\n073 | 60 |\n073 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n126 | 60 |\n123 | 60 |\n123 | 60 |\n124 | 60 |\n125 | 60 |\n132 | 60 |\n045 | 60 |\n046 | 60 |\n047 | 60 |\n048 | 60 |\n049 | 60 |\n050 | 60 |\n051 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n055 | 60 |\n056 | 60 |\n057 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n119 | 60 |\n119 | 60 |\n110 | 60 |\n111 | 60 |\n172a | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 |\n039 | 60 | "
+  },
+  {
+    "Course_ID": 21,
+    "Course_Title": "Diabetes",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n058 | 60 | [Mahamudra]\n067 | 120 | [Paschimottanasana]\n041 | 60 |\n025 | 30 |\n027 | 30 |\n073 | 45 |\n105 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n127 | 30 |\n593 | 60 | [Uddiyana & Nauli]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 147,
+    "Course_Title": "Week 276 to 300",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n161 | 60 |\n162 | 60 |\n160 | 60 |\n173 | 60 |\n173 | 60 |\n177 | 60 |\n181 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n175 | 60 |\n182 | 60 |\n189 | 60 |\n190 | 60 |\n191 | 60 |\n192 | 60 |\n193 | 60 |\n184 | 60 |\n185 | 60 |\n186 | 60 |\n187 | 60 |\n188 | 60 |\n195 | 60 |\n196 | 60 | Ganda Bherundasana and Viparita Shalabhasana together (580, 581, and 584) in one stretch, then go to Urdhva Dhanurasana (486) to do Tiryang Mukhottanasana (586).\n196 | 60 |\n197 | 60 |\n172a | 60 |\n198 | 60 |\n199 | 60 |\n199 | 60 |\n169 | 60 |\n170 | 60 |\n171 | 60 |\n163 | 60 |\n165 | 60 |\n168 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n146 | 60 |\n147 | 60 |\n067 | 60 |\n200 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 48,
+    "Course_Title": "Ulcers (Gastric/Duodenal) & Colic",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 180 |\n087 | 180 |\n058 | 60 | [Mahamudra]\n059 | 60 |\n067 | 120 | [Paschimottanasana]\n133 | 45 |\n134 | 45 |\n146 | 45 |\n114 | 45 |\n116 | 45 |\n119 | 45 |\n516 | 60 | [Dwipada Viparita Dandasana]\n593 | 60 | [Uddiyana]\n600 | 300 | [Ujjayi & Nadi Sodhana]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 52,
+    "Course_Title": "Week 3 and 4",
+    "Category": "Light on Pranayama > Course 1 (Preparatory)",
+    "Sequence_Text": "203 | 480 | [Ujjāyī II]\n203 | 480 | [Ujjāyī III]"
+  },
+  {
+    "Course_ID": 39,
+    "Course_Title": "Men's Health (Prostate/Impotency)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n105 | 60 |\n034 | 30 |\n059 | 60 |\n040 | 60 |\n044 | 60 |\n045 | 60 |\n133 | 60 |\n082 | 60 |\n146 | 60 |\n116 | 60 |\n462 | 30 | [Mulabandhasana]\n168 | 30 |\n169 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n593 | 60 | [Uddiyana & Nauli]\n600 | 300 | [Nadi Sodhana (Retention)]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 29,
+    "Course_Title": "Heart Trouble (Restorative)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "1 | 60 | [Note: Do not strain. Rest if tired.]\n203 | 600 | [Supine]\n600 | 600 | [Nadi Sodhana (No Retention)]\n104 | 300 | [Meditation in Padmasana]\n200 | 900 | [Savasana (15 mins)]"
+  },
+  {
+    "Course_ID": 121,
+    "Course_Title": "Weekly Practice Day 5",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 60 |\n076 | 60 |\n077 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n079 | 60 |\n080 | 60 |\n080 | 60 |\n081 | 60 |\n081 | 60 |\n082 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n068 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n126 | 60 |\n123 | 60 |\n123 | 60 |\n127 | 60 |\n128 | 60 |\n032 | 60 |\n152 | 60 |\n038 | 60 |\n132 | 60 |\n033 | 60 |\n029 | 60 |\n030 | 60 |\n030 | 60 |\n172a | 60 | Urdhva Dhanurasana I for 15 to 20 times\n200 | 60 |\n205 | 60 |\n218 | 60 | "
+  },
+  {
+    "Course_ID": 141,
+    "Course_Title": "Week 176 to 180",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n087 | 60 |\n091 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n154 | 60 |\n155 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n156 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n173 | 60 |\n173 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n147 | 60 |\n146 | 60 |\n163 | 60 |\n164 | 60 |\n165 | 60 |\n165 | 60 |\n166 | 60 |\n167 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n180 | 60 |\n175 | 60 |\n176 | 60 |\n116 | 60 |\n120 | 60 |\n121 | 60 |\n119 | 60 |\n122 | 60 |\n122 | 60 |\n200 | 60 |\n205 | 60 |\n218 | 60 | "
+  },
+  {
+    "Course_ID": 66,
+    "Course_Title": "Week 51 to 54",
+    "Category": "Light on Prānāyāma > Course 2 (Primary)",
+    "Sequence_Text": "214 | 300 | [Anuloma Va]\n215 | 300 | [Pratiloma Ia]\n204 | 600 | [Sūrya Bhedana I]"
+  },
+  {
+    "Course_ID": 88,
+    "Course_Title": "Weekly Practice - Friday",
+    "Category": "Light on Prānāyāma > Course 5 (Weekly Practice)",
+    "Sequence_Text": "203 | 1200 | [Ujjāyī VIII]\n205 | 1200 | [Nāḍī śodhana IVb]\n200 | 600 | [Śavāsana]"
+  },
+  {
+    "Course_ID": 53,
+    "Course_Title": "Week 5 and 6",
+    "Category": "Light on Pranayama > Course 1 (Preparatory)",
+    "Sequence_Text": "203 | 300 | [Ujjāyī II]\n203 | 300 | [Ujjāyī III]\n213 | 300 | [Viloma I]\n213 | 300 | [Viloma II]"
+  },
+  {
+    "Course_ID": 126,
+    "Course_Title": "Final Practice Day 4",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n067 | 60 |\n146 | 60 |\n114 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n163 | 60 |\n165 | 60 |\n168 | 60 |\n169 | 60 |\n170 | 60 |\n171 | 60 |\n069 | 60 |\n071 | 60 |\n200 | 60 |\n045 | 60 |\n045 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 22,
+    "Course_Title": "Diarrhoea & Dysentery",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n058 | 60 | [Mahamudra]\n059 | 60 |\n600 | 600 | [Nadi Sodhana (No Retention)]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 118,
+    "Course_Title": "Weekly Practice Day 2",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n106 | 60 |\n106 | 60 |\n106 | 60 |\n067 | 60 |\n068 | 60 |\n069 | 60 |\n073 | 60 |\n073 | 60 |\n126 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n172a | 60 | Urdhva Dhanurasana I for 12 times in technique I\n200 | 60 |\n201 | 60 |\n202 | 60 |\n045 | 60 |\n218 | 300 | "
+  },
+  {
+    "Course_ID": 77,
+    "Course_Title": "Weeks 131 to 136",
+    "Category": "Light on Prānāyāma > Course 4 (Advanced)",
+    "Sequence_Text": "214 | 600 | [Anuloma VIIa]\n205 | 600 | [Nāḍī śodhana IIa]\n213 | 300 | [Viloma VIII]"
+  },
+  {
+    "Course_ID": 49,
+    "Course_Title": "Urinary & Bladder",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n041 | 180 |\n051 | 60 |\n050 | 30 |\n058 | 60 | [Mahamudra]\n044 | 120 |\n201 | 60 |\n600 | 300 | [Nadi Sodhana (With Retention)]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 99,
+    "Course_Title": "Week 8",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "003 | 60 |\n005 | 60 |\n007 | 60 |\n008 | 60 |\n009 | 60 |\n010 | 60 |\n004 | 60 |\n012 | 60 |\n013 | 60 |\n014 | 60 |\n106 | 60 |\n034 | 60 |\n036 | 60 |\n087 | 60 |\n091 | 60 |\n203 | 300 | Ujjayi"
+  },
+  {
+    "Course_ID": 57,
+    "Course_Title": "Week 13 and 15",
+    "Category": "Light on Pranayama > Course 1 (Preparatory)",
+    "Sequence_Text": "203 | 300 | [Ujjāyī V]\n203 | 300 | [Ujjāyī VI]\n203 | 300 | [Ujjāyī VII]\n213 | 600 | [Viloma II]"
+  },
+  {
+    "Course_ID": 76,
+    "Course_Title": "Weeks 126 to 130",
+    "Category": "Light on Prānāyāma > Course 4 (Advanced)",
+    "Sequence_Text": "217 | 300 | [I]\n214 | 600 | [Anuloma IIIa]\n215 | 600 | [Pratiloma IIIa]\n213 | 300 | [Viloma VIII]"
+  },
+  {
+    "Course_ID": 30,
+    "Course_Title": "Hernia (Inguinal & Umbilical)",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n070 | 60 |\n168 | 60 | [Urdhva Mukha Paschimottanasana]\n034 | 30 |\n108 | 60 |\n066 | 60 |\n044 | 60 |\n462 | 30 | [Mulabandhasana]\n169 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n201 | 60 |\n200 | 300 | [Savasana (After Baddha Konasana)]"
+  },
+  {
+    "Course_ID": 67,
+    "Course_Title": "Week 55 to 58",
+    "Category": "Light on Prānāyāma > Course 2 (Primary)",
+    "Sequence_Text": "214 | 300 | [Anuloma Vb]\n215 | 600 | [Pratiloma Ib]\n217 | 300 | [I]"
+  },
+  {
+    "Course_ID": 111,
+    "Course_Title": "Week 36 to 40",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n080 | 60 |\n080 | 60 |\n081 | 60 |\n081 | 60 |\n082 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n100 | 60 |\n103 | 60 |\n104 | 60 |\n104 | 60 |\n098 | 60 |\n099 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n003 | 60 |\n004 | 60 |\n005 | 60 |\n006 | 60 |\n007 | 60 |\n009 | 60 |\n010 | 60 |\n012 | 60 |\n018 | 60 |\n019 | 60 |\n020 | 60 |\n011 | 60 |\n022 | 60 |\n024 | 60 |\n059 | 60 |\n060 | 60 |\n061 | 60 |\n063 | 60 |\n063 | 60 |\n064 | 60 |\n067 | 60 |\n069 | 60 |\n071 | 60 |\n055 | 60 |\n056 | 60 |\n052 | 60 |\n053 | 60 |\n050 | 60 |\n051 | 60 |\n044 | 60 |\n066 | 60 |\n073 | 60 |\n073 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n110 | 60 |\n025 | 60 |\n027 | 60 |\n028 | 60 |\n172 | 60 |\n200 | 60 |\n045 | 60 |\n045 | 60 |\n201 | 60 | Uddiyana for 8 times"
+  },
+  {
+    "Course_ID": 91,
+    "Course_Title": "Weekly Practice - Thursday",
+    "Category": "Light on Prānāyāma > Course 5 (Weekly Practice)",
+    "Sequence_Text": "217 | 600 | [II and III]\n217 | 600 | [II and III]\n215 | 1200 | [Pratiloma IIIb]\n200 | 600 | [Śavāsana]"
+  },
+  {
+    "Course_ID": 55,
+    "Course_Title": "Week 9 and 10",
+    "Category": "Light on Pranayama > Course 1 (Preparatory)",
+    "Sequence_Text": "203 | 300 | [Ujjāyī IV]\n203 | 300 | [Ujjāyī V]\n213 | 300 | [Viloma IV]\n213 | 300 | [Viloma I]"
+  },
+  {
+    "Course_ID": 80,
+    "Course_Title": "Weeks 149 to 155",
+    "Category": "Light on Prānāyāma > Course 4 (Advanced)",
+    "Sequence_Text": "204 | 600 | [Sūrya bhedana III]\n214 | 480 | [Anuloma IIIb]\n215 | 480 | [Pratiloma IIIb]"
+  },
+  {
+    "Course_ID": 56,
+    "Course_Title": "Week 11 and 12",
+    "Category": "Light on Pranayama > Course 1 (Preparatory)",
+    "Sequence_Text": "203 | 300 | [Ujjāyī V]\n203 | 300 | [Ujjāyī VI]\n213 | 600 | [Viloma II]"
+  },
+  {
+    "Course_ID": 106,
+    "Course_Title": "Week 26 to 30",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "074 | 300 |\n080 | 30 |\n082 | 30 |\n084 | 60 |\n086 | 60 |\n087 | 300 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n100 | 60 |\n103 | 60 |\n105 | 60 |\n034 | 60 |\n036 | 60 |\n059 | 60 |\n061 | 60 |\n062 | 60 |\n064 | 60 |\n067 | 300 |\n069 | 60 |\n037 | 60 |\n038 | 60 |\n049 | 60 |\n045 | 60 |\n047 | 60 |\n048 | 60 |\n051 | 60 |\n040 | 60 |\n041 | 60 |\n042 | 60 |\n114 | 60 |\n116 | 60 |\n044 | 120 |\n033 | 60 |\n032 | 60 |\n029 | 60 |\n025 | 60 |\n027 | 60 |\n016 | 60 |\n017 | 60 |\n020 | 180 |\n023 | 60 |\n200 | 300 |\n203 | 600 | Ujjayi with Antar Kumbhaka (inhalation retention)"
+  },
+  {
+    "Course_ID": 18,
+    "Course_Title": "Bronchitis & Respiratory",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "074 | 300 |\n087 | 300 |\n067 | 120 | [Paschimottanasana]\n105 | 60 |\n059 | 60 |\n031 | 60 |\n033 | 60 |\n040 | 60 |\n041 | 60 |\n321 | 60 | [Malasana]\n133 | 60 |\n134 | 60 |\n016 | 60 |\n486 | 60 | [Urdhva Dhanurasana]\n516 | 60 | [Dwipada Viparita Dandasana]\n600 | 300 | [Ujjayi (Inhalation Retention)]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 25,
+    "Course_Title": "Gout",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "1 | 60 | [Standing Poses (Basic)]\n040 | 60 |\n041 | 60 |\n015 | 45 |\n023 | 30 |\n037 | 30 |\n067 | 120 | [Paschimottanasana]\n070 | 45 |\n073 | 45 |\n063 | 45 |\n163 | 45 |\n043 | 45 |\n169 | 45 |\n074 | 180 |\n087 | 180 |\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 115,
+    "Course_Title": "Week 66 to 70",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n132 | 60 |\n127 | 60 |\n128 | 60 |\n030 | 60 |\n030 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n109 | 60 |\n110 | 60 |\n111 | 60 |\n172a | 60 |\n132 | 60 |\n001 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n119 | 60 |\n119 | 60 |\n126 | 60 |\n123 | 60 |\n123 | 60 |\n152 | 60 |\n067 | 60 |\n068 | 60 |\n066 | 60 |\n073 | 60 |\n073 | 60 |\n045 | 60 |\n046 | 60 |\n047 | 60 |\n048 | 60 |\n049 | 60 |\n050 | 60 |\n051 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n055 | 60 |\n056 | 60 |\n057 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n044 | 60 |\n043 | 60 |\n041 | 60 |\n200 | 60 | "
+  },
+  {
+    "Course_ID": 92,
+    "Course_Title": "Weekly Practice - Tuesday",
+    "Category": "Light on Prānāyāma > Course 5 (Weekly Practice)",
+    "Sequence_Text": "213 | 1200 | [Viloma V and VI]\n204 | 1200 | [Sūrya bhedana II and III]\n200 | 600 | [Śavāsana]"
+  },
+  {
+    "Course_ID": 149,
+    "Course_Title": "Weekly Practice Day 2",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n059 | 60 |\n060 | 60 |\n061 | 60 |\n062 | 60 |\n063 | 60 |\n064 | 60 |\n065 | 60 |\n066 | 60 |\n067 | 60 |\n045 | 60 |\n046 | 60 |\n047 | 60 |\n048 | 60 |\n049 | 60 |\n050 | 60 |\n051 | 60 |\n052 | 60 |\n053 | 60 |\n054 | 60 |\n055 | 60 |\n056 | 60 |\n057 | 60 |\n044 | 60 |\n040 | 60 |\n024 | 60 |\n034 | 60 |\n036 | 60 |\n037 | 60 |\n069 | 60 |\n146 | 60 |\n200 | 60 |\n045 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 100,
+    "Course_Title": "Week 9 & 10",
+    "Category": "Light on Yoga > Course 1",
+    "Sequence_Text": "003 | 60 |\n005 | 60 |\n007 | 60 |\n008 | 60 |\n009 | 60 |\n010 | 60 |\n004 | 60 |\n006 | 60 |\n012 | 60 |\n013 | 90 |\n014 | 90 |\n015 | 60 |\n106 | 60 |\n034 | 60 |\n036 | 60 |\n087 | 60 |\n091 | 60 |\n092 | 60 |\n095 | 60 |\n105 | 60 |\n203 | 300 | Ujjayi with inhalation retention"
+  },
+  {
+    "Course_ID": 84,
+    "Course_Title": "Weeks 181 to 185",
+    "Category": "Light on Prānāyāma > Course 5 (Highly Intense)",
+    "Sequence_Text": "205 | 600 | [Nāḍī śodhana IIIa]\n214 | 600 | [Anuloma VIIIb]\n203 | 480 | [Ujjāyī XII (lying)]"
+  },
+  {
+    "Course_ID": 81,
+    "Course_Title": "Weeks 156 to 160",
+    "Category": "Light on Prānāyāma > Course 4 (Advanced)",
+    "Sequence_Text": "217 | 600 | [III]\n214 | 480 | [Anuloma VIIb]\n215 | 480 | [Pratiloma IIIa]\n205 | 600 | [Nāḍī śodhana IIb]"
+  },
+  {
+    "Course_ID": 51,
+    "Course_Title": "Week 1 and 2",
+    "Category": "Light on Pranayama > Course 1 (Preparatory)",
+    "Sequence_Text": "203 | 480 | [Ujjāyī I]\n203 | 480 | [Ujjāyī II]"
+  },
+  {
+    "Course_ID": 124,
+    "Course_Title": "Final Practice Day 2",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n105 | 60 |\n067 | 60 |\n073 | 60 |\n073 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n135 | 60 |\n136 | 60 |\n137 | 60 |\n138 | 60 |\n139 | 60 |\n140 | 60 |\n142 | 60 |\n143 | 60 |\n144 | 60 |\n145 | 60 |\n147 | 60 |\n146 | 60 |\n163 | 60 |\n165 | 60 |\n166 | 60 |\n167 | 60 |\n168 | 60 |\n169 | 60 |\n020 | 60 |\n200 | 60 |\n045 | 60 |\n201 | 60 | 8 times\n202 | 60 | 8 times"
+  },
+  {
+    "Course_ID": 72,
+    "Course_Title": "Weeks 91 to 120: First Week",
+    "Category": "Light on Prānāyāma > Course 3 (Mastery Phase)",
+    "Sequence_Text": "203 | 1500 | [Monday: Ujjāyī VIII]\n204 | 1500 | [Tuesday: Sūrya bhedana I]\n214 | 1500 | [Wednesday: Anuloma Ib]\n213 | 750 | [Thursday: Viloma I and II]\n213 | 750 | [Thursday: Viloma I and II]\n215 | 1500 | [Friday: Pratiloma Ib]\n205 | 1500 | [Saturday: Nāḍī śodhana Ib]\n213 | 1500 | [Sunday: Viloma II]"
+  },
+  {
+    "Course_ID": 69,
+    "Course_Title": "Weeks 68 to 72",
+    "Category": "Light on Prānāyāma > Course 3 (Intermediate)",
+    "Sequence_Text": "213 | 300 | [Viloma VII]\n214 | 480 | [Anuloma IIb]\n215 | 480 | [Pratiloma IIb]\n205 | 600 | [Nāḍī Śodhana Ia]"
+  },
+  {
+    "Course_ID": 144,
+    "Course_Title": "Week 201 to 225",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n087 | 60 |\n091 | 60 |\n154 | 60 |\n155 | 60 |\n152 | 60 |\n153 | 60 |\n158 | 60 |\n159 | 60 |\n160 | 60 |\n161 | 60 |\n162 | 60 |\n173 | 60 |\n173 | 60 |\n177 | 60 |\n181 | 60 |\n178 | 60 |\n179 | 60 |\n180 | 60 |\n175 | 60 |\n184 | 60 |\n186 | 60 |\n191 | 60 |\n189 | 60 |\n190 | 60 |\n169 | 60 |\n170 | 60 |\n171 | 60 |\n163 | 60 |\n165 | 60 |\n168 | 60 |\n116 | 60 |\n119 | 60 |\n122 | 60 |\n146 | 60 |\n147 | 60 |\n067 | 60 |\n200 | 60 |\n045 | 60 | "
+  },
+  {
+    "Course_ID": 42,
+    "Course_Title": "Paralysis & Polio",
+    "Category": "Light on Yoga > Therapeutic",
+    "Sequence_Text": "1 | 60 | [Standing Poses (Supported if needed)]\n018 | 60 |\n020 | 60 |\n025 | 30 |\n027 | 30 |\n031 | 30 |\n074 | 180 |\n087 | 180 |\n091 | 120 |\n093 | 60 |\n108 | 60 |\n106 | 60 |\n600 | 300 | [Ujjayi & Nadi Sodhana]\n200 | 300 | [Savasana]"
+  },
+  {
+    "Course_ID": 74,
+    "Course_Title": "Weeks 91 to 120: Third Week",
+    "Category": "Light on Prānāyāma > Course 3 (Mastery Phase)",
+    "Sequence_Text": "204 | 1500 | [Monday: Sūrya bhedana II]\n217 | 1500 | [Tuesday:  II]\n213 | 1500 | [Wednesday: Viloma VII]\n214 | 1500 | [Thursday: Anuloma Vb]\n215 | 1500 | [Friday: Pratiloma Ia]\n205 | 1500 | [Saturday: Nāḍī śodhana Ia]\n203 | 1500 | [Sunday: Ujjāyī X]"
+  },
+  {
+    "Course_ID": 61,
+    "Course_Title": "Week 26 to 28",
+    "Category": "Light on Prānāyāma > Course 2 (Primary)",
+    "Sequence_Text": "203 | 600 | [Ujjāyī VIII]\n213 | 600 | [Viloma III]"
+  },
+  {
+    "Course_ID": 75,
+    "Course_Title": "Weeks 121 to 125",
+    "Category": "Light on Prānāyāma > Course 4 (Advanced)",
+    "Sequence_Text": "204 | 300 | [Sūrya bhedana I]\n203 | 600 | [Ujjāyī XII]\n213 | 600 | [Viloma VIII]"
+  },
+  {
+    "Course_ID": 5,
+    "Course_Title": "Surya Namaskara Sequence (Ashtanga method)",
+    "Category": "General",
+    "Sequence_Text": "225 | 10 | Action: Exhale, bring palms to heart center. Focus: Settle the breath; find stillness.\n226 | 10 | Action: Inhale, sweep arms overhead. Focus: Lift ribs; look slightly up.\n020 | 12 | Action: Exhale, fold forward. Focus: Relax neck; keep knees soft; hands to floor.\n227 | 12 | Action: Inhale, step Left (right) leg back, knee down. Focus: Open chest forward; keep front knee over ankle.\n033 | 12 | Action: Exhale, step Right (left) leg back to Down Dog. Focus: Lift hips high; press floor away.\n228 | 8 | Action: Exhale, drop knees, chest, and chin. Focus: Eight points on the floor; elbows in.\n031 | 12 | Action: Inhale, slide forward and lift chest. Focus: Shoulders down; open the heart.\n033 | 12 | Action: Exhale, lift hips back to Down Dog. Focus: Stretch heels down; lengthen spine.\n227 | 12 | Action: Inhale, step Right (left) leg forward, back knee down. Focus: Sink hips; lift heart.\n020 | 10 | Action: Exhale, step Left (right) leg forward and fold. Focus: Let the head hang heavy.\n226 | 5 | Action: Inhale, sweep arms overhead to stand. Focus: Reach through fingertips.\n225 | 5 | Action: Exhale, palms to heart. Focus: Settle the breath; acknowledge the sun."
+  },
+  {
+    "Course_ID": 133,
+    "Course_Title": "Week 101 to 108",
+    "Category": "Light on Yoga > Course 3",
+    "Sequence_Text": "074 | 60 |\n177 | 60 |\n075 | 60 |\n076 | 60 |\n077 | 60 |\n078 | 60 |\n079 | 60 |\n080 | 60 |\n081 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n097 | 60 |\n098 | 60 |\n099 | 60 |\n100 | 60 |\n101 | 60 |\n103 | 60 |\n104 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n067 | 60 |\n133 | 60 |\n133 | 60 |\n134 | 60 |\n146 | 60 |\n135 | 60 |\n139 | 60 |\n136 | 60 |\n141 | 60 |\n141 | 60 |\n130 | 60 |\n131 | 60 |\n127 | 60 |\n129 | 60 |\n126 | 60 |\n152 | 60 |\n132 | 60 |\n149 | 60 |\n151 | 60 |\n172a | 60 |\n172a | 60 |\n177 | 60 |\n175 | 60 |\n116 | 60 |\n116 | 60 |\n120 | 60 |\n120 | 60 |\n119 | 60 |\n119 | 60 |\n020 | 60 |\n200 | 60 |\n205 | 60 |\n218 | 60 | "
+  },
+  {
+    "Course_ID": 110,
+    "Course_Title": "Week 31 to 35",
+    "Category": "Light on Yoga > Course 2",
+    "Sequence_Text": "074 | 60 |\n075 | 60 |\n080 | 60 |\n080 | 60 |\n081 | 60 |\n081 | 60 |\n082 | 60 |\n082 | 60 |\n083 | 60 |\n084 | 60 |\n085 | 60 |\n085 | 60 |\n086 | 60 |\n087 | 60 |\n088 | 60 |\n089 | 60 |\n090 | 60 |\n091 | 60 |\n092 | 60 |\n093 | 60 |\n094 | 60 |\n095 | 60 |\n096 | 60 |\n100 | 60 |\n103 | 60 |\n104 | 60 |\n104 | 60 |\n098 | 60 |\n099 | 60 |\n105 | 60 |\n108 | 60 |\n108 | 60 |\n108 | 60 |\n107 | 60 |\n107 | 60 |\n107 | 60 |\n107 | 60 |\n034 | 60 |\n036 | 60 |\n016 | 60 |\n040 | 60 |\n041 | 60 |\n042 | 60 |\n059 | 60 |\n061 | 60 |\n062 | 60 |\n063 | 60 |\n063 | 60 |\n064 | 60 |\n067 | 60 |\n055 | 60 | All the Padmasana Cycle can be done at a stretch\n056 | 60 |\n047 | 60 |\n052 | 60 |\n053 | 60 |\n066 | 60 |\n073 | 60 |\n073 | 60 |\n044 | 60 |\n114 | 60 |\n114 | 60 |\n116 | 60 |\n116 | 60 |\n025 | 60 |\n027 | 60 |\n028 | 60 |\n020 | 60 |\n205 | 600 | Nadi Sodhana Pranayama (Section 205) without inhalation retention for 10 minutes\n200 | 60 | "
+  }
 ]
