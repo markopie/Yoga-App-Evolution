@@ -29,7 +29,7 @@ const LOCAL_SEQ_KEY = "yoga_sequences_v1";
 
 // 5. Supabase Configuration
 const SUPABASE_URL = "https://qrcpiyncvfmpmeuyhsha.supabase.co";
-const SUPABASE_ANON_KEY = "sbp_41c95a06d397102faa0b43dc4afd2a1e12905299";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyY3BpeW5jdmZtcG1ldXloc2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTA2NDgsImV4cCI6MjA4NzI4NjY0OH0.7sjbfwdT_aYmrJyVFYWpfMNBQpCJAI7Vd5uNEkzD4GI";
 const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 
