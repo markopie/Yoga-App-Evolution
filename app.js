@@ -583,20 +583,33 @@ async function loadCourses() {
         }
 
         console.log(`Fetched ${coursesData.length} courses`);
+        console.warn('DIAG course row[0] keys:', Object.keys(coursesData[0]));
+        console.warn('DIAG course row[0] sample:', JSON.stringify(coursesData[0]).slice(0, 300));
 
         // Transform courses into legacy format
         const transformedCourses = [];
 
-        coursesData.forEach(row => {
-            const courseObj = {
-                title: row.course_title || '',
-                category: row.category || '',
-                poses: parseSequenceText(row.sequence_text || '')
-            };
+        coursesData.forEach((row, idx) => {
+            // Support both snake_case (our schema) and original Airtable column names
+            const title = row.Course_Title ?? row.course_title ?? '';
+            const category = row.Category ?? row.category ?? '';
+            const sequenceText = row.Sequence_Text ?? row.sequence_text ?? '';
 
-            // Only include courses with valid poses
-            if (courseObj.title && Array.isArray(courseObj.poses) && courseObj.poses.length > 0) {
-                transformedCourses.push(courseObj);
+            if (!title) {
+                if (idx < 3) console.warn(`DIAG course row[${idx}] has no title, keys:`, Object.keys(row));
+                return;
+            }
+
+            const poses = parseSequenceText(sequenceText);
+
+            if (idx < 2) {
+                console.warn(`DIAG course row[${idx}] title="${title}" sequenceText length=${sequenceText.length} poses parsed=${poses.length}`);
+            }
+
+            if (Array.isArray(poses) && poses.length > 0) {
+                transformedCourses.push({ title, category, poses });
+            } else {
+                if (idx < 3) console.warn(`DIAG course row[${idx}] "${title}" produced 0 poses from sequenceText: "${sequenceText.slice(0, 80)}"`);
             }
         });
 
@@ -655,9 +668,17 @@ function parseSequenceText(sequenceText) {
             variationKey = variationMatch[1];
         }
 
+        // Normalize ID: strip leading zeros then re-pad to 3 digits
+        // Handles both "074" and "172a" (alpha suffix preserved)
+        const numericPart = id.match(/^(\d+)/);
+        const suffix = id.replace(/^\d+/, '');
+        const normalizedId = numericPart
+            ? numericPart[1].replace(/^0+/, '').padStart(3, '0') + suffix
+            : id;
+
         // Create pose entry in legacy format: [[id], duration, label, variationKey, note]
         poses.push([
-            [id.padStart(3, '0')], // ID as array with padding
+            [normalizedId],
             duration,
             '', // label (empty string as per legacy format)
             variationKey,
@@ -707,31 +728,39 @@ async function loadAsanaLibrary() {
         }
 
         console.log(`Fetched ${asanasData.length} asanas`);
+        console.warn('DIAG asana row[0] keys:', Object.keys(asanasData[0]));
+        console.warn('DIAG asana row[0] sample:', JSON.stringify(asanasData[0]).slice(0, 300));
 
         // Transform asanas into legacy format (object keyed by padded ID)
         const normalized = {};
 
-        asanasData.forEach(row => {
-            // Ensure ID is padded to 3 digits
-            const paddedId = String(row.id || "").trim().padStart(3, '0');
+        asanasData.forEach((row, idx) => {
+            // Support both snake_case (our schema) and original Airtable column names
+            const rawId = row.ID ?? row.id ?? '';
+            const paddedId = String(rawId).trim().replace(/^0+/, '') || '';
+            if (!paddedId) {
+                if (idx < 3) console.warn(`DIAG asana row[${idx}] has no ID, keys:`, Object.keys(row));
+                return;
+            }
+            const key = paddedId.padStart(3, '0');
 
             // Parse plates from "Final: 1, 2" format
-            const platesObj = parsePlates(row.plate_numbers);
+            const platesObj = parsePlates(row.Plate_Numbers ?? row.plate_numbers ?? '');
 
-            normalized[paddedId] = {
-                id: paddedId,
-                name: row.name || '',
-                iast: row.iast || '',
-                english: row.english_name || '',
-                technique: row.technique || '',
-                requiresSides: row.requires_sides || false,
+            normalized[key] = {
+                id: key,
+                name: row.Name ?? row.name ?? '',
+                iast: row.IAST ?? row.iast ?? '',
+                english: row.English_Name ?? row.english_name ?? '',
+                technique: row.Technique ?? row.technique ?? '',
+                requiresSides: !!(row.Requires_Sides ?? row.requires_sides ?? false),
                 plates: platesObj,
-                page2001: row.page_2001 || '',
-                page2015: row.page_2015 || '',
-                intensity: row.intensity || '',
-                note: row.note || '',
-                category: row.category || '',
-                description: row.description || '',
+                page2001: String(row.Page_2001 ?? row.page_2001 ?? ''),
+                page2015: String(row.Page_2015 ?? row.page_2015 ?? ''),
+                intensity: String(row.Intensity ?? row.intensity ?? ''),
+                note: row.Note ?? row.note ?? '',
+                category: row.Category ?? row.category ?? '',
+                description: row.Description ?? row.description ?? '',
                 variations: {}
             };
         });
@@ -745,26 +774,43 @@ async function loadAsanaLibrary() {
             console.error("Error fetching stages:", stagesError);
         } else if (stagesData && stagesData.length > 0) {
             console.log(`Fetched ${stagesData.length} stages`);
+            console.warn('DIAG stage row[0] keys:', Object.keys(stagesData[0]));
+            console.warn('DIAG stage row[0] sample:', JSON.stringify(stagesData[0]).slice(0, 300));
 
             // Inject stages into their parent asanas
-            stagesData.forEach(stage => {
-                const parentIds = stage.parent_id;
-                if (!parentIds || !Array.isArray(parentIds) || parentIds.length === 0) {
+            stagesData.forEach((stage, idx) => {
+                // Support both snake_case and original Airtable column names
+                const rawParentId = stage['ID (from Parent_ID)'] ?? stage.parent_id ?? stage.Parent_ID ?? null;
+
+                let parentId = null;
+                if (Array.isArray(rawParentId)) {
+                    parentId = String(rawParentId[0] || '').trim();
+                } else if (typeof rawParentId === 'string') {
+                    parentId = rawParentId.trim();
+                } else if (rawParentId !== null && rawParentId !== undefined) {
+                    parentId = String(rawParentId).trim();
+                }
+
+                if (!parentId) {
+                    if (idx < 3) console.warn(`DIAG stage row[${idx}] has no parent_id, keys:`, Object.keys(stage));
                     return;
                 }
 
-                // Get the first parent ID and normalize it
-                const parentId = String(parentIds[0] || "").trim().padStart(3, '0');
+                // Strip leading zeros, then re-pad to 3 digits
+                const parentKey = parentId.replace(/^0+/, '').padStart(3, '0');
 
-                if (normalized[parentId]) {
-                    const stageKey = stage.stage_name || '';
-                    if (stageKey) {
-                        normalized[parentId].variations[stageKey] = {
-                            technique: stage.full_technique || '',
-                            shorthand: stage.shorthand || '',
-                            title: stage.title || `Stage ${stageKey}`
-                        };
-                    }
+                if (!normalized[parentKey]) {
+                    if (idx < 3) console.warn(`DIAG stage row[${idx}] parentKey "${parentKey}" not found in library`);
+                    return;
+                }
+
+                const stageKey = stage.Stage_Name ?? stage.stage_name ?? '';
+                if (stageKey) {
+                    normalized[parentKey].variations[stageKey] = {
+                        technique: stage.Full_Technique ?? stage.full_technique ?? '',
+                        shorthand: stage.Shorthand ?? stage.shorthand ?? '',
+                        title: stage.Title ?? stage.title ?? `Stage ${stageKey}`
+                    };
                 }
             });
         }
