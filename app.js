@@ -367,8 +367,8 @@ function normalizeAsana(id, asana) {
     return {
        ...asana,
        asanaNo: id,
-       english: asana.name || "",
-       'Yogasana Name': asana.name || "",
+       english: asana.english || asana.name || "",
+       'Yogasana Name': asana.english || asana.name || "",
        variation: "", // Variations are now in variations object
        inlineVariations: asana.variations ? Object.keys(asana.variations).map(key => ({
           label: key,
@@ -833,6 +833,8 @@ async function loadAsanaLibrary() {
         }
 
         console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
+        const a234 = normalized['234'];
+        console.warn(`DIAG asana 234 variations:`, a234 ? Object.keys(a234.variations) : 'NOT FOUND');
         return normalized;
 
     } catch (e) {
@@ -956,7 +958,6 @@ async function setupHistory() {
 
 const COMPLETION_KEY = "yogaCompletionLog_v2";
 
-// Safe localStorage with corruption handling
 function safeGetLocalStorage(key, defaultValue = null) {
    try {
       const item = localStorage.getItem(key);
@@ -993,7 +994,6 @@ function addCompletion(title, whenDate, category = null) {
       year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit"
    });
-
    log.push({ title, category, ts: whenDate.getTime(), local: localStr });
    saveCompletionLog(log);
 }
@@ -1007,43 +1007,51 @@ function lastCompletionFor(title) {
 function seedManualCompletionsOnce() {
    const log = loadCompletionLog();
    const have = new Set(log.filter(x => x?.title).map(x => x.title + "::" + x.ts));
-
    const seeds = [
       { title: "Course 1: Short Course, Day 1", d: new Date(2025, 11, 31, 10, 0, 0) },
       { title: "Course 1: Short Course, Day 2", d: new Date(2026, 0, 1, 9, 30, 0) },
       { title: "Course 1: Short Course, Day 3", d: new Date(2026, 0, 2, 10, 0, 0) }
    ];
-
    let changed = false;
    seeds.forEach(s => {
       const key = s.title + "::" + s.d.getTime();
       if (!have.has(key)) {
          log.push({
-            title: s.title,
-            ts: s.d.getTime(),
-            local: s.d.toLocaleString("en-AU", {
-               year: "numeric", month: "2-digit", day: "2-digit",
-               hour: "2-digit", minute: "2-digit"
-            })
+            title: s.title, ts: s.d.getTime(),
+            local: s.d.toLocaleString("en-AU", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
          });
          changed = true;
       }
    });
-
    if (changed) saveCompletionLog(log);
 }
 
 /* ==========================================================================
-   SERVER SYNC (History) - Using Supabase
+   SERVER SYNC (History) - Supabase `sequence_completions`
+   Single source of truth: Supabase. localStorage is an offline fallback.
+
+   Unified entry shape: { id?, title, category, ts (ms), local (string), iso (string) }
+   window.completionHistory: { [title]: [isoString, ...] } — for legacy display code
    ========================================================================== */
 
-let serverHistoryCache = null;
+let serverHistoryCache = null; // array of unified entries, newest first
+
+// Build window.completionHistory (legacy format) from the unified cache
+function _rebuildLegacyHistory(entries) {
+   const hist = {};
+   entries.forEach(e => {
+      if (!e.title) return;
+      if (!hist[e.title]) hist[e.title] = [];
+      hist[e.title].push(e.iso || new Date(e.ts).toISOString());
+   });
+   window.completionHistory = hist;
+}
 
 async function fetchServerHistory() {
    try {
       if (!supabase) {
-         console.warn("Supabase not initialized, using local storage");
          serverHistoryCache = loadCompletionLog();
+         _rebuildLegacyHistory(serverHistoryCache);
          return serverHistoryCache;
       }
 
@@ -1054,94 +1062,126 @@ async function fetchServerHistory() {
 
       if (error) throw error;
 
-      // Convert Supabase format to app format for compatibility
-      serverHistoryCache = data.map(record => ({
-         title: record.title,
-         category: record.category,
-         ts: new Date(record.completed_at).getTime(),
-         local: new Date(record.completed_at).toLocaleString("en-AU", {
+      serverHistoryCache = data.map(r => ({
+         id: r.id,
+         title: r.title,
+         category: r.category || '',
+         ts: new Date(r.completed_at).getTime(),
+         local: new Date(r.completed_at).toLocaleString("en-AU", {
             year: "numeric", month: "2-digit", day: "2-digit",
             hour: "2-digit", minute: "2-digit"
          }),
-         iso: record.completed_at
+         iso: r.completed_at,
+         notes: r.notes || ''
       }));
 
+      _rebuildLegacyHistory(serverHistoryCache);
       return serverHistoryCache;
+
    } catch (e) {
       console.error("Failed to fetch server history:", e);
       serverHistoryCache = loadCompletionLog();
+      _rebuildLegacyHistory(serverHistoryCache);
       return serverHistoryCache;
    }
 }
 
 async function appendServerHistory(title, whenDate, category = null) {
-   // 1. Optimistic Update (Local)
    addCompletion(title, whenDate, category);
 
-   // 2. Sync to Supabase
-   try {
-      if (!supabase) {
-         console.warn("Supabase not initialized, saving locally only");
-         return false;
-      }
+   if (!supabase) return false;
 
+   try {
       const { error } = await supabase
          .from('sequence_completions')
-         .insert([{
-            title: title,
-            category: category,
-            completed_at: whenDate.toISOString()
-         }]);
+         .insert([{ title, category, completed_at: whenDate.toISOString() }]);
 
       if (error) throw error;
-
-      // Refresh cache
       await fetchServerHistory();
       return true;
    } catch (e) {
       console.error("Failed to append to server history:", e);
-      return false; // Local record persists even if server fails
+      return false;
    }
 }
 
-function formatHistoryRow(entry) {
-   const title = entry?.title || "Untitled sequence";
-   const category = entry?.category || "Uncategorized";
-   const local = (typeof entry?.ts === "number") ?
-      new Date(entry.ts).toLocaleString("en-AU", {
-         year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
-      }) : (entry.local || "");
+async function deleteCompletionById(id) {
+   if (!supabase || !id) return false;
+   try {
+      const { error } = await supabase
+         .from('sequence_completions')
+         .delete()
+         .eq('id', id);
+      if (error) throw error;
+      await fetchServerHistory();
+      return true;
+   } catch (e) {
+      console.error("Failed to delete completion:", e);
+      return false;
+   }
+}
 
-   return `
-      <div style="padding: 10px; border-bottom: 1px solid #f0f0f0;">
-         <div style="font-weight: 600; color: #1a1a1a; margin-bottom: 4px;">${title}</div>
-         <div style="font-size: 0.85rem; color: #666;">${category}</div>
-         <div style="font-size: 0.8rem; color: #999; margin-top: 2px;">${local}</div>
-      </div>
-   `;
+async function deleteAllCompletionsForTitle(title) {
+   if (!supabase || !title) return false;
+   try {
+      const { error } = await supabase
+         .from('sequence_completions')
+         .delete()
+         .eq('title', title);
+      if (error) throw error;
+      await fetchServerHistory();
+      return true;
+   } catch (e) {
+      console.error("Failed to delete completions for title:", e);
+      return false;
+   }
+}
+
+// Calculate consecutive day streak from a sorted array of ISO date strings (newest first)
+function calculateStreak(isoStrings) {
+   if (!isoStrings || !isoStrings.length) return 0;
+   const days = [...new Set(
+      isoStrings.map(s => new Date(s).toLocaleDateString("en-AU"))
+   )].map(d => {
+      const [dd, mm, yyyy] = d.split('/');
+      return new Date(yyyy, mm - 1, dd).getTime();
+   }).sort((a, b) => b - a);
+
+   const MS_PER_DAY = 86400000;
+   const today = new Date(); today.setHours(0,0,0,0);
+   const todayMs = today.getTime();
+   const yesterdayMs = todayMs - MS_PER_DAY;
+
+   if (days[0] !== todayMs && days[0] !== yesterdayMs) return 0;
+
+   let streak = 1;
+   for (let i = 1; i < days.length; i++) {
+      if (days[i - 1] - days[i] === MS_PER_DAY) {
+         streak++;
+      } else {
+         break;
+      }
+   }
+   return streak;
 }
 
 async function toggleHistoryPanel() {
    const panel = $("historyPanel");
+   if (!panel) return;
    const isOpen = panel.style.display !== "none";
-   if (isOpen) {
-      panel.style.display = "none";
-      return;
-   }
+   if (isOpen) { panel.style.display = "none"; return; }
    panel.style.display = "block";
    panel.textContent = "Loading…";
-   
    const hist = await fetchServerHistory();
-
-   if (!hist.length) {
-      panel.textContent = "No completions recorded yet.";
-      return;
-   }
-
-   const sorted = [...hist].filter(x => x && typeof x.ts === "number").sort((a, b) => b.ts - a.ts);
-
-   const lines = sorted.map(formatHistoryRow);
-   panel.innerHTML = lines.join("");
+   if (!hist.length) { panel.textContent = "No completions recorded yet."; return; }
+   const sorted = [...hist].sort((a, b) => b.ts - a.ts);
+   panel.innerHTML = sorted.map(e =>
+      `<div style="padding:10px;border-bottom:1px solid #f0f0f0;">
+         <div style="font-weight:600;color:#1a1a1a;margin-bottom:4px;">${e.title}</div>
+         <div style="font-size:0.85rem;color:#666;">${e.category || ''}</div>
+         <div style="font-size:0.8rem;color:#999;margin-top:2px;">${e.local}</div>
+       </div>`
+   ).join("");
 }
 
 /* ==========================================================================
@@ -1243,14 +1283,15 @@ async function init() {
         if (typeof seedManualCompletionsOnce === "function") seedManualCompletionsOnce();
         if (typeof loadAdminMode === "function") loadAdminMode();
 
-        // 2. Load Overrides (Parallel)
+        // 2. Load Overrides + History in Parallel
         await Promise.all([
             typeof loadManifestAndPopulateLists === "function" ? loadManifestAndPopulateLists() : Promise.resolve(),
             typeof fetchAudioOverrides === "function" ? fetchAudioOverrides() : Promise.resolve(),
             typeof fetchImageOverrides === "function" ? fetchImageOverrides() : Promise.resolve(),
             typeof fetchDescriptionOverrides === "function" ? fetchDescriptionOverrides() : Promise.resolve(),
             typeof fetchCategoryOverrides === "function" ? fetchCategoryOverrides() : Promise.resolve(),
-            typeof fetchIdAliases === "function" ? fetchIdAliases() : Promise.resolve()
+            typeof fetchIdAliases === "function" ? fetchIdAliases() : Promise.resolve(),
+            fetchServerHistory()
         ]);
 
         // 3. Load Main Data (Sequential)
@@ -3286,147 +3327,169 @@ function switchHistoryTab(mode) {
     }
 }
 
-// Clear History Button
-if ($("clearHistoryBtn")) $("clearHistoryBtn").onclick = () => {
+// Clear History Button — now deletes from Supabase
+if ($("clearHistoryBtn")) $("clearHistoryBtn").onclick = async () => {
     if (!currentSequence) return;
-    if (confirm("Clear all completion dates for this sequence?")) {
-        if (window.completionHistory && window.completionHistory[currentSequence.title]) {
-            delete window.completionHistory[currentSequence.title];
-            localStorage.setItem("asana_app_history", JSON.stringify(window.completionHistory));
-            openHistoryModal("current"); // Refresh list
-            updateTotalAndLastUI(); // Refresh pill
-        }
-    }
+    if (!confirm("Clear all completion dates for this sequence?")) return;
+    const btn = $("clearHistoryBtn");
+    if (btn) { btn.disabled = true; btn.textContent = "Clearing…"; }
+    await deleteAllCompletionsForTitle(currentSequence.title);
+    if (btn) { btn.disabled = false; btn.textContent = "Clear This Sequence"; }
+    openHistoryModal("current");
+    updateTotalAndLastUI();
 };
 
-function openHistoryModal(defaultTab = "current") {
+async function openHistoryModal(defaultTab = "current") {
     if (!histBackdrop) return;
-    
-    // 1. Setup Current View
+
     const titleEl = $("historyTitle");
     if (titleEl && currentSequence) titleEl.textContent = currentSequence.title;
 
     const listEl = $("historyList");
     if (listEl && currentSequence) {
+        listEl.innerHTML = `<div class="muted" style="padding:8px;">Loading…</div>`;
+
+        // Always pull the freshest data from the unified cache (Supabase-backed)
+        const hist = serverHistoryCache || await fetchServerHistory();
+        const entries = hist
+            .filter(e => e.title === currentSequence.title)
+            .sort((a, b) => b.ts - a.ts);
+
         listEl.innerHTML = "";
-        const historyData = window.completionHistory || {};
-        const dates = historyData[currentSequence.title] || [];
-        
-        if (dates.length === 0) {
-            listEl.innerHTML = `<div class="muted">No completion history yet.</div>`;
+
+        if (entries.length === 0) {
+            listEl.innerHTML = `<div class="muted" style="padding:8px;">No completion history yet.</div>`;
         } else {
-            [...dates].reverse().forEach(dateStr => {
+            // Streak banner
+            const streak = calculateStreak(entries.map(e => e.iso));
+            if (streak > 0) {
+                const streakEl = document.createElement("div");
+                streakEl.style.cssText = "padding:8px 10px; background:#e8f5e9; color:#2e7d32; font-weight:bold; border-radius:6px; margin-bottom:8px; font-size:0.9rem;";
+                streakEl.textContent = streak === 1
+                    ? "Practiced today — keep the momentum!"
+                    : `${streak}-day practice streak — well done!`;
+                listEl.appendChild(streakEl);
+            }
+
+            entries.forEach(e => {
                 const row = document.createElement("div");
-                row.style.cssText = "padding:8px; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between;";
-                
-                const d = new Date(dateStr);
-                const niceDate = isNaN(d) ? dateStr : d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                row.textContent = niceDate;
+                row.style.cssText = "padding:8px 4px; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;";
+                const d = new Date(e.ts);
+                const niceDate = isNaN(d) ? e.local : d.toLocaleDateString("en-AU") + " " + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const dateSpan = document.createElement("span");
+                dateSpan.textContent = niceDate;
+                const delBtn = document.createElement("button");
+                delBtn.textContent = "✕";
+                delBtn.className = "tiny";
+                delBtn.style.cssText = "color:#999; border:none; background:transparent; cursor:pointer; font-size:0.8rem;";
+                delBtn.title = "Remove this entry";
+                delBtn.onclick = async () => {
+                    delBtn.disabled = true;
+                    await deleteCompletionById(e.id);
+                    openHistoryModal("current");
+                    updateTotalAndLastUI();
+                };
+                row.appendChild(dateSpan);
+                row.appendChild(delBtn);
                 listEl.appendChild(row);
             });
         }
     }
 
-    // 2. Open & Switch Tab
     switchHistoryTab(defaultTab);
     histBackdrop.style.display = "flex";
 }
 
-// New: Render Global Dashboard
+// Render Global Dashboard — reads from the unified Supabase-backed cache
 function renderGlobalHistory() {
    const container = $("globalHistoryList");
    if (!container) return;
    container.innerHTML = "";
 
-   const history = window.completionHistory || {};
-   const allSeqs = window.sequences || [];
-   const grouped = {};
-   let totalCompletions = 0;
+   const entries = serverHistoryCache || [];
+   if (!entries.length) {
+      container.innerHTML = `<div class="msg">No history found for any sequence.</div>`;
+      return;
+   }
 
-   // 1. Map Titles to Categories (from courses.json)
+   // Build per-title aggregation
+   const byTitle = {};
+   entries.forEach(e => {
+      if (!e.title) return;
+      if (!byTitle[e.title]) byTitle[e.title] = { category: e.category || '', isos: [], lastTs: 0 };
+      byTitle[e.title].isos.push(e.iso);
+      if (e.ts > byTitle[e.title].lastTs) byTitle[e.title].lastTs = e.ts;
+   });
+
+   // Overall streak across ALL practice (any sequence)
+   const allIsos = entries.map(e => e.iso).filter(Boolean);
+   const overallStreak = calculateStreak(allIsos);
+
+   // Total sessions count
+   const totalCompletions = entries.length;
+
+   // Stats header
+   const statsHeader = document.createElement("div");
+   statsHeader.style.cssText = "padding:10px 14px; background:#e8f5e9; border-radius:6px; margin-bottom:12px; font-size:0.9rem;";
+   let statsHtml = `<div style="font-weight:bold; font-size:1rem; margin-bottom:4px;">Total sessions: ${totalCompletions}</div>`;
+   if (overallStreak > 1) {
+      statsHtml += `<div style="color:#2e7d32; font-weight:bold;">${overallStreak}-day practice streak — keep it up!</div>`;
+   } else if (overallStreak === 1) {
+      statsHtml += `<div style="color:#2e7d32;">Practiced today — great work!</div>`;
+   }
+   statsHeader.innerHTML = statsHtml;
+   container.appendChild(statsHeader);
+
+   // Group by category
+   const grouped = {};
+   const allSeqs = window.sequences || [];
    const titleToCat = {};
    allSeqs.forEach(s => titleToCat[s.title] = s.category || "Uncategorized");
 
-   // 2. Aggregate Data
-   Object.keys(history).forEach(title => {
-       const dates = history[title];
-       if(!dates || !dates.length) return;
-
-       const cat = titleToCat[title] || "Archived / Deleted Sequences";
-       if(!grouped[cat]) grouped[cat] = [];
-
-       // Sort dates (newest first)
-       const sortedDates = [...dates].sort((a,b) => new Date(b) - new Date(a));
-       const lastDate = new Date(sortedDates[0]);
-
-       grouped[cat].push({
-           title: title,
-           count: dates.length,
-           lastDate: lastDate,
-           lastDateStr: lastDate.toLocaleDateString()
-       });
-       totalCompletions += dates.length;
+   Object.keys(byTitle).forEach(title => {
+      const cat = byTitle[title].category || titleToCat[title] || "Archived / Removed";
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push({
+         title,
+         count: byTitle[title].isos.length,
+         lastDate: new Date(byTitle[title].lastTs),
+         lastDateStr: new Date(byTitle[title].lastTs).toLocaleDateString("en-AU")
+      });
    });
 
-   // 3. Render
-   if (Object.keys(grouped).length === 0) {
-       container.innerHTML = `<div class="msg">No history found for any sequence.</div>`;
-       return;
-   }
-
-   const statsHeader = document.createElement("div");
-   statsHeader.style.cssText = "padding:10px; background:#e3f2fd; color:#0d47a1; border-radius:6px; margin-bottom:15px; font-weight:bold; text-align:center;";
-   statsHeader.textContent = `🎉 Total Sessions Completed: ${totalCompletions}`;
-   container.appendChild(statsHeader);
-
-   // Sort Categories Alphabetically
    Object.keys(grouped).sort().forEach(catName => {
-       const items = grouped[catName];
-       // Sort items inside category by Recency (Last Completed)
-       items.sort((a,b) => b.lastDate - a.lastDate);
+      const items = grouped[catName].sort((a, b) => b.lastDate - a.lastDate);
 
-       const section = document.createElement("details");
-       section.open = true; // Default open
-       section.style.marginBottom = "10px";
-       section.style.border = "1px solid #ddd";
-       section.style.borderRadius = "6px";
-       section.style.background = "#fff";
+      const section = document.createElement("details");
+      section.open = true;
+      section.style.cssText = "margin-bottom:10px; border:1px solid #ddd; border-radius:6px; background:#fff;";
 
-       const summary = document.createElement("summary");
-       summary.style.padding = "10px";
-       summary.style.cursor = "pointer";
-       summary.style.fontWeight = "bold";
-       summary.style.background = "#f5f5f5";
-       summary.style.borderRadius = "6px 6px 0 0";
-       summary.innerHTML = `${catName} <span style="font-weight:normal; color:#666; font-size:0.85em;">(${items.length} seqs)</span>`;
-       
-       const content = document.createElement("div");
-       content.style.padding = "0";
+      const summary = document.createElement("summary");
+      summary.style.cssText = "padding:10px; cursor:pointer; font-weight:bold; background:#f5f5f5; border-radius:6px 6px 0 0;";
+      summary.innerHTML = `${catName} <span style="font-weight:normal; color:#666; font-size:0.85em;">(${items.length} sequences)</span>`;
 
-       items.forEach(item => {
-           const row = document.createElement("div");
-           row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee; font-size:0.9rem;";
-           
-           // Count Badge style
-           let countColor = "#eee";
-           if(item.count > 5) countColor = "#ffe0b2"; // Orange for 5+
-           if(item.count > 10) countColor = "#c8e6c9"; // Green for 10+
+      const content = document.createElement("div");
 
-           row.innerHTML = `
-               <div style="flex:1;">
-                   <div style="font-weight:600;">${item.title}</div>
-                   <div style="font-size:0.8rem; color:#888;">Last: ${item.lastDateStr}</div>
-               </div>
-               <div style="background:${countColor}; padding:2px 8px; border-radius:10px; font-size:0.8rem; font-weight:bold;">
-                   ${item.count}x
-               </div>
-           `;
-           content.appendChild(row);
-       });
+      items.forEach(item => {
+         const row = document.createElement("div");
+         row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee; font-size:0.9rem;";
+         let countColor = "#eee";
+         if (item.count > 5) countColor = "#ffe0b2";
+         if (item.count > 10) countColor = "#c8e6c9";
+         row.innerHTML = `
+            <div style="flex:1;">
+               <div style="font-weight:600;">${item.title}</div>
+               <div style="font-size:0.8rem; color:#888;">Last: ${item.lastDateStr}</div>
+            </div>
+            <div style="background:${countColor}; padding:2px 8px; border-radius:10px; font-size:0.8rem; font-weight:bold; margin-left:8px;">
+               ${item.count}x
+            </div>`;
+         content.appendChild(row);
+      });
 
-       section.appendChild(summary);
-       section.appendChild(content);
-       container.appendChild(section);
+      section.appendChild(summary);
+      section.appendChild(content);
+      container.appendChild(section);
    });
 }
 
