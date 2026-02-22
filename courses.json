@@ -36973,7 +36973,17 @@
   },
   {
     "title": "Day 1",
-    "category": "How to Use Yoga by Mira Mehta > Week 1",
-    "poses": []
+    "category": "How To Use Yoga by Mira Mehta > Week 1",
+    "poses": [
+      [
+        [
+          "001"
+        ],
+        30,
+        "",
+        "",
+        ""
+      ]
+    ]
   }
 ]
