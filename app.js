@@ -352,10 +352,38 @@ function getAsanaIndex() {
     // Safety check if library isn't loaded yet
     if (!asanaLibrary) return [];
     
-    return Object.keys(asanaLibrary).map(id => {
-        // Use the normalizeAsana helper we added earlier
-        return normalizeAsana(id, asanaLibrary[id]);
-    }).filter(Boolean); // Remove any nulls
+    let index = [];
+
+    Object.keys(asanaLibrary).forEach(id => {
+        const rawAsana = asanaLibrary[id];
+        
+        // 1. Add the Base Asana
+        const baseAsana = normalizeAsana(id, rawAsana);
+        if (baseAsana) index.push(baseAsana);
+
+        // 2. Add Variations as standalone items
+        if (rawAsana.variations && typeof rawAsana.variations === 'object') {
+            Object.entries(rawAsana.variations).forEach(([varKey, varData]) => {
+                // Clone the base asana to inherit category, images, etc.
+                const variationClone = JSON.parse(JSON.stringify(baseAsana));
+                
+                // Override with variation specifics
+                variationClone.variation = varKey; // Identifies it as a variation
+                
+                if (typeof varData === "string") {
+                    variationClone.technique = varData;
+                } else if (typeof varData === "object") {
+                    variationClone.technique = varData.technique || "";
+                    // Optional: If variations have specific names, you can override english here
+                    if (varData.english) variationClone.english = varData.english;
+                }
+                
+                index.push(variationClone);
+            });
+        }
+    });
+
+    return index;
 }
 
    /**
