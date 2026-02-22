@@ -377,6 +377,23 @@ function normalizeAsana(id, asana) {
        allPlates: [id] // For search compatibility
     };
  }
+// IAST display preference — stored in localStorage
+const IAST_PREF_KEY = "yoga_prefer_iast";
+
+function prefersIAST() {
+   return localStorage.getItem(IAST_PREF_KEY) !== "false";
+}
+
+function setIASTPref(val) {
+   localStorage.setItem(IAST_PREF_KEY, val ? "true" : "false");
+}
+
+function displayName(asana) {
+   if (!asana) return "";
+   if (prefersIAST() && asana.iast) return asana.iast;
+   return asana.english || asana.name || asana.iast || "";
+}
+
 function escapeHtml2(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;",
@@ -833,8 +850,6 @@ async function loadAsanaLibrary() {
         }
 
         console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
-        const a234 = normalized['234'];
-        console.warn(`DIAG asana 234 variations:`, a234 ? Object.keys(a234.variations) : 'NOT FOUND');
         return normalized;
 
     } catch (e) {
@@ -1626,8 +1641,7 @@ function prevPose() {
     // 4. HEADER UI
     const nameEl = document.getElementById("poseName");
     if (nameEl) {
-        // Use Label if present, else English name, else 'Pose'
-        let finalTitle = label || (asana ? (asana.english || asana.name) : "Pose");
+        let finalTitle = label || (asana ? displayName(asana) : "Pose");
 
         // Append Side Suffix
         if (asana && asana.requiresSides) {
@@ -2013,7 +2027,7 @@ function renderBrowseList(items) {
       const title = document.createElement("div");
       title.className = "title";
       
-      let titleText = asma.english || asma['Yogasana Name'] || "(no name)";
+      let titleText = displayName(asma) || "(no name)";
       if (asma.variation) titleText += ` <span style="font-weight:normal; color:#666; font-size:0.9em;">(${asma.variation})</span>`;
       title.innerHTML = titleText;
 
@@ -2087,7 +2101,8 @@ function showAsanaDetail(asana) {
 
     // 1. Basic Info
     let content = `
-        <h2>${asana.english || asana.name}</h2>
+        <h2>${displayName(asana)}</h2>
+        ${(asana.iast && prefersIAST() && asana.english) ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;">${asana.english}</div>` : (asana.iast && !prefersIAST()) ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;font-style:italic;">${asana.iast}</div>` : ""}
         <div class="muted">ID: ${asana.id || asana.asanaNo}</div>
         <button id="playNameBtn" class="tiny" style="margin-top:10px;">🔊 Play Audio</button>
         <hr>
@@ -3183,7 +3198,7 @@ function expandSequenceWithNamaskara(rawSeq) {
                     const asana = findAsanaByIdOrPlate(normalizePlate(id));
                     
                     // 1. Determine the base name (Use Label -> then Library English -> then "Pose")
-                    let baseName = p[2] || (asana ? (asana.english || asana.name) : "Pose");
+                    let baseName = p[2] || (asana ? displayName(asana) : "Pose");
 
                     // 2. Append the Round number if more than 1 repetition exists
                     if (reps > 1 && !baseName.includes("(Round")) {
@@ -3216,22 +3231,28 @@ if (seqSelect) {
         advancedSection.style.display = "none";
     }
 
-    // B. Create the new "Edit Content" button
+    // B. Create the "Edit" and "New" buttons
     if (!document.getElementById("quickEditBtn")) {
         const editBtn = document.createElement("button");
         editBtn.id = "quickEditBtn";
         editBtn.innerHTML = "✏️";
-        editBtn.title = "Edit Current Course (Timings & Poses)";
+        editBtn.title = "Edit this sequence in the Sequence Builder";
         editBtn.className = "tiny";
-        editBtn.style.cssText = "margin-left: 10px; padding: 4px 10px; font-size: 1.1rem; vertical-align: middle;";
-        
-        // Insert it right after the dropdown
+        editBtn.style.cssText = "margin-left: 8px; padding: 4px 10px; font-size: 1.1rem; vertical-align: middle;";
         seqSelect.parentNode.insertBefore(editBtn, seqSelect.nextSibling);
-
         editBtn.onclick = () => {
             if (!currentSequence) return alert("Select a sequence first.");
-            openEditCourse(); // Reuse your existing edit modal
+            openEditCourse();
         };
+
+        const newBtn = document.createElement("button");
+        newBtn.id = "newSequenceBtn";
+        newBtn.textContent = "+ New";
+        newBtn.title = "Create a new sequence from scratch";
+        newBtn.className = "tiny";
+        newBtn.style.cssText = "margin-left: 4px; padding: 4px 10px; vertical-align: middle;";
+        editBtn.parentNode.insertBefore(newBtn, editBtn.nextSibling);
+        newBtn.onclick = () => builderOpen("new", null);
     }
 
     // C. Dropdown Logic (Fixed: Stops timer, Waits for user to click Start)
@@ -3269,6 +3290,24 @@ updateTotalAndLastUI();
        }
     });
 }
+
+// IAST Toggle Button
+(function setupIASTToggle() {
+   const btn = $("iastToggleBtn");
+   if (!btn) return;
+   function updateBtn() {
+      const using = prefersIAST();
+      btn.textContent = using ? "IAST" : "English";
+      btn.style.opacity = using ? "1" : "0.7";
+      btn.title = using ? "Showing IAST names — click for English" : "Showing English names — click for IAST";
+   }
+   updateBtn();
+   btn.addEventListener("click", () => {
+      setIASTPref(!prefersIAST());
+      updateBtn();
+      if (currentSequence) setPose(currentIndex);
+   });
+})();
 
 // 2. History Interactions (Clickable Pill)
 const lastPill = $("lastCompletedPill");
@@ -3611,318 +3650,320 @@ safeListen("completeBtn", "click", async () => {
 let editingCourseData = null;
 let editingCourseIndex = null;
 
+// ============================================================
+// SEQUENCE BUILDER
+// ============================================================
+
+let builderPoses = [];  // [{ id, name, duration, note, supabaseRowId? }]
+let builderMode = "edit"; // "edit" | "new"
+let builderEditingCourseIndex = -1;
+let builderEditingSupabaseId = null;
+
+function builderOpen(mode, seq) {
+   builderMode = mode;
+   builderPoses = [];
+   builderEditingCourseIndex = -1;
+   builderEditingSupabaseId = null;
+
+   const titleEl = $("builderTitle");
+   const modeLabel = $("builderModeLabel");
+   const catSel = $("builderCategory");
+
+   // Populate category dropdown from known categories
+   if (catSel) {
+      const cats = [...new Set((courses || []).map(c => c.category).filter(Boolean))].sort();
+      catSel.innerHTML = `<option value="">Category…</option>` + cats.map(c =>
+         `<option value="${c}">${c.replace(/_/g, " ")}</option>`
+      ).join("");
+   }
+
+   if (mode === "new") {
+      if (modeLabel) modeLabel.textContent = "New Sequence";
+      if (titleEl) titleEl.value = "";
+      if (catSel) catSel.value = "";
+   } else {
+      if (!seq) { alert("No sequence to edit."); return; }
+      if (modeLabel) modeLabel.textContent = "Edit Sequence";
+      if (titleEl) titleEl.value = seq.title || "";
+      if (catSel) catSel.value = seq.category || "";
+      builderEditingCourseIndex = courses.findIndex(c => c.title === seq.title);
+
+      // Convert poses into builder format
+      const library = getAsanaIndex();
+      (seq.poses || []).forEach(p => {
+         const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
+         const id = normalizePlate(String(rawId || ""));
+         const asana = library.find(a => a.id === id || a.asanaNo === id);
+         builderPoses.push({
+            id,
+            name: asana ? displayName(asana) : (rawId || ""),
+            englishName: asana ? (asana.english || asana.name || "") : "",
+            duration: Number(p[1]) || 30,
+            note: p[4] || p[2] || ""
+         });
+      });
+   }
+
+   builderRender();
+   $("editCourseBackdrop").style.display = "flex";
+   setTimeout(() => { const s = $("builderSearch"); if(s) s.focus(); }, 50);
+}
+
 function openEditCourse() {
-    if (!currentSequence) {
-        alert("Please select a course first");
-        return;
-    }
-
-    editingCourseIndex = courses.findIndex(c => c.title === currentSequence.title);
-    if (editingCourseIndex === -1) {
-        alert("Could not find course");
-        return;
-    }
-
-    editingCourseData = JSON.parse(JSON.stringify(currentSequence));
-
-    $("editCourseTitle").textContent = currentSequence.title;
-    renderEditList();
-
-    // --- NEW: Inject the "Save & Sync" Button dynamically ---
-    injectSyncButtonIntoModal();
-
-    const backdrop = $("editCourseBackdrop");
-    if (backdrop) backdrop.style.display = "flex";
+   if (!currentSequence) { alert("Please select a course first."); return; }
+   builderOpen("edit", currentSequence);
 }
-/**
- * Adds a blank row to the editing data and re-renders.
- */
-function addNewPose() {
-    // Add a blank row structure: [ID, Time, Label, null, Notes]
-    editingCourseData.poses.push(["", 0, "", null, ""]);
-    renderEditList();
-}
+function builderRender() {
+   const tbody = $("builderTableBody");
+   const emptyMsg = $("builderEmptyMsg");
+   const table = $("builderTable");
+   if (!tbody) return;
 
-function deletePose(index) {
-    if (confirm("Remove this pose?")) {
-        editingCourseData.poses.splice(index, 1);
-        renderEditList();
-    }
-}
+   tbody.innerHTML = "";
 
-function handlePoseSelection(inputElement) {
-    const val = inputElement.value.trim();
-    const idx = inputElement.dataset.idx;
-    
-    // Lookup in library by Name
-    const library = getAsanaIndex();
-    const match = library.find(a => 
-        (a.english && a.english.toLowerCase() === val.toLowerCase()) || 
-        (a['Yogasana Name'] && a['Yogasana Name'].toLowerCase() === val.toLowerCase())
-    );
+   if (!builderPoses.length) {
+      if (emptyMsg) emptyMsg.style.display = "block";
+      if (table) table.style.display = "none";
+      builderUpdateStats();
+      return;
+   }
+   if (emptyMsg) emptyMsg.style.display = "none";
+   if (table) table.style.display = "";
 
-    if (match) {
-        // Auto-fill Label if it is currently empty
-        const labelInput = document.querySelector(`.edit-label[data-idx="${idx}"]`);
-        if (labelInput && !labelInput.value) {
-            labelInput.value = match.english || match['Yogasana Name'];
-        }
-    }
-}
-/**
- * Creates a "Save & Sync to GitHub" button inside the modal footer
- * and hides the old main-page buttons.
- */
-function injectSyncButtonIntoModal() {
-    // 1. Hide the old main page buttons
-    const oldSync = $("syncGitHubBtn");
-    const oldExport = $("exportCourseBtn");
-    if (oldSync) oldSync.style.display = "none";
-    if (oldExport) oldExport.style.display = "none";
+   builderPoses.forEach((pose, idx) => {
+      const tr = document.createElement("tr");
+      tr.style.cssText = "border-bottom:1px solid #f0f0f0;";
+      tr.dataset.idx = idx;
 
-    // 2. Find the Save button to place our new button next to
-    const saveBtn = $("editCourseSaveBtn");
-    if (!saveBtn) return;
+      const isFirst = idx === 0;
+      const isLast = idx === builderPoses.length - 1;
 
-    const parent = saveBtn.parentElement;
-    
-    // Check if we already added the button to prevent duplicates
-    if (document.getElementById("editCourseSyncBtn")) return;
+      tr.innerHTML = `
+         <td style="padding:8px 6px;text-align:center;color:#aaa;font-size:0.8rem;">${idx + 1}</td>
+         <td style="padding:6px;">
+            <div style="font-weight:600;font-size:0.88rem;line-height:1.3;">${pose.name || '<span style="color:#aaa">Unknown</span>'}</div>
+            ${pose.englishName && pose.englishName !== pose.name ? `<div style="font-size:0.75rem;color:#888;">${pose.englishName}</div>` : ""}
+            ${pose.id ? `<div style="font-size:0.7rem;color:#bbb;">ID: ${pose.id}</div>` : ""}
+         </td>
+         <td style="padding:6px;">
+            <div style="display:flex;align-items:center;gap:4px;">
+               <input type="number" class="b-dur" data-idx="${idx}" value="${pose.duration}"
+                  min="1" max="3600" style="width:60px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:0.85rem;">
+               <span style="font-size:0.75rem;color:#888;">s</span>
+            </div>
+         </td>
+         <td style="padding:6px;">
+            <input type="text" class="b-note" data-idx="${idx}" value="${(pose.note || "").replace(/"/g,'&quot;')}"
+               placeholder="[Variation I]" style="width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:0.85rem;">
+         </td>
+         <td style="padding:6px;text-align:center;white-space:nowrap;">
+            <button class="b-up tiny" data-idx="${idx}" ${isFirst ? "disabled" : ""} style="padding:2px 6px;margin:0 1px;">▲</button>
+            <button class="b-dn tiny" data-idx="${idx}" ${isLast ? "disabled" : ""} style="padding:2px 6px;margin:0 1px;">▼</button>
+         </td>
+         <td style="padding:6px;text-align:center;">
+            <button class="b-del tiny" data-idx="${idx}" style="color:#d32f2f;padding:2px 8px;">✕</button>
+         </td>
+      `;
+      tbody.appendChild(tr);
+   });
 
-    // 3. Create the new button
-    const syncBtn = document.createElement("button");
-    syncBtn.id = "editCourseSyncBtn";
-    syncBtn.textContent = "💾 Save & Sync to GitHub";
-    syncBtn.className = "tiny"; // Match your app's style
-    syncBtn.style.cssText = "background: #2e7d32; color: white; margin-left: 10px;";
-    
-    // 4. The Logic: Save Local -> Sync GitHub
-    syncBtn.onclick = async () => {
-        // A. Save to Local Memory first
-        const success = saveEditedCourse(true); // true = silent mode (no alert)
-        if (!success) return;
+   // Inline edit listeners
+   tbody.querySelectorAll(".b-dur").forEach(el => {
+      el.addEventListener("change", e => {
+         const i = Number(e.target.dataset.idx);
+         builderPoses[i].duration = parseInt(e.target.value) || 30;
+         builderUpdateStats();
+      });
+   });
+   tbody.querySelectorAll(".b-note").forEach(el => {
+      el.addEventListener("input", e => {
+         const i = Number(e.target.dataset.idx);
+         builderPoses[i].note = e.target.value;
+      });
+   });
+   tbody.querySelectorAll(".b-up").forEach(el => {
+      el.addEventListener("click", e => {
+         const i = Number(e.target.dataset.idx);
+         if (i > 0) { [builderPoses[i-1], builderPoses[i]] = [builderPoses[i], builderPoses[i-1]]; builderRender(); }
+      });
+   });
+   tbody.querySelectorAll(".b-dn").forEach(el => {
+      el.addEventListener("click", e => {
+         const i = Number(e.target.dataset.idx);
+         if (i < builderPoses.length - 1) { [builderPoses[i], builderPoses[i+1]] = [builderPoses[i+1], builderPoses[i]]; builderRender(); }
+      });
+   });
+   tbody.querySelectorAll(".b-del").forEach(el => {
+      el.addEventListener("click", e => {
+         const i = Number(e.target.dataset.idx);
+         builderPoses.splice(i, 1);
+         builderRender();
+      });
+   });
 
-        // B. Push to GitHub
-        await syncDataToGitHub("courses.json", window.courses);
-        
-        // C. Close Modal
-        $("editCourseBackdrop").style.display = "none";
-        editingCourseData = null;
-    };
-
-    // Insert after the existing Save button
-    parent.insertBefore(syncBtn, saveBtn.nextSibling);
-    
-    // Optional: Update the text of the original save button to clarify it's local only
-    saveBtn.textContent = "Save Locally Only";
+   builderUpdateStats();
 }
 
-function renderEditList() {
-    if (!editingCourseData || !editingCourseData.poses) return;
-
-    const container = $("editCourseList");
-    if (!container) return;
-
-    // 1. GET LIBRARY: Reuse the existing reliable index
-    const library = getAsanaIndex();
-
-    // 2. BUILD SEARCH OPTIONS: Create the autocomplete list from the library
-    // We map over the library to create <option> tags for the inputs to use
-    const dataListOptions = library.map(a => {
-        // Try English, then Yogasana Name, then fall back to ID
-        const name = a.english || a['Yogasana Name'] || a.id || "";
-        // Clean quotes to prevent HTML errors
-        return `<option value="${name.replace(/"/g, '&quot;')}">`;
-    }).join("");
-
-    // 3. SETUP CONTAINER HTML
-    container.innerHTML = `
-        <div style="padding: 12px; background:#f5f5f5; border-radius:8px; margin-bottom:12px;">
-            <strong>Edit Sequence:</strong> Add, remove, or modify poses. Search for poses by name.
-        </div>
-        
-        <datalist id="asanaOptions">
-            ${dataListOptions}
-        </datalist>
-
-        <table style="width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed;">
-            <thead>
-                <tr style="background:#f9f9f9; border-bottom:2px solid #eee;">
-                    <th style="padding:10px; width:5%; text-align:center;">#</th>
-                    <th style="padding:10px; text-align:left; width:35%;">Pose (Search)</th>
-                    <th style="padding:10px; text-align:left; width:15%;">Time (s)</th>
-                    <th style="padding:10px; text-align:left; width:20%;">Label</th>
-                    <th style="padding:10px; text-align:left; width:20%;">Notes</th>
-                    <th style="padding:10px; text-align:center; width:5%;"></th>
-                </tr>
-            </thead>
-            <tbody id="editTableBody">
-            </tbody>
-        </table>
-        
-        <div style="margin-top:15px; text-align:center;">
-             <button id="addPoseBtn" style="padding:8px 16px; cursor:pointer; background:#e0f7fa; border:1px solid #006064; border-radius:4px; color:#006064; font-weight:600;">
-                + Add Pose
-             </button>
-        </div>
-    `;
-
-    const tbody = container.querySelector("#editTableBody");
-    if (!tbody) return;
-
-    // 4. RENDER ROWS
-    editingCourseData.poses.forEach((pose, idx) => {
-        // Handle data structure safely
-        const asanaId = Array.isArray(pose[0]) ? pose[0][0] : pose[0];
-        const timing = pose[1] || 0;
-        const label = pose[2] || "";
-        const notes = pose[4] || "";
-
-        // -- LOGIC FIX: LOOKUP NAME LOCALLY --
-        // We search the library for a matching ID or asanaNo
-        const match = library.find(a => a.id == asanaId || a.asanaNo == asanaId);
-        
-        // Determine what to display in the input box
-        let poseName = "";
-        if (match) {
-            poseName = match.english || match['Yogasana Name'] || asanaId;
-        } else {
-            // If not found, show the ID (or blank if ID is null)
-            poseName = asanaId || ""; 
-        }
-
-        const row = document.createElement("tr");
-        row.style.borderBottom = "1px solid #eee";
-        row.innerHTML = `
-            <td style="padding:10px; text-align:center; color:#888;">${idx + 1}</td>
-            
-            <td style="padding:10px;">
-                <input type="text" 
-                       class="edit-pose-name" 
-                       data-idx="${idx}" 
-                       list="asanaOptions" 
-                       value="${poseName.replace(/"/g, '&quot;')}" 
-                       placeholder="Type to search..."
-                       style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px;">
-            </td>
-            
-            <td style="padding:10px;">
-                <input type="number" class="edit-timing" data-idx="${idx}" value="${timing}" min="0" max="3600" style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px;">
-            </td>
-            
-            <td style="padding:10px;">
-                <input type="text" class="edit-label" data-idx="${idx}" value="${label}" placeholder="Label" style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px;">
-            </td>
-            
-            <td style="padding:10px;">
-                <input type="text" class="edit-notes" data-idx="${idx}" value="${notes}" placeholder="Notes" style="width:100%; padding:6px; border:1px solid #ddd; border-radius:4px;">
-            </td>
-            
-            <td style="padding:10px; text-align:center;">
-                <button class="delete-pose-btn" data-idx="${idx}" style="background:none; border:none; color:#d32f2f; cursor:pointer; font-size:18px; font-weight:bold;">
-                    &times;
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-
-    // 5. ATTACH LISTENERS
-    
-    // Add Button
-    document.getElementById("addPoseBtn").addEventListener("click", addNewPose);
-
-    // Delete Buttons
-    document.querySelectorAll(".delete-pose-btn").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            // Use closest to ensure we catch the click even if user clicks the icon
-            const idx = parseInt(e.target.closest('button').dataset.idx);
-            deletePose(idx);
-        });
-    });
-
-    // Smart Input (Auto-fill Label on selection)
-    document.querySelectorAll(".edit-pose-name").forEach(input => {
-        input.addEventListener("change", (e) => handlePoseSelection(e.target));
-    });
+function builderUpdateStats() {
+   const statsEl = $("builderStats");
+   if (!statsEl) return;
+   if (!builderPoses.length) { statsEl.textContent = ""; return; }
+   const total = builderPoses.reduce((s, p) => s + (p.duration || 0), 0);
+   statsEl.textContent = `${builderPoses.length} poses · ${formatHMS(total)} estimated`;
 }
 
-/**
- * Saves changes to the global 'courses' variable.
- * @param {boolean} silent - If true, suppresses the "Saved" alert (used when syncing immediately after).
- */
-function saveEditedCourse(silent = false) {
-    if (!editingCourseData || editingCourseIndex === -1) return false;
-
-    const library = getAsanaIndex();
-    const newPoses = [];
-    const rowCount = document.querySelectorAll(".edit-pose-name").length;
-
-    for (let i = 0; i < rowCount; i++) {
-        const nameInput = document.querySelector(`.edit-pose-name[data-idx="${i}"]`);
-        const timeInput = document.querySelector(`.edit-timing[data-idx="${i}"]`);
-        const labelInput = document.querySelector(`.edit-label[data-idx="${i}"]`);
-        const notesInput = document.querySelector(`.edit-notes[data-idx="${i}"]`);
-
-        if (!nameInput) continue;
-
-        const nameVal = nameInput.value.trim();
-        let finalId = nameVal; // Default: keep the text if no ID found
-
-        // Reverse Lookup: Find ID based on Name
-        const match = library.find(a => 
-            (a.english && a.english.toLowerCase() === nameVal.toLowerCase()) || 
-            (a['Yogasana Name'] && a['Yogasana Name'].toLowerCase() === nameVal.toLowerCase())
-        );
-
-        if (match) {
-            // Prefer ID, fallback to asanaNo
-            finalId = match.id || match.asanaNo || nameVal;
-        }
-
-        // Skip completely empty rows
-        if (!finalId && !labelInput.value) continue;
-
-        newPoses.push([
-            finalId,
-            parseInt(timeInput.value) || 0,
-            labelInput.value,
-            null,
-            notesInput.value
-        ]);
-    }
-
-    // Save back to global object
-    editingCourseData.poses = newPoses;
-    courses[editingCourseIndex] = JSON.parse(JSON.stringify(editingCourseData));
-    
-    // Update live sequence if it's the one currently open
-    if(currentSequence && currentSequence.title === editingCourseData.title) {
-        currentSequence = courses[editingCourseIndex];
-    }
-
-    if (!silent) {
-        const backdrop = $("editCourseBackdrop");
-        if (backdrop) backdrop.style.display = "none";
-        alert("Changes saved locally.");
-        editingCourseData = null;
-        editingCourseIndex = -1;
-    }
-    
-    return true;
+function builderCompileSequenceText() {
+   return builderPoses.map(p => {
+      const id = p.id || "000";
+      const dur = p.duration || 30;
+      const note = p.note ? ` | ${p.note}` : "";
+      return `${id} | ${dur}${note}`;
+   }).join("\n");
 }
+
+function builderGetTitle() {
+   return ($("builderTitle")?.value || "").trim();
+}
+
+function builderGetCategory() {
+   return ($("builderCategory")?.value || "").trim();
+}
+
+async function builderSave(syncToGitHub) {
+   const title = builderGetTitle();
+   if (!title) { alert("Please enter a sequence title."); $("builderTitle")?.focus(); return; }
+   if (!builderPoses.length) { alert("Add at least one pose."); return; }
+
+   const sequenceText = builderCompileSequenceText();
+   const category = builderGetCategory();
+   const poses = parseSequenceText(sequenceText);
+   const totalSec = builderPoses.reduce((s, p) => s + (p.duration || 0), 0);
+
+   // Save to Supabase user_sequences
+   try {
+      if (supabase) {
+         if (builderEditingSupabaseId) {
+            await supabase.from('user_sequences').update({
+               title, category, sequence_text: sequenceText,
+               pose_count: builderPoses.length, total_seconds: totalSec,
+               updated_at: new Date().toISOString()
+            }).eq('id', builderEditingSupabaseId);
+         } else {
+            const { data } = await supabase.from('user_sequences').insert([{
+               title, category, sequence_text: sequenceText,
+               pose_count: builderPoses.length, total_seconds: totalSec
+            }]).select('id').maybeSingle();
+            if (data?.id) builderEditingSupabaseId = data.id;
+         }
+      }
+   } catch(e) {
+      console.warn("Supabase save failed:", e);
+   }
+
+   // Save to in-memory courses
+   const courseObj = { title, category, poses };
+   const idx = builderEditingCourseIndex >= 0 ? builderEditingCourseIndex : courses.findIndex(c => c.title === title);
+   if (idx >= 0) {
+      courses[idx] = courseObj;
+   } else {
+      courses.push(courseObj);
+      builderEditingCourseIndex = courses.length - 1;
+   }
+   window.courses = courses;
+
+   // Refresh sequence selector
+   if (typeof populateSequenceDropdown === "function") populateSequenceDropdown();
+
+   if (syncToGitHub) {
+      $("editCourseBackdrop").style.display = "none";
+      await syncDataToGitHub("courses.json", courses);
+   } else {
+      $("editCourseBackdrop").style.display = "none";
+      alert(`"${title}" saved.`);
+   }
+}
+
+// Search dropdown for the builder
+(function setupBuilderSearch() {
+   const input = document.getElementById("builderSearch");
+   const results = document.getElementById("builderSearchResults");
+   if (!input || !results) return;
+
+   let debounceTimer;
+
+   function positionResults() {
+      const rect = input.getBoundingClientRect();
+      results.style.top = (rect.bottom + window.scrollY) + "px";
+      results.style.left = rect.left + "px";
+      results.style.width = Math.max(rect.width, 280) + "px";
+   }
+
+   input.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+         const q = input.value.trim().toLowerCase();
+         if (q.length < 2) { results.style.display = "none"; return; }
+
+         const library = getAsanaIndex();
+         const hits = library.filter(a => {
+            const n = (displayName(a) + " " + (a.english || "") + " " + (a.iast || "") + " " + (a.id || "")).toLowerCase();
+            return n.includes(q);
+         }).slice(0, 20);
+
+         if (!hits.length) { results.style.display = "none"; return; }
+
+         results.innerHTML = hits.map(a => {
+            const dn = displayName(a);
+            const sub = (a.iast && a.iast !== dn) ? a.iast : (a.english && a.english !== dn ? a.english : "");
+            return `<div class="b-search-item" data-id="${a.id}" data-name="${dn.replace(/"/g,'&quot;')}" data-english="${(a.english||"").replace(/"/g,'&quot;')}"
+               style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;">
+               <div style="font-weight:600;font-size:0.88rem;">${dn}</div>
+               ${sub ? `<div style="font-size:0.75rem;color:#888;">${sub}</div>` : ""}
+               <div style="font-size:0.7rem;color:#bbb;">ID: ${a.id}</div>
+            </div>`;
+         }).join("");
+
+         results.style.display = "block";
+         positionResults();
+      }, 120);
+   });
+
+   results.addEventListener("click", e => {
+      const item = e.target.closest(".b-search-item");
+      if (!item) return;
+      builderPoses.push({
+         id: item.dataset.id,
+         name: item.dataset.name,
+         englishName: item.dataset.english,
+         duration: 30,
+         note: ""
+      });
+      builderRender();
+      input.value = "";
+      results.style.display = "none";
+      input.focus();
+   });
+
+   document.addEventListener("click", e => {
+      if (!input.contains(e.target) && !results.contains(e.target)) {
+         results.style.display = "none";
+      }
+   });
+
+   const blankBtn = document.getElementById("builderAddBlank");
+   if (blankBtn) {
+      blankBtn.addEventListener("click", () => {
+         builderPoses.push({ id: "", name: "", englishName: "", duration: 30, note: "" });
+         builderRender();
+      });
+   }
+})();
 
 safeListen("editCourseBtn", "click", openEditCourse);
-safeListen("editCourseCloseBtn", "click", () => {
-    $("editCourseBackdrop").style.display = "none";
-    editingCourseData = null;
-});
-safeListen("editCourseCancelBtn", "click", () => {
-    $("editCourseBackdrop").style.display = "none";
-    editingCourseData = null;
-});
-// The original save button just does a local save
-safeListen("editCourseSaveBtn", "click", () => saveEditedCourse(false));
+safeListen("editCourseCloseBtn", "click", () => { $("editCourseBackdrop").style.display = "none"; });
+safeListen("editCourseCancelBtn", "click", () => { $("editCourseBackdrop").style.display = "none"; });
+safeListen("editCourseSaveBtn", "click", () => builderSave(false));
+safeListen("builderSyncGithub", "click", () => builderSave(true));
 // -------- GITHUB SYNC --------
 /**
  * Pushes any JSON object to a specific file in your GitHub Repository
