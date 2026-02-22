@@ -5,9 +5,9 @@
 
 // 1. Data Sources (GitHub Raw URLs)
 const BASE_RAW_URL = "https://raw.githubusercontent.com/markopie/Yoga-App-Evolution/main/";
-const COURSES_URL = `${BASE_RAW_URL}courses.json`;
+const COURSES_URL = `${BASE_RAW_URL}data/courses.json`;
 const MANIFEST_URL = `${BASE_RAW_URL}manifest.json`;
-const ASANA_LIBRARY_URL = `${BASE_RAW_URL}asana_library.json`;
+const ASANA_LIBRARY_URL = `${BASE_RAW_URL}data/asana_library.json`;
 const LIBRARY_URL = ASANA_LIBRARY_URL;
 
 // Overrides
@@ -555,31 +555,55 @@ async function loadJSON(url, fallback = null) {
 
 // 2. Load Courses
 async function loadCourses() {
-    // 1. Load Data
     const data = await loadJSON(COURSES_URL, []);
- 
-    // 2. Validate
+
     if (!Array.isArray(data) || data.length === 0) {
        console.error("Failed to load courses.json - using empty array");
        courses = [];
        sequences = [];
        return;
     }
- 
-    // 3. Assign Globals
-    // Filter out bad data and ensure global variables are set
-    courses = data.filter(c => c && c.title && Array.isArray(c.poses));
+
+    courses = data.map(c => {
+        if (!c || !c.Course_Title || !c.Sequence_Text) return null;
+
+        const poses = parseSequenceText(c.Sequence_Text);
+
+        return {
+            title: c.Course_Title,
+            category: c.Category || "Uncategorized",
+            poses: poses,
+            id: c.id,
+            courseId: c.Course_ID
+        };
+    }).filter(Boolean);
+
     sequences = courses;
-    window.courses = courses; 
-    
+    window.courses = courses;
+
     console.log(`Loaded ${courses.length} courses`);
 
-    // 4. TRIGGER UI UPDATE (This was missing)
     if (typeof renderSequenceDropdown === "function") {
         renderSequenceDropdown();
     } else if (typeof renderCourseUI === "function") {
         renderCourseUI();
     }
+}
+
+function parseSequenceText(sequenceText) {
+    if (!sequenceText || typeof sequenceText !== 'string') return [];
+
+    const lines = sequenceText.split('\n').map(line => line.trim()).filter(Boolean);
+
+    return lines.map(line => {
+        const parts = line.split('|').map(p => p.trim());
+
+        const asanaId = parts[0] || '';
+        const duration = parts[1] ? parseInt(parts[1], 10) : 60;
+        const note = parts[2] || '';
+
+        return [asanaId, duration, note];
+    }).filter(pose => pose[0]);
 }
 
 // 3. Local Sequence Editing (Save/Reset)
@@ -599,25 +623,63 @@ function resetToOriginalJSON() {
 
 // 4. Load Asana Library
 async function loadAsanaLibrary() {
-    // Now calls loadJSON correctly with ASANA_LIBRARY_URL
     const data = await loadJSON(ASANA_LIBRARY_URL, {});
 
-    if (!data || Object.keys(data).length === 0) {
-        console.error("Failed to load Library (or empty)");
-        return {};
+    const normalized = {};
+
+    if (data && data.Asanas && Array.isArray(data.Asanas)) {
+        const allItems = [...(data.Asanas || []), ...(data.Stages || [])];
+
+        const seenIds = new Set();
+        allItems.forEach(asana => {
+            const idField = asana['ID (from Parent_ID)'];
+            if (!idField || !Array.isArray(idField) || idField.length === 0) return;
+
+            const rawId = idField[0];
+            const cleanId = (typeof normalizePlate === 'function') ? normalizePlate(rawId) : rawId.trim();
+
+            if (seenIds.has(cleanId)) return;
+            seenIds.add(cleanId);
+
+            normalized[cleanId] = {
+                ...asana,
+                name: asana.Title || asana.Stage_Name || '',
+                english: asana.Title || asana.Stage_Name || '',
+                description: asana.Shorthand || '',
+                technique: asana.Full_Technique || '',
+                id: cleanId,
+                asanaNo: cleanId,
+                category: asana.Category || '',
+                requiresSides: false
+            };
+        });
+
+        console.log(`Asana Library Loaded from Airtable: ${Object.keys(normalized).length} poses`);
     }
 
-    // Normalize IDs (ensure "001" and "1" match)
-    const normalized = {};
-    Object.keys(data).forEach(key => {
-        // Use your existing normalizePlate function if available, else simple trim
-        const cleanId = (typeof normalizePlate === 'function') ? normalizePlate(key) : key.trim();
-        normalized[cleanId] = data[key];
-        // Ensure ID property exists
-        if (!normalized[cleanId].id) normalized[cleanId].id = cleanId;
-    });
+    try {
+        const fallbackUrl = `${BASE_RAW_URL}asana_library.json`;
+        const fallbackData = await loadJSON(fallbackUrl, {});
 
-    console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
+        if (fallbackData && typeof fallbackData === 'object') {
+            let fallbackCount = 0;
+            Object.keys(fallbackData).forEach(key => {
+                const cleanId = (typeof normalizePlate === 'function') ? normalizePlate(key) : key.trim();
+                if (!normalized[cleanId]) {
+                    normalized[cleanId] = fallbackData[key];
+                    if (!normalized[cleanId].id) normalized[cleanId].id = cleanId;
+                    fallbackCount++;
+                }
+            });
+            if (fallbackCount > 0) {
+                console.log(`Loaded ${fallbackCount} additional poses from legacy library`);
+            }
+        }
+    } catch (e) {
+        console.warn('Could not load fallback library:', e);
+    }
+
+    console.log(`Total Asana Library: ${Object.keys(normalized).length} poses`);
     return normalized;
 }
 
