@@ -779,38 +779,55 @@ async function loadAsanaLibrary() {
 
             // Inject stages into their parent asanas
             stagesData.forEach((stage, idx) => {
-                // Support both snake_case and original Airtable column names
-                const rawParentId = stage['ID (from Parent_ID)'] ?? stage.parent_id ?? stage.Parent_ID ?? null;
+                // Try every possible column name for the parent's numeric yoga ID
+                // Airtable lookup fields come through as arrays: [234] or ["234"]
+                const rawParentId =
+                    stage['ID (from Parent_ID)'] ??
+                    stage['id_from_parent_id'] ??
+                    stage.parent_id ??
+                    stage.Parent_ID ??
+                    null;
 
-                let parentId = null;
+                // Flatten: unwrap array, coerce to string
+                let parentIdStr = '';
                 if (Array.isArray(rawParentId)) {
-                    parentId = String(rawParentId[0] || '').trim();
-                } else if (typeof rawParentId === 'string') {
-                    parentId = rawParentId.trim();
+                    parentIdStr = String(rawParentId[0] ?? '').trim();
                 } else if (rawParentId !== null && rawParentId !== undefined) {
-                    parentId = String(rawParentId).trim();
+                    parentIdStr = String(rawParentId).trim();
                 }
 
-                if (!parentId) {
-                    if (idx < 3) console.warn(`DIAG stage row[${idx}] has no parent_id, keys:`, Object.keys(stage));
+                // Remove any non-numeric/alpha prefix junk (e.g. Airtable rec IDs are ignored)
+                // Valid yoga IDs are purely numeric, possibly with letter suffix like "172a"
+                if (!parentIdStr || !/^\d/.test(parentIdStr)) {
+                    if (idx < 5) console.warn(`DIAG stage[${idx}] unusable parentId="${parentIdStr}" rawParentId=`, rawParentId, 'keys:', Object.keys(stage));
                     return;
                 }
 
-                // Strip leading zeros, then re-pad to 3 digits
-                const parentKey = parentId.replace(/^0+/, '').padStart(3, '0');
+                // Normalise: strip leading zeros, re-pad to 3 digits
+                const numPart = parentIdStr.match(/^(\d+)/);
+                const suffix = parentIdStr.replace(/^\d+/, '');
+                const parentKey = numPart[1].replace(/^0+/, '').padStart(3, '0') + suffix;
 
                 if (!normalized[parentKey]) {
-                    if (idx < 3) console.warn(`DIAG stage row[${idx}] parentKey "${parentKey}" not found in library`);
+                    if (idx < 5) console.warn(`DIAG stage[${idx}] parentKey "${parentKey}" not in asanaLibrary (rawParentId=`, rawParentId, ')');
                     return;
                 }
 
-                const stageKey = stage.Stage_Name ?? stage.stage_name ?? '';
-                if (stageKey) {
-                    normalized[parentKey].variations[stageKey] = {
-                        technique: stage.Full_Technique ?? stage.full_technique ?? '',
-                        shorthand: stage.Shorthand ?? stage.shorthand ?? '',
-                        title: stage.Title ?? stage.title ?? `Stage ${stageKey}`
-                    };
+                const stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
+                if (!stageKey) {
+                    if (idx < 5) console.warn(`DIAG stage[${idx}] has no Stage_Name, keys:`, Object.keys(stage));
+                    return;
+                }
+
+                normalized[parentKey].variations[stageKey] = {
+                    technique: stage.Full_Technique ?? stage.full_technique ?? '',
+                    shorthand: stage.Shorthand ?? stage.shorthand ?? '',
+                    title: stage.Title ?? stage.title ?? `Stage ${stageKey}`
+                };
+
+                // Targeted confirmation for asana 234
+                if (parentKey === '234') {
+                    console.warn(`DIAG ✓ injected stage "${stageKey}" into asana 234`);
                 }
             });
         }
