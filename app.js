@@ -1862,24 +1862,29 @@ function renderBrowseList(items) {
    ========================================================================== */
 
 function startBrowseAsana(asma) {
-   const plates = (asma.finalPlates && asma.finalPlates.length) ? asma.finalPlates : asma.interPlates;
-   if (!plates || !plates.length) return;
+    const plates = (asma.finalPlates && asma.finalPlates.length) ? asma.finalPlates : asma.interPlates;
+    // Fallback: if no specific plates, just use the ID
+    const targetId = (plates && plates.length) ? plates : asma.asanaNo;
+    
+    if (!targetId) return;
 
-   stopTimer();
-   running = false;
-   $("startStopBtn").textContent = "Start";
+    stopTimer();
+    running = false;
+    $("startStopBtn").textContent = "Start";
 
-   const variationName = asma.variation || "";
-   const fullName = variationName ? `${asma.english} (${variationName})` : asma.english;
+    const variationName = asma.variation || "";
+    const fullName = variationName ? `${asma.english} (${variationName})` : asma.english;
 
-   currentSequence = {
-      title: `Browse: ${fullName}`,
-      category: "Browse",
-      poses: [[plates, 60, fullName]]
-   };
-   currentIndex = 0;
-   setPose(0);
-   closeBrowse();
+    // Sequence format: [ID, Seconds, Label, VariationKey, Note]
+    currentSequence = {
+        title: `Browse: ${fullName}`,
+        category: "Browse",
+        poses: [[targetId, 60, fullName, variationName, ""]] // Added variationName here
+    };
+    
+    currentIndex = 0;
+    setPose(0);
+    closeBrowse();
 }
 
 function showAsanaDetail(asana) {
