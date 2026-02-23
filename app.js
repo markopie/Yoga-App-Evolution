@@ -598,7 +598,23 @@ async function loadCourses() {
             sequences = [];
             return;
         }
-
+        try {
+            const { data: userSeqs } = await supabase.from('user_sequences').select('*');
+            if (userSeqs) {
+                userSeqs.forEach(seq => {
+                    const poses = parseSequenceText(seq.sequence_text);
+                    if (poses && poses.length > 0) {
+                        courses.push({
+                            title: seq.title,
+                            category: seq.category || 'My Sequences',
+                            poses: poses,
+                            isUserSequence: true,
+                            supabaseId: seq.id
+                        });
+                    }
+                });
+            }
+        } catch(e) { console.error("Error loading user sequences", e); }
         console.log(`Fetched ${coursesData.length} courses`);
         console.warn('DIAG course row[0] keys:', Object.keys(coursesData[0]));
         console.warn('DIAG course row[0] sample:', JSON.stringify(coursesData[0]).slice(0, 300));
@@ -1578,7 +1594,6 @@ function prevPose() {
 /* ==========================================================================
    RENDERER (SetPose)
    ========================================================================== */
-
    function setPose(idx, keepSamePose = false) {
     if (!currentSequence) return;
     const poses = currentSequence.poses || [];
@@ -1595,14 +1610,10 @@ function prevPose() {
         needsSecondSide = false;
     }
 
-    // 2. DATA EXTRACTION (Fixed Indexes)
+    // 2. DATA EXTRACTION
     const currentPose = poses[idx];
-    // Structure: [ID, Seconds, Label, VariationKey, Note]
     const rawIdField = currentPose[0];
     const seconds    = currentPose[1];
-    const label      = currentPose[2];
-    const varKey     = currentPose[3]; // Index 3 = Variation Key
-    const note       = currentPose[4] || ""; // Index 4 = Note
     
     let lookupId = Array.isArray(rawIdField) ? rawIdField[0] : rawIdField;
     lookupId = normalizePlate(lookupId);
@@ -1622,84 +1633,153 @@ function prevPose() {
         needsSecondSide = true;
     }
 
-    // --- NEW SHORTHAND EXTRACTION ---
-    let displayShorthand = "";
-    let displayTechnique = asana ? (asana.technique || "") : "";
+    // --- NEW: VARIATION & NOTE EXTRACTION ---
+    // Combine all extra array fields to cleanly parse brackets vs actual notes
+    let rawExtras = [currentPose[2], currentPose[3], currentPose[4]].filter(Boolean).join(" ").trim();
+    let variationTitle = "";
+    let actualNote = "";
+    let baseOverrideName = "";
 
-    // Check if we have a variation object (The new standard)
-    if (asana && varKey && asana.variations && asana.variations[varKey]) {
-        const v = asana.variations[varKey];
-        // Handle both object and legacy string
-        if (typeof v === "string") {
-            displayTechnique = v;
-        } else {
-            displayShorthand = v.shorthand || "";
-            displayTechnique = v.technique || "";
-        }
+    const bracketMatch = rawExtras.match(/\[(.*?)\]/);
+    if (bracketMatch) {
+        variationTitle = bracketMatch[1].trim(); // Extracts "Modified I (On ledge)"
+        // Remove the bracketed string to leave just the real notes
+        actualNote = rawExtras.replace(bracketMatch[0], "").replace(/^[\s\-\|]+/, "").trim();
+    } else {
+        // Legacy fallback: If no brackets exist, currentPose[2] acts as a base name override
+        baseOverrideName = currentPose[2] || "";
+        actualNote = [currentPose[3], currentPose[4]].filter(Boolean).join(" ").trim();
     }
 
-    // 4. HEADER UI
-    const nameEl = document.getElementById("poseName");
-    if (nameEl) {
-        let finalTitle = label || (asana ? displayName(asana) : "Pose");
+  // --- VARIATION TECHNIQUE & SHORTHAND ---
+  let displayShorthand = "";
+  let displayTechnique = asana ? (asana.technique || asana.Technique || "") : "";
 
-        // Append Side Suffix
-        if (asana && asana.requiresSides) {
-            finalTitle += (currentSide === "right" ? " (Right)" : " (Left)");
-        }
-        nameEl.textContent = finalTitle;
-    }
+  // Helper to strip accents for safe comparison (e.g. Ujjāyī -> ujjayi)
+  const normalizeText = (str) => (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
-    // 5. SHORTHAND UI (New)
-    const shEl = document.getElementById("poseShorthand");
-    if (shEl) {
-        shEl.textContent = displayShorthand;
-        shEl.style.display = displayShorthand ? "block" : "none";
-    }
+  if (asana && asana.variations && variationTitle) {
+      const normVarTitle = normalizeText(variationTitle);
+      let foundVariation = false;
 
-    // 6. GLOSSARY UI (New)
+      // Pass 1: Exact matches (ignoring accents)
+      for (const [vKey, vData] of Object.entries(asana.variations)) {
+          const normTitle = normalizeText(typeof vData === 'object' ? (vData.Title || "") : "");
+          const normShort = normalizeText(typeof vData === 'object' ? (vData.shorthand || vData.Shorthand || "") : "");
+          const normKey = vKey.toLowerCase();
+          
+          if (normVarTitle === normTitle || 
+              normVarTitle === normShort || 
+              normVarTitle === `stage ${normKey}` || 
+              normVarTitle === normKey) {
+              
+              // Use Full_Technique from the stages table
+              const varTech = (typeof vData === 'object') ? (vData.Full_Technique || vData.technique) : vData;
+              if (varTech) displayTechnique = varTech;
+              if (typeof vData === 'object') displayShorthand = vData.shorthand || vData.Shorthand || "";
+              
+              foundVariation = true;
+              break;
+          }
+      }
+
+      // Pass 2: Fuzzy Roman Numeral Match (e.g., if title is "Ujjayi VI", it catches the "VI")
+      if (!foundVariation) {
+          const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
+          for (const vKey of sortedKeys) {
+              const normKey = vKey.toLowerCase();
+              const endsWithRegex = new RegExp(`\\b${normKey}$`, 'i');
+              
+              if (endsWithRegex.test(normVarTitle)) {
+                  const vData = asana.variations[vKey];
+                  const varTech = (typeof vData === 'object') ? (vData.Full_Technique || vData.technique) : vData;
+                  if (varTech) displayTechnique = varTech;
+                  if (typeof vData === 'object') displayShorthand = vData.shorthand || vData.Shorthand || "";
+                  break;
+              }
+          }
+      }
+  } 
+  // Legacy fallback if the old index 3 was used
+  else if (asana && currentPose[3] && asana.variations && asana.variations[currentPose[3]]) {
+      const v = asana.variations[currentPose[3]];
+      if (typeof v === "string") {
+          displayTechnique = v;
+      } else {
+          displayShorthand = v.shorthand || v.Shorthand || "";
+          displayTechnique = v.Full_Technique || v.technique || "";
+      }
+  }
+
+  // 4. HEADER UI
+  const nameEl = document.getElementById("poseName");
+  if (nameEl) {
+      let finalTitle = baseOverrideName || (asana ? displayName(asana) : "Pose");
+
+      // Append Variation nicely
+      if (variationTitle) {
+          finalTitle += ` <span style="font-weight:normal; color:#666; font-size:0.85em;">— ${variationTitle}</span>`;
+      }
+      // Append Sides
+      if (asana && asana.requiresSides) {
+          finalTitle += (currentSide === "right" ? " (Right)" : " (Left)");
+      }
+      
+      nameEl.innerHTML = finalTitle; // Use innerHTML to parse the appended span
+  }
+
+  // 5. SHORTHAND UI
+  const shEl = document.getElementById("poseShorthand");
+  if (shEl) {
+      shEl.textContent = displayShorthand;
+      shEl.style.display = displayShorthand ? "block" : "none";
+  }
+    // 6. GLOSSARY UI
     if (typeof renderSmartGlossary === "function") {
         renderSmartGlossary(displayShorthand);
     }
 
-    // 7. INSTRUCTIONS UI (Updated with <details>)
+    // 7. INSTRUCTIONS UI
     const textContainer = document.getElementById("poseInstructions");
     if (textContainer) {
         if (displayTechnique && typeof formatTechniqueText === 'function') {
             textContainer.style.display = "block";
+            
+            // Dynamically prepend the variation title in bold IF a variation is active
+            let techniqueHTML = formatTechniqueText(displayTechnique);
+            if (variationTitle) {
+                techniqueHTML = `<div style="font-weight:600; color:#333; margin-bottom:8px; padding-bottom:5px; border-bottom:1px solid #ddd;">${variationTitle} Instructions:</div>` + techniqueHTML;
+            }
+
             textContainer.innerHTML = `
                 <details>
                     <summary style="cursor:pointer; color:#2e7d32; font-weight:600; padding:5px 0;">View Full Technique Instructions</summary>
-                    <div style="margin-top:10px; padding:10px; background:#f9f9f9; border-radius:8px; white-space: pre-wrap;">${formatTechniqueText(displayTechnique)}</div>
+                    <div style="margin-top:10px; padding:10px; background:#f9f9f9; border-radius:8px; white-space: pre-wrap;">${techniqueHTML}</div>
                 </details>`;
         } else {
             textContainer.style.display = "none";
         }
     }
 
-    // 8. NOTES UI
-    if (typeof updatePoseNote === "function") updatePoseNote(note);
-    // Legacy support if you still use this function:
+    // 8. NOTES UI (Passes only the clean actualNote)
+    if (typeof updatePoseNote === "function") updatePoseNote(actualNote);
     if (typeof loadUserPersonalNote === "function") loadUserPersonalNote(lookupId);
 
     // 9. META UI & AUDIO BUTTON
     const metaContainer = document.getElementById("poseMeta");
     if (metaContainer) {
-        metaContainer.innerHTML = ""; // Clear previous
+        metaContainer.innerHTML = ""; 
 
-        // Create a span for the text (so we can hide it via CSS)
         const infoSpan = document.createElement("span");
-        infoSpan.className = "meta-text-only"; // CSS will hide this class in running-mode
+        infoSpan.className = "meta-text-only"; 
         infoSpan.textContent = `ID: ${lookupId} • ${seconds}s `;
         metaContainer.appendChild(infoSpan);
 
-        // Add the Audio button (This stays visible because it's not inside infoSpan)
         if (asana) {
             const btn = document.createElement("button");
-            btn.className = "tiny"; // Keeps your existing design
-            btn.innerHTML = "🔊";   // Keeps your existing icon
+            btn.className = "tiny"; 
+            btn.innerHTML = "🔊";   
             btn.style.marginLeft = "10px";
-            // Prevent button from triggering other clicks
             btn.onclick = (e) => { 
                 e.stopPropagation(); 
                 playAsanaAudio(asana); 
@@ -1731,30 +1811,25 @@ function prevPose() {
         }
     }
 
-    // --- SYNC OVERLAY CONTENT (The critical fix) ---
+    // --- SYNC OVERLAY CONTENT ---
     const overlayName = document.getElementById("focusPoseName");
     const overlayImageWrap = document.getElementById("focusImageWrap");
     
-    // Sync Name
-    if (overlayName && nameEl) overlayName.textContent = nameEl.textContent;
+    if (overlayName && nameEl) overlayName.innerHTML = nameEl.innerHTML; // Sync Name + Variation Span
     
-    // Sync Image
     if (overlayImageWrap) {
-        overlayImageWrap.innerHTML = ""; // Clear old image
-        // We re-use your smart URL logic to get fresh image source
+        overlayImageWrap.innerHTML = ""; 
         const focusUrls = smartUrlsForPoseId(lookupId);
         if (focusUrls.length > 0) {
-            // Create a fresh image tag for the overlay
             const img = document.createElement("img");
-            img.src = focusUrls[0]; // Use primary image
+            img.src = focusUrls[0]; 
             overlayImageWrap.appendChild(img);
         }
     }
-    // ----------------------------
 
     // 11. AUDIO TRIGGER
     if (running && asana) {
-         playAsanaAudio(asana, label); 
+         playAsanaAudio(asana, baseOverrideName); 
     }
 }
 
@@ -2094,84 +2169,127 @@ function startBrowseAsana(asma) {
    setPose(0);
    closeBrowse();
 }
-
 function showAsanaDetail(asana) {
-    const d = document.getElementById("browseDetail");
+    const d = document.getElementById('browseDetail');
     if (!d) return;
-
-    // 1. Basic Info
+  
+    const canEdit = window.enableEditing === true;
+  
+    // 1. Basic Info & Header
     let content = `
-        <h2>${displayName(asana)}</h2>
-        ${(asana.iast && prefersIAST() && asana.english) ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;">${asana.english}</div>` : (asana.iast && !prefersIAST()) ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;font-style:italic;">${asana.iast}</div>` : ""}
-        <div class="muted">ID: ${asana.id || asana.asanaNo}</div>
-        <button id="playNameBtn" class="tiny" style="margin-top:10px;">🔊 Play Audio</button>
-        <hr>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+        <h2 style="margin:0;">${displayName(asana)}</h2>
+        ${canEdit ? `
+          <button onclick="openAsanaEditor('${asana.id || asana.asanaNo}')" 
+                  class="tiny" 
+                  style="background: #e3f2fd; border: 1px solid #2196f3; color: #1976d2; padding: 4px 8px; cursor: pointer;">
+            ✏️ Edit
+          </button>
+        ` : ''}
+      </div>
+      ${
+        asana.iast && prefersIAST() && asana.english
+          ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;">${asana.english}</div>`
+          : asana.iast && !prefersIAST()
+          ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;font-style:italic;">${asana.iast}</div>`
+          : ''
+      }
+      <div class="muted">ID: ${asana.id || asana.asanaNo}</div>
+      <button id="playNameBtn" class="tiny" style="margin-top:10px;">🔊 Play Audio</button>
+      <hr>
     `;
-
+  
     // 2. Images
-    const urls = smartUrlsForPoseId(asana.id || asana.asanaNo);
-    if (urls.length > 0) {
-        content += `<div class="browse-collage">`;
-        urls.forEach(src => {
-            content += `<img src="${src}" style="max-width:100%; border-radius:8px; margin-bottom:10px;">`;
-        });
-        content += `</div>`;
+    const urls = typeof smartUrlsForPoseId === 'function' ? smartUrlsForPoseId(asana.id || asana.asanaNo) : [];
+    if (urls && urls.length > 0) {
+      content += `<div class="browse-collage">`;
+      urls.forEach((src) => {
+        content += `<img src="${src}" style="max-width:100%; border-radius:8px; margin-bottom:10px;">`;
+      });
+      content += `</div>`;
     }
-
+  
     // 3. Technique (Base Pose)
-    if (asana.technique) {
-        content += `<h3>Technique</h3>
-        <div class="technique-text">${formatTechniqueText(asana.technique)}</div>`;
+    const baseTech = asana.technique || asana.Technique || "";
+    if (baseTech) {
+      content += `<h3>Base Technique</h3>
+          <div class="technique-text" style="white-space: pre-wrap;">${
+            typeof formatTechniqueText === 'function' ? formatTechniqueText(baseTech) : baseTech
+          }</div>`;
     }
-
+  
     d.innerHTML = content;
+  
+    // 4. Variations Loop (SMART TITLE EXTRACTION)
+  if (asana.variations && Object.keys(asana.variations).length > 0) {
+    const varSection = document.createElement('div');
+    varSection.innerHTML = '<hr><h3>Variations & Stages</h3>';
 
-    // 4. Variations Loop (The Fix for Objects)
-    if (asana.variations) {
-        const varSection = document.createElement("div");
-        varSection.innerHTML = "<hr><h3>Variations</h3>";
+    // Sort the keys so they appear in correct order (I, II, III...)
+    const sortedKeys = Object.keys(asana.variations).sort();
+
+    sortedKeys.forEach(key => {
+      const val = asana.variations[key];
+      let techText = '';
+      let shortText = '';
+      let titleText = `Stage ${key}`; // Default fallback
+
+      // Extract the correct fields from the database object
+      if (typeof val === 'string') {
+        techText = val;
+      } else if (val && typeof val === 'object') {
+        // Look for multiple case variations of technique and shorthand
+        techText = val.Full_Technique || val.technique || val.Technique || '';
+        shortText = val.shorthand || val.Shorthand || '';
         
-        Object.entries(asana.variations).forEach(([key, val]) => {
-            // DETECT: Is it a legacy string or a new object?
-            let techText = "";
-            let shortText = "";
-
-            if (typeof val === "string") {
-                techText = val;
-            } else if (val && typeof val === "object") {
-                techText = val.technique || "";
-                shortText = val.shorthand || "";
-            }
-
-            const wrapper = document.createElement("div");
-            wrapper.className = "variation-block";
-            wrapper.style.cssText = "background:#f9f9f9; padding:10px; margin-bottom:10px; border-radius:6px;";
-            
-            let html = `<h4>Stage ${key}</h4>`;
-            
-            // Show Shorthand if exists
-            if (shortText) {
-                html += `<div style="color:#2e7d32; font-weight:bold; margin-bottom:8px; font-family:monospace; font-size:1.1em;">
-                            ${shortText}
-                         </div>`;
-            }
-            
-            html += `<div class="technique-text">${formatTechniqueText(techText)}</div>`;
-            wrapper.innerHTML = html;
-            varSection.appendChild(wrapper);
-        });
+        // THE FIX: Check for "title" (lowercase) which matches your console log
+        const actualTitle = val.Title || val.title || val.Stage_Title || val.stage_title;
         
-        d.appendChild(varSection);
+        if (actualTitle && String(actualTitle).trim() !== '') {
+            titleText = String(actualTitle).trim();
+        }
+      }
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'variation-block';
+      wrapper.style.cssText = 'background:#f9f9f9; padding:12px; margin-bottom:12px; border-radius:8px; border: 1px solid #eee;';
+
+      // Render the Title
+      let html = `<h4 style="margin-top:0; margin-bottom:8px; color:#333; font-size:1.1rem;">${titleText}</h4>`;
+
+      // Render Shorthand if it exists
+      if (shortText) {
+        html += `<div style="color:#2e7d32; font-weight:bold; margin-bottom:8px; font-family:monospace; font-size:1rem;">
+                    ${shortText}
+                 </div>`;
+      }
+
+      // Render Technique Instructions
+      if (techText) {
+          const formattedTech = typeof formatTechniqueText === 'function' ? formatTechniqueText(techText) : techText;
+          html += `<div class="technique-text" style="white-space: pre-wrap; font-size:0.95rem; color:#444;">${formattedTech}</div>`;
+      } else {
+          html += `<div class="muted" style="font-size:0.85rem;">No specific instructions provided.</div>`;
+      }
+
+      wrapper.innerHTML = html;
+      varSection.appendChild(wrapper);
+    });
+
+    d.appendChild(varSection);
+  }
+  
+    // 5. Bind Audio Button
+    const btn = document.getElementById('playNameBtn');
+    if (btn) btn.onclick = () => playAsanaAudio(asana, null);
+  
+    // 6. Admin Injector (if applicable)
+    const adminContainer = document.getElementById('adminFields'); 
+    if (typeof adminMode !== 'undefined' && adminMode && adminContainer && typeof renderAdminFields === 'function') {
+        renderAdminFields(d, asana);
     }
+  }
 
-    // Bind Audio Button
-    const btn = document.getElementById("playNameBtn");
-    if (btn) btn.onclick = () => playAsanaAudio(asana, null); // null label = browse context
-
-    // Admin Injector
-    const adminContainer = document.getElementById("adminFields"); // Logic for admin injection if needed
-    if (adminMode && adminContainer) renderAdminFields(d, asana);
-}
 
 function renderAdminDetailTools(container, asma, rowVariations) {
     const adminDetails = document.createElement("details");
@@ -2691,40 +2809,54 @@ function renderMediaManager(container, asma, rowVariations) {
    FILTER HELPERS
    ========================================================================== */
 
-function applyBrowseFilters() {
-   const q = $("browseSearch").value.trim();
-   const plateQ = parsePlateQuery($("browsePlate").value);
-   const noQ = $("browseAsanaNo").value.trim();
-   const cat = $("browseCategory").value;
-   const finalsOnly = $("browseFinalOnly").checked;
-
-   const asanaIndex = getAsanaIndex();
-   const filtered = asanaIndex.filter(a => {
-      if (!matchesText(a, q)) return false;
-      if (!matchesPlate(a, plateQ)) return false;
-      if (!matchesAsanaNo(a, noQ)) return false;
-      if (!matchesCategory(a, cat)) return false;
-      if (finalsOnly && (!a.finalPlates || !a.finalPlates.length)) return false;
-      return true;
-   });
-
-   const uniqueFiltered = [];
-   const seen = new Set();
-   filtered.forEach(a => {
-      const name = (a.english || a['Yogasana Name'] || "").toLowerCase().trim();
-      if (!seen.has(name)) {
-         seen.add(name);
-         uniqueFiltered.push(a);
-      }
-   });
-
-   uniqueFiltered.sort((x, y) => {
-      const ax = parseFloat(x.asanaNo), ay = parseFloat(y.asanaNo);
-      return (Number.isFinite(ax) ? ax : 9999) - (Number.isFinite(ay) ? ay : 9999);
-   });
-
-   renderBrowseList(uniqueFiltered);
-}
+   function applyBrowseFilters() {
+    const q = $("browseSearch").value.trim();
+    const plateQ = parsePlateQuery($("browsePlate").value);
+    const noQ = $("browseAsanaNo").value.trim();
+    const cat = $("browseCategory").value;
+    const finalsOnly = $("browseFinalOnly").checked;
+ 
+    // NEW HELPER: Strips all accents/diacritics and converts to lowercase
+    const normalizeText = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const normQ = normalizeText(q);
+ 
+    const asanaIndex = getAsanaIndex();
+    const filtered = asanaIndex.filter(a => {
+       // 1. Accent-aware text match
+       if (normQ) {
+           const name = normalizeText(a.Name || a.name || "");
+           const eng = normalizeText(a.English_Name || a.english || "");
+           const iast = normalizeText(a.IAST || a.iast || a['Yogasana Name'] || "");
+           
+           const isMatch = name.includes(normQ) || eng.includes(normQ) || iast.includes(normQ);
+           if (!isMatch) return false;
+       }
+ 
+       // 2. Your existing custom filters
+       if (!matchesPlate(a, plateQ)) return false;
+       if (!matchesAsanaNo(a, noQ)) return false;
+       if (!matchesCategory(a, cat)) return false;
+       if (finalsOnly && (!a.finalPlates || !a.finalPlates.length)) return false;
+       return true;
+    });
+ 
+    const uniqueFiltered = [];
+    const seen = new Set();
+    filtered.forEach(a => {
+       const name = (a.english || a['Yogasana Name'] || "").toLowerCase().trim();
+       if (!seen.has(name)) {
+          seen.add(name);
+          uniqueFiltered.push(a);
+       }
+    });
+ 
+    uniqueFiltered.sort((x, y) => {
+       const ax = parseFloat(x.asanaNo), ay = parseFloat(y.asanaNo);
+       return (Number.isFinite(ax) ? ax : 9999) - (Number.isFinite(ay) ? ay : 9999);
+    });
+ 
+    renderBrowseList(uniqueFiltered);
+ }
 
 function matchesText(asma, q) {
    if (!q) return true;
@@ -2989,6 +3121,255 @@ if (localStorage.getItem("admin_mode_enabled") === "true") {
 
 // #endregion
 // #region 8. ADMIN & DATA LAYER
+
+
+
+
+function builderOpen(mode, seq) {
+    builderMode = mode;
+    builderPoses = [];
+    builderEditingCourseIndex = -1;
+    builderEditingSupabaseId = seq ? seq.supabaseId : null;
+ 
+    const titleEl = document.getElementById("builderTitle");
+    const modeLabel = document.getElementById("builderModeLabel");
+    const catSel = document.getElementById("builderCategory");
+ 
+    if (catSel) {
+       const cats = [...new Set((courses || []).map(c => c.category).filter(Boolean))].sort();
+       const datalist = document.getElementById("builderCategoryList");
+       if (datalist) datalist.innerHTML = cats.map(c => `<option value="${c}"></option>`).join("");
+    }
+ 
+    if (mode === "new") {
+       if (modeLabel) modeLabel.textContent = "New Sequence";
+       if (titleEl) titleEl.value = "";
+       if (catSel) catSel.value = "";
+    } else {
+       if (!seq) { alert("No sequence to edit."); return; }
+       if (modeLabel) modeLabel.textContent = "Edit Sequence";
+       if (titleEl) titleEl.value = seq.title || "";
+       if (catSel) catSel.value = seq.category || "";
+       builderEditingCourseIndex = courses.findIndex(c => c.title === seq.title);
+ 
+       const library = getAsanaIndex();
+       const libraryArray = Array.isArray(library) ? library : Object.values(library);
+ 
+       (seq.poses || []).forEach(p => {
+          const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
+          const id = String(rawId || "").padStart(3, '0');
+          const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === id);
+          
+          // 1. Reconstruct everything after the duration using pipes
+          let rawExtras = [p[2], p[3], p[4]].filter(Boolean).join(" | ").trim();
+          let variation = "";
+          let extractedLabel = "";
+ 
+          // 2. Extract bracketed text
+          const bracketMatch = rawExtras.match(/\[(.*?)\]/);
+          if (bracketMatch) {
+              extractedLabel = bracketMatch[1].trim(); 
+              // Remove the brackets from the string so it doesn't end up in notes
+              rawExtras = rawExtras.replace(bracketMatch[0], "").replace(/^[\s\|]+/, "").trim();
+          } else {
+              extractedLabel = rawExtras; // Legacy fallback
+              rawExtras = "";
+          }
+ 
+          // 3. Match against Variations
+          if (asana && asana.variations && extractedLabel) {
+              // Sort by length so "XII" matches before "II" or "I"
+              const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
+              
+              for (const vKey of sortedKeys) {
+                  const vData = asana.variations[vKey];
+                  const title = (typeof vData === 'object' && vData.Title) ? vData.Title.toLowerCase() : "";
+                  
+                  // Look for the Roman numeral as a standalone word (e.g. catches "XII" in "Ujjāyī XII (lying)")
+                  const regex = new RegExp(`\\b${vKey}\\b`, 'i'); 
+                  
+                  if (extractedLabel.toLowerCase() === title || regex.test(extractedLabel)) {
+                      variation = vKey;
+                      extractedLabel = ""; // Consume it so it doesn't go to notes
+                      break;
+                  }
+              }
+          }
+ 
+          // 4. Base Pose Check (if it's just "[Savasana]", consume it)
+          if (!variation && asana && extractedLabel) {
+              const target = extractedLabel.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              const name = (asana.Name || asana.name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              if (target.includes(name)) {
+                  extractedLabel = ""; 
+              }
+          }
+ 
+          // 5. If it wasn't a variation OR a base pose, put it back in notes
+          if (extractedLabel && !variation) {
+              rawExtras = (extractedLabel + (rawExtras ? " | " + rawExtras : "")).trim();
+          }
+ 
+          builderPoses.push({
+             id: id,
+             name: asana ? (asana.Name || asana.name || displayName(asana)) : id,
+             duration: Number(p[1]) || 30,
+             variation: variation,
+             note: rawExtras
+          });
+       });
+    }
+ 
+    builderRender();
+    document.getElementById("editCourseBackdrop").style.display = "flex";
+    setTimeout(() => { const s = document.getElementById("builderSearch"); if(s) s.focus(); }, 50);
+ }
+
+ function builderRender() {
+    const tbody = document.getElementById("builderTableBody");
+    tbody.innerHTML = "";
+    document.getElementById("builderEmptyMsg").style.display = builderPoses.length ? "none" : "block";
+ 
+    let totalSec = 0;
+    const library = getAsanaIndex();
+    const libraryArray = Array.isArray(library) ? library : Object.values(library);
+ 
+    builderPoses.forEach((pose, idx) => {
+       totalSec += Number(pose.duration) || 0;
+       const tr = document.createElement("tr");
+       
+       const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === pose.id);
+       const variations = asana ? (asana.variations || {}) : {};
+       const hasVars = Object.keys(variations).length > 0;
+ 
+       // Dropdown now ONLY shows Title or "Stage X"
+       let varSelectHTML = '';
+       if (hasVars) {
+           varSelectHTML = `
+              <select class="b-var" data-idx="${idx}" style="margin-left:8px; padding:2px 4px; border:1px solid #1976d2; border-radius:4px; font-size:0.75rem; background:#e3f2fd; color:#005580; max-width: 160px;">
+                 <option value="">Base Pose</option>
+                 ${Object.entries(variations).map(([vKey, vData]) => {
+                     let optionTitle = `Stage ${vKey}`;
+                     if (typeof vData === 'object' && vData.Title) {
+                         optionTitle = vData.Title; // Strictly use the Title
+                     }
+                     const sel = (pose.variation === vKey) ? 'selected' : '';
+                     return `<option value="${vKey}" ${sel}>${optionTitle}</option>`;
+                 }).join('')}
+              </select>
+           `;
+       }
+       
+       tr.innerHTML = `
+          <td style="padding:8px; text-align:center; color:#888;">${idx + 1}</td>
+          <td style="padding:8px;">
+             <div style="font-weight:bold; margin-bottom:4px; line-height: 1.2;">${pose.name || '<span style="color:#aaa; font-style:italic;">Unknown</span>'}</div>
+             <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; font-size:0.75rem; color:#666;">
+                ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" style="width:50px; padding:2px 4px; border:1px solid #ccc; border-radius:4px; font-size:0.8rem; font-family:monospace;">
+                ${varSelectHTML}
+             </div>
+          </td>
+          <td style="padding:8px;">
+             <input type="number" class="b-dur" data-idx="${idx}" value="${pose.duration}" style="width:60px; padding:4px; border:1px solid #ccc; border-radius:4px;">
+          </td>
+          <td style="padding:8px;">
+             <input type="text" class="b-note" data-idx="${idx}" value="${(pose.note || '').replace(/"/g, '&quot;')}" placeholder="Optional notes..." style="width:100%; padding:4px; border:1px solid #ccc; border-radius:4px;">
+          </td>
+          <td style="padding:8px; text-align:center; white-space:nowrap;">
+             <button class="tiny" onclick="movePose(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+             <button class="tiny" onclick="movePose(${idx}, 1)" ${idx === builderPoses.length - 1 ? 'disabled' : ''}>▼</button>
+             <button class="tiny warn" onclick="removePose(${idx})" style="margin-left:4px;">✕</button>
+          </td>
+       `;
+       tbody.appendChild(tr);
+    });
+ 
+    // Listeners
+    tbody.querySelectorAll('.b-id').forEach(el => {
+       el.onchange = (e) => {
+          const idx = e.target.dataset.idx;
+          let newId = e.target.value.trim();
+          if (!isNaN(newId) && newId.length > 0) newId = newId.padStart(3, '0');
+          builderPoses[idx].id = newId;
+ 
+          const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === newId);
+          builderPoses[idx].name = asana ? (asana.Name || asana.name || displayName(asana)) : "Unknown Pose";
+          builderPoses[idx].variation = ""; 
+          builderRender(); 
+       };
+    });
+ 
+    tbody.querySelectorAll('.b-var').forEach(el => {
+       el.onchange = (e) => builderPoses[e.target.dataset.idx].variation = e.target.value;
+    });
+ 
+    tbody.querySelectorAll('.b-dur').forEach(el => el.onchange = (e) => { builderPoses[e.target.dataset.idx].duration = Number(e.target.value) || 0; builderRender(); });
+    tbody.querySelectorAll('.b-note').forEach(el => el.oninput = (e) => builderPoses[e.target.dataset.idx].note = e.target.value);
+ 
+    const statsEl = document.getElementById("builderStats");
+    if (statsEl) statsEl.textContent = `${builderPoses.length} poses · ${Math.floor(totalSec/60)}m ${totalSec%60}s`;
+ }
+function movePose(idx, dir) {
+    if (idx + dir < 0 || idx + dir >= builderPoses.length) return;
+    const temp = builderPoses[idx];
+    builderPoses[idx] = builderPoses[idx + dir];
+    builderPoses[idx + dir] = temp;
+    builderRender();
+}
+
+function removePose(idx) {
+    builderPoses.splice(idx, 1);
+    builderRender();
+}
+
+// Search Logic
+document.getElementById('builderSearch').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const resBox = document.getElementById('builderSearchResults');
+    if (q.length === 0) return resBox.style.display = 'none';
+
+    const hits = getAsanaIndex().filter(a => {
+        const txt = ((a.Name||"") + " " + (a.English_Name||"") + " " + (a.IAST||"") + " " + (a.ID||"")).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return txt.includes(q);
+    }).slice(0, 15);
+
+    resBox.innerHTML = hits.map(a => `
+        <div style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;" 
+             onclick="builderPoses.push({id: '${a.ID || a.id}', name: '${(a.Name || a.name).replace(/'/g,"\\'")}', duration: 30, note: ''}); document.getElementById('builderSearch').value=''; document.getElementById('builderSearchResults').style.display='none'; builderRender();">
+            <strong>${a.Name || a.name}</strong> <span style="color:#888; font-size:0.8em;">(ID: ${a.ID || a.id})</span>
+        </div>
+    `).join("");
+    resBox.style.display = hits.length ? 'block' : 'none';
+});
+
+// Save Logic
+document.getElementById('editCourseSaveBtn').onclick = async () => {
+   const title = document.getElementById('builderTitle').value.trim();
+   const category = document.getElementById('builderCategory').value.trim() || "My Sequences";
+   if (!title || !builderPoses.length) return alert("Title and at least 1 pose required.");
+
+   const sequenceText = builderPoses.map(p => `${p.id} | ${p.duration}${p.note ? ` | ${p.note}` : ''}`).join("\n");
+   const totalSec = builderPoses.reduce((s, p) => s + p.duration, 0);
+
+   try {
+      const payload = { title, category, sequence_text: sequenceText, pose_count: builderPoses.length, total_seconds: totalSec };
+      
+      if (builderEditingSupabaseId) {
+          await supabase.from('user_sequences').update(payload).eq('id', builderEditingSupabaseId);
+      } else {
+          await supabase.from('user_sequences').insert([payload]);
+      }
+      
+      alert("Sequence Saved!");
+      document.getElementById("editCourseBackdrop").style.display = "none";
+      loadCourses(); // Reload everything so it appears in the list instantly
+   } catch(e) {
+      alert("Error saving: " + e.message);
+   }
+};
+
+// Close listener
+document.getElementById('editCourseCloseBtn').onclick = () => document.getElementById('editCourseBackdrop').style.display = 'none';
 /* ==========================================================================
    DATA SAVING (CORE)
    ========================================================================== */
@@ -3659,150 +4040,13 @@ let builderMode = "edit"; // "edit" | "new"
 let builderEditingCourseIndex = -1;
 let builderEditingSupabaseId = null;
 
-function builderOpen(mode, seq) {
-   builderMode = mode;
-   builderPoses = [];
-   builderEditingCourseIndex = -1;
-   builderEditingSupabaseId = null;
 
-   const titleEl = $("builderTitle");
-   const modeLabel = $("builderModeLabel");
-   const catSel = $("builderCategory");
-
-   // Populate category dropdown from known categories
-   if (catSel) {
-      const cats = [...new Set((courses || []).map(c => c.category).filter(Boolean))].sort();
-      catSel.innerHTML = `<option value="">Category…</option>` + cats.map(c =>
-         `<option value="${c}">${c.replace(/_/g, " ")}</option>`
-      ).join("");
-   }
-
-   if (mode === "new") {
-      if (modeLabel) modeLabel.textContent = "New Sequence";
-      if (titleEl) titleEl.value = "";
-      if (catSel) catSel.value = "";
-   } else {
-      if (!seq) { alert("No sequence to edit."); return; }
-      if (modeLabel) modeLabel.textContent = "Edit Sequence";
-      if (titleEl) titleEl.value = seq.title || "";
-      if (catSel) catSel.value = seq.category || "";
-      builderEditingCourseIndex = courses.findIndex(c => c.title === seq.title);
-
-      // Convert poses into builder format
-      const library = getAsanaIndex();
-      (seq.poses || []).forEach(p => {
-         const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
-         const id = normalizePlate(String(rawId || ""));
-         const asana = library.find(a => a.id === id || a.asanaNo === id);
-         builderPoses.push({
-            id,
-            name: asana ? displayName(asana) : (rawId || ""),
-            englishName: asana ? (asana.english || asana.name || "") : "",
-            duration: Number(p[1]) || 30,
-            note: p[4] || p[2] || ""
-         });
-      });
-   }
-
-   builderRender();
-   $("editCourseBackdrop").style.display = "flex";
-   setTimeout(() => { const s = $("builderSearch"); if(s) s.focus(); }, 50);
-}
 
 function openEditCourse() {
    if (!currentSequence) { alert("Please select a course first."); return; }
    builderOpen("edit", currentSequence);
 }
-function builderRender() {
-   const tbody = $("builderTableBody");
-   const emptyMsg = $("builderEmptyMsg");
-   const table = $("builderTable");
-   if (!tbody) return;
 
-   tbody.innerHTML = "";
-
-   if (!builderPoses.length) {
-      if (emptyMsg) emptyMsg.style.display = "block";
-      if (table) table.style.display = "none";
-      builderUpdateStats();
-      return;
-   }
-   if (emptyMsg) emptyMsg.style.display = "none";
-   if (table) table.style.display = "";
-
-   builderPoses.forEach((pose, idx) => {
-      const tr = document.createElement("tr");
-      tr.style.cssText = "border-bottom:1px solid #f0f0f0;";
-      tr.dataset.idx = idx;
-
-      const isFirst = idx === 0;
-      const isLast = idx === builderPoses.length - 1;
-
-      tr.innerHTML = `
-         <td style="padding:8px 6px;text-align:center;color:#aaa;font-size:0.8rem;">${idx + 1}</td>
-         <td style="padding:6px;">
-            <div style="font-weight:600;font-size:0.88rem;line-height:1.3;">${pose.name || '<span style="color:#aaa">Unknown</span>'}</div>
-            ${pose.englishName && pose.englishName !== pose.name ? `<div style="font-size:0.75rem;color:#888;">${pose.englishName}</div>` : ""}
-            ${pose.id ? `<div style="font-size:0.7rem;color:#bbb;">ID: ${pose.id}</div>` : ""}
-         </td>
-         <td style="padding:6px;">
-            <div style="display:flex;align-items:center;gap:4px;">
-               <input type="number" class="b-dur" data-idx="${idx}" value="${pose.duration}"
-                  min="1" max="3600" style="width:60px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:0.85rem;">
-               <span style="font-size:0.75rem;color:#888;">s</span>
-            </div>
-         </td>
-         <td style="padding:6px;">
-            <input type="text" class="b-note" data-idx="${idx}" value="${(pose.note || "").replace(/"/g,'&quot;')}"
-               placeholder="[Variation I]" style="width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:0.85rem;">
-         </td>
-         <td style="padding:6px;text-align:center;white-space:nowrap;">
-            <button class="b-up tiny" data-idx="${idx}" ${isFirst ? "disabled" : ""} style="padding:2px 6px;margin:0 1px;">▲</button>
-            <button class="b-dn tiny" data-idx="${idx}" ${isLast ? "disabled" : ""} style="padding:2px 6px;margin:0 1px;">▼</button>
-         </td>
-         <td style="padding:6px;text-align:center;">
-            <button class="b-del tiny" data-idx="${idx}" style="color:#d32f2f;padding:2px 8px;">✕</button>
-         </td>
-      `;
-      tbody.appendChild(tr);
-   });
-
-   // Inline edit listeners
-   tbody.querySelectorAll(".b-dur").forEach(el => {
-      el.addEventListener("change", e => {
-         const i = Number(e.target.dataset.idx);
-         builderPoses[i].duration = parseInt(e.target.value) || 30;
-         builderUpdateStats();
-      });
-   });
-   tbody.querySelectorAll(".b-note").forEach(el => {
-      el.addEventListener("input", e => {
-         const i = Number(e.target.dataset.idx);
-         builderPoses[i].note = e.target.value;
-      });
-   });
-   tbody.querySelectorAll(".b-up").forEach(el => {
-      el.addEventListener("click", e => {
-         const i = Number(e.target.dataset.idx);
-         if (i > 0) { [builderPoses[i-1], builderPoses[i]] = [builderPoses[i], builderPoses[i-1]]; builderRender(); }
-      });
-   });
-   tbody.querySelectorAll(".b-dn").forEach(el => {
-      el.addEventListener("click", e => {
-         const i = Number(e.target.dataset.idx);
-         if (i < builderPoses.length - 1) { [builderPoses[i], builderPoses[i+1]] = [builderPoses[i+1], builderPoses[i]]; builderRender(); }
-      });
-   });
-   tbody.querySelectorAll(".b-del").forEach(el => {
-      el.addEventListener("click", e => {
-         const i = Number(e.target.dataset.idx);
-         builderPoses.splice(i, 1);
-         builderRender();
-      });
-   });
-
-   builderUpdateStats();
-}
 
 function builderUpdateStats() {
    const statsEl = $("builderStats");
@@ -3813,13 +4057,43 @@ function builderUpdateStats() {
 }
 
 function builderCompileSequenceText() {
-   return builderPoses.map(p => {
-      const id = p.id || "000";
-      const dur = p.duration || 30;
-      const note = p.note ? ` | ${p.note}` : "";
-      return `${id} | ${dur}${note}`;
-   }).join("\n");
-}
+    const library = getAsanaIndex();
+    const libraryArray = Array.isArray(library) ? library : Object.values(library);
+ 
+    return builderPoses.map(p => {
+       const id = String(p.id || "000").padStart(3, '0');
+       const dur = p.duration || 30;
+       const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === id);
+       
+       let labelPart = "";
+       
+       // If Variation is selected -> Wrap Title in Brackets
+       if (p.variation) {
+           const vData = (asana && asana.variations) ? asana.variations[p.variation] : null;
+           if (vData && typeof vData === 'object' && vData.Title) {
+               labelPart = `[${vData.Title.trim()}]`; 
+           } else {
+               labelPart = `[Stage ${p.variation}]`;
+           }
+       } 
+       // If NO variation -> Wrap Base Name in Brackets
+       else if (asana) {
+           const displayName = asana.Name || asana.name || asana.IAST || asana.English_Name;
+           if (displayName) {
+               labelPart = `[${displayName}]`;
+           }
+       }
+       
+       // Rebuild string with pipes
+       let extraParts = [];
+       if (labelPart) extraParts.push(labelPart);
+       if (p.note) extraParts.push(p.note.trim());
+       
+       const noteStr = extraParts.length > 0 ? ` | ${extraParts.join(" | ")}` : "";
+       
+       return `${id} | ${dur}${noteStr}`;
+    }).join("\n");
+ }
 
 function builderGetTitle() {
    return ($("builderTitle")?.value || "").trim();
