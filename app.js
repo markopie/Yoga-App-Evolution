@@ -3422,31 +3422,7 @@ document.getElementById('builderSearch').addEventListener('input', (e) => {
     resBox.style.display = hits.length ? 'block' : 'none';
 });
 
-// Save Logic
-document.getElementById('editCourseSaveBtn').onclick = async () => {
-   const title = document.getElementById('builderTitle').value.trim();
-   const category = document.getElementById('builderCategory').value.trim() || "My Sequences";
-   if (!title || !builderPoses.length) return alert("Title and at least 1 pose required.");
-
-   const sequenceText = builderPoses.map(p => `${p.id} | ${p.duration}${p.note ? ` | ${p.note}` : ''}`).join("\n");
-   const totalSec = builderPoses.reduce((s, p) => s + p.duration, 0);
-
-   try {
-      const payload = { title, category, sequence_text: sequenceText, pose_count: builderPoses.length, total_seconds: totalSec };
-      
-      if (builderEditingSupabaseId) {
-          await supabase.from('user_sequences').update(payload).eq('id', builderEditingSupabaseId);
-      } else {
-          await supabase.from('user_sequences').insert([payload]);
-      }
-      
-      alert("Sequence Saved!");
-      document.getElementById("editCourseBackdrop").style.display = "none";
-      loadCourses(); // Reload everything so it appears in the list instantly
-   } catch(e) {
-      alert("Error saving: " + e.message);
-   }
-};
+// Save Logic is handled by builderSave() function (see below)
 
 // Close listener
 document.getElementById('editCourseCloseBtn').onclick = () => document.getElementById('editCourseBackdrop').style.display = 'none';
@@ -4267,19 +4243,8 @@ async function builderSave(syncToGitHub) {
       console.warn("Supabase save failed:", e);
    }
 
-   // Save to in-memory courses
-   const courseObj = { title, category, poses };
-   const idx = builderEditingCourseIndex >= 0 ? builderEditingCourseIndex : courses.findIndex(c => c.title === title);
-   if (idx >= 0) {
-      courses[idx] = courseObj;
-   } else {
-      courses.push(courseObj);
-      builderEditingCourseIndex = courses.length - 1;
-   }
-   window.courses = courses;
-
-   // Refresh sequence selector
-   if (typeof populateSequenceDropdown === "function") populateSequenceDropdown();
+   // Reload courses from database to include user sequences
+   await loadCourses();
 
    if (syncToGitHub) {
       $("editCourseBackdrop").style.display = "none";
