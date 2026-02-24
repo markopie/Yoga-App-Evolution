@@ -695,6 +695,79 @@ header .row {
 }
 
 /* ==========================================================================
+   DURATION DIAL (Interactive Slider)
+   ========================================================================== */
+#durationDialWrap {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: #f0f4f8;
+    border: 1px solid #cbd5e0;
+    border-radius: 8px;
+    padding: 4px 8px;
+    min-width: 100px;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+#durationDialLabel {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #334155;
+    white-space: nowrap;
+    line-height: 1.2;
+    text-align: center;
+}
+
+#durationDialEst {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #64748b;
+}
+
+#durationDial {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 90px;
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(to right, #93c5fd 0%, #2563eb 50%, #f97316 100%);
+    outline: none;
+    border: none;
+    padding: 0;
+    margin: 2px 0;
+    cursor: pointer;
+}
+
+#durationDial::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #2563eb;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    cursor: grab;
+    transition: border-color 0.15s;
+}
+
+#durationDial::-webkit-slider-thumb:active { cursor: grabbing; }
+
+#durationDial::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #2563eb;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    cursor: grab;
+}
+
+#durationDialWrap.dial-faster #durationDialLabel { color: #ea580c; }
+#durationDialWrap.dial-slower #durationDialLabel { color: #0369a1; }
+
+/* ==========================================================================
    SEQUENCE BUILDER — MOBILE RESPONSIVE
    ========================================================================== */
 

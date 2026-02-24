@@ -1325,6 +1325,7 @@ async function init() {
         if (statusEl) statusEl.textContent = "Ready";
         const loadText = $("loadingText");
         if (loadText) loadText.textContent = "Select a course";
+        if (typeof updateDialUI === 'function') updateDialUI();
 
         // 6. Resume Check
         const state = safeGetLocalStorage(RESUME_STATE_KEY, null);
@@ -2125,46 +2126,24 @@ function descriptionForPose(asana, fullLabel) {
 
     const closeBtn = $("browseCloseBtn");
 
-    // 4. Create "Sync Library" Button
-    if (closeBtn && !document.getElementById("browseSyncBtn")) {
-        const syncBtn = document.createElement("button");
-        syncBtn.id = "browseSyncBtn";
-        syncBtn.textContent = "💾 Sync Library";
-        syncBtn.className = "tiny";
-        syncBtn.style.cssText = "background: #2e7d32; color: white; margin-right: 15px; margin-left: auto;";
-        
-        syncBtn.onclick = async () => {
-            if (confirm("Push library changes to GitHub?")) {
-                await syncDataToGitHub("asana_library.json", asanaLibrary);
-            }
-        };
-
-        if (closeBtn.parentNode) {
-            closeBtn.parentNode.insertBefore(syncBtn, closeBtn);
-            closeBtn.parentNode.style.display = "flex";
-            closeBtn.parentNode.style.alignItems = "center";
-        }
-    }
-
-    // 5. Create "Add Asana" Button
+    // Create "Add Asana" Button (always visible)
     if (closeBtn && !document.getElementById("browseAddAsanaBtn")) {
         const addBtn = document.createElement("button");
         addBtn.id = "browseAddAsanaBtn";
-        addBtn.textContent = "➕ Add Asana";
+        addBtn.textContent = "Add Asana";
         addBtn.className = "tiny";
-        addBtn.style.cssText = "background: #007aff; color: white; margin-right: 15px;";
-        addBtn.style.display = window.enableEditing ? "inline-block" : "none";
-        
-        addBtn.onclick = () => { 
+        addBtn.style.cssText = "background: #007aff; color: white; margin-right: 8px;";
+
+        addBtn.onclick = () => {
             if (typeof window.openAsanaEditor === "function") {
                 window.openAsanaEditor(null);
-            } else {
-                console.error("openAsanaEditor is not defined!");
             }
         };
-        
+
         if (closeBtn.parentNode) {
             closeBtn.parentNode.insertBefore(addBtn, closeBtn);
+            closeBtn.parentNode.style.display = "flex";
+            closeBtn.parentNode.style.alignItems = "center";
         }
     }
 
@@ -2202,20 +2181,6 @@ function descriptionForPose(asana, fullLabel) {
     if ($("browseCategory")) $("browseCategory").addEventListener("change", onChange);
 }
 
-// Update the setAdminMode function to reveal the "Add Asana" button
-window.setAdminMode = function(val) {
-    window.enableEditing = !!val;
-    localStorage.setItem("admin_mode_enabled", window.enableEditing);
-    
-    const cb = document.getElementById("adminEditToggle"); 
-    if (cb) cb.checked = window.enableEditing;
-
-    const addBtn = document.getElementById("browseAddAsanaBtn");
-    if (addBtn) addBtn.style.display = window.enableEditing ? "inline-block" : "none";
-
-    // Refresh Browse list so the inline "✏️ Edit" buttons appear
-    if (typeof applyBrowseFilters === 'function') applyBrowseFilters();
-};
 
 window.openBrowse = function() {
     console.log("✅ openBrowse() was successfully triggered!");
@@ -2287,7 +2252,7 @@ function renderBrowseList(items) {
 
       const meta = document.createElement("div");
       meta.className = "meta";
-      const catDisplay = asma.category ? asma.category.replace(/_/g, " ") : "";
+      const catDisplay = asma.category ? asma.category.replace(/^\d+_/, "").replace(/_/g, " ") : "";
       const catBadge = catDisplay ? ` <span class="badge">${catDisplay}</span>` : "";
       
       meta.innerHTML = `
@@ -3110,210 +3075,6 @@ function exitBrowseDetailMode() {
 /* ==========================================================================
    CONSOLIDATED ADMIN / MANAGE UI
    ========================================================================== */
-/* ==========================================================================
-   CONSOLIDATED ADMIN / MANAGE UI
-   ========================================================================== */
-
-   function toggleAdminUI(show) {
-    const backdrop = document.getElementById("manageSequencesBackdrop");
-    if (!backdrop) return;
-    if (show) {
-        const title = backdrop.querySelector("h2");
-        if (title) title.textContent = "⚙️ Admin Dashboard";
-        if (typeof renderAdminDashboard === 'function') renderAdminDashboard();
-        backdrop.style.display = "flex";
-    } else {
-        backdrop.style.display = "none";
-    }
-}
-window.toggleAdminUI = toggleAdminUI;
-
-const closeManBtn = document.getElementById("manageCloseBtn");
-if (closeManBtn) closeManBtn.onclick = () => toggleAdminUI(false);
-
-function renderAdminDashboard() {
-    const list = document.getElementById("manageSequenceList");
-    if (!list) return;
-    list.innerHTML = "";
-    
-    if (!window.adminSelectedIndices) window.adminSelectedIndices = new Set();
-
-    // A. GLOBAL TOOLS
-    const toolsDiv = document.createElement("div");
-    toolsDiv.style.cssText = "background:#f0f8ff; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #cceeff;";
-    const isEditing = window.enableEditing || false;
-
-    toolsDiv.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-           <strong style="color:#005580;">Global Tools</strong>
-           <button id="adminSyncBtn" class="tiny" style="background:#2e7d32; color:white;">💾 Sync All to GitHub</button>
-        </div>
-        <div style="display:flex; gap:15px; align-items:center;">
-             <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; cursor:pointer;">
-                <input type="checkbox" id="adminEditToggle" ${isEditing ? "checked" : ""}>
-                Enable Library Editing
-            </label>
-        </div>
-        
-        <div style="margin-top:15px; padding-top:15px; border-top:1px solid #cceeff;">
-            <div style="font-weight:bold; font-size:0.85rem; margin-bottom:5px;">Bulk Sequence Actions</div>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="bulkCatInput" placeholder="New Category Name" style="flex:1; padding:5px; border:1px solid #ccc;">
-                <button id="bulkApplyBtn" class="tiny" style="background:#007AFF; color:white;">Set Category for Selected</button>
-            </div>
-        </div>
-    `;
-    list.appendChild(toolsDiv);
-
-    // Wire up Sync
-    toolsDiv.querySelector("#adminSyncBtn").onclick = async () => {
-        if(!confirm("Push ALL changes (Courses, Library, History) to GitHub?")) return;
-        
-        const btn = toolsDiv.querySelector("#adminSyncBtn");
-        const oldText = btn.textContent;
-        btn.textContent = "Syncing...";
-
-        try {
-            await syncDataToGitHub("courses.json", sequences);
-            if (window.completionHistory && typeof HISTORY_URL !== 'undefined') {
-                await syncDataToGitHub(HISTORY_URL, window.completionHistory);
-            }
-            if(window.asanaLibrary) await syncDataToGitHub("asana_library.json", window.asanaLibrary);
-            if(window.audioOverrides) await syncDataToGitHub("audio_overrides.json", window.audioOverrides);
-
-            alert("✓ All Data Synced Successfully");
-        } catch(e) {
-            alert("❌ Sync Failed: " + e.message);
-        }
-        btn.textContent = oldText;
-    };
-
-    // Wire up Edit Toggle
-    toolsDiv.querySelector("#adminEditToggle").onchange = (e) => {
-        window.enableEditing = e.target.checked;
-        localStorage.setItem("admin_mode_enabled", e.target.checked);
-        if(typeof applyBrowseFilters === 'function') applyBrowseFilters();
-    };
-
-    // Wire up Bulk Apply
-    toolsDiv.querySelector("#bulkApplyBtn").onclick = () => {
-        const cat = toolsDiv.querySelector("#bulkCatInput").value.trim();
-        if (!cat) return alert("Enter a category name first.");
-        if (window.adminSelectedIndices.size === 0) return alert("Select at least one sequence below.");
-        
-        const count = window.adminSelectedIndices.size;
-        if (confirm(`Set category "${cat}" for ${count} sequences?`)) {
-            window.adminSelectedIndices.forEach(idx => {
-                if (sequences[idx]) sequences[idx].category = cat;
-            });
-            // Update the UI immediately using our new smart renderers
-            renderSequenceDropdown(); 
-            renderAdminDashboard(); 
-            alert("Updated! Remember to Sync.");
-        }
-    };
-
-    // C. SEQUENCE LIST HEADER
-    const header = document.createElement("div");
-    header.style.cssText = "display:flex; gap:10px; padding:8px; background:#eee; font-weight:bold; font-size:0.85rem; border-bottom:1px solid #ccc;";
-    header.innerHTML = `
-        <div style="width:30px; text-align:center;"><input type="checkbox" id="selectAllSeqs"></div>
-        <div style="width:150px;">Category</div>
-        <div style="flex:1;">Sequence Title</div>
-        <div style="width:40px;"></div>
-    `;
-    list.appendChild(header);
-
-    header.querySelector("#selectAllSeqs").onchange = (e) => {
-        const chk = e.target.checked;
-        const boxes = list.querySelectorAll(".seq-chk");
-        window.adminSelectedIndices.clear();
-        boxes.forEach(b => {
-            b.checked = chk;
-            if(chk) window.adminSelectedIndices.add(parseInt(b.value));
-        });
-    };
-
-    // D. SEQUENCE ROWS
-    if (typeof sequences !== 'undefined' && Array.isArray(sequences)) {
-        sequences.forEach((seq, idx) => {
-            const row = document.createElement("div");
-            row.className = "manage-row";
-            row.style.cssText = "display:flex; gap:10px; padding:8px; border-bottom:1px solid #eee; align-items:center;";
-
-            const chkDiv = document.createElement("div");
-            chkDiv.style.width = "30px";
-            chkDiv.style.textAlign = "center";
-            const chk = document.createElement("input");
-            chk.type = "checkbox";
-            chk.className = "seq-chk";
-            chk.value = idx;
-            if (window.adminSelectedIndices.has(idx)) chk.checked = true;
-            chk.onchange = (e) => {
-                if (e.target.checked) window.adminSelectedIndices.add(idx);
-                else window.adminSelectedIndices.delete(idx);
-            };
-            chkDiv.appendChild(chk);
-
-            const catInput = document.createElement("input");
-            catInput.type = "text";
-            catInput.value = seq.category || "";
-            catInput.style.cssText = "width:150px; padding:5px; border:1px solid #ccc; font-size:0.85rem;";
-            catInput.onchange = (e) => {
-                seq.category = e.target.value;
-                renderSequenceDropdown(); // Update main UI
-            };
-
-            const titleInput = document.createElement("input");
-            titleInput.type = "text";
-            titleInput.value = seq.title;
-            titleInput.style.cssText = "flex:1; padding:5px; border:1px solid #ccc; font-weight:bold;";
-            titleInput.onchange = (e) => {
-                seq.title = e.target.value;
-                renderSequenceDropdown(); // Update main UI
-            };
-
-            const delBtn = document.createElement("button");
-            delBtn.textContent = "🗑";
-            delBtn.className = "tiny warn";
-            delBtn.onclick = () => {
-                if (confirm(`Delete "${seq.title}"?`)) {
-                    sequences.splice(idx, 1);
-                    window.adminSelectedIndices.delete(idx);
-                    renderSequenceDropdown(); // Update main UI
-                    renderAdminDashboard(); 
-                }
-            };
-
-            row.appendChild(chkDiv);
-            row.appendChild(catInput);
-            row.appendChild(titleInput);
-            row.appendChild(delBtn);
-            list.appendChild(row);
-        });
-    }
-
-    // E. ADD NEW
-    const addBtn = document.createElement("button");
-    addBtn.textContent = "+ New Sequence";
-    addBtn.className = "tiny";
-    addBtn.style.marginTop = "15px";
-    addBtn.onclick = () => {
-        const title = prompt("Name for new sequence?");
-        if (title) {
-            sequences.push({ title, category: "Uncategorized", poses: [] });
-            renderSequenceDropdown(); // Update main UI
-            renderAdminDashboard();
-        }
-    };
-    list.appendChild(addBtn);
-}
-
-if (localStorage.getItem("admin_mode_enabled") === "true") {
-    window.enableEditing = true;
-}
-
-
 // #endregion
 // #region 8. ADMIN & DATA LAYER
 
@@ -3588,35 +3349,7 @@ async function saveAsanaField(asanaNo, field, value) {
     return Promise.resolve();
 }
 
-/* ==========================================================================
-   LEGACY BRIDGE (Fixes 'setAdminMode is not defined')
-   ========================================================================== */
 
-// Restoring this function prevents the crash
-window.setAdminMode = function(val) {
-    // Update the new global flag
-    window.enableEditing = !!val;
-    localStorage.setItem("admin_mode_enabled", window.enableEditing);
-    
-    // Update the UI checkbox if it exists
-    const cb = document.getElementById("adminEditToggle"); // The new one
-    if (cb) cb.checked = window.enableEditing;
-
-    // Refresh Browse if active
-    if (typeof applyBrowseFilters === 'function') applyBrowseFilters();
-};
-
-// Ensure toggleAdminUI is globally available for the HTML button
-if (typeof toggleAdminUI !== 'function') {
-    window.toggleAdminUI = function(show) {
-        // Fallback if Region 7 didn't load it globally
-        const backdrop = document.getElementById("manageSequencesBackdrop");
-        if (backdrop) {
-            if (show && typeof renderAdminDashboard === 'function') renderAdminDashboard();
-            backdrop.style.display = show ? "flex" : "none";
-        }
-    };
-}
 
 /* ==========================================================================
    DATA FETCHING (GET)
@@ -3687,7 +3420,6 @@ function applyCategoryOverrides() {
    ========================================================================== */
 
 function renderIdFixer(container, brokenId) {
-    if (!window.enableEditing) return;
 
     const normBroken = normalizePlate(brokenId);
     const currentAlias = (typeof idAliases !== 'undefined') ? idAliases[normBroken] : null;
@@ -3852,9 +3584,9 @@ if (seqSelect) {
        
        // Save a pure copy of the sequence so the Dial can reset to it
        window.currentSequenceOriginalPoses = JSON.parse(JSON.stringify(currentSequence.poses));
-       
-       // Auto-apply dial if user left it on "Short" and switched sequences
-       if (typeof applyDurationDial === 'function') applyDurationDial(); 
+
+       if (typeof applyDurationDial === 'function') applyDurationDial();
+       if (typeof updateDialUI === 'function') updateDialUI();
 
        updateTotalAndLastUI();
 
@@ -4191,34 +3923,70 @@ safeListen("resetBtn", "click", () => {
    if (instructionsEl) instructionsEl.textContent = "";
 });
 // --- DYNAMIC DURATION DIAL LOGIC ---
+function getDurationMultiplier() {
+    const dial = $("durationDial");
+    if (!dial) return 1.0;
+    return parseInt(dial.value, 10) / 100;
+}
+
+function updateDialUI() {
+    const dial = $("durationDial");
+    const wrap = $("durationDialWrap");
+    const label = $("durationDialLabel");
+    const estEl = $("durationDialEst");
+    if (!dial || !label) return;
+
+    const mult = getDurationMultiplier();
+    const multStr = mult.toFixed(2).replace(/\.?0+$/, '') + "x";
+    const isStandard = Math.abs(mult - 1.0) < 0.01;
+
+    label.textContent = isStandard ? "Standard" : multStr;
+
+    if (wrap) {
+        wrap.classList.remove("dial-faster", "dial-slower");
+        if (mult > 1.01) wrap.classList.add("dial-faster");
+        else if (mult < 0.99) wrap.classList.add("dial-slower");
+    }
+
+    if (estEl && currentSequence && window.currentSequenceOriginalPoses) {
+        const total = window.currentSequenceOriginalPoses.reduce((s, p) => {
+            const dur = Number(p[1]) || 0;
+            const id = Array.isArray(p[0]) ? p[0][0] : p[0];
+            const asana = findAsanaByIdOrPlate ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
+            return s + (asana && asana.requiresSides ? dur * 2 : dur);
+        }, 0);
+        const adj = Math.round(total * mult);
+        estEl.textContent = "· " + formatHMS(adj);
+    } else if (estEl) {
+        estEl.textContent = "";
+    }
+}
+
 const durationDial = $("durationDial");
 if (durationDial) {
-    durationDial.addEventListener("change", () => {
+    durationDial.addEventListener("input", () => {
+        updateDialUI();
         if (currentSequence) {
             applyDurationDial();
+        }
+    });
+    durationDial.addEventListener("change", () => {
+        if (currentSequence) {
             stopTimer();
-            setPose(0); // Restart sequence from top to apply times smoothly
+            setPose(currentIndex);
         }
     });
 }
 
 function applyDurationDial() {
     if (!currentSequence || !window.currentSequenceOriginalPoses) return;
-    const mode = $("durationDial") ? $("durationDial").value : "original";
+    const mult = getDurationMultiplier();
 
-    // Restore the sequence to its original state so we don't permanently corrupt it
     currentSequence.poses = JSON.parse(JSON.stringify(window.currentSequenceOriginalPoses));
 
-    // If they picked Short/Standard/Long, overwrite the loaded timings
-    if (mode !== "original") {
+    if (Math.abs(mult - 1.0) > 0.01) {
         currentSequence.poses.forEach((p) => {
-            const idField = p[0];
-            const id = Array.isArray(idField) ? idField[0] : idField;
-            const asana = typeof findAsanaByIdOrPlate === 'function' ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
-
-            if (asana && asana.hold_data && asana.hold_data[mode]) {
-                p[1] = asana.hold_data[mode]; // Force the new duration
-            }
+            p[1] = Math.round((Number(p[1]) || 0) * mult);
         });
     }
 
@@ -4229,10 +3997,6 @@ function applyDurationDial() {
 safeListen("historyLink", "click", (e) => {
     e.preventDefault();
     toggleHistoryPanel();
-});
-
-safeListen("adminModeToggle", "change", (e) => {
-    setAdminMode(e.target.checked);
 });
 
 // Complete Button Logic
@@ -4349,17 +4113,15 @@ function builderGetCategory() {
    return ($("builderCategory")?.value || "").trim();
 }
 
-async function builderSave(syncToGitHub) {
+async function builderSave() {
    const title = builderGetTitle();
    if (!title) { alert("Please enter a sequence title."); $("builderTitle")?.focus(); return; }
    if (!builderPoses.length) { alert("Add at least one pose."); return; }
 
    const sequenceText = builderCompileSequenceText();
    const category = builderGetCategory();
-   const poses = parseSequenceText(sequenceText);
    const totalSec = builderPoses.reduce((s, p) => s + (p.duration || 0), 0);
 
-   // Save to Supabase user_sequences
    try {
       if (supabase) {
          if (builderEditingSupabaseId) {
@@ -4380,16 +4142,9 @@ async function builderSave(syncToGitHub) {
       console.warn("Supabase save failed:", e);
    }
 
-   // Reload courses from database to include user sequences
    await loadCourses();
-
-   if (syncToGitHub) {
-      $("editCourseBackdrop").style.display = "none";
-      await syncDataToGitHub("courses.json", courses);
-   } else {
-      $("editCourseBackdrop").style.display = "none";
-      alert(`"${title}" saved.`);
-   }
+   $("editCourseBackdrop").style.display = "none";
+   alert(`"${title}" saved.`);
 }
 
 // Search dropdown for the builder
@@ -4479,14 +4234,7 @@ safeListen("editCourseSaveBtn", "click", () => {
       alert("Library is still loading. Please wait.");
       return;
    }
-   builderSave(false);
-});
-safeListen("builderSyncGithub", "click", () => {
-   if (!asanaLibrary || Object.keys(asanaLibrary).length === 0) {
-      alert("Library is still loading. Please wait.");
-      return;
-   }
-   builderSave(true);
+   builderSave();
 });
 // -------- GITHUB SYNC --------
 /**
@@ -4673,6 +4421,27 @@ function encodeToBase64(str) {
         $("editAsanaId").value = getNextAsanaId(); // Auto-calculate next ID
     }
 
+    // Snapshot initial field values for change detection
+    window._asanaEditorSnapshot = null;
+    requestAnimationFrame(() => {
+        window._asanaEditorSnapshot = {
+            name: $("editAsanaName").value,
+            iast: $("editAsanaIAST").value,
+            english_name: $("editAsanaEnglish").value,
+            technique: $("editAsanaTechnique").value,
+            plate_numbers: $("editAsanaPlates").value,
+            requires_sides: $("editAsanaRequiresSides").checked,
+            page_2001: $("editAsanaPage2001").value,
+            page_2015: $("editAsanaPage2015").value,
+            intensity: $("editAsanaIntensity").value,
+            note: $("editAsanaNote").value,
+            category: $("editAsanaCategory").value,
+            description: $("editAsanaDescription").value,
+            hold: $("editAsanaHold").value,
+            stageCount: $("stagesContainer").querySelectorAll("div[style*='border:1px solid']").length
+        };
+    });
+
     bd.style.display = "flex";
 };
 
@@ -4719,7 +4488,34 @@ document.addEventListener("DOMContentLoaded", () => {
             const rawId = $("editAsanaId").value.trim();
             if (!rawId) return alert("ID is required.");
             const id = rawId.padStart(3, '0');
-            
+
+            const snap = window._asanaEditorSnapshot;
+            if (snap) {
+                const current = {
+                    name: $("editAsanaName").value,
+                    iast: $("editAsanaIAST").value,
+                    english_name: $("editAsanaEnglish").value,
+                    technique: $("editAsanaTechnique").value,
+                    plate_numbers: $("editAsanaPlates").value,
+                    requires_sides: $("editAsanaRequiresSides").checked,
+                    page_2001: $("editAsanaPage2001").value,
+                    page_2015: $("editAsanaPage2015").value,
+                    intensity: $("editAsanaIntensity").value,
+                    note: $("editAsanaNote").value,
+                    category: $("editAsanaCategory").value,
+                    description: $("editAsanaDescription").value,
+                    hold: $("editAsanaHold").value,
+                    stageCount: $("stagesContainer").querySelectorAll("div[style*='border:1px solid']").length
+                };
+                const unchanged = Object.keys(snap).every(k => snap[k] === current[k]);
+                if (unchanged) {
+                    $("asanaEditorStatus").textContent = "No changes made.";
+                    $("asanaEditorStatus").style.color = "#888";
+                    setTimeout(() => { $("asanaEditorStatus").textContent = ""; }, 2500);
+                    return;
+                }
+            }
+
             const btn = $("asanaEditorSaveBtn");
             btn.disabled = true;
             btn.textContent = "Saving...";
