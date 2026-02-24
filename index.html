@@ -110,18 +110,19 @@
               <option value="">Select a course</option>
            </select>
            
-          <div id="durationDialWrap" title="Drag to adjust hold durations">
-            <div id="durationDialTop">
-              <span id="durationDialLabel">Standard</span>
-              <button id="durationDialReset" type="button" title="Reset to default">Reset</button>
+          <div id="durationDialWrap" title="Adjust hold pace — double-click to reset">
+            <div id="durationDialHeader">
+              <span id="durationDialLabel">Default</span>
+              <span id="durationDialEst"></span>
             </div>
             <div id="durationDialTrackWrap">
               <input type="range" id="durationDial" min="0" max="100" step="1" value="50">
-              <div id="durationDialTicks">
-                <span>Min</span><span>Standard</span><span>Max</span>
+              <div id="durationDialLabels">
+                <span>Shortest</span>
+                <span id="durationDialDefaultMark">Default</span>
+                <span>Longest</span>
               </div>
             </div>
-            <div id="durationDialEst"></div>
           </div>
          
          <button id="browseBtn" type="button" title="Browse / search asanas">Browse</button>

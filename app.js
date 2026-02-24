@@ -3928,13 +3928,37 @@ function getDialPosition() {
     return dial ? parseInt(dial.value, 10) : 50;
 }
 
-function interpolateDuration(pos, shortSec, defaultSec, longSec) {
-    if (pos <= 50) {
+function resolveDialAnchors(origDur, asana) {
+    const hd = asana && asana.hold_data;
+    const defaultDur = origDur;
+    const rawShort = (hd && typeof hd.short === 'number') ? hd.short : defaultDur;
+    const rawLong  = (hd && typeof hd.long  === 'number') ? hd.long  : defaultDur;
+    return {
+        short:    Math.min(rawShort, defaultDur),
+        defaultDur,
+        long:     Math.max(rawLong,  defaultDur)
+    };
+}
+
+function interpolateDuration(pos, short, defaultDur, long) {
+    if (pos === 50) return defaultDur;
+    if (pos < 50) {
         const t = pos / 50;
-        return Math.round(shortSec + (defaultSec - shortSec) * t);
-    } else {
-        const t = (pos - 50) / 50;
-        return Math.round(defaultSec + (longSec - defaultSec) * t);
+        return Math.round(short + (defaultDur - short) * t);
+    }
+    const t = (pos - 50) / 50;
+    return Math.round(defaultDur + (long - defaultDur) * t);
+}
+
+function dialReset() {
+    const dial = $("durationDial");
+    if (!dial) return;
+    dial.value = 50;
+    updateDialUI();
+    if (currentSequence) {
+        applyDurationDial();
+        stopTimer();
+        setPose(currentIndex);
     }
 }
 
@@ -3946,14 +3970,13 @@ function updateDialUI() {
     if (!dial || !label) return;
 
     const pos = getDialPosition();
-    const isStandard = pos === 50;
 
-    if (isStandard) {
-        label.textContent = "Standard";
+    if (pos === 50) {
+        label.textContent = "Default";
     } else if (pos < 50) {
-        label.textContent = pos <= 10 ? "Shortest" : "Shorter";
+        label.textContent = pos === 0 ? "Shortest" : "Shorter";
     } else {
-        label.textContent = pos >= 90 ? "Longest" : "Longer";
+        label.textContent = pos === 100 ? "Longest" : "Longer";
     }
 
     if (wrap) {
@@ -3963,14 +3986,12 @@ function updateDialUI() {
     }
 
     if (estEl && currentSequence && window.currentSequenceOriginalPoses) {
-        const total = window.currentSequenceOriginalPoses.reduce((s, p, i) => {
+        const total = window.currentSequenceOriginalPoses.reduce((s, p) => {
             const origDur = Number(p[1]) || 0;
             const id = Array.isArray(p[0]) ? p[0][0] : p[0];
             const asana = findAsanaByIdOrPlate ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
-            const hd = asana && asana.hold_data;
-            const shortSec = hd ? (hd.short || origDur) : origDur;
-            const longSec  = hd ? (hd.long  || origDur) : origDur;
-            const dur = interpolateDuration(pos, shortSec, origDur, longSec);
+            const { short, defaultDur, long } = resolveDialAnchors(origDur, asana);
+            const dur = interpolateDuration(pos, short, defaultDur, long);
             return s + (asana && asana.requiresSides ? dur * 2 : dur);
         }, 0);
         estEl.textContent = formatHMS(total);
@@ -3991,22 +4012,7 @@ if (durationDial) {
             setPose(currentIndex);
         }
     });
-}
-
-const durationDialReset = $("durationDialReset");
-if (durationDialReset) {
-    durationDialReset.addEventListener("click", () => {
-        const dial = $("durationDial");
-        if (dial) {
-            dial.value = 50;
-            updateDialUI();
-            if (currentSequence) {
-                applyDurationDial();
-                stopTimer();
-                setPose(currentIndex);
-            }
-        }
-    });
+    durationDial.addEventListener("dblclick", dialReset);
 }
 
 function applyDurationDial() {
@@ -4018,10 +4024,8 @@ function applyDurationDial() {
         const origDur = Number(p[1]) || 0;
         const id = Array.isArray(p[0]) ? p[0][0] : p[0];
         const asana = findAsanaByIdOrPlate ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
-        const hd = asana && asana.hold_data;
-        const shortSec = hd ? (hd.short || origDur) : origDur;
-        const longSec  = hd ? (hd.long  || origDur) : origDur;
-        copy[1] = interpolateDuration(pos, shortSec, origDur, longSec);
+        const { short, defaultDur, long } = resolveDialAnchors(origDur, asana);
+        copy[1] = interpolateDuration(pos, short, defaultDur, long);
         return copy;
     });
 
