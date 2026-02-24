@@ -2212,36 +2212,47 @@ function showAsanaDetail(asana) {
     const d = document.getElementById('browseDetail');
     if (!d) return;
   
-    // BULLETPROOF CHECK: Check both the window variable AND local storage
+    // BULLETPROOF CHECK
     const canEdit = (window.enableEditing === true) || (localStorage.getItem("admin_mode_enabled") === "true");
+  
+    // 1. Basic Info & Header (Built natively to bypass module security stripping)
+    d.innerHTML = ""; 
     
-    // DEBUG LOG: This will tell us exactly why the button is showing/hiding
-    console.log(`🛠️ showAsanaDetail -> canEdit: ${canEdit} | Asana ID: ${asana.id || asana.asanaNo}`);
-  
-    // 1. Basic Info & Header
-    let content = `
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
-        <h2 style="margin:0;">${displayName(asana)}</h2>
-        ${canEdit ? `
-          <button onclick="window.openAsanaEditor('${asana.id || asana.asanaNo}')" 
-                  class="tiny" 
-                  style="background: #e3f2fd; border: 1px solid #2196f3; color: #1976d2; padding: 4px 8px; cursor: pointer;">
-            ✏️ Edit
-          </button>
-        ` : ''}
-      </div>
-      ${
-        asana.iast && prefersIAST() && asana.english
-          ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;">${asana.english}</div>`
-          : asana.iast && !prefersIAST()
-          ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;font-style:italic;">${asana.iast}</div>`
-          : ''
-      }
-      <div class="muted">ID: ${asana.id || asana.asanaNo}</div>
-      <button id="playNameBtn" class="tiny" style="margin-top:10px;">🔊 Play Audio</button>
-      <hr>
-    `;
-  
+    const headerContainer = document.createElement("div");
+    headerContainer.style.cssText = "display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 5px;";
+    
+    const titleEl = document.createElement("h2");
+    titleEl.style.margin = "0";
+    titleEl.textContent = displayName(asana);
+    headerContainer.appendChild(titleEl);
+
+    if (canEdit) {
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "✏️ Edit";
+        editBtn.className = "tiny";
+        editBtn.style.cssText = "background: #e3f2fd; border: 1px solid #2196f3; color: #1976d2; padding: 4px 8px; cursor: pointer;";
+        // Attach click natively
+        editBtn.onclick = () => window.openAsanaEditor(asana.id || asana.asanaNo);
+        headerContainer.appendChild(editBtn);
+    }
+    d.appendChild(headerContainer);
+
+    const subInfo = document.createElement("div");
+    let subHTML = "";
+    if (asana.iast && prefersIAST() && asana.english) {
+        subHTML += `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;">${asana.english}</div>`;
+    } else if (asana.iast && !prefersIAST()) {
+        subHTML += `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;font-style:italic;">${asana.iast}</div>`;
+    }
+    subHTML += `<div class="muted">ID: ${asana.id || asana.asanaNo}</div>
+                <button id="playNameBtn" class="tiny" style="margin-top:10px;">🔊 Play Audio</button>
+                <hr>`;
+    subInfo.innerHTML = subHTML;
+    d.appendChild(subInfo);
+
+    // Re-initialize content for the rest of the renderer
+    let content = "";
+
     // 2. Images
     const urls = typeof smartUrlsForPoseId === 'function' ? smartUrlsForPoseId(asana.id || asana.asanaNo) : [];
     if (urls && urls.length > 0) {
@@ -2395,32 +2406,8 @@ function renderAdminDetailTools(container, asma, rowVariations) {
     oEmpty.textContent = "(no category)"; 
     catSel.appendChild(oEmpty);
    
-// Strips the "01_" prefix and underscores for clean UI display
-function getDisplayCategory(cat) {
-    if (!cat) return "";
-    return cat.replace(/^\d+_/, '').replace(/_/g, ' ');
-}
 
-// Maps clean UI input back to prefixed database format
-function formatCategoryName(inputCat) {
-    if (!inputCat) return "";
-    const cleanInput = inputCat.trim().replace(/\s+/g, '_');
-    const existingCats = getUniqueCategories();
-    
-    if (existingCats.includes(inputCat)) return inputCat;
-    
-    const match = existingCats.find(c => c.replace(/^\d+_/, '').toLowerCase() === cleanInput.toLowerCase());
-    if (match) return match; 
-    
-    let maxPrefix = 0;
-    existingCats.forEach(c => {
-        const m = c.match(/^(\d+)_/);
-        if (m && parseInt(m[1], 10) > maxPrefix) maxPrefix = parseInt(m[1], 10);
-    });
-    
-    const nextPrefix = String(maxPrefix + 1).padStart(2, '0');
-    return `${nextPrefix}_${cleanInput}`;
-}
+
 
     getUniqueCategories().forEach(c => {
         const o = document.createElement("option"); 
@@ -4429,9 +4416,9 @@ function encodeToBase64(str) {
     $("editAsanaId").value = "";
     $("editAsanaName").value = "";
     $("editAsanaIAST").value = "";
-    $("editAsanaEnglish").value = a.english || a.english_name || a.English_Name || "";
-    $("editAsanaCategory").value = getDisplayCategory(a.category || a.Category || "");
-    $("editAsanaHold").value = a.hold || a.Hold || "";
+    $("editAsanaEnglish").value = ""; // FIXED
+    $("editAsanaCategory").value = ""; // FIXED
+    $("editAsanaHold").value = ""; // FIXED
     $("editAsanaPlates").value = "";
     $("editAsanaPage2001").value = "";
     $("editAsanaPage2015").value = "";
@@ -4660,7 +4647,30 @@ function getUniqueCategories() {
     }
     return Array.from(cats).sort();
 }
+function getDisplayCategory(cat) {
+    if (!cat) return "";
+    return cat.replace(/^\d+_/, '').replace(/_/g, ' ');
+}
 
+function formatCategoryName(inputCat) {
+    if (!inputCat) return "";
+    const cleanInput = inputCat.trim().replace(/\s+/g, '_');
+    const existingCats = getUniqueCategories();
+    
+    if (existingCats.includes(inputCat)) return inputCat;
+    
+    const match = existingCats.find(c => c.replace(/^\d+_/, '').toLowerCase() === cleanInput.toLowerCase());
+    if (match) return match; 
+    
+    let maxPrefix = 0;
+    existingCats.forEach(c => {
+        const m = c.match(/^(\d+)_/);
+        if (m && parseInt(m[1], 10) > maxPrefix) maxPrefix = parseInt(m[1], 10);
+    });
+    
+    const nextPrefix = String(maxPrefix + 1).padStart(2, '0');
+    return `${nextPrefix}_${cleanInput}`;
+}
 // 4. APP STARTUP (Crucial!)
 console.log("Script parsed. Attempting startup...");
 
