@@ -3377,7 +3377,7 @@ function builderOpen(mode, seq) {
     const statsEl = document.getElementById("builderStats");
     if (statsEl) statsEl.textContent = `${builderPoses.length} poses · ${Math.floor(totalSec/60)}m ${totalSec%60}s`;
  }
-function movePose(idx, dir) {
+window.movePose = function(idx, dir) {
     if (idx + dir < 0 || idx + dir >= builderPoses.length) return;
     const temp = builderPoses[idx];
     builderPoses[idx] = builderPoses[idx + dir];
@@ -3385,7 +3385,7 @@ function movePose(idx, dir) {
     builderRender();
 }
 
-function removePose(idx) {
+window.removePose = function(idx) {
     builderPoses.splice(idx, 1);
     builderRender();
 }
