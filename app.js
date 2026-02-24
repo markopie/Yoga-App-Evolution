@@ -2242,22 +2242,17 @@ function showAsanaDetail(asana) {
 
     d.innerHTML = "";
 
-    const headerContainer = document.createElement("div");
-    headerContainer.style.cssText = "display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 5px;";
-
     const titleEl = document.createElement("h2");
-    titleEl.style.margin = "0";
+    titleEl.style.margin = "0 0 10px 0";
     titleEl.textContent = displayName(asana);
-    headerContainer.appendChild(titleEl);
+    d.appendChild(titleEl);
 
     const editBtn = document.createElement("button");
-    editBtn.textContent = "✏️ Edit";
+    editBtn.textContent = "✏️ Edit Asana";
     editBtn.className = "tiny";
-    editBtn.style.cssText = "background: #e3f2fd; border: 1px solid #2196f3; color: #1976d2; padding: 4px 8px; cursor: pointer;";
+    editBtn.style.cssText = "background: #2196f3; color: white; padding: 6px 12px; cursor: pointer; margin-bottom: 10px; font-weight: bold;";
     editBtn.onclick = () => window.openAsanaEditor(asana.id || asana.asanaNo);
-    headerContainer.appendChild(editBtn);
-
-    d.appendChild(headerContainer);
+    d.appendChild(editBtn);
 
     // 3. Build the rest of the Info via a single HTML string
     // Use a unique name for this string variable to avoid re-declaration errors
