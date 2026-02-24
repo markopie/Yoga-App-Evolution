@@ -3423,9 +3423,6 @@ document.getElementById('builderSearch').addEventListener('input', (e) => {
 });
 
 // Save Logic is handled by builderSave() function (see below)
-
-// Close listener
-document.getElementById('editCourseCloseBtn').onclick = () => document.getElementById('editCourseBackdrop').style.display = 'none';
 /* ==========================================================================
    DATA SAVING (CORE)
    ========================================================================== */
@@ -4334,8 +4331,20 @@ async function builderSave(syncToGitHub) {
 safeListen("editCourseBtn", "click", openEditCourse);
 safeListen("editCourseCloseBtn", "click", () => { $("editCourseBackdrop").style.display = "none"; });
 safeListen("editCourseCancelBtn", "click", () => { $("editCourseBackdrop").style.display = "none"; });
-safeListen("editCourseSaveBtn", "click", () => builderSave(false));
-safeListen("builderSyncGithub", "click", () => builderSave(true));
+safeListen("editCourseSaveBtn", "click", () => {
+   if (!asanaLibrary || Object.keys(asanaLibrary).length === 0) {
+      alert("Library is still loading. Please wait.");
+      return;
+   }
+   builderSave(false);
+});
+safeListen("builderSyncGithub", "click", () => {
+   if (!asanaLibrary || Object.keys(asanaLibrary).length === 0) {
+      alert("Library is still loading. Please wait.");
+      return;
+   }
+   builderSave(true);
+});
 // -------- GITHUB SYNC --------
 /**
  * Pushes any JSON object to a specific file in your GitHub Repository
