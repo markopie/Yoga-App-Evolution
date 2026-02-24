@@ -666,7 +666,26 @@ async function loadCourses() {
         sequences = [];
     }
 }
-
+// --- TIME PARSER HELPER ---
+function parseHoldTimes(holdStr) {
+    const result = { standard: 30, short: 15, long: 60 }; // Fallbacks
+    if (!holdStr) return result;
+    
+    const parts = String(holdStr).split('|').map(s => s.trim());
+    parts.forEach(p => {
+        // Match format "Standard: 0:30" or "Standard: 1:00"
+        const match = p.match(/(Standard|Short|Long):\s*(\d+):(\d+)/i);
+        if (match) {
+            const key = match[1].toLowerCase();
+            result[key] = parseInt(match[2], 10) * 60 + parseInt(match[3], 10);
+        } else {
+            // Match format "Standard: 30" (just seconds)
+            const matchSec = p.match(/(Standard|Short|Long):\s*(\d+)/i);
+            if (matchSec) result[matchSec[1].toLowerCase()] = parseInt(matchSec[2], 10);
+        }
+    });
+    return result;
+}
 // Helper function to parse sequence text into poses array
 // Input format: "074 | 60 |\n215 | 600 | [Pratiloma IVb]\n203 | 300 | [Ujjāyī II (lying)]"
 // Output format: [[id], duration, label, variationKey, note]
@@ -773,17 +792,14 @@ async function loadAsanaLibrary() {
             normalized[key] = {
                 id: key,
                 name: row.Name ?? row.name ?? '',
-                iast: row.IAST ?? row.iast ?? '',
-                english: row.English_Name ?? row.english_name ?? '',
-                technique: row.Technique ?? row.technique ?? '',
-                requiresSides: !!(row.Requires_Sides ?? row.requires_sides ?? false),
-                plates: platesObj,
-                page2001: String(row.Page_2001 ?? row.page_2001 ?? ''),
-                page2015: String(row.Page_2015 ?? row.page_2015 ?? ''),
-                intensity: String(row.Intensity ?? row.intensity ?? ''),
-                note: row.Note ?? row.note ?? '',
+                // ... (keep all your existing properties here)
                 category: row.Category ?? row.category ?? '',
                 description: row.Description ?? row.description ?? '',
+                
+                // ADD THESE TWO LINES:
+                holdRaw: String(row.Hold ?? row.hold ?? ''),
+                hold_data: parseHoldTimes(String(row.Hold ?? row.hold ?? '')),
+                
                 variations: {}
             };
         });
@@ -2216,7 +2232,7 @@ function showAsanaDetail(asana) {
     const canEdit = (window.enableEditing === true) || (localStorage.getItem("admin_mode_enabled") === "true");
   
     // 1. Basic Info & Header (Built natively to bypass module security stripping)
-    d.innerHTML = ""; 
+    d.insertAdjacentHTML('beforeend', content); // ADDED: Safely appends instead of overwriting
     
     const headerContainer = document.createElement("div");
     headerContainer.style.cssText = "display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 5px;";
@@ -3326,6 +3342,7 @@ function builderOpen(mode, seq) {
           </td>
           <td style="padding:8px;">
              <input type="number" class="b-dur" data-idx="${idx}" value="${pose.duration}" style="width:60px; padding:4px; border:1px solid #ccc; border-radius:4px;">
+             <button class="tiny b-std-time" data-idx="${idx}" title="Set to Standard Time" style="padding:2px 4px; font-size:0.7rem; margin-top:4px; display:block; background:#e0e0e0; color:#333;">⏱ Std</button>
           </td>
           <td style="padding:8px;">
              <input type="text" class="b-note" data-idx="${idx}" value="${(pose.note || '').replace(/"/g, '&quot;')}" placeholder="Optional notes..." style="width:100%; padding:4px; border:1px solid #ccc; border-radius:4px;">
@@ -3341,28 +3358,44 @@ function builderOpen(mode, seq) {
  
     // Listeners
     tbody.querySelectorAll('.b-id').forEach(el => {
-       el.onchange = (e) => {
-          const idx = e.target.dataset.idx;
-          let newId = e.target.value.trim();
-          if (!isNaN(newId) && newId.length > 0) newId = newId.padStart(3, '0');
-          builderPoses[idx].id = newId;
+        el.onchange = (e) => {
+           const idx = e.target.dataset.idx;
+           let newId = e.target.value.trim();
+           if (!isNaN(newId) && newId.length > 0) newId = newId.padStart(3, '0');
+           builderPoses[idx].id = newId;
+  
+           const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === newId);
+           builderPoses[idx].name = asana ? (asana.Name || asana.name || displayName(asana)) : "Unknown Pose";
+           builderPoses[idx].variation = ""; 
+           builderRender(); 
+        };
+     });
  
-          const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === newId);
-          builderPoses[idx].name = asana ? (asana.Name || asana.name || displayName(asana)) : "Unknown Pose";
-          builderPoses[idx].variation = ""; 
-          builderRender(); 
-       };
-    });
- 
-    tbody.querySelectorAll('.b-var').forEach(el => {
-       el.onchange = (e) => builderPoses[e.target.dataset.idx].variation = e.target.value;
-    });
- 
-    tbody.querySelectorAll('.b-dur').forEach(el => el.onchange = (e) => { builderPoses[e.target.dataset.idx].duration = Number(e.target.value) || 0; builderRender(); });
-    tbody.querySelectorAll('.b-note').forEach(el => el.oninput = (e) => builderPoses[e.target.dataset.idx].note = e.target.value);
- 
-    const statsEl = document.getElementById("builderStats");
-    if (statsEl) statsEl.textContent = `${builderPoses.length} poses · ${Math.floor(totalSec/60)}m ${totalSec%60}s`;
+     // NEW: Standard Time Button logic (Bulletproofed with el.dataset.idx)
+     tbody.querySelectorAll('.b-std-time').forEach(el => {
+         el.onclick = (e) => {
+            const idx = el.dataset.idx; 
+            const poseId = builderPoses[idx].id;
+            const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === poseId);
+            
+            if (asana && asana.hold_data && asana.hold_data.standard) {
+               builderPoses[idx].duration = asana.hold_data.standard;
+               builderRender(); // Instantly update the UI
+            } else {
+               alert("No standard time mapped for this pose.");
+            }
+         };
+      });
+  
+     tbody.querySelectorAll('.b-var').forEach(el => {
+        el.onchange = (e) => builderPoses[e.target.dataset.idx].variation = e.target.value;
+     });
+  
+     tbody.querySelectorAll('.b-dur').forEach(el => el.onchange = (e) => { builderPoses[e.target.dataset.idx].duration = Number(e.target.value) || 0; builderRender(); });
+     tbody.querySelectorAll('.b-note').forEach(el => el.oninput = (e) => builderPoses[e.target.dataset.idx].note = e.target.value);
+  
+     const statsEl = document.getElementById("builderStats");
+     if (statsEl) statsEl.textContent = `${builderPoses.length} poses · ${Math.floor(totalSec/60)}m ${totalSec%60}s`;
  }
 function movePose(idx, dir) {
     if (idx + dir < 0 || idx + dir >= builderPoses.length) return;
@@ -3709,12 +3742,16 @@ if (seqSelect) {
        }
 
        // NEW CODE
-const rawSequence = sequences[parseInt(idx, 10)];
+       const rawSequence = sequences[parseInt(idx, 10)];
+       currentSequence = expandSequenceWithNamaskara(rawSequence);
+       
+       // Save a pure copy of the sequence so the Dial can reset to it
+       window.currentSequenceOriginalPoses = JSON.parse(JSON.stringify(currentSequence.poses));
+       
+       // Auto-apply dial if user left it on "Short" and switched sequences
+       if (typeof applyDurationDial === 'function') applyDurationDial(); 
 
-// Run it through our new expander function
-currentSequence = expandSequenceWithNamaskara(rawSequence);
-
-updateTotalAndLastUI();
+       updateTotalAndLastUI();
 
        try {
           setPose(0);
@@ -4033,7 +4070,41 @@ safeListen("resetBtn", "click", () => {
    // Reset Instructions
    if (instructionsEl) instructionsEl.textContent = "";
 });
+// --- DYNAMIC DURATION DIAL LOGIC ---
+const durationDial = $("durationDial");
+if (durationDial) {
+    durationDial.addEventListener("change", () => {
+        if (currentSequence) {
+            applyDurationDial();
+            stopTimer();
+            setPose(0); // Restart sequence from top to apply times smoothly
+        }
+    });
+}
 
+function applyDurationDial() {
+    if (!currentSequence || !window.currentSequenceOriginalPoses) return;
+    const mode = $("durationDial") ? $("durationDial").value : "original";
+
+    // Restore the sequence to its original state so we don't permanently corrupt it
+    currentSequence.poses = JSON.parse(JSON.stringify(window.currentSequenceOriginalPoses));
+
+    // If they picked Short/Standard/Long, overwrite the loaded timings
+    if (mode !== "original") {
+        currentSequence.poses.forEach((p) => {
+            const idField = p[0];
+            const id = Array.isArray(idField) ? idField[0] : idField;
+            const asana = typeof findAsanaByIdOrPlate === 'function' ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
+
+            if (asana && asana.hold_data && asana.hold_data[mode]) {
+                p[1] = asana.hold_data[mode]; // Force the new duration
+            }
+        });
+    }
+
+    if (typeof updateTotalAndLastUI === 'function') updateTotalAndLastUI();
+    if (typeof updateTimerUI === 'function') updateTimerUI();
+}
 // 3. UI Toggles
 safeListen("historyLink", "click", (e) => {
     e.preventDefault();
