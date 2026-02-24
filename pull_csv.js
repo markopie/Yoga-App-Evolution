@@ -1,25 +1,23 @@
 const fs = require('fs');
-const https = require('https');
 
-const URL = "https://raw.githubusercontent.com/markopie/Yoga-App-Evolution/main/asana_library.json";
+const INPUT_FILE = "asana_library.json";
 const OUTPUT_FILE = "asana_library.csv";
 
-console.log("Fetching JSON from GitHub...");
+console.log(`Reading ${INPUT_FILE}...`);
 
-https.get(URL, (res) => {
-    let body = "";
-    res.on("data", (chunk) => body += chunk);
-    res.on("end", () => {
-        try {
-            const data = JSON.parse(body);
-            const csv = convertToCSV(data);
-            fs.writeFileSync(OUTPUT_FILE, csv);
-            console.log(`✅ Success! Saved to ${OUTPUT_FILE}`);
-        } catch (error) {
-            console.error("❌ Error parsing JSON:", error.message);
-        }
-    });
-}).on("error", (e) => console.error("❌ Error:", e.message));
+try {
+    // Read the local JSON file instead of making a network request
+    const rawData = fs.readFileSync(INPUT_FILE, 'utf8');
+    const data = JSON.parse(rawData);
+    
+    // Convert and save
+    const csv = convertToCSV(data);
+    fs.writeFileSync(OUTPUT_FILE, csv);
+    
+    console.log(`✅ Success! Saved to ${OUTPUT_FILE}`);
+} catch (error) {
+    console.error("❌ Error:", error.message);
+}
 
 function convertToCSV(objData) {
     const rows = [];
