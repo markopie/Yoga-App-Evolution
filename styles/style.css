@@ -693,3 +693,136 @@ header .row {
         max-width: 100% !important;
     }
 }
+
+/* ==========================================================================
+   SEQUENCE BUILDER — MOBILE RESPONSIVE
+   ========================================================================== */
+
+/* On mobile: make the builder table body scroll horizontally */
+@media (max-width: 700px) {
+    #editCourseBackdrop .modal {
+        width: 100%;
+        height: 100vh;
+        max-width: 100%;
+        margin: 0;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #editCourseBackdrop .modal-body {
+        flex: 1;
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #builderTable {
+        min-width: 560px;
+    }
+
+    /* Compact cells on mobile */
+    #builderTable td,
+    #builderTable th {
+        padding: 6px 4px;
+        font-size: 0.8rem;
+    }
+
+    /* Duration column: stack the std button under the input */
+    #builderTable td:nth-child(3) {
+        white-space: nowrap;
+    }
+
+    /* Make the variation select smaller on mobile */
+    .b-var {
+        max-width: 120px !important;
+        font-size: 0.7rem !important;
+    }
+
+    /* Note input: full width but don't overflow */
+    .b-note {
+        width: 80px !important;
+    }
+
+    /* Builder header row: wrap gracefully */
+    #editCourseBackdrop .modal-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+
+    #editCourseBackdrop .modal-header > div {
+        width: 100%;
+    }
+
+    #builderTitle {
+        width: 100%;
+    }
+
+    #editCourseBackdrop .modal-footer {
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+
+    #editCourseBackdrop .modal-footer > div {
+        width: 100%;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    #editCourseBackdrop .modal-footer button {
+        flex: 1;
+        min-width: 80px;
+        font-size: 0.82rem;
+        padding: 8px 6px;
+    }
+}
+
+/* Transition pause overlay */
+#transitionOverlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(255,255,255,0.97);
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+#transitionOverlay .transition-msg {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    text-align: center;
+    padding: 0 20px;
+}
+
+#transitionOverlay .transition-countdown {
+    font-size: 4rem;
+    font-weight: 800;
+    color: #2e7d32;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+#transitionOverlay .transition-next {
+    font-size: 1.1rem;
+    color: #666;
+    text-align: center;
+}
+
+#transitionSkipBtn {
+    background: #333;
+    color: #fff;
+    border: none;
+    padding: 10px 28px;
+    border-radius: 24px;
+    font-size: 1rem;
+    cursor: pointer;
+}

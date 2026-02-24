@@ -1392,10 +1392,98 @@ async function init() {
         if (remaining > 0) remaining--;
         updateTimerUI();
         if (remaining <= 0) {
-            if (running && currentPoseSeconds >= 60) playFaintGong();
-            nextPose();
+            const wasLongHold = currentPoseSeconds >= 60;
+            if (running && wasLongHold) playFaintGong();
+            if (wasLongHold) {
+                clearInterval(timer);
+                timer = null;
+                startTransitionPause();
+            } else {
+                nextPose();
+            }
         }
     }, 1000);
+}
+
+function startTransitionPause() {
+    const overlay = document.getElementById("transitionOverlay");
+    const countdownEl = document.getElementById("transitionCountdown");
+    const nextPoseEl = document.getElementById("transitionNextPose");
+
+    if (!overlay) { nextPose(); return; }
+
+    const poses = currentSequence ? (currentSequence.poses || []) : [];
+    let previewName = "";
+    const nextIdx = currentIndex + 1;
+    if (nextIdx < poses.length) {
+        const np = poses[nextIdx];
+        const id = Array.isArray(np[0]) ? np[0][0] : np[0];
+        const asana = findAsanaByIdOrPlate(normalizePlate(id));
+        previewName = asana ? displayName(asana) : "";
+    }
+    if (nextPoseEl) nextPoseEl.textContent = previewName ? `Next: ${previewName}` : "";
+
+    let secs = 15;
+    if (countdownEl) countdownEl.textContent = secs;
+    overlay.style.display = "flex";
+
+    const focusOverlay = document.getElementById("focusOverlay");
+    if (focusOverlay) focusOverlay.style.display = "none";
+
+    let transitionTimer = setInterval(() => {
+        secs--;
+        if (countdownEl) countdownEl.textContent = secs;
+        if (secs <= 0) {
+            clearInterval(transitionTimer);
+            finishTransition();
+        }
+    }, 1000);
+
+    function finishTransition() {
+        overlay.style.display = "none";
+        if (!running) return;
+        nextPose();
+        if (running) {
+            const focusOvr = document.getElementById("focusOverlay");
+            if (focusOvr) {
+                focusOvr.style.display = "flex";
+                const imgWrap = document.getElementById("focusImageWrap");
+                const mainImg = document.querySelector("#collageWrap img");
+                if (imgWrap && mainImg) {
+                    imgWrap.innerHTML = "";
+                    imgWrap.appendChild(mainImg.cloneNode(true));
+                }
+                const fName = document.getElementById("focusPoseName");
+                const pName = document.getElementById("poseName");
+                if (fName && pName) fName.textContent = pName.textContent;
+            }
+            timer = setInterval(() => {
+                if (remaining > 0) remaining--;
+                updateTimerUI();
+                if (remaining <= 0) {
+                    const wasLong = currentPoseSeconds >= 60;
+                    if (running && wasLong) playFaintGong();
+                    if (wasLong) {
+                        clearInterval(timer);
+                        timer = null;
+                        startTransitionPause();
+                    } else {
+                        nextPose();
+                    }
+                }
+            }, 1000);
+        }
+    }
+
+    const skipBtn = document.getElementById("transitionSkipBtn");
+    if (skipBtn) {
+        const newSkip = skipBtn.cloneNode(true);
+        skipBtn.parentNode.replaceChild(newSkip, skipBtn);
+        newSkip.onclick = () => {
+            clearInterval(transitionTimer);
+            finishTransition();
+        };
+    }
 }
 
 function stopTimer() {
@@ -1403,10 +1491,11 @@ function stopTimer() {
     timer = null;
     running = false;
 
-    // --- DEACTIVATE OVERLAY ---
-    const overlay = document.getElementById("focusOverlay");
-    if (overlay) overlay.style.display = "none";
-    // --------------------------
+    const focusOverlay = document.getElementById("focusOverlay");
+    if (focusOverlay) focusOverlay.style.display = "none";
+
+    const transOverlay = document.getElementById("transitionOverlay");
+    if (transOverlay) transOverlay.style.display = "none";
 
     updateTotalAndLastUI(); 
 
@@ -1579,10 +1668,9 @@ function prevPose() {
     const poses = currentSequence.poses || [];
     if (idx < 0 || idx >= poses.length) return;
 
-    // 1. SAVE PROGRESS
-    if (typeof saveCurrentProgress === "function") saveCurrentProgress();
-
+    // 1. SAVE PROGRESS (update currentIndex first so the correct pose index is saved)
     currentIndex = idx;
+    if (typeof saveCurrentProgress === "function") saveCurrentProgress();
 
     // Reset side tracking when moving to a new pose
     if (!keepSamePose) {
@@ -1644,20 +1732,21 @@ function prevPose() {
 
       // Pass 1: Exact matches (ignoring accents)
       for (const [vKey, vData] of Object.entries(asana.variations)) {
-          const normTitle = normalizeText(typeof vData === 'object' ? (vData.Title || "") : "");
+          const resolvedTitle = typeof vData === 'object' ? (vData.title || vData.Title || "") : "";
+          const normTitle = normalizeText(resolvedTitle);
           const normShort = normalizeText(typeof vData === 'object' ? (vData.shorthand || vData.Shorthand || "") : "");
           const normKey = vKey.toLowerCase();
-          
-          if (normVarTitle === normTitle || 
-              normVarTitle === normShort || 
-              normVarTitle === `stage ${normKey}` || 
+
+          if (normVarTitle === normTitle ||
+              normVarTitle === normShort ||
+              normVarTitle === `stage ${normKey}` ||
               normVarTitle === normKey) {
-              
-              // Use Full_Technique from the stages table
+
               const varTech = (typeof vData === 'object') ? (vData.Full_Technique || vData.technique) : vData;
               if (varTech) displayTechnique = varTech;
               if (typeof vData === 'object') displayShorthand = vData.shorthand || vData.Shorthand || "";
-              
+              if (resolvedTitle) variationTitle = resolvedTitle;
+
               foundVariation = true;
               break;
           }
@@ -1669,12 +1758,14 @@ function prevPose() {
           for (const vKey of sortedKeys) {
               const normKey = vKey.toLowerCase();
               const endsWithRegex = new RegExp(`\\b${normKey}$`, 'i');
-              
+
               if (endsWithRegex.test(normVarTitle)) {
                   const vData = asana.variations[vKey];
+                  const resolvedTitle = typeof vData === 'object' ? (vData.title || vData.Title || "") : "";
                   const varTech = (typeof vData === 'object') ? (vData.Full_Technique || vData.technique) : vData;
                   if (varTech) displayTechnique = varTech;
                   if (typeof vData === 'object') displayShorthand = vData.shorthand || vData.Shorthand || "";
+                  if (resolvedTitle) variationTitle = resolvedTitle;
                   break;
               }
           }
@@ -1688,6 +1779,8 @@ function prevPose() {
       } else {
           displayShorthand = v.shorthand || v.Shorthand || "";
           displayTechnique = v.Full_Technique || v.technique || "";
+          const legacyTitle = v.title || v.Title || "";
+          if (legacyTitle) variationTitle = legacyTitle;
       }
   }
 
@@ -3253,11 +3346,16 @@ function builderOpen(mode, seq) {
        if (titleEl) titleEl.value = seq.title || "";
        if (catSel) catSel.value = seq.category || "";
        builderEditingCourseIndex = courses.findIndex(c => c.title === seq.title);
- 
+
        const library = getAsanaIndex();
        const libraryArray = Array.isArray(library) ? library : Object.values(library);
- 
-       (seq.poses || []).forEach(p => {
+
+       // Use raw (unmodified by dial) poses if available, otherwise fall back to seq.poses
+       const rawPoses = (window.currentSequenceOriginalPoses && seq === currentSequence)
+           ? window.currentSequenceOriginalPoses
+           : (seq.poses || []);
+
+       rawPoses.forEach(p => {
           const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
           const id = String(rawId || "").padStart(3, '0');
           const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === id);
@@ -3391,11 +3489,14 @@ function builderOpen(mode, seq) {
            let newId = e.target.value.trim();
            if (!isNaN(newId) && newId.length > 0) newId = newId.padStart(3, '0');
            builderPoses[idx].id = newId;
-  
+
            const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === newId);
            builderPoses[idx].name = asana ? (asana.Name || asana.name || displayName(asana)) : "Unknown Pose";
-           builderPoses[idx].variation = ""; 
-           builderRender(); 
+           builderPoses[idx].variation = "";
+           if (asana && asana.hold_data && asana.hold_data.standard) {
+               builderPoses[idx].duration = asana.hold_data.standard;
+           }
+           builderRender();
         };
      });
  
@@ -3449,12 +3550,15 @@ document.getElementById('builderSearch').addEventListener('input', (e) => {
         return txt.includes(q);
     }).slice(0, 15);
 
-    resBox.innerHTML = hits.map(a => `
-        <div style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;" 
-             onclick="builderPoses.push({id: '${a.ID || a.id}', name: '${(a.Name || a.name).replace(/'/g,"\\'")}', duration: 30, note: ''}); document.getElementById('builderSearch').value=''; document.getElementById('builderSearchResults').style.display='none'; builderRender();">
+    resBox.innerHTML = hits.map(a => {
+        const defaultDur = (a.hold_data && a.hold_data.standard) ? a.hold_data.standard : 30;
+        return `
+        <div style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;"
+             onclick="builderPoses.push({id: '${a.ID || a.id}', name: '${(a.Name || a.name).replace(/'/g,"\\'")}', duration: ${defaultDur}, note: ''}); document.getElementById('builderSearch').value=''; document.getElementById('builderSearchResults').style.display='none'; builderRender();">
             <strong>${a.Name || a.name}</strong> <span style="color:#888; font-size:0.8em;">(ID: ${a.ID || a.id})</span>
         </div>
-    `).join("");
+    `;
+    }).join("");
     resBox.style.display = hits.length ? 'block' : 'none';
 });
 
@@ -4336,11 +4440,14 @@ async function builderSave(syncToGitHub) {
    results.addEventListener("click", e => {
       const item = e.target.closest(".b-search-item");
       if (!item) return;
+      const library = getAsanaIndex();
+      const asana = library.find(a => (a.id || a.asanaNo) === item.dataset.id);
+      const defaultDuration = (asana && asana.hold_data && asana.hold_data.standard) ? asana.hold_data.standard : 30;
       builderPoses.push({
          id: item.dataset.id,
          name: item.dataset.name,
          englishName: item.dataset.english,
-         duration: 30,
+         duration: defaultDuration,
          note: ""
       });
       builderRender();
@@ -4358,7 +4465,7 @@ async function builderSave(syncToGitHub) {
    const blankBtn = document.getElementById("builderAddBlank");
    if (blankBtn) {
       blankBtn.addEventListener("click", () => {
-         builderPoses.push({ id: "", name: "", englishName: "", duration: 30, note: "" });
+         builderPoses.push({ id: "", name: "", englishName: "", duration: 30, variation: "", note: "" });
          builderRender();
       });
    }
@@ -4676,15 +4783,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
             try {
                 if (supabase) {
-                    // Push to Supabase 'user_asanas'
-                    const { error: asanaErr } = await supabase.from('user_asanas').upsert(asanaData, { onConflict: 'id,user_id' });
-                    if (asanaErr) throw asanaErr;
+                    let asanaErr;
+                    if (userId) {
+                        const result = await supabase.from('user_asanas').upsert(asanaData, { onConflict: 'id,user_id' });
+                        asanaErr = result.error;
+                    } else {
+                        const { data: existing } = await supabase.from('user_asanas').select('id').eq('id', id).is('user_id', null).maybeSingle();
+                        if (existing) {
+                            const result = await supabase.from('user_asanas').update(asanaData).eq('id', id).is('user_id', null);
+                            asanaErr = result.error;
+                        } else {
+                            const result = await supabase.from('user_asanas').insert(asanaData);
+                            asanaErr = result.error;
+                        }
+                    }
+                    if (asanaErr) {
+                        console.error("Asana save error — column/field detail:", JSON.stringify(asanaErr));
+                        throw new Error(`Save failed on field: ${asanaErr.details || asanaErr.message}`);
+                    }
 
-                    // Sync 'user_stages' - delete old stages for this asana by current user
-                    await supabase.from('user_stages').delete().eq('user_id', userId).contains('parent_id', [id]);
+                    const stageDeleteQuery = userId
+                        ? supabase.from('user_stages').delete().eq('user_id', userId).contains('parent_id', [id])
+                        : supabase.from('user_stages').delete().is('user_id', null).contains('parent_id', [id]);
+                    await stageDeleteQuery;
+
                     if (stagesToSave.length > 0) {
                         const { error: stageErr } = await supabase.from('user_stages').insert(stagesToSave);
-                        if (stageErr) throw stageErr;
+                        if (stageErr) {
+                            console.error("Stage save error — column/field detail:", JSON.stringify(stageErr));
+                            throw new Error(`Stage save failed: ${stageErr.details || stageErr.message}`);
+                        }
                     }
                 }
                 
