@@ -2228,11 +2228,12 @@ function showAsanaDetail(asana) {
     const d = document.getElementById('browseDetail');
     if (!d) return;
   
-    // BULLETPROOF CHECK
+    // 1. Setup Permissions
     const canEdit = (window.enableEditing === true) || (localStorage.getItem("admin_mode_enabled") === "true");
+    console.log(`🛠️ showAsanaDetail -> canEdit: ${canEdit} | Asana ID: ${asana.id || asana.asanaNo}`);
   
-    // 1. Basic Info & Header (Built natively to bypass module security stripping)
-    d.insertAdjacentHTML('beforeend', content); // ADDED: Safely appends instead of overwriting
+    // 2. Clear Container and Build Header Natively
+    d.innerHTML = ""; 
     
     const headerContainer = document.createElement("div");
     headerContainer.style.cssText = "display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 5px;";
@@ -2242,123 +2243,103 @@ function showAsanaDetail(asana) {
     titleEl.textContent = displayName(asana);
     headerContainer.appendChild(titleEl);
 
+    // Build the Edit button natively so it cannot be stripped or hidden
     if (canEdit) {
         const editBtn = document.createElement("button");
         editBtn.textContent = "✏️ Edit";
         editBtn.className = "tiny";
         editBtn.style.cssText = "background: #e3f2fd; border: 1px solid #2196f3; color: #1976d2; padding: 4px 8px; cursor: pointer;";
-        // Attach click natively
         editBtn.onclick = () => window.openAsanaEditor(asana.id || asana.asanaNo);
         headerContainer.appendChild(editBtn);
     }
     d.appendChild(headerContainer);
 
-    const subInfo = document.createElement("div");
-    let subHTML = "";
-    if (asana.iast && prefersIAST() && asana.english) {
-        subHTML += `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;">${asana.english}</div>`;
-    } else if (asana.iast && !prefersIAST()) {
-        subHTML += `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;font-style:italic;">${asana.iast}</div>`;
-    }
-    subHTML += `<div class="muted">ID: ${asana.id || asana.asanaNo}</div>
-                <button id="playNameBtn" class="tiny" style="margin-top:10px;">🔊 Play Audio</button>
-                <hr>`;
-    subInfo.innerHTML = subHTML;
-    d.appendChild(subInfo);
+    // 3. Build the rest of the Info via a single HTML string
+    // Use a unique name for this string variable to avoid re-declaration errors
+    let detailHTML = `
+      ${
+        asana.iast && prefersIAST() && asana.english
+          ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;">${asana.english}</div>`
+          : asana.iast && !prefersIAST()
+          ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;font-style:italic;">${asana.iast}</div>`
+          : ''
+      }
+      <div class="muted">ID: ${asana.id || asana.asanaNo}</div>
+      <button id="playNameBtn" class="tiny" style="margin-top:10px;">🔊 Play Audio</button>
+      <hr>
+    `;
 
-    // Re-initialize content for the rest of the renderer
-    let content = "";
-
-    // 2. Images
+    // 4. Append Images
     const urls = typeof smartUrlsForPoseId === 'function' ? smartUrlsForPoseId(asana.id || asana.asanaNo) : [];
     if (urls && urls.length > 0) {
-      content += `<div class="browse-collage">`;
-      urls.forEach((src) => {
-        content += `<img src="${src}" style="max-width:100%; border-radius:8px; margin-bottom:10px;">`;
-      });
-      content += `</div>`;
+        detailHTML += `<div class="browse-collage">`;
+        urls.forEach((src) => {
+            detailHTML += `<img src="${src}" style="max-width:100%; border-radius:8px; margin-bottom:10px;">`;
+        });
+        detailHTML += `</div>`;
     }
   
-    // 3. Technique (Base Pose)
+    // 5. Append Technique (Base Pose)
     const baseTech = asana.technique || asana.Technique || "";
     if (baseTech) {
-      content += `<h3>Base Technique</h3>
+        detailHTML += `<h3>Base Technique</h3>
           <div class="technique-text" style="white-space: pre-wrap;">${
             typeof formatTechniqueText === 'function' ? formatTechniqueText(baseTech) : baseTech
           }</div>`;
     }
   
-    d.innerHTML = content;
+    // Safely append the gathered HTML string to the existing native elements
+    d.insertAdjacentHTML('beforeend', detailHTML);
   
-    // 4. Variations Loop (SMART TITLE EXTRACTION)
-  if (asana.variations && Object.keys(asana.variations).length > 0) {
-    const varSection = document.createElement('div');
-    varSection.innerHTML = '<hr><h3>Variations & Stages</h3>';
+    // 6. Variations Loop
+    if (asana.variations && Object.keys(asana.variations).length > 0) {
+        const varSection = document.createElement('div');
+        varSection.innerHTML = '<hr><h3>Variations & Stages</h3>';
 
-    // Sort the keys so they appear in correct order (I, II, III...)
-    const sortedKeys = Object.keys(asana.variations).sort();
+        const sortedKeys = Object.keys(asana.variations).sort();
+        sortedKeys.forEach(key => {
+            const val = asana.variations[key];
+            let techText = '';
+            let shortText = '';
+            let titleText = `Stage ${key}`;
 
-    sortedKeys.forEach(key => {
-      const val = asana.variations[key];
-      let techText = '';
-      let shortText = '';
-      let titleText = `Stage ${key}`; // Default fallback
+            if (typeof val === 'string') {
+                techText = val;
+            } else if (val && typeof val === 'object') {
+                techText = val.Full_Technique || val.technique || val.Technique || '';
+                shortText = val.shorthand || val.Shorthand || '';
+                const actualTitle = val.Title || val.title || val.Stage_Title || val.stage_title;
+                if (actualTitle && String(actualTitle).trim() !== '') titleText = String(actualTitle).trim();
+            }
 
-      // Extract the correct fields from the database object
-      if (typeof val === 'string') {
-        techText = val;
-      } else if (val && typeof val === 'object') {
-        // Look for multiple case variations of technique and shorthand
-        techText = val.Full_Technique || val.technique || val.Technique || '';
-        shortText = val.shorthand || val.Shorthand || '';
-        
-        // THE FIX: Check for "title" (lowercase) which matches your console log
-        const actualTitle = val.Title || val.title || val.Stage_Title || val.stage_title;
-        
-        if (actualTitle && String(actualTitle).trim() !== '') {
-            titleText = String(actualTitle).trim();
-        }
-      }
+            const wrapper = document.createElement('div');
+            wrapper.className = 'variation-block';
+            wrapper.style.cssText = 'background:#f9f9f9; padding:12px; margin-bottom:12px; border-radius:8px; border: 1px solid #eee;';
 
-      const wrapper = document.createElement('div');
-      wrapper.className = 'variation-block';
-      wrapper.style.cssText = 'background:#f9f9f9; padding:12px; margin-bottom:12px; border-radius:8px; border: 1px solid #eee;';
+            let html = `<h4 style="margin-top:0; margin-bottom:8px; color:#333; font-size:1.1rem;">${titleText}</h4>`;
+            if (shortText) html += `<div style="color:#2e7d32; font-weight:bold; margin-bottom:8px; font-family:monospace; font-size:1rem;">${shortText}</div>`;
+            if (techText) {
+                const formattedTech = typeof formatTechniqueText === 'function' ? formatTechniqueText(techText) : techText;
+                html += `<div class="technique-text" style="white-space: pre-wrap; font-size:0.95rem; color:#444;">${formattedTech}</div>`;
+            } else {
+                html += `<div class="muted" style="font-size:0.85rem;">No specific instructions provided.</div>`;
+            }
 
-      // Render the Title
-      let html = `<h4 style="margin-top:0; margin-bottom:8px; color:#333; font-size:1.1rem;">${titleText}</h4>`;
-
-      // Render Shorthand if it exists
-      if (shortText) {
-        html += `<div style="color:#2e7d32; font-weight:bold; margin-bottom:8px; font-family:monospace; font-size:1rem;">
-                    ${shortText}
-                 </div>`;
-      }
-
-      // Render Technique Instructions
-      if (techText) {
-          const formattedTech = typeof formatTechniqueText === 'function' ? formatTechniqueText(techText) : techText;
-          html += `<div class="technique-text" style="white-space: pre-wrap; font-size:0.95rem; color:#444;">${formattedTech}</div>`;
-      } else {
-          html += `<div class="muted" style="font-size:0.85rem;">No specific instructions provided.</div>`;
-      }
-
-      wrapper.innerHTML = html;
-      varSection.appendChild(wrapper);
-    });
-
-    d.appendChild(varSection);
-  }
+            wrapper.innerHTML = html;
+            varSection.appendChild(wrapper);
+        });
+        d.appendChild(varSection);
+    }
   
-    // 5. Bind Audio Button
-    const btn = document.getElementById('playNameBtn');
-    if (btn) btn.onclick = () => playAsanaAudio(asana, null);
+    // 7. Bind Audio Button
+    const playBtn = document.getElementById('playNameBtn');
+    if (playBtn) playBtn.onclick = () => playAsanaAudio(asana, null);
   
-    // 6. Admin Injector (if applicable)
-    const adminContainer = document.getElementById('adminFields'); 
-    if (typeof adminMode !== 'undefined' && adminMode && adminContainer && typeof renderAdminFields === 'function') {
+    // 8. Admin Injector
+    if (typeof adminMode !== 'undefined' && adminMode && typeof renderAdminFields === 'function') {
         renderAdminFields(d, asana);
     }
-  }
+}
 
 
 function renderAdminDetailTools(container, asma, rowVariations) {
