@@ -3923,10 +3923,19 @@ safeListen("resetBtn", "click", () => {
    if (instructionsEl) instructionsEl.textContent = "";
 });
 // --- DYNAMIC DURATION DIAL LOGIC ---
-function getDurationMultiplier() {
+function getDialPosition() {
     const dial = $("durationDial");
-    if (!dial) return 1.0;
-    return parseInt(dial.value, 10) / 100;
+    return dial ? parseInt(dial.value, 10) : 50;
+}
+
+function interpolateDuration(pos, shortSec, defaultSec, longSec) {
+    if (pos <= 50) {
+        const t = pos / 50;
+        return Math.round(shortSec + (defaultSec - shortSec) * t);
+    } else {
+        const t = (pos - 50) / 50;
+        return Math.round(defaultSec + (longSec - defaultSec) * t);
+    }
 }
 
 function updateDialUI() {
@@ -3936,27 +3945,35 @@ function updateDialUI() {
     const estEl = $("durationDialEst");
     if (!dial || !label) return;
 
-    const mult = getDurationMultiplier();
-    const multStr = mult.toFixed(2).replace(/\.?0+$/, '') + "x";
-    const isStandard = Math.abs(mult - 1.0) < 0.01;
+    const pos = getDialPosition();
+    const isStandard = pos === 50;
 
-    label.textContent = isStandard ? "Standard" : multStr;
+    if (isStandard) {
+        label.textContent = "Standard";
+    } else if (pos < 50) {
+        label.textContent = pos <= 10 ? "Shortest" : "Shorter";
+    } else {
+        label.textContent = pos >= 90 ? "Longest" : "Longer";
+    }
 
     if (wrap) {
         wrap.classList.remove("dial-faster", "dial-slower");
-        if (mult > 1.01) wrap.classList.add("dial-faster");
-        else if (mult < 0.99) wrap.classList.add("dial-slower");
+        if (pos > 50) wrap.classList.add("dial-faster");
+        else if (pos < 50) wrap.classList.add("dial-slower");
     }
 
     if (estEl && currentSequence && window.currentSequenceOriginalPoses) {
-        const total = window.currentSequenceOriginalPoses.reduce((s, p) => {
-            const dur = Number(p[1]) || 0;
+        const total = window.currentSequenceOriginalPoses.reduce((s, p, i) => {
+            const origDur = Number(p[1]) || 0;
             const id = Array.isArray(p[0]) ? p[0][0] : p[0];
             const asana = findAsanaByIdOrPlate ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
+            const hd = asana && asana.hold_data;
+            const shortSec = hd ? (hd.short || origDur) : origDur;
+            const longSec  = hd ? (hd.long  || origDur) : origDur;
+            const dur = interpolateDuration(pos, shortSec, origDur, longSec);
             return s + (asana && asana.requiresSides ? dur * 2 : dur);
         }, 0);
-        const adj = Math.round(total * mult);
-        estEl.textContent = "· " + formatHMS(adj);
+        estEl.textContent = formatHMS(total);
     } else if (estEl) {
         estEl.textContent = "";
     }
@@ -3966,9 +3983,7 @@ const durationDial = $("durationDial");
 if (durationDial) {
     durationDial.addEventListener("input", () => {
         updateDialUI();
-        if (currentSequence) {
-            applyDurationDial();
-        }
+        if (currentSequence) applyDurationDial();
     });
     durationDial.addEventListener("change", () => {
         if (currentSequence) {
@@ -3978,17 +3993,37 @@ if (durationDial) {
     });
 }
 
+const durationDialReset = $("durationDialReset");
+if (durationDialReset) {
+    durationDialReset.addEventListener("click", () => {
+        const dial = $("durationDial");
+        if (dial) {
+            dial.value = 50;
+            updateDialUI();
+            if (currentSequence) {
+                applyDurationDial();
+                stopTimer();
+                setPose(currentIndex);
+            }
+        }
+    });
+}
+
 function applyDurationDial() {
     if (!currentSequence || !window.currentSequenceOriginalPoses) return;
-    const mult = getDurationMultiplier();
+    const pos = getDialPosition();
 
-    currentSequence.poses = JSON.parse(JSON.stringify(window.currentSequenceOriginalPoses));
-
-    if (Math.abs(mult - 1.0) > 0.01) {
-        currentSequence.poses.forEach((p) => {
-            p[1] = Math.round((Number(p[1]) || 0) * mult);
-        });
-    }
+    currentSequence.poses = window.currentSequenceOriginalPoses.map(p => {
+        const copy = [...p];
+        const origDur = Number(p[1]) || 0;
+        const id = Array.isArray(p[0]) ? p[0][0] : p[0];
+        const asana = findAsanaByIdOrPlate ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
+        const hd = asana && asana.hold_data;
+        const shortSec = hd ? (hd.short || origDur) : origDur;
+        const longSec  = hd ? (hd.long  || origDur) : origDur;
+        copy[1] = interpolateDuration(pos, shortSec, origDur, longSec);
+        return copy;
+    });
 
     if (typeof updateTotalAndLastUI === 'function') updateTotalAndLastUI();
     if (typeof updateTimerUI === 'function') updateTimerUI();
