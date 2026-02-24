@@ -1743,6 +1743,7 @@ function prevPose() {
 
     // 8. NOTES UI (Passes only the clean actualNote)
     if (typeof updatePoseNote === "function") updatePoseNote(actualNote);
+    if (typeof updatePoseAsanaDescription === "function") updatePoseAsanaDescription(asana);
     if (typeof loadUserPersonalNote === "function") loadUserPersonalNote(lookupId);
 
     // 9. META UI & AUDIO BUTTON
@@ -1843,7 +1844,25 @@ function updatePoseNote(note) {
    }
 
    details.style.display = "block";
-   details.open = true; 
+   details.open = true;
+   body.innerHTML = renderMarkdownMinimal(text);
+}
+
+function updatePoseAsanaDescription(asana) {
+   const details = $("poseAsanaDescDetails");
+   const body = $("poseAsanaDescBody");
+   if (!details || !body) return;
+
+   const text = (asana?.description || asana?.Description || "").toString().trim();
+   if (!text) {
+      details.style.display = "none";
+      details.open = false;
+      body.innerHTML = "";
+      return;
+   }
+
+   details.style.display = "block";
+   details.open = false;
    body.innerHTML = renderMarkdownMinimal(text);
 }
 
@@ -2307,7 +2326,18 @@ function showAsanaDetail(asana) {
             typeof formatTechniqueText === 'function' ? formatTechniqueText(baseTech) : baseTech
           }</div>`;
     }
-  
+
+    // 5.5. Append Description
+    const baseDesc = asana.description || asana.Description || "";
+    if (baseDesc) {
+        detailHTML += `<details style="margin-top:12px; max-width:720px;">
+          <summary style="cursor:pointer; font-weight:650">Description</summary>
+          <div class="desc-text" style="padding-top:8px; color:#111; white-space: pre-wrap;">${
+            typeof formatTechniqueText === 'function' ? formatTechniqueText(baseDesc) : baseDesc
+          }</div>
+        </details>`;
+    }
+
     // Safely append the gathered HTML string to the existing native elements
     d.insertAdjacentHTML('beforeend', detailHTML);
   
