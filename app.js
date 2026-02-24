@@ -2266,11 +2266,16 @@ function showAsanaDetail(asana) {
     editBtn.className = "tiny";
     editBtn.style.cssText = "background: #2196f3; color: white; padding: 6px 12px; cursor: pointer; margin-bottom: 10px; font-weight: bold;";
     editBtn.onclick = () => {
+        console.log("Edit button onclick fired");
         console.log("Edit button clicked, asana.id:", asana.id, "asana.asanaNo:", asana.asanaNo);
         window.openAsanaEditor(asana.id || asana.asanaNo);
     };
+    editBtn.addEventListener("click", () => {
+        console.log("Edit button addEventListener fired");
+    });
     d.appendChild(editBtn);
     console.log("Edit button appended:", editBtn);
+    console.log("Edit button onclick property:", editBtn.onclick);
 
     // 3. Build the rest of the Info via a single HTML string
     // Use a unique name for this string variable to avoid re-declaration errors
