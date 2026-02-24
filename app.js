@@ -3315,10 +3315,7 @@ function builderOpen(mode, seq) {
               <select class="b-var" data-idx="${idx}" style="margin-left:8px; padding:2px 4px; border:1px solid #1976d2; border-radius:4px; font-size:0.75rem; background:#e3f2fd; color:#005580; max-width: 160px;">
                  <option value="">Base Pose</option>
                  ${Object.entries(variations).map(([vKey, vData]) => {
-                     let optionTitle = `Stage ${vKey}`;
-                     if (typeof vData === 'object' && vData.Title) {
-                         optionTitle = vData.Title; // Strictly use the Title
-                     }
+                     let optionTitle = vData.title || `Stage ${vKey}`;
                      const sel = (pose.variation === vKey) ? 'selected' : '';
                      return `<option value="${vKey}" ${sel}>${optionTitle}</option>`;
                  }).join('')}
