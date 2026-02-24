@@ -4571,8 +4571,17 @@ document.addEventListener("DOMContentLoaded", () => {
             // Automatically format the category if it's new
             const finalCategory = formatCategoryName($("editAsanaCategory").value.trim());
 
+            let userId = null;
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                userId = user?.id;
+            } catch (e) {
+                console.warn("Could not get user ID:", e.message);
+            }
+
             const asanaData = {
                 id: id,
+                user_id: userId,
                 name: $("editAsanaName").value.trim(),
                 iast: $("editAsanaIAST").value.trim(),
                 english_name: $("editAsanaEnglish").value.trim(),
@@ -4583,7 +4592,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 page_2015: $("editAsanaPage2015").value.trim(),
                 intensity: $("editAsanaIntensity").value.trim(),
                 note: $("editAsanaNote").value.trim(),
-                category: finalCategory, // <--- NOW USING THE FORMATTED CATEGORY
+                category: finalCategory,
                 description: $("editAsanaDescription").value.trim(),
                 hold: $("editAsanaHold").value.trim()
             };
@@ -4591,11 +4600,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const stageDivs = $("stagesContainer").querySelectorAll("div[style*='border:1px solid']");
             const stagesToSave = [];
             const localVariations = {};
-            
+
             stageDivs.forEach(div => {
                 const key = div.querySelector(".stage-key").value.trim();
                 if (key) {
                     const sData = {
+                        user_id: asanaData.user_id,
                         parent_id: [id],
                         stage_name: key,
                         title: div.querySelector(".stage-title").value.trim(),
@@ -4617,11 +4627,11 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 if (supabase) {
                     // Push to Supabase 'user_asanas'
-                    const { error: asanaErr } = await supabase.from('user_asanas').upsert(asanaData, { onConflict: 'id' });
+                    const { error: asanaErr } = await supabase.from('user_asanas').upsert(asanaData, { onConflict: 'id,user_id' });
                     if (asanaErr) throw asanaErr;
-                    
-                    // Sync 'user_stages'
-                    await supabase.from('user_stages').delete().contains('parent_id', [id]);
+
+                    // Sync 'user_stages' - delete old stages for this asana by current user
+                    await supabase.from('user_stages').delete().eq('user_id', userId).contains('parent_id', [id]);
                     if (stagesToSave.length > 0) {
                         const { error: stageErr } = await supabase.from('user_stages').insert(stagesToSave);
                         if (stageErr) throw stageErr;
