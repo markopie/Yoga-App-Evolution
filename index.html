@@ -8,6 +8,93 @@
   <link rel="stylesheet" href="styles/style.css">
 </head>
 <body>
+  <div class="modal-backdrop" id="asanaEditorBackdrop" aria-hidden="true" style="display:none; z-index:3000;">
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:800px; width:95vw;">
+      <div class="modal-header">
+        <h2 id="asanaEditorTitle" style="margin:0; font-size: 1.2rem;">Edit Asana</h2>
+        <button id="asanaEditorCloseBtn" type="button" class="tiny warn">Close</button>
+      </div>
+      <div class="modal-body" style="padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:15px;">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
+          <div>
+            <label class="muted" style="font-size:0.8rem;">ID (Locked)</label>
+            <input type="text" id="editAsanaId" style="width:100%; padding:6px; font-weight:bold; background:#f0f0f0;" disabled>
+          </div>
+          <div>
+            <label class="muted" style="font-size:0.8rem;">Category</label>
+            <input type="text" id="editAsanaCategory" list="asanaCategoryList" placeholder="Select or type new..." style="width:100%; padding:6px;">
+            <datalist id="asanaCategoryList"></datalist>
+          </div>
+          <div>
+            <label class="muted" style="font-size:0.8rem;">Hold Time</label>
+            <input type="text" id="editAsanaHold" placeholder="e.g. 0:30" style="width:100%; padding:6px;">
+          </div>
+          <div>
+            <label class="muted" style="font-size:0.8rem;">Name (Sanskrit)</label>
+            <input type="text" id="editAsanaName" style="width:100%; padding:6px;">
+          </div>
+          <div>
+            <label class="muted" style="font-size:0.8rem;">IAST</label>
+            <input type="text" id="editAsanaIAST" style="width:100%; padding:6px;">
+          </div>
+          <div>
+            <label class="muted" style="font-size:0.8rem;">English Name</label>
+            <input type="text" id="editAsanaEnglish" style="width:100%; padding:6px;">
+          </div>
+          <div>
+            <label class="muted" style="font-size:0.8rem;">Plate Numbers (e.g. Final: 1, 2)</label>
+            <input type="text" id="editAsanaPlates" style="width:100%; padding:6px;">
+          </div>
+          <div>
+            <label class="muted" style="font-size:0.8rem;">Page 2001</label>
+            <input type="text" id="editAsanaPage2001" style="width:100%; padding:6px;">
+          </div>
+          <div>
+            <label class="muted" style="font-size:0.8rem;">Page 2015</label>
+            <input type="text" id="editAsanaPage2015" style="width:100%; padding:6px;">
+          </div>
+          <div>
+            <label class="muted" style="font-size:0.8rem;">Intensity</label>
+            <input type="text" id="editAsanaIntensity" style="width:100%; padding:6px;">
+          </div>
+          <div style="display:flex; align-items:flex-end; padding-bottom: 6px;">
+            <label style="display:flex; gap:8px; align-items:center; cursor:pointer;">
+              <input type="checkbox" id="editAsanaRequiresSides">
+              <span class="muted" style="font-size:0.85rem; color:#111; font-weight:bold;">Requires Sides (Audio Left/Right)</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="muted" style="font-size:0.8rem;">Note</label>
+          <input type="text" id="editAsanaNote" style="width:100%; padding:6px;">
+        </div>
+        
+        <div>
+          <label class="muted" style="font-size:0.8rem;">Description (Markdown supported)</label>
+          <textarea id="editAsanaDescription" style="height:80px; padding:6px; font-family:inherit;"></textarea>
+        </div>
+
+        <div>
+          <label class="muted" style="font-size:0.8rem;">Technique</label>
+          <textarea id="editAsanaTechnique" style="height:120px; padding:6px; font-family:inherit;"></textarea>
+        </div>
+
+        <div style="border-top: 2px solid #eee; padding-top: 15px; margin-top: 10px;">
+           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+              <h3 style="margin:0; font-size:1.1rem; color:#333;">Stages / Variations</h3>
+              <button type="button" class="tiny" id="addStageBtn">+ Add Stage</button>
+           </div>
+           <div id="stagesContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+        <div id="asanaEditorStatus" style="color:green; font-weight:bold; font-size:0.9rem;"></div>
+        <button id="asanaEditorSaveBtn" style="background:#2e7d32; color:white; padding:8px 16px;">Save Asana</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-backdrop" id="editCourseBackdrop" style="display: none;">
     <div class="modal" role="dialog" style="max-width: 960px; width: 95vw;">
       <div class="modal-header" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">

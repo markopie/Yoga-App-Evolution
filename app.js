@@ -745,39 +745,29 @@ async function loadAsanaLibrary() {
     }
 
     try {
-        // Fetch asanas from Supabase
-        const { data: asanasData, error: asanasError } = await supabase
-            .from('asanas')
-            .select('*');
+        // 1. Fetch base asanas
+        const { data: asanasData, error: asanasError } = await supabase.from('asanas').select('*');
+        let allAsanasData = asanasData && !asanasError ? [...asanasData] : [];
 
-        if (asanasError) {
-            console.error("Error fetching asanas:", asanasError);
-            return {};
-        }
+        // 2. Fetch user asanas and merge them
+        try {
+            const { data: userAsanasData } = await supabase.from('user_asanas').select('*');
+            if (userAsanasData && userAsanasData.length > 0) {
+                // If ID matches, the user's version replaces the base version
+                const userIds = new Set(userAsanasData.map(a => String(a.id || '').trim().replace(/^0+/, '')));
+                allAsanasData = allAsanasData.filter(a => !userIds.has(String(a.id || '').trim().replace(/^0+/, '')));
+                allAsanasData = allAsanasData.concat(userAsanasData);
+            }
+        } catch (e) { console.warn("Could not load user_asanas:", e.message); }
 
-        if (!asanasData || asanasData.length === 0) {
-            console.warn("No asanas found in database");
-            return {};
-        }
-
-        console.log(`Fetched ${asanasData.length} asanas`);
-        console.warn('DIAG asana row[0] keys:', Object.keys(asanasData[0]));
-        console.warn('DIAG asana row[0] sample:', JSON.stringify(asanasData[0]).slice(0, 300));
-
-        // Transform asanas into legacy format (object keyed by padded ID)
         const normalized = {};
 
-        asanasData.forEach((row, idx) => {
-            // Support both snake_case (our schema) and original Airtable column names
+        allAsanasData.forEach((row, idx) => {
             const rawId = row.ID ?? row.id ?? '';
             const paddedId = String(rawId).trim().replace(/^0+/, '') || '';
-            if (!paddedId) {
-                if (idx < 3) console.warn(`DIAG asana row[${idx}] has no ID, keys:`, Object.keys(row));
-                return;
-            }
+            if (!paddedId) return;
             const key = paddedId.padStart(3, '0');
 
-            // Parse plates from "Final: 1, 2" format
             const platesObj = parsePlates(row.Plate_Numbers ?? row.plate_numbers ?? '');
 
             normalized[key] = {
@@ -798,70 +788,42 @@ async function loadAsanaLibrary() {
             };
         });
 
-        // Fetch stages (variations) from Supabase
-        const { data: stagesData, error: stagesError } = await supabase
-            .from('stages')
-            .select('*');
+        // 3. Fetch base stages
+        const { data: stagesData } = await supabase.from('stages').select('*');
+        let allStagesData = stagesData ? [...stagesData] : [];
 
-        if (stagesError) {
-            console.error("Error fetching stages:", stagesError);
-        } else if (stagesData && stagesData.length > 0) {
-            console.log(`Fetched ${stagesData.length} stages`);
-            console.warn('DIAG stage row[0] keys:', Object.keys(stagesData[0]));
-            console.warn('DIAG stage row[0] sample:', JSON.stringify(stagesData[0]).slice(0, 300));
+        // 4. Fetch user stages and merge them
+        try {
+            const { data: userStagesData } = await supabase.from('user_stages').select('*');
+            if (userStagesData && userStagesData.length > 0) {
+                allStagesData = allStagesData.concat(userStagesData);
+            }
+        } catch (e) { console.warn("Could not load user_stages:", e.message); }
 
-            // Inject stages into their parent asanas
-            stagesData.forEach((stage, idx) => {
-                // Try every possible column name for the parent's numeric yoga ID
-                // Airtable lookup fields come through as arrays: [234] or ["234"]
-                const rawParentId =
-                    stage['ID (from Parent_ID)'] ??
-                    stage['id_from_parent_id'] ??
-                    stage.parent_id ??
-                    stage.Parent_ID ??
-                    null;
-
-                // Flatten: unwrap array, coerce to string
+        if (allStagesData.length > 0) {
+            allStagesData.forEach((stage) => {
+                const rawParentId = stage['ID (from Parent_ID)'] ?? stage['id_from_parent_id'] ?? stage.parent_id ?? stage.Parent_ID ?? null;
                 let parentIdStr = '';
-                if (Array.isArray(rawParentId)) {
-                    parentIdStr = String(rawParentId[0] ?? '').trim();
-                } else if (rawParentId !== null && rawParentId !== undefined) {
-                    parentIdStr = String(rawParentId).trim();
-                }
+                if (Array.isArray(rawParentId)) parentIdStr = String(rawParentId[0] ?? '').trim();
+                else if (rawParentId !== null && rawParentId !== undefined) parentIdStr = String(rawParentId).trim();
 
-                // Remove any non-numeric/alpha prefix junk (e.g. Airtable rec IDs are ignored)
-                // Valid yoga IDs are purely numeric, possibly with letter suffix like "172a"
-                if (!parentIdStr || !/^\d/.test(parentIdStr)) {
-                    if (idx < 5) console.warn(`DIAG stage[${idx}] unusable parentId="${parentIdStr}" rawParentId=`, rawParentId, 'keys:', Object.keys(stage));
-                    return;
-                }
+                if (!parentIdStr || !/^\d/.test(parentIdStr)) return;
 
-                // Normalise: strip leading zeros, re-pad to 3 digits
                 const numPart = parentIdStr.match(/^(\d+)/);
                 const suffix = parentIdStr.replace(/^\d+/, '');
                 const parentKey = numPart[1].replace(/^0+/, '').padStart(3, '0') + suffix;
 
-                if (!normalized[parentKey]) {
-                    if (idx < 5) console.warn(`DIAG stage[${idx}] parentKey "${parentKey}" not in asanaLibrary (rawParentId=`, rawParentId, ')');
-                    return;
-                }
+                if (!normalized[parentKey]) return;
 
                 const stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
-                if (!stageKey) {
-                    if (idx < 5) console.warn(`DIAG stage[${idx}] has no Stage_Name, keys:`, Object.keys(stage));
-                    return;
-                }
+                if (!stageKey) return;
 
+                // Because user_stages were concatenated at the end of the array, they will naturally overwrite base definitions if the stage key is the same.
                 normalized[parentKey].variations[stageKey] = {
                     technique: stage.Full_Technique ?? stage.full_technique ?? '',
                     shorthand: stage.Shorthand ?? stage.shorthand ?? '',
                     title: stage.Title ?? stage.title ?? `Stage ${stageKey}`
                 };
-
-                // Targeted confirmation for asana 234
-                if (parentKey === '234') {
-                    console.warn(`DIAG ✓ injected stage "${stageKey}" into asana 234`);
-                }
             });
         }
 
@@ -1307,6 +1269,8 @@ function showResumePrompt(state) {
     console.log(`Manifest loaded: ${window.serverAudioFiles.length} audio, ${window.serverImageFiles.length} images`);
 }
 async function init() {
+    console.log("init() has started executing!");
+    window.appInitialized = true; // Prevents the fallback from running twice
     try {
         const statusEl = $("statusText");
         
@@ -1990,9 +1954,26 @@ function descriptionForPose(asana, fullLabel) {
    ========================================================================== */
 
    function setupBrowseUI() {
-    if ($("browseBtn")) $("browseBtn").addEventListener("click", openBrowse);
-    if ($("browseCloseBtn")) $("browseCloseBtn").addEventListener("click", closeBrowse);
+    console.log("setupBrowseUI() is running...");
 
+    // 1. Wire up the main Browse button
+    const bBtn = document.getElementById("browseBtn");
+    if (bBtn) {
+        console.log("✅ Browse button found! Attaching click listener.");
+        bBtn.onclick = (e) => {
+            e.preventDefault();
+            window.openBrowse();
+        };
+    } else {
+        console.error("❌ ERROR: browseBtn was NULL during setupBrowseUI!");
+    }
+
+    // 2. Wire up the close button
+    if ($("browseCloseBtn")) {
+        $("browseCloseBtn").addEventListener("click", closeBrowse);
+    }
+
+    // 3. Hide Finals Checkbox
     const finalsChk = $("browseFinalOnly");
     if (finalsChk) {
         if (finalsChk.parentElement && finalsChk.parentElement.tagName === "LABEL") {
@@ -2003,6 +1984,8 @@ function descriptionForPose(asana, fullLabel) {
     }
 
     const closeBtn = $("browseCloseBtn");
+
+    // 4. Create "Sync Library" Button
     if (closeBtn && !document.getElementById("browseSyncBtn")) {
         const syncBtn = document.createElement("button");
         syncBtn.id = "browseSyncBtn";
@@ -2023,26 +2006,47 @@ function descriptionForPose(asana, fullLabel) {
         }
     }
 
-    // Backdrop Click Logic
-    (function () {
-        const bd = $("browseBackdrop");
-        if (!bd) return;
+    // 5. Create "Add Asana" Button
+    if (closeBtn && !document.getElementById("browseAddAsanaBtn")) {
+        const addBtn = document.createElement("button");
+        addBtn.id = "browseAddAsanaBtn";
+        addBtn.textContent = "➕ Add Asana";
+        addBtn.className = "tiny";
+        addBtn.style.cssText = "background: #007aff; color: white; margin-right: 15px;";
+        addBtn.style.display = window.enableEditing ? "inline-block" : "none";
+        
+        addBtn.onclick = () => { 
+            if (typeof window.openAsanaEditor === "function") {
+                window.openAsanaEditor(null);
+            } else {
+                console.error("openAsanaEditor is not defined!");
+            }
+        };
+        
+        if (closeBtn.parentNode) {
+            closeBtn.parentNode.insertBefore(addBtn, closeBtn);
+        }
+    }
+
+    // 6. Backdrop Click Logic
+    const bd = $("browseBackdrop");
+    if (bd) {
         let downOnBackdrop = false;
         bd.addEventListener("pointerdown", (e) => { downOnBackdrop = (e.target === bd); });
         bd.addEventListener("click", (e) => {
             if (e.target === bd && downOnBackdrop) closeBrowse();
             downOnBackdrop = false;
         });
-    })();
+    }
 
-    // ESC Key Support
+    // 7. ESC Key Support
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && $("browseBackdrop")?.style.display === "flex") {
             closeBrowse();
         }
     });
 
-    // Filters
+    // 8. Filters
     const onChange = () => applyBrowseFilters();
     const debounce = (fn, ms = 120) => {
         let t = null;
@@ -2058,14 +2062,49 @@ function descriptionForPose(asana, fullLabel) {
     if ($("browseCategory")) $("browseCategory").addEventListener("change", onChange);
 }
 
-function openBrowse() {
+// Update the setAdminMode function to reveal the "Add Asana" button
+window.setAdminMode = function(val) {
+    window.enableEditing = !!val;
+    localStorage.setItem("admin_mode_enabled", window.enableEditing);
+    
+    const cb = document.getElementById("adminEditToggle"); 
+    if (cb) cb.checked = window.enableEditing;
+
+    const addBtn = document.getElementById("browseAddAsanaBtn");
+    if (addBtn) addBtn.style.display = window.enableEditing ? "inline-block" : "none";
+
+    // Refresh Browse list so the inline "✏️ Edit" buttons appear
+    if (typeof applyBrowseFilters === 'function') applyBrowseFilters();
+};
+
+window.openBrowse = function() {
+    console.log("✅ openBrowse() was successfully triggered!");
+    
     const bd = $("browseBackdrop");
-    if (!bd) return;
+    console.log("🔍 Looking for backdrop element:", bd);
+    
+    if (!bd) {
+        console.error("❌ ERROR: browseBackdrop not found in the HTML!");
+        return;
+    }
+    
     bd.style.display = "flex";
     bd.setAttribute("aria-hidden", "false");
-    applyBrowseFilters(); 
+    console.log("✅ Backdrop display set to flex.");
+    
+    try {
+        console.log("🔄 Calling applyBrowseFilters()...");
+        applyBrowseFilters(); 
+        console.log("✅ Filters applied successfully.");
+    } catch (e) {
+        console.error("❌ ERROR inside applyBrowseFilters:", e);
+    }
+    
     if ($("browseSearch")) $("browseSearch").focus();
-}
+};
+
+// Ensure the local reference points to the window one just in case
+const openBrowse = window.openBrowse;
 
 function closeBrowse() {
     const bd = $("browseBackdrop");
@@ -2173,14 +2212,18 @@ function showAsanaDetail(asana) {
     const d = document.getElementById('browseDetail');
     if (!d) return;
   
-    const canEdit = window.enableEditing === true;
+    // BULLETPROOF CHECK: Check both the window variable AND local storage
+    const canEdit = (window.enableEditing === true) || (localStorage.getItem("admin_mode_enabled") === "true");
+    
+    // DEBUG LOG: This will tell us exactly why the button is showing/hiding
+    console.log(`🛠️ showAsanaDetail -> canEdit: ${canEdit} | Asana ID: ${asana.id || asana.asanaNo}`);
   
     // 1. Basic Info & Header
     let content = `
       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
         <h2 style="margin:0;">${displayName(asana)}</h2>
         ${canEdit ? `
-          <button onclick="openAsanaEditor('${asana.id || asana.asanaNo}')" 
+          <button onclick="window.openAsanaEditor('${asana.id || asana.asanaNo}')" 
                   class="tiny" 
                   style="background: #e3f2fd; border: 1px solid #2196f3; color: #1976d2; padding: 4px 8px; cursor: pointer;">
             ✏️ Edit
@@ -2337,30 +2380,55 @@ function renderAdminDetailTools(container, asma, rowVariations) {
     nameDiv.appendChild(saveNameBtn);
     adminContent.appendChild(nameDiv);
 
-    // A. CATEGORY
+    // A. CATEGORY (Dynamic)
     const catDiv = document.createElement("div");
     catDiv.style.marginBottom = "15px";
     catDiv.innerHTML = "<div style='font-size:0.85rem; font-weight:bold; margin-bottom:4px;'>📂 Category</div>";
     
-    const catLabels = { 
-        "": "(no category)", 
-        "01_Standing_and_Basic": "01 Standing & Basic", 
-        "02_Seated_and_Lotus_Variations": "02 Seated & Lotus", 
-        "03_Forward_Bends": "03 Forward Bends", 
-        "04_Inversions_Sirsasana_Sarvangasana": "04 Inversions", 
-        "05_Abdominal_and_Supine": "05 Abdominal & Supine", 
-        "06_Twists": "06 Twists", 
-        "07_Arm_Balances": "07 Arm Balances", 
-        "08_Advanced_Leg_behind_Head": "08 Leg Behind Head", 
-        "09_Backbends": "09 Backbends", 
-        "10_Restorative_Pranayama": "10 Restorative/Pranayama" 
-    };
     const catSel = document.createElement("select");
     catSel.className = "tiny";
     catSel.style.width = "100%";
-    Object.entries(catLabels).forEach(([v, l]) => {
-        const o = document.createElement("option"); o.value = v; o.textContent = l; catSel.appendChild(o);
+    
+    // Create options dynamically
+    const oEmpty = document.createElement("option"); 
+    oEmpty.value = ""; 
+    oEmpty.textContent = "(no category)"; 
+    catSel.appendChild(oEmpty);
+   
+// Strips the "01_" prefix and underscores for clean UI display
+function getDisplayCategory(cat) {
+    if (!cat) return "";
+    return cat.replace(/^\d+_/, '').replace(/_/g, ' ');
+}
+
+// Maps clean UI input back to prefixed database format
+function formatCategoryName(inputCat) {
+    if (!inputCat) return "";
+    const cleanInput = inputCat.trim().replace(/\s+/g, '_');
+    const existingCats = getUniqueCategories();
+    
+    if (existingCats.includes(inputCat)) return inputCat;
+    
+    const match = existingCats.find(c => c.replace(/^\d+_/, '').toLowerCase() === cleanInput.toLowerCase());
+    if (match) return match; 
+    
+    let maxPrefix = 0;
+    existingCats.forEach(c => {
+        const m = c.match(/^(\d+)_/);
+        if (m && parseInt(m[1], 10) > maxPrefix) maxPrefix = parseInt(m[1], 10);
     });
+    
+    const nextPrefix = String(maxPrefix + 1).padStart(2, '0');
+    return `${nextPrefix}_${cleanInput}`;
+}
+
+    getUniqueCategories().forEach(c => {
+        const o = document.createElement("option"); 
+        o.value = c; // Keep the actual prefixed value hidden behind the scenes
+        o.textContent = getDisplayCategory(c); // Show the clean name in the dropdown
+        catSel.appendChild(o);
+    });
+    
     catSel.value = asma.category || "";
     
     const saveCatBtn = document.createElement("button");
@@ -2372,7 +2440,7 @@ function renderAdminDetailTools(container, asma, rowVariations) {
         await saveAsanaField(asma.asanaNo, "category", catSel.value);
         saveCatBtn.textContent = "✓ Saved";
         setTimeout(() => saveCatBtn.textContent = "Save Category", 2000);
-        applyBrowseFilters();
+        if (typeof applyBrowseFilters === 'function') applyBrowseFilters();
     };
     catDiv.appendChild(catSel);
     catDiv.appendChild(saveCatBtn);
@@ -4337,7 +4405,279 @@ function showGitHubStatus(msg, isError = false) {
 function encodeToBase64(str) {
     return btoa(unescape(encodeURIComponent(str)));
 }
+
+/* ==========================================================================
+   FULL ASANA EDITOR (Supabase Upsert)
+   ========================================================================== */
+
+   window.openAsanaEditor = function(id) {
+    const bd = $("asanaEditorBackdrop");
+    if (!bd) return alert("Editor HTML missing");
+    
+    // Populate Category Datalist dynamically
+    const dl = $("asanaCategoryList");
+    if (dl) {
+        dl.innerHTML = "";
+        getUniqueCategories().forEach(c => {
+            const opt = document.createElement("option");
+            opt.value = getDisplayCategory(c); // Use the clean display helper
+            dl.appendChild(opt);
+        });
+    }
+
+    // Wipe fields clean
+    $("editAsanaId").value = "";
+    $("editAsanaName").value = "";
+    $("editAsanaIAST").value = "";
+    $("editAsanaEnglish").value = a.english || a.english_name || a.English_Name || "";
+    $("editAsanaCategory").value = getDisplayCategory(a.category || a.Category || "");
+    $("editAsanaHold").value = a.hold || a.Hold || "";
+    $("editAsanaPlates").value = "";
+    $("editAsanaPage2001").value = "";
+    $("editAsanaPage2015").value = "";
+    $("editAsanaIntensity").value = "";
+    $("editAsanaNote").value = "";
+    $("editAsanaDescription").value = "";
+    $("editAsanaTechnique").value = "";
+    $("editAsanaRequiresSides").checked = false;
+    $("stagesContainer").innerHTML = "";
+    $("asanaEditorStatus").textContent = "";
+
+    // If ID is provided, we are EDITING
+    if (id) {
+        $("asanaEditorTitle").textContent = `Edit Asana: ${id}`;
+        const a = asanaLibrary[id] || {};
+        
+        $("editAsanaId").value = a.id || a.asanaNo || id;
+        $("editAsanaName").value = a.name || a.Name || "";
+        $("editAsanaIAST").value = a.iast || a.IAST || "";
+        $("editAsanaEnglish").value = a.english || a.english_name || a.English_Name || "";
+        $("editAsanaCategory").value = a.category || a.Category || "";
+        $("editAsanaHold").value = a.hold || a.Hold || "";
+        
+        let pStr = "";
+        if (a.plates && (a.plates.final || a.plates.intermediate)) {
+            if (a.plates.final && a.plates.final.length) pStr += `Final: ${a.plates.final.join(", ")}`;
+            if (a.plates.intermediate && a.plates.intermediate.length) {
+                if (pStr) pStr += " ";
+                pStr += `Intermediate: ${a.plates.intermediate.join(", ")}`;
+            }
+        } else {
+            pStr = a.plate_numbers || a.Plate_Numbers || "";
+        }
+        $("editAsanaPlates").value = pStr;
+
+        $("editAsanaPage2001").value = a.page2001 || a.Page_2001 || "";
+        $("editAsanaPage2015").value = a.page2015 || a.Page_2015 || "";
+        $("editAsanaIntensity").value = a.intensity || a.Intensity || "";
+        $("editAsanaNote").value = a.note || a.Note || "";
+        $("editAsanaDescription").value = a.description || a.Description || "";
+        $("editAsanaTechnique").value = a.technique || a.Technique || "";
+        $("editAsanaRequiresSides").checked = !!(a.requiresSides || a.Requires_Sides);
+        
+        if (a.variations) {
+            Object.entries(a.variations).forEach(([sKey, sData]) => {
+                addStageToEditor(sKey, sData);
+            });
+        }
+    } else {
+        // We are ADDING NEW
+        $("asanaEditorTitle").textContent = "Add New Asana";
+        $("editAsanaId").value = getNextAsanaId(); // Auto-calculate next ID
+    }
+
+    bd.style.display = "flex";
+};
+
+window.addStageToEditor = function(stageKey = "", stageData = {}) {
+    const container = $("stagesContainer");
+    const div = document.createElement("div");
+    div.style.cssText = "border:1px solid #ddd; padding:10px; border-radius:6px; background:#fff; display:grid; gap:8px;";
+    
+    div.innerHTML = `
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+           <div style="flex:1; min-width:100px;">
+               <label class="muted" style="font-size:0.75rem;">Stage Key (e.g. I)</label>
+               <input type="text" class="stage-key" value="${stageKey}" style="width:100%; padding:6px; font-weight:bold;">
+           </div>
+           <div style="flex:2; min-width:150px;">
+               <label class="muted" style="font-size:0.75rem;">Title</label>
+               <input type="text" class="stage-title" value="${typeof stageData === 'object' ? (stageData.title || stageData.Title || '') : ''}" style="width:100%; padding:6px;">
+           </div>
+           <div style="flex:1; min-width:100px;">
+               <label class="muted" style="font-size:0.75rem;">Shorthand</label>
+               <input type="text" class="stage-short" value="${typeof stageData === 'object' ? (stageData.shorthand || stageData.Shorthand || '') : ''}" style="width:100%; padding:6px;">
+           </div>
+           <div style="display:flex; align-items:flex-end;">
+               <button type="button" class="tiny warn remove-stage-btn" style="margin-bottom:2px;">✕ Remove</button>
+           </div>
+        </div>
+        <div>
+           <label class="muted" style="font-size:0.75rem;">Technique</label>
+           <textarea class="stage-tech" style="height:60px; padding:6px; width:100%; font-family:inherit;">${typeof stageData === 'object' ? (stageData.full_technique || stageData.Full_Technique || stageData.technique || '') : stageData}</textarea>
+        </div>
+    `;
+    
+    div.querySelector(".remove-stage-btn").onclick = () => div.remove();
+    container.appendChild(div);
+};
+
+// Apply UI Interactivity on DOM Load
+document.addEventListener("DOMContentLoaded", () => {
+    if ($("asanaEditorCloseBtn")) $("asanaEditorCloseBtn").onclick = () => $("asanaEditorBackdrop").style.display = "none";
+    if ($("addStageBtn")) $("addStageBtn").onclick = () => addStageToEditor();
+
+    if ($("asanaEditorSaveBtn")) {
+        $("asanaEditorSaveBtn").onclick = async () => {
+            const rawId = $("editAsanaId").value.trim();
+            if (!rawId) return alert("ID is required.");
+            const id = rawId.padStart(3, '0');
+            
+            const btn = $("asanaEditorSaveBtn");
+            btn.disabled = true;
+            btn.textContent = "Saving...";
+            $("asanaEditorStatus").textContent = "";
+
+            // Automatically format the category if it's new
+            const finalCategory = formatCategoryName($("editAsanaCategory").value.trim());
+
+            const asanaData = {
+                id: id,
+                name: $("editAsanaName").value.trim(),
+                iast: $("editAsanaIAST").value.trim(),
+                english_name: $("editAsanaEnglish").value.trim(),
+                technique: $("editAsanaTechnique").value.trim(),
+                plate_numbers: $("editAsanaPlates").value.trim(),
+                requires_sides: $("editAsanaRequiresSides").checked,
+                page_2001: $("editAsanaPage2001").value.trim(),
+                page_2015: $("editAsanaPage2015").value.trim(),
+                intensity: $("editAsanaIntensity").value.trim(),
+                note: $("editAsanaNote").value.trim(),
+                category: finalCategory, // <--- NOW USING THE FORMATTED CATEGORY
+                description: $("editAsanaDescription").value.trim(),
+                hold: $("editAsanaHold").value.trim()
+            };
+
+            const stageDivs = $("stagesContainer").querySelectorAll("div[style*='border:1px solid']");
+            const stagesToSave = [];
+            const localVariations = {};
+            
+            stageDivs.forEach(div => {
+                const key = div.querySelector(".stage-key").value.trim();
+                if (key) {
+                    const sData = {
+                        parent_id: [id],
+                        stage_name: key,
+                        title: div.querySelector(".stage-title").value.trim(),
+                        shorthand: div.querySelector(".stage-short").value.trim(),
+                        full_technique: div.querySelector(".stage-tech").value.trim()
+                    };
+                    stagesToSave.push(sData);
+                    
+                    // Memory format
+                    localVariations[key] = {
+                        title: sData.title,
+                        shorthand: sData.shorthand,
+                        technique: sData.full_technique,
+                        Full_Technique: sData.full_technique
+                    };
+                }
+            });
+
+            try {
+                if (supabase) {
+                    // Push to Supabase 'user_asanas'
+                    const { error: asanaErr } = await supabase.from('user_asanas').upsert(asanaData, { onConflict: 'id' });
+                    if (asanaErr) throw asanaErr;
+                    
+                    // Sync 'user_stages'
+                    await supabase.from('user_stages').delete().contains('parent_id', [id]);
+                    if (stagesToSave.length > 0) {
+                        const { error: stageErr } = await supabase.from('user_stages').insert(stagesToSave);
+                        if (stageErr) throw stageErr;
+                    }
+                }
+                
+                // Update local memory so edits take effect without needing to refresh
+                asanaLibrary[id] = {
+                    ...asanaLibrary[id],
+                    id: id,
+                    asanaNo: id,
+                    name: asanaData.name,
+                    english: asanaData.english_name,
+                    english_name: asanaData.english_name,
+                    iast: asanaData.iast,
+                    technique: asanaData.technique,
+                    requiresSides: asanaData.requires_sides,
+                    category: asanaData.category,
+                    description: asanaData.description,
+                    plates: typeof parsePlates === 'function' ? parsePlates(asanaData.plate_numbers) : asanaData.plate_numbers,
+                    plate_numbers: asanaData.plate_numbers,
+                    page2001: asanaData.page_2001,
+                    page2015: asanaData.page_2015,
+                    intensity: asanaData.intensity,
+                    note: asanaData.note,
+                    variations: localVariations,
+                    allPlates: [id] 
+                };
+
+                $("asanaEditorStatus").textContent = "✓ Saved successfully!";
+                if (typeof applyBrowseFilters === 'function') applyBrowseFilters();
+                
+                setTimeout(() => {
+                   $("asanaEditorBackdrop").style.display = "none";
+                   btn.disabled = false;
+                   btn.textContent = "Save Asana";
+                   showAsanaDetail(asanaLibrary[id]); // Refresh detail view
+                }, 1000);
+
+            } catch (e) {
+                console.error(e);
+                alert("Error saving: " + e.message);
+                btn.disabled = false;
+                btn.textContent = "Save Asana";
+            }
+        };
+    }
+});
+
+// --- DYNAMIC HELPERS ---
+function getNextAsanaId() {
+    if (typeof asanaLibrary === 'undefined') return "001";
+    let next = 1;
+    while (asanaLibrary[String(next).padStart(3, '0')]) {
+        next++;
+    }
+    return String(next).padStart(3, '0');
+}
+
+function getUniqueCategories() {
+    const cats = new Set();
+    if (typeof asanaLibrary !== 'undefined') {
+        Object.values(asanaLibrary).forEach(a => {
+            if (a.category) cats.add(a.category.trim());
+        });
+    }
+    return Array.from(cats).sort();
+}
+
 // 4. APP STARTUP (Crucial!)
-window.onload = init;
+console.log("Script parsed. Attempting startup...");
+
+// Fix for StackBlitz module loading timing issues
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    // DOM is already ready, run immediately
+    init();
+}
+
+// Add a fallback just in case it still hangs
+setTimeout(() => {
+    if (!window.appInitialized) {
+        console.log("Fallback: Forcing init() after 1.5 seconds...");
+        init();
+    }
+}, 1500);
 
 // #endregion
