@@ -2239,33 +2239,24 @@ function startBrowseAsana(asma) {
 function showAsanaDetail(asana) {
     const d = document.getElementById('browseDetail');
     if (!d) return;
-  
-    // 1. Setup Permissions
-    // always show edit button
-    const editBtn = document.createElement("button");
-    editBtn.textContent = "Edit";
-    editBtn.onclick = ()=>openAsanaEditor(asana);
-    headerContainer.appendChild(editBtn);
-    // 2. Clear Container and Build Header Natively
-    d.innerHTML = ""; 
-    
+
+    d.innerHTML = "";
+
     const headerContainer = document.createElement("div");
     headerContainer.style.cssText = "display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 5px;";
-    
+
     const titleEl = document.createElement("h2");
     titleEl.style.margin = "0";
     titleEl.textContent = displayName(asana);
     headerContainer.appendChild(titleEl);
 
-    // Build the Edit button natively so it cannot be stripped or hidden
-    if (canEdit) {
-        const editBtn = document.createElement("button");
-        editBtn.textContent = "✏️ Edit";
-        editBtn.className = "tiny";
-        editBtn.style.cssText = "background: #e3f2fd; border: 1px solid #2196f3; color: #1976d2; padding: 4px 8px; cursor: pointer;";
-        editBtn.onclick = () => window.openAsanaEditor(asana.id || asana.asanaNo);
-        headerContainer.appendChild(editBtn);
-    }
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "✏️ Edit";
+    editBtn.className = "tiny";
+    editBtn.style.cssText = "background: #e3f2fd; border: 1px solid #2196f3; color: #1976d2; padding: 4px 8px; cursor: pointer;";
+    editBtn.onclick = () => window.openAsanaEditor(asana.id || asana.asanaNo);
+    headerContainer.appendChild(editBtn);
+
     d.appendChild(headerContainer);
 
     // 3. Build the rest of the Info via a single HTML string
