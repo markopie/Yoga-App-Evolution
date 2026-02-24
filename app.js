@@ -2263,16 +2263,13 @@ function showAsanaDetail(asana) {
 
     const editBtn = document.createElement("button");
     editBtn.textContent = "✏️ Edit Asana";
-    editBtn.className = "tiny";
-    editBtn.style.cssText = "background: #2196f3; color: white; padding: 6px 12px; cursor: pointer; margin-bottom: 10px; font-weight: bold;";
+    editBtn.className = "edit-asana-btn";
+    editBtn.style.cssText = "background: #2196f3; color: white; padding: 6px 12px; cursor: pointer; margin-bottom: 10px; font-weight: bold; border: none; border-radius: 6px;";
     editBtn.onclick = () => {
         console.log("Edit button onclick fired");
         console.log("Edit button clicked, asana.id:", asana.id, "asana.asanaNo:", asana.asanaNo);
         window.openAsanaEditor(asana.id || asana.asanaNo);
     };
-    editBtn.addEventListener("click", () => {
-        console.log("Edit button addEventListener fired");
-    });
     d.appendChild(editBtn);
     console.log("Edit button appended:", editBtn);
     console.log("Edit button onclick property:", editBtn.onclick);
