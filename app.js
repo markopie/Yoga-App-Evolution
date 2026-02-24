@@ -764,15 +764,12 @@ async function loadAsanaLibrary() {
     }
 
     try {
-        // 1. Fetch base asanas
         const { data: asanasData, error: asanasError } = await supabase.from('asanas').select('*');
         let allAsanasData = asanasData && !asanasError ? [...asanasData] : [];
 
-        // 2. Fetch user asanas and merge them
         try {
             const { data: userAsanasData } = await supabase.from('user_asanas').select('*');
             if (userAsanasData && userAsanasData.length > 0) {
-                // If ID matches, the user's version replaces the base version
                 const userIds = new Set(userAsanasData.map(a => String(a.id || '').trim().replace(/^0+/, '')));
                 allAsanasData = allAsanasData.filter(a => !userIds.has(String(a.id || '').trim().replace(/^0+/, '')));
                 allAsanasData = allAsanasData.concat(userAsanasData);
@@ -792,60 +789,53 @@ async function loadAsanaLibrary() {
             normalized[key] = {
                 id: key,
                 name: row.Name ?? row.name ?? '',
-                // ... (keep all your existing properties here)
+                iast: row.IAST ?? row.iast ?? '',
+                english: row.English_Name ?? row.english_name ?? '',
+                technique: row.Technique ?? row.technique ?? '',
+                requiresSides: !!(row.Requires_Sides ?? row.requires_sides ?? false),
+                plates: platesObj,
+                page2001: String(row.Page_2001 ?? row.page_2001 ?? ''),
+                page2015: String(row.Page_2015 ?? row.page_2015 ?? ''),
+                intensity: String(row.Intensity ?? row.intensity ?? ''),
+                note: row.Note ?? row.note ?? '',
                 category: row.Category ?? row.category ?? '',
                 description: row.Description ?? row.description ?? '',
-                
-                // ADD THESE TWO LINES:
+                // Hold data for the timing features
                 holdRaw: String(row.Hold ?? row.hold ?? ''),
                 hold_data: parseHoldTimes(String(row.Hold ?? row.hold ?? '')),
-                
                 variations: {}
             };
         });
 
-        // 3. Fetch base stages
         const { data: stagesData } = await supabase.from('stages').select('*');
         let allStagesData = stagesData ? [...stagesData] : [];
 
-        // 4. Fetch user stages and merge them
         try {
             const { data: userStagesData } = await supabase.from('user_stages').select('*');
-            if (userStagesData && userStagesData.length > 0) {
-                allStagesData = allStagesData.concat(userStagesData);
-            }
+            if (userStagesData && userStagesData.length > 0) allStagesData = allStagesData.concat(userStagesData);
         } catch (e) { console.warn("Could not load user_stages:", e.message); }
 
-        if (allStagesData.length > 0) {
-            allStagesData.forEach((stage) => {
-                const rawParentId = stage['ID (from Parent_ID)'] ?? stage['id_from_parent_id'] ?? stage.parent_id ?? stage.Parent_ID ?? null;
-                let parentIdStr = '';
-                if (Array.isArray(rawParentId)) parentIdStr = String(rawParentId[0] ?? '').trim();
-                else if (rawParentId !== null && rawParentId !== undefined) parentIdStr = String(rawParentId).trim();
+        allStagesData.forEach((stage) => {
+            const rawParentId = stage['ID (from Parent_ID)'] ?? stage.parent_id ?? null;
+            let parentIdStr = Array.isArray(rawParentId) ? String(rawParentId[0]) : String(rawParentId);
+            if (!parentIdStr || !/^\d/.test(parentIdStr)) return;
 
-                if (!parentIdStr || !/^\d/.test(parentIdStr)) return;
+            const numPart = parentIdStr.match(/^(\d+)/);
+            const parentKey = numPart[1].replace(/^0+/, '').padStart(3, '0') + parentIdStr.replace(/^\d+/, '');
+            if (!normalized[parentKey]) return;
 
-                const numPart = parentIdStr.match(/^(\d+)/);
-                const suffix = parentIdStr.replace(/^\d+/, '');
-                const parentKey = numPart[1].replace(/^0+/, '').padStart(3, '0') + suffix;
+            const stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
+            if (!stageKey) return;
 
-                if (!normalized[parentKey]) return;
-
-                const stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
-                if (!stageKey) return;
-
-                // Because user_stages were concatenated at the end of the array, they will naturally overwrite base definitions if the stage key is the same.
-                normalized[parentKey].variations[stageKey] = {
-                    technique: stage.Full_Technique ?? stage.full_technique ?? '',
-                    shorthand: stage.Shorthand ?? stage.shorthand ?? '',
-                    title: stage.Title ?? stage.title ?? `Stage ${stageKey}`
-                };
-            });
-        }
+            normalized[parentKey].variations[stageKey] = {
+                technique: stage.Full_Technique ?? stage.full_technique ?? '',
+                shorthand: stage.Shorthand ?? stage.shorthand ?? '',
+                title: stage.Title ?? stage.title ?? `Stage ${stageKey}`
+            };
+        });
 
         console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
         return normalized;
-
     } catch (e) {
         console.error("Exception loading asana library:", e);
         return {};
@@ -2230,7 +2220,8 @@ function showAsanaDetail(asana) {
   
     // 1. Setup Permissions
     const canEdit = (window.enableEditing === true) || (localStorage.getItem("admin_mode_enabled") === "true");
-    console.log(`🛠️ showAsanaDetail -> canEdit: ${canEdit} | Asana ID: ${asana.id || asana.asanaNo}`);
+    
+    console.log(`DEBUG: Edit button check - window.enableEditing: ${window.enableEditing}, localStorage admin_mode: ${localStorage.getItem("admin_mode_enabled")}, Final canEdit: ${canEdit}`);
   
     // 2. Clear Container and Build Header Natively
     d.innerHTML = ""; 
