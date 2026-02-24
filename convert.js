@@ -1,4 +1,4 @@
-const fs = require('fs');
+import fs from 'fs';
 
 const INPUT_FILE = "asana_library.json";
 const OUTPUT_FILE = "asana_library.csv";
