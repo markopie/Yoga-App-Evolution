@@ -80,7 +80,14 @@ let categoryOverrides = {}; // { [asanaNo]: { category: string, updated_at: stri
 /* ==========================================================================
    DOM & SYSTEM UTILITIES
    ========================================================================== */
-
+function normaliseText(str){
+return (str || "")
+    .toString()
+    .normalize("NFD")                 // split accents
+    .replace(/[\u0300-\u036f]/g,"")   // remove accents
+    .toLowerCase()
+    .trim();
+}
 function $(id) {
    return document.getElementById(id);
 }
@@ -1806,7 +1813,19 @@ function prevPose() {
 /* ==========================================================================
    UI HELPERS (Notes & Stats)
    ========================================================================== */
+function normaliseAsanaId(q){
+if(!q) return null;
 
+// extract number + optional suffix
+const m = q.trim().match(/^(\d+)([a-z]?)$/i);
+if(!m) return null;
+
+let num = m[1];
+let suffix = m[2] || "";
+
+num = num.padStart(3,"0");   // 1 → 001
+return num + suffix;
+}
 function updatePoseNote(note) {
    const details = $("poseNoteDetails");
    const body = $("poseNoteBody");
@@ -2219,10 +2238,11 @@ function showAsanaDetail(asana) {
     if (!d) return;
   
     // 1. Setup Permissions
-    const canEdit = (window.enableEditing === true) || (localStorage.getItem("admin_mode_enabled") === "true");
-    
-    console.log(`DEBUG: Edit button check - window.enableEditing: ${window.enableEditing}, localStorage admin_mode: ${localStorage.getItem("admin_mode_enabled")}, Final canEdit: ${canEdit}`);
-  
+    // always show edit button
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "Edit";
+    editBtn.onclick = ()=>openAsanaEditor(asana);
+    headerContainer.appendChild(editBtn);
     // 2. Clear Container and Build Header Natively
     d.innerHTML = ""; 
     
@@ -3753,6 +3773,21 @@ if (seqSelect) {
       if (currentSequence) setPose(currentIndex);
    });
 })();
+function updateLastCompletedPill(){
+
+    const pill = document.getElementById("lastCompletedPill");
+    if(!pill) return;
+  
+    const seq = getCurrentSequenceTitle();
+    const last = getLastCompletionForSequence(seq);
+  
+    if(last){
+      pill.textContent =
+        "Last: " + new Date(last).toLocaleString();
+    }else{
+      pill.textContent = "History";
+    }
+  }
 
 // 2. History Interactions (Clickable Pill)
 const lastPill = $("lastCompletedPill");
