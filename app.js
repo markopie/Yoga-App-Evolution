@@ -601,35 +601,18 @@ async function loadCourses() {
 
         if (!coursesData || coursesData.length === 0) {
             console.warn("No courses found in database");
-            courses = [];
-            sequences = [];
-            return;
         }
-        try {
-            const { data: userSeqs } = await supabase.from('user_sequences').select('*');
-            if (userSeqs) {
-                userSeqs.forEach(seq => {
-                    const poses = parseSequenceText(seq.sequence_text);
-                    if (poses && poses.length > 0) {
-                        courses.push({
-                            title: seq.title,
-                            category: seq.category || 'My Sequences',
-                            poses: poses,
-                            isUserSequence: true,
-                            supabaseId: seq.id
-                        });
-                    }
-                });
-            }
-        } catch(e) { console.error("Error loading user sequences", e); }
-        console.log(`Fetched ${coursesData.length} courses`);
-        console.warn('DIAG course row[0] keys:', Object.keys(coursesData[0]));
-        console.warn('DIAG course row[0] sample:', JSON.stringify(coursesData[0]).slice(0, 300));
+        console.log(`Fetched ${coursesData ? coursesData.length : 0} courses`);
+        if (coursesData && coursesData.length > 0) {
+            console.warn('DIAG course row[0] keys:', Object.keys(coursesData[0]));
+            console.warn('DIAG course row[0] sample:', JSON.stringify(coursesData[0]).slice(0, 300));
+        }
 
         // Transform courses into legacy format
         const transformedCourses = [];
 
-        coursesData.forEach((row, idx) => {
+        if (coursesData && coursesData.length > 0) {
+            coursesData.forEach((row, idx) => {
             // Support both snake_case (our schema) and original Airtable column names
             const title = row.Course_Title ?? row.course_title ?? '';
             const category = row.Category ?? row.category ?? '';
@@ -652,6 +635,26 @@ async function loadCourses() {
                 if (idx < 3) console.warn(`DIAG course row[${idx}] "${title}" produced 0 poses from sequenceText: "${sequenceText.slice(0, 80)}"`);
             }
         });
+        }
+
+        // Add user sequences
+        try {
+            const { data: userSeqs } = await supabase.from('user_sequences').select('*');
+            if (userSeqs) {
+                userSeqs.forEach(seq => {
+                    const poses = parseSequenceText(seq.sequence_text);
+                    if (poses && poses.length > 0) {
+                        transformedCourses.push({
+                            title: seq.title,
+                            category: seq.category || 'My Sequences',
+                            poses: poses,
+                            isUserSequence: true,
+                            supabaseId: seq.id
+                        });
+                    }
+                });
+            }
+        } catch(e) { console.error("Error loading user sequences", e); }
 
         // Assign to globals
         courses = transformedCourses;
