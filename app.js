@@ -2190,10 +2190,17 @@ function renderBrowseList(items) {
 
       const btn = document.createElement("button");
       btn.textContent = "View";
-      btn.className = "tiny"; 
+      btn.className = "tiny";
       btn.addEventListener("click", () => {
+         console.log("View button clicked for asana:", asma);
          showAsanaDetail(asma);
-         if (typeof isBrowseMobile === 'function' && isBrowseMobile()) enterBrowseDetailMode();
+         console.log("showAsanaDetail() completed");
+         if (typeof isBrowseMobile === 'function' && isBrowseMobile()) {
+            console.log("isBrowseMobile() returned true, calling enterBrowseDetailMode()");
+            enterBrowseDetailMode();
+         } else {
+            console.log("isBrowseMobile() returned false or not a function");
+         }
       });
 
       row.appendChild(left);
@@ -4447,8 +4454,13 @@ function encodeToBase64(str) {
    ========================================================================== */
 
    window.openAsanaEditor = function(id) {
+    console.log("openAsanaEditor() called with id:", id);
     const bd = $("asanaEditorBackdrop");
-    if (!bd) return alert("Editor HTML missing");
+    console.log("asanaEditorBackdrop element found:", bd);
+    if (!bd) {
+        console.error("asanaEditorBackdrop not found!");
+        return alert("Editor HTML missing");
+    }
     
     // Populate Category Datalist dynamically
     const dl = $("asanaCategoryList");
