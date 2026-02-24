@@ -1,0 +1,695 @@
+/* ==========================================================================
+   1. GLOBAL STYLES & BASE COMPONENTS
+   ========================================================================== */
+   body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    background: #fafafa;
+    color: #111;
+    line-height: 1.5;
+}
+
+header {
+    padding: 14px 18px;
+    background: #fff;
+    border-bottom: 1px solid #e8e8e8;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+main {
+    padding: 18px;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.muted, .msg {
+    color: #666;
+    font-size: 14px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border: 1px solid #eee;
+    border-radius: 999px;
+    background: #fafafa;
+    font-size: 12px;
+    color: #555;
+}
+
+/* ==========================================================================
+   2. FORMS & INTERACTIVE
+   ========================================================================== */
+select, input, button, textarea { font: inherit; }
+
+select, input {
+    padding: 12px 14px;
+    border: 1px solid #d0d0d0;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 1rem;
+    min-height: 44px;
+    transition: border-color 0.2s ease;
+}
+
+select:focus, input:focus {
+    outline: none;
+    border-color: #333;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+}
+
+button {
+    padding: 12px 18px;
+    border: 1px solid #d0d0d0;
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+    font-weight: 500;
+    min-height: 44px;
+    min-width: 44px;
+}
+
+button:hover {
+    background: #f3f3f3;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+/* Tiny utility class for small buttons used in JS */
+button.tiny {
+    padding: 4px 10px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+}
+
+textarea {
+    width: 100%;
+    min-height: 110px;
+    padding: 10px;
+    border: 1px solid #d0d0d0;
+    border-radius: 12px;
+    box-sizing: border-box;
+    font-family: monospace; /* Helpful for markdown editing */
+}
+
+/* ==========================================================================
+   3. LAYOUT TOOLS (Grids & Rows)
+   ========================================================================== */
+.row, .controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+
+.collage {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+}
+
+.tile {
+    border: 1px solid #eee;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.tile img {
+    display: block;
+    width: 100%;
+    height: auto;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.tile img[src] {
+    opacity: 1;
+}
+
+.card {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 16px;
+    padding: 14px;
+}
+
+/* ==========================================================================
+   4. MODAL FRAMEWORK (Browse Screen)
+   ========================================================================== */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center; 
+    justify-content: center;
+    z-index: 2000;
+    padding: 5mm; 
+    box-sizing: border-box;
+}
+
+.modal {
+    width: 100%; 
+    max-width: 1200px;
+    height: 90vh; 
+    max-height: 100%; 
+    background: #fff;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    flex-shrink: 0; 
+    padding: 12px 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+    background: #fafafa;
+    flex-wrap: wrap;
+}
+
+.edit-item {
+    padding: 14px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    display: grid;
+    grid-template-columns: 80px 1fr 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+}
+
+.edit-item:last-child {
+    border-bottom: none;
+}
+
+.edit-item-label {
+    font-weight: 600;
+    font-size: 13px;
+    color: #666;
+    word-break: break-word;
+}
+
+.edit-item input {
+    padding: 8px 10px;
+    font-size: 13px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.edit-item-timing input {
+    max-width: 80px;
+}
+
+.btn-loading {
+    opacity: 0.6;
+    cursor: not-allowed;
+    position: relative;
+}
+
+.btn-loading::after {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-left: 6px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.notification-success {
+    padding: 12px;
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.notification-error {
+    padding: 12px;
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+/* LEFT SIDE (List) */
+.browse-left {
+    width: 35%;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #eee;
+    height: 100%;
+}
+
+.browse-list {
+    flex: 1;
+    overflow-y: auto !important;
+    padding: 10px;
+}
+
+.browse-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.browse-item:last-child { border-bottom: none; }
+
+/* RIGHT SIDE (Detail) */
+.browse-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+}
+
+#browseDetail {
+    flex: 1;           
+    overflow-y: auto !important; 
+    padding: 24px;
+    background: #fff;
+    position: relative;
+}
+
+/* Force collage inside detail to behave normally */
+#browseDetail .collage, 
+#browseDetail #collageWrap {
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+/* ==========================================================================
+   5. TABS & TYPOGRAPHY
+   ========================================================================== */
+/* Sticky Tabs for Variations */
+.variation-tabs {
+    display: flex !important;
+    gap: 8px;
+    position: sticky !important;
+    top: -24px;              
+    margin: 0 -24px 20px;
+    padding: 12px 24px;
+    background: #ffffff !important;
+    border-bottom: 1px solid #eee;
+    z-index: 1000;
+    overflow-x: auto;
+    white-space: nowrap;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+}
+
+.tab-btn {
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #f9f9f9;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.tab-btn.active {
+    background: #333 !important;
+    color: #fff !important;
+    font-weight: bold;
+}
+
+/* Markdown / Text Rendering */
+#poseDescBody, #poseNoteBody, .desc-text, .tab-pane {
+    font-size: 14px;
+    line-height: 1.6;
+    padding-top: 10px;
+    white-space: pre-wrap !important; /* Respects newlines */
+    word-wrap: break-word;
+}
+
+#poseDescDetails summary, #poseNoteDetails summary {
+    list-style: none;
+    cursor: pointer;
+    font-weight: 650;
+    outline: none;
+}
+#poseDescDetails summary::-webkit-details-marker,
+#poseNoteDetails summary::-webkit-details-marker { display: none; }
+
+/* ==========================================================================
+   6. ADMIN & TABLES
+   ========================================================================== */
+/* Basic table styles for Bulk Editor */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f4f4f4;
+}
+
+.adv-section-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: #555;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 4px;
+}
+
+/* ==========================================================================
+   7. TIMER & STATUS DISPLAYS (High Visibility)
+   ========================================================================== */
+#poseTimer {
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    transition: color 0.3s ease;
+    
+    /* Fixed width to prevent jumping numbers */
+    display: inline-block;
+    min-width: 4.5ch; 
+    text-align: center;
+}
+
+/* Timer Warning States */
+#poseTimer.warning {
+    color: #ff6b35;
+    animation: pulse 1s infinite;
+}
+
+#poseTimer.critical {
+    color: #d32f2f;
+    font-weight: 900;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+#poseName {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    line-height: 1.3;
+    margin: 8px 0;
+}
+
+#poseMeta {
+    font-size: 1rem;
+    color: #666;
+    font-weight: 500;
+}
+
+#poseCounter {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #444;
+}
+
+#status {
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: #f0f0f0;
+    color: #555;
+    display: inline-block;
+}
+
+/* Pill Badges for Total Time and Last Completed */
+.badge {
+    font-weight: 600;
+    background: #e8f5e9;
+    color: #2e7d32;
+    border-color: #c8e6c9;
+}
+
+/* ==========================================================================
+   8. RESPONSIVE LOGIC
+   ========================================================================== */
+@media (min-width: 900px) {
+    .grid { grid-template-columns: 1.4fr 0.6fr; }
+    
+    /* Hide the "Back" button on desktop since both panes are visible */
+    #browseDetail button.tiny { display: none; } 
+}
+
+@media (max-width: 900px) {
+    .browse-left { width: 100%; }
+    
+    /* Mobile Browse Logic: Show ONE pane at a time */
+    .browse-right { display: none; } /* Default: Hidden */
+    
+    /* When Detail Mode is Active (via JS class) */
+    .modal.detail-mode .browse-left { display: none; }
+    .modal.detail-mode .browse-right { display: flex; width: 100%; }
+    
+    /* Show "Back" button on mobile */
+    #browseDetail button.tiny { display: block; } 
+}
+
+@media (max-width: 700px) {
+    .modal {
+        width: 100%;
+        height: 100vh;
+        margin: 0;
+        border-radius: 0;
+    }
+    .modal-header { position: sticky; top: 0; z-index: 20; background: #fff; }
+}
+#poseShorthand {
+    font-family: 'Segoe UI', monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #2e7d32;
+    background: #e8f5e9;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 10px 0;
+    border-left: 5px solid #2e7d32;
+    line-height: 1.4;
+}
+
+/* =========================================
+   TIME CAPSULE (Smart Dashboard)
+   ========================================= */
+.time-capsule {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* FIXED DIMENSIONS = NO BUTTON JUMPING */
+    width: 140px; 
+    height: 36px;
+    
+    background: #e0e0e0;
+    border-radius: 18px;
+    overflow: hidden; /* Crops the progress bar */
+    vertical-align: middle;
+    margin: 0 5px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* The Background Progress Bar */
+#timeProgressFill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 100%; /* Starts full, JS will shrink it */
+    background: #c8e6c9; /* Light Green */
+    transition: width 0.3s ease; /* Smooth animation */
+    z-index: 1;
+}
+
+/* The Text Layer (Sits on top) */
+.time-content {
+    position: relative;
+    z-index: 2;
+    font-family: 'SF Mono', 'Roboto Mono', monospace; /* Tabular numbers = no jitter */
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    display: flex;
+    gap: 4px;
+}
+
+/* Styling the specific numbers */
+#timeRemainingDisplay { 
+    color: #1b5e20; 
+    display: inline-block;
+    min-width: 4.5ch; /* Lock width */
+    text-align: center;
+} 
+#timeTotalDisplay { 
+    color: #757575; 
+    display: inline-block;
+    min-width: 4.5ch; /* Lock width */
+    text-align: center;
+}
+.time-sep { opacity: 0.4; }
+
+/* =========================================
+   FOCUS OVERLAY (The Smart Way)
+   ========================================= */
+#focusOverlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #fff;
+    z-index: 10000; /* Sit on top of everything */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* 1. Header Info */
+.focus-header {
+    text-align: center;
+    margin-bottom: 10px;
+    width: 100%;
+}
+#focusCourseTitle {
+    font-size: 1.1rem;
+    color: #666;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+#focusTotalTime {
+    font-size: 1rem;
+    color: #888;
+    margin-top: 4px;
+}
+
+/* 2. The Big Timer */
+#focusTimer {
+    font-size: 5rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #111;
+    font-variant-numeric: tabular-nums;
+    margin: 0 auto;
+    min-width: 3.5ch;
+    text-align: center;
+}
+
+/* 3. Pose Name */
+#focusPoseName {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin: 5px 0 15px 0;
+    text-align: center;
+}
+
+/* 4. Image Area (Flexible) */
+#focusImageWrap {
+    flex: 1; /* Grow to fill available space */
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    margin-bottom: 20px;
+    min-height: 0; /* Important for flex containers */
+}
+#focusImageWrap img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain; /* Never crop, never stretch */
+}
+
+/* 5. The Pause Button */
+#focusPauseBtn {
+    background-color: #d32f2f;
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    padding: 15px 40px;
+    border-radius: 50px;
+    border: none;
+    box-shadow: 0 4px 15px rgba(211, 47, 47, 0.4);
+    cursor: pointer;
+    min-width: 200px;
+}
+#focusPauseBtn:hover {
+    background-color: #b71c1c;
+    transform: scale(1.02);
+}
+
+* Filter Styling */
+#categoryFilter {
+    background-color: #f0f4f8; /* Light blue-grey to distinguish it */
+    border-color: #cbd5e0;
+    cursor: pointer;
+}
+#categoryFilter:hover {
+    background-color: #e2e8f0;
+}
+
+/* Ensure controls wrap nicely on small screens */
+header .row {
+    flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+    #categoryFilter, #sequenceSelect {
+        width: 100%;
+        max-width: 100% !important;
+    }
+}
