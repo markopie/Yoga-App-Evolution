@@ -2237,22 +2237,33 @@ function startBrowseAsana(asma) {
    closeBrowse();
 }
 function showAsanaDetail(asana) {
+    console.log("showAsanaDetail called with:", asana);
     const d = document.getElementById('browseDetail');
-    if (!d) return;
+    console.log("browseDetail element found:", d);
+    if (!d) {
+        console.error("browseDetail element not found!");
+        return;
+    }
 
     d.innerHTML = "";
+    console.log("browseDetail cleared");
 
     const titleEl = document.createElement("h2");
     titleEl.style.margin = "0 0 10px 0";
     titleEl.textContent = displayName(asana);
     d.appendChild(titleEl);
+    console.log("Title appended");
 
     const editBtn = document.createElement("button");
     editBtn.textContent = "✏️ Edit Asana";
     editBtn.className = "tiny";
     editBtn.style.cssText = "background: #2196f3; color: white; padding: 6px 12px; cursor: pointer; margin-bottom: 10px; font-weight: bold;";
-    editBtn.onclick = () => window.openAsanaEditor(asana.id || asana.asanaNo);
+    editBtn.onclick = () => {
+        console.log("Edit button clicked, asana.id:", asana.id, "asana.asanaNo:", asana.asanaNo);
+        window.openAsanaEditor(asana.id || asana.asanaNo);
+    };
     d.appendChild(editBtn);
+    console.log("Edit button appended:", editBtn);
 
     // 3. Build the rest of the Info via a single HTML string
     // Use a unique name for this string variable to avoid re-declaration errors
