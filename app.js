@@ -4921,6 +4921,7 @@ function showLogin() {
 
 function setupAuthListeners() {
     const googleBtn = document.getElementById("googleSignInBtn");
+    const skipBtn = document.getElementById("skipLoginBtn");
     const signOutBtn = document.getElementById("signOutBtn");
     const loginError = document.getElementById("loginError");
 
@@ -4942,17 +4943,31 @@ function setupAuthListeners() {
         };
     }
 
+    if (skipBtn) {
+        skipBtn.onclick = () => {
+            window.isGuestMode = true;
+            window.currentUserId = null;
+            showApp();
+        };
+    }
+
     if (signOutBtn) {
         signOutBtn.onclick = async () => {
-            await supabase.auth.signOut();
+            if (window.isGuestMode) {
+                window.isGuestMode = false;
+                showLogin();
+            } else {
+                await supabase.auth.signOut();
+            }
         };
     }
 
     supabase.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
+            window.isGuestMode = false;
             window.currentUserId = session.user.id;
             showApp();
-        } else {
+        } else if (!window.isGuestMode) {
             window.currentUserId = null;
             showLogin();
         }
