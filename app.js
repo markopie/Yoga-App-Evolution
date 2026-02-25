@@ -1683,8 +1683,8 @@ function prevPose() {
     // 2. DATA EXTRACTION
     const currentPose = poses[idx];
     const rawIdField = currentPose[0];
-    const seconds    = currentPose[1];
-    
+    let seconds      = currentPose[1];
+
     let lookupId = Array.isArray(rawIdField) ? rawIdField[0] : rawIdField;
     lookupId = normalizePlate(lookupId);
 
@@ -1697,6 +1697,13 @@ function prevPose() {
 
     // 3. SMART LOOKUP
     const asana = findAsanaByIdOrPlate(lookupId);
+
+    // VARIATION DURATION OVERRIDE: if pose has a stored variation key and that variation has a duration, use it
+    const storedVarKey = currentPose[3];
+    if (storedVarKey && asana && asana.variations && asana.variations[storedVarKey]) {
+        const varDur = asana.variations[storedVarKey].duration;
+        if (varDur != null && Number(varDur) > 0) seconds = Number(varDur);
+    }
 
     // Sides Check
     if (asana && asana.requiresSides && !keepSamePose) {
@@ -3279,7 +3286,19 @@ function builderOpen(mode, seq) {
       });
   
      tbody.querySelectorAll('.b-var').forEach(el => {
-        el.onchange = (e) => builderPoses[e.target.dataset.idx].variation = e.target.value;
+        el.onchange = (e) => {
+            const i = parseInt(e.target.dataset.idx, 10);
+            const vKey = e.target.value;
+            builderPoses[i].variation = vKey;
+            if (vKey) {
+                const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === builderPoses[i].id);
+                const varData = asana && asana.variations && asana.variations[vKey];
+                if (varData && varData.duration != null) {
+                    builderPoses[i].duration = varData.duration;
+                    builderRender();
+                }
+            }
+        };
      });
   
      tbody.querySelectorAll('.b-dur').forEach(el => el.onchange = (e) => { builderPoses[e.target.dataset.idx].duration = Number(e.target.value) || 0; builderRender(); });
@@ -4473,6 +4492,7 @@ function encodeToBase64(str) {
 
     // Snapshot initial field values for change detection
     window._asanaEditorSnapshot = null;
+    window._asanaEditorOriginalStageCount = $("stagesContainer").querySelectorAll(".stage-row").length;
     requestAnimationFrame(() => {
         window._asanaEditorSnapshot = {
             name: $("editAsanaName").value,
@@ -4488,42 +4508,96 @@ function encodeToBase64(str) {
             category: $("editAsanaCategory").value,
             description: $("editAsanaDescription").value,
             hold: $("editAsanaHold").value,
-            stageCount: $("stagesContainer").querySelectorAll("div[style*='border:1px solid']").length
+            stageCount: $("stagesContainer").querySelectorAll(".stage-row").length
         };
     });
 
     bd.style.display = "flex";
 };
 
+function getNextRomanNumeral() {
+    const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X"];
+    const container = $("stagesContainer");
+    const existing = Array.from(container.querySelectorAll(".stage-key")).map(el => el.value.trim().toUpperCase());
+    for (const r of ROMAN) {
+        if (!existing.includes(r)) return r;
+    }
+    return String(existing.length + 1);
+}
+
+function getVariationSuffixes() {
+    const suffixes = new Set();
+    const asanaId = $("editAsanaId").value.trim().padStart(3, '0');
+    const asana = asanaLibrary[asanaId];
+    if (asana && asana.variations) {
+        Object.values(asana.variations).forEach(vData => {
+            const title = typeof vData === 'object' ? (vData.title || vData.Title || "") : "";
+            const suffix = title.replace(/^(Modified|Stage)\s+[IVXLCDM]+\s*/i, "").trim();
+            if (suffix) suffixes.add(suffix);
+        });
+    }
+    Array.from($("stagesContainer").querySelectorAll(".stage-row")).forEach(row => {
+        const suf = row.querySelector(".stage-suffix");
+        if (suf && suf.value.trim()) suffixes.add(suf.value.trim());
+    });
+    return Array.from(suffixes).sort();
+}
+
 window.addStageToEditor = function(stageKey = "", stageData = {}) {
     const container = $("stagesContainer");
+
+    const autoKey = stageKey || getNextRomanNumeral();
+    const existingTitle = typeof stageData === 'object' ? (stageData.title || stageData.Title || "") : "";
+    const prefixMatch = existingTitle.match(/^(Modified|Stage)\s+/i);
+    const prefix = prefixMatch ? prefixMatch[1] : "Modified";
+    const suffix = existingTitle.replace(/^(Modified|Stage)\s+[IVXLCDM]+\s*/i, "").trim();
+    const existingDuration = typeof stageData === 'object' ? (stageData.duration || "") : "";
+    const existingShorthand = typeof stageData === 'object' ? (stageData.shorthand || stageData.Shorthand || "") : "";
+    const existingTech = typeof stageData === 'object' ? (stageData.full_technique || stageData.Full_Technique || stageData.technique || "") : (stageData || "");
+
+    const suffixes = getVariationSuffixes();
+    const datalistId = `stageSuffixList_${Date.now()}`;
+
     const div = document.createElement("div");
+    div.className = "stage-row";
     div.style.cssText = "border:1px solid #ddd; padding:10px; border-radius:6px; background:#fff; display:grid; gap:8px;";
-    
+
     div.innerHTML = `
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-           <div style="flex:1; min-width:100px;">
-               <label class="muted" style="font-size:0.75rem;">Stage Key (e.g. I)</label>
-               <input type="text" class="stage-key" value="${stageKey}" style="width:100%; padding:6px; font-weight:bold;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+           <div style="min-width:60px;">
+               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Key</label>
+               <input type="text" class="stage-key" value="${autoKey}" readonly style="width:60px; padding:6px; font-weight:bold; background:#f5f5f5; text-align:center; border:1px solid #ccc; border-radius:4px;">
            </div>
-           <div style="flex:2; min-width:150px;">
-               <label class="muted" style="font-size:0.75rem;">Title</label>
-               <input type="text" class="stage-title" value="${typeof stageData === 'object' ? (stageData.title || stageData.Title || '') : ''}" style="width:100%; padding:6px;">
+           <div style="min-width:110px;">
+               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Prefix</label>
+               <select class="stage-prefix" style="padding:6px; border:1px solid #ccc; border-radius:4px; background:#fff; min-height:unset;">
+                   <option value="Modified" ${prefix === "Modified" ? "selected" : ""}>Modified</option>
+                   <option value="Stage" ${prefix === "Stage" ? "selected" : ""}>Stage</option>
+               </select>
            </div>
-           <div style="flex:1; min-width:100px;">
-               <label class="muted" style="font-size:0.75rem;">Shorthand</label>
-               <input type="text" class="stage-short" value="${typeof stageData === 'object' ? (stageData.shorthand || stageData.Shorthand || '') : ''}" style="width:100%; padding:6px;">
+           <div style="flex:2; min-width:140px;">
+               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Description / Suffix</label>
+               <input type="text" class="stage-suffix" list="${datalistId}" value="${suffix}" placeholder="e.g. (on a bolster)" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+               <datalist id="${datalistId}">${suffixes.map(s => `<option value="${s}">`).join("")}</datalist>
            </div>
-           <div style="display:flex; align-items:flex-end;">
-               <button type="button" class="tiny warn remove-stage-btn" style="margin-bottom:2px;">✕ Remove</button>
+           <div style="min-width:80px;">
+               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Duration (s)</label>
+               <input type="number" class="stage-duration" min="0" value="${existingDuration}" placeholder="e.g. 30" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">
+           </div>
+           <div style="min-width:100px;">
+               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Shorthand</label>
+               <input type="text" class="stage-short" value="${existingShorthand}" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+           </div>
+           <div style="display:flex; align-items:flex-end; padding-bottom:2px;">
+               <button type="button" class="tiny warn remove-stage-btn">✕ Remove</button>
            </div>
         </div>
         <div>
            <label class="muted" style="font-size:0.75rem;">Technique</label>
-           <textarea class="stage-tech" style="height:60px; padding:6px; width:100%; font-family:inherit;">${typeof stageData === 'object' ? (stageData.full_technique || stageData.Full_Technique || stageData.technique || '') : stageData}</textarea>
+           <textarea class="stage-tech" style="height:60px; padding:6px; width:100%; font-family:inherit; border:1px solid #ccc; border-radius:4px;">${existingTech}</textarea>
         </div>
     `;
-    
+
     div.querySelector(".remove-stage-btn").onclick = () => div.remove();
     container.appendChild(div);
 };
@@ -4541,6 +4615,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const snap = window._asanaEditorSnapshot;
             if (snap) {
+                const currentStageCount = $("stagesContainer").querySelectorAll(".stage-row").length;
                 const current = {
                     name: $("editAsanaName").value,
                     iast: $("editAsanaIAST").value,
@@ -4555,9 +4630,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     category: $("editAsanaCategory").value,
                     description: $("editAsanaDescription").value,
                     hold: $("editAsanaHold").value,
-                    stageCount: $("stagesContainer").querySelectorAll("div[style*='border:1px solid']").length
+                    stageCount: currentStageCount
                 };
-                const unchanged = Object.keys(snap).every(k => snap[k] === current[k]);
+                const stagesChanged = currentStageCount !== (window._asanaEditorOriginalStageCount ?? snap.stageCount);
+                const unchanged = !stagesChanged && Object.keys(snap).every(k => snap[k] === current[k]);
                 if (unchanged) {
                     $("asanaEditorStatus").textContent = "No changes made.";
                     $("asanaEditorStatus").style.color = "#888";
@@ -4600,29 +4676,34 @@ document.addEventListener("DOMContentLoaded", () => {
                 hold: $("editAsanaHold").value.trim()
             };
 
-            const stageDivs = $("stagesContainer").querySelectorAll("div[style*='border:1px solid']");
+            const stageDivs = $("stagesContainer").querySelectorAll(".stage-row");
             const stagesToSave = [];
             const localVariations = {};
 
             stageDivs.forEach(div => {
                 const key = div.querySelector(".stage-key").value.trim();
                 if (key) {
+                    const pfx = div.querySelector(".stage-prefix") ? div.querySelector(".stage-prefix").value.trim() : "Modified";
+                    const sfx = div.querySelector(".stage-suffix") ? div.querySelector(".stage-suffix").value.trim() : "";
+                    const composedTitle = sfx ? `${pfx} ${key} ${sfx}` : `${pfx} ${key}`;
+                    const durVal = div.querySelector(".stage-duration") ? div.querySelector(".stage-duration").value.trim() : "";
                     const sData = {
                         user_id: asanaData.user_id,
                         parent_id: [id],
                         stage_name: key,
-                        title: div.querySelector(".stage-title").value.trim(),
+                        title: composedTitle,
                         shorthand: div.querySelector(".stage-short").value.trim(),
-                        full_technique: div.querySelector(".stage-tech").value.trim()
+                        full_technique: div.querySelector(".stage-tech").value.trim(),
+                        duration: durVal !== "" ? parseInt(durVal, 10) : null
                     };
                     stagesToSave.push(sData);
-                    
-                    // Memory format
+
                     localVariations[key] = {
                         title: sData.title,
                         shorthand: sData.shorthand,
                         technique: sData.full_technique,
-                        Full_Technique: sData.full_technique
+                        Full_Technique: sData.full_technique,
+                        duration: sData.duration
                     };
                 }
             });
