@@ -32,6 +32,7 @@ const SUPABASE_URL = "https://qrcpiyncvfmpmeuyhsha.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyY3BpeW5jdmZtcG1ldXloc2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTA2NDgsImV4cCI6MjA4NzI4NjY0OH0.7sjbfwdT_aYmrJyVFYWpfMNBQpCJAI7Vd5uNEkzD4GI";
 const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
+window.currentUserId = null;
 
 /* ==========================================================================
    GLOBAL STATE VARIABLES
@@ -4747,23 +4748,66 @@ function formatCategoryName(inputCat) {
     const nextPrefix = String(maxPrefix + 1).padStart(2, '0');
     return `${nextPrefix}_${cleanInput}`;
 }
-// 4. APP STARTUP (Crucial!)
+// 4. APP STARTUP (Auth-Gated)
 console.log("Script parsed. Attempting startup...");
 
-// Fix for StackBlitz module loading timing issues
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    // DOM is already ready, run immediately
-    init();
-}
-
-// Add a fallback just in case it still hangs
-setTimeout(() => {
+function showApp() {
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("mainAppContainer").style.display = "";
     if (!window.appInitialized) {
-        console.log("Fallback: Forcing init() after 1.5 seconds...");
         init();
     }
-}, 1500);
+}
+
+function showLogin() {
+    document.getElementById("loginScreen").style.display = "flex";
+    document.getElementById("mainAppContainer").style.display = "none";
+}
+
+function setupAuthListeners() {
+    const googleBtn = document.getElementById("googleSignInBtn");
+    const signOutBtn = document.getElementById("signOutBtn");
+    const loginError = document.getElementById("loginError");
+
+    if (googleBtn) {
+        googleBtn.onclick = async () => {
+            googleBtn.disabled = true;
+            googleBtn.textContent = "Redirecting…";
+            loginError.style.display = "none";
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: { redirectTo: window.location.origin + window.location.pathname }
+            });
+            if (error) {
+                loginError.textContent = error.message;
+                loginError.style.display = "block";
+                googleBtn.disabled = false;
+                googleBtn.textContent = "Sign in with Google";
+            }
+        };
+    }
+
+    if (signOutBtn) {
+        signOutBtn.onclick = async () => {
+            await supabase.auth.signOut();
+        };
+    }
+
+    supabase.auth.onAuthStateChange((event, session) => {
+        if (session && session.user) {
+            window.currentUserId = session.user.id;
+            showApp();
+        } else {
+            window.currentUserId = null;
+            showLogin();
+        }
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupAuthListeners);
+} else {
+    setupAuthListeners();
+}
 
 // #endregion
