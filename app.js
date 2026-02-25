@@ -2347,7 +2347,7 @@ function startBrowseAsana(asma) {
    setPose(0);
    closeBrowse();
 }
-function showAsanaDetail(asana) {
+async function showAsanaDetail(asana) {
     console.log("showAsanaDetail called with:", asana);
     const d = document.getElementById('browseDetail');
     console.log("browseDetail element found:", d);
@@ -2465,7 +2465,43 @@ function showAsanaDetail(asana) {
         });
         d.appendChild(varSection);
     }
-  
+
+    try {
+        const paddedId = String(asana.id || asana.asanaNo).padStart(3, '0');
+        const { data: userStages } = await supabase.from('user_stages').select('*').eq('asana_id', paddedId);
+        if (userStages && userStages.length > 0) {
+            const userVarSection = document.createElement('div');
+            userVarSection.innerHTML = '<hr><h3>User Variations & Stages</h3>';
+
+            userStages.sort((a, b) => (a.stage_name || '').localeCompare(b.stage_name || '')).forEach(stage => {
+                const titleText = stage.title || `Stage ${stage.stage_name}`;
+                const shortText = stage.shorthand || '';
+                const techText = stage.full_technique || '';
+                const holdText = stage.hold || '';
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'user-variation-block';
+                wrapper.style.cssText = 'background:#f0f7ff; padding:12px; margin-bottom:12px; border-radius:8px; border: 2px solid #2196f3;';
+
+                let html = `<h4 style="margin-top:0; margin-bottom:8px; color:#1976d2; font-size:1.1rem;">${titleText}</h4>`;
+                if (shortText) html += `<div style="color:#1565c0; font-weight:bold; margin-bottom:8px; font-family:monospace; font-size:1rem;">${shortText}</div>`;
+                if (holdText) html += `<div style="color:#0d47a1; margin-bottom:8px; font-weight:600; font-size:0.95rem;">Hold: ${holdText}</div>`;
+                if (techText) {
+                    const formattedTech = typeof formatTechniqueText === 'function' ? formatTechniqueText(techText) : techText;
+                    html += `<div class="technique-text" style="white-space: pre-wrap; font-size:0.95rem; color:#333;">${formattedTech}</div>`;
+                } else {
+                    html += `<div class="muted" style="font-size:0.85rem;">No specific instructions provided.</div>`;
+                }
+
+                wrapper.innerHTML = html;
+                userVarSection.appendChild(wrapper);
+            });
+            d.appendChild(userVarSection);
+        }
+    } catch (e) {
+        console.warn("Could not load user stages for display:", e.message);
+    }
+
     // 7. Bind Audio Button
     const playBtn = document.getElementById('playNameBtn');
     if (playBtn) playBtn.onclick = () => playAsanaAudio(asana, null);
