@@ -4515,6 +4515,7 @@ function encodeToBase64(str) {
     // Snapshot initial field values for change detection
     window._asanaEditorSnapshot = null;
     window._asanaEditorOriginalStageCount = $("stagesContainer").querySelectorAll(".stage-row").length;
+    window._asanaEditorOriginalStageData = null;
     requestAnimationFrame(() => {
         window._asanaEditorSnapshot = {
             name: $("editAsanaName").value,
@@ -4532,6 +4533,16 @@ function encodeToBase64(str) {
             hold: $("editAsanaHold").value,
             stageCount: $("stagesContainer").querySelectorAll(".stage-row").length
         };
+        window._asanaEditorOriginalStageData = Array.from($("stagesContainer").querySelectorAll(".stage-row")).map(div => ({
+            key: div.querySelector(".stage-key")?.value || "",
+            prefix: div.querySelector(".stage-prefix")?.value || "",
+            suffix: div.querySelector(".stage-suffix")?.value || "",
+            short: div.querySelector(".stage-short")?.value || "",
+            tech: div.querySelector(".stage-tech")?.value || "",
+            holdStandard: div.querySelector(".stage-hold-standard")?.value || "",
+            holdShort: div.querySelector(".stage-hold-short")?.value || "",
+            holdLong: div.querySelector(".stage-hold-long")?.value || ""
+        }));
     });
 
     bd.style.display = "flex";
@@ -4686,8 +4697,21 @@ document.addEventListener("DOMContentLoaded", () => {
                     hold: $("editAsanaHold").value,
                     stageCount: currentStageCount
                 };
-                const stagesChanged = currentStageCount !== (window._asanaEditorOriginalStageCount ?? snap.stageCount);
-                const unchanged = !stagesChanged && Object.keys(snap).every(k => snap[k] === current[k]);
+                const stageCountChanged = currentStageCount !== (window._asanaEditorOriginalStageCount ?? snap.stageCount);
+                const currentStageData = Array.from($("stagesContainer").querySelectorAll(".stage-row")).map(div => ({
+                    key: div.querySelector(".stage-key")?.value || "",
+                    prefix: div.querySelector(".stage-prefix")?.value || "",
+                    suffix: div.querySelector(".stage-suffix")?.value || "",
+                    short: div.querySelector(".stage-short")?.value || "",
+                    tech: div.querySelector(".stage-tech")?.value || "",
+                    holdStandard: div.querySelector(".stage-hold-standard")?.value || "",
+                    holdShort: div.querySelector(".stage-hold-short")?.value || "",
+                    holdLong: div.querySelector(".stage-hold-long")?.value || ""
+                }));
+                const originalStageData = window._asanaEditorOriginalStageData || [];
+                const stageDataChanged = JSON.stringify(currentStageData) !== JSON.stringify(originalStageData);
+                const fieldsUnchanged = Object.keys(snap).every(k => snap[k] === current[k]);
+                const unchanged = !stageCountChanged && !stageDataChanged && fieldsUnchanged;
                 if (unchanged) {
                     $("asanaEditorStatus").textContent = "No changes made.";
                     $("asanaEditorStatus").style.color = "#888";
