@@ -3235,9 +3235,9 @@ function builderOpen(mode, seq) {
              <input type="text" class="b-note" data-idx="${idx}" value="${(pose.note || '').replace(/"/g, '&quot;')}" placeholder="Optional notes..." style="width:100%; padding:4px; border:1px solid #ccc; border-radius:4px;">
           </td>
           <td style="padding:8px; text-align:center; white-space:nowrap;">
-             <button class="tiny" onclick="movePose(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
-             <button class="tiny" onclick="movePose(${idx}, 1)" ${idx === builderPoses.length - 1 ? 'disabled' : ''}>▼</button>
-             <button class="tiny warn" onclick="removePose(${idx})" style="margin-left:4px;">✕</button>
+             ${idx > 0 ? `<button class="tiny b-move-up" data-idx="${idx}">▲</button>` : '<span style="display:inline-block;width:24px;"></span>'}
+             ${idx < builderPoses.length - 1 ? `<button class="tiny b-move-dn" data-idx="${idx}">▼</button>` : '<span style="display:inline-block;width:24px;"></span>'}
+             <button class="tiny warn b-remove" data-idx="${idx}" style="margin-left:4px;">✕</button>
           </td>
        `;
        tbody.appendChild(tr);
@@ -3283,6 +3283,16 @@ function builderOpen(mode, seq) {
   
      tbody.querySelectorAll('.b-dur').forEach(el => el.onchange = (e) => { builderPoses[e.target.dataset.idx].duration = Number(e.target.value) || 0; builderRender(); });
      tbody.querySelectorAll('.b-note').forEach(el => el.oninput = (e) => builderPoses[e.target.dataset.idx].note = e.target.value);
+
+     tbody.querySelectorAll('.b-move-up').forEach(el => {
+         el.onclick = () => { const i = parseInt(el.dataset.idx, 10); movePose(i, -1); };
+     });
+     tbody.querySelectorAll('.b-move-dn').forEach(el => {
+         el.onclick = () => { const i = parseInt(el.dataset.idx, 10); movePose(i, 1); };
+     });
+     tbody.querySelectorAll('.b-remove').forEach(el => {
+         el.onclick = () => { const i = parseInt(el.dataset.idx, 10); removePose(i); };
+     });
   
      const statsEl = document.getElementById("builderStats");
      if (statsEl) statsEl.textContent = `${builderPoses.length} poses · ${Math.floor(totalSec/60)}m ${totalSec%60}s`;
