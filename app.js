@@ -4431,7 +4431,7 @@ function encodeToBase64(str) {
    FULL ASANA EDITOR (Supabase Upsert)
    ========================================================================== */
 
-   window.openAsanaEditor = function(id) {
+   window.openAsanaEditor = async function(id) {
     console.log("openAsanaEditor() called with id:", id);
     const bd = $("asanaEditorBackdrop");
     console.log("asanaEditorBackdrop element found:", bd);
@@ -4439,7 +4439,7 @@ function encodeToBase64(str) {
         console.error("asanaEditorBackdrop not found!");
         return alert("Editor HTML missing");
     }
-    
+
     // Populate Category Datalist dynamically
     const dl = $("asanaCategoryList");
     if (dl) {
@@ -4455,9 +4455,9 @@ function encodeToBase64(str) {
     $("editAsanaId").value = "";
     $("editAsanaName").value = "";
     $("editAsanaIAST").value = "";
-    $("editAsanaEnglish").value = ""; // FIXED
-    $("editAsanaCategory").value = ""; // FIXED
-    $("editAsanaHold").value = ""; // FIXED
+    $("editAsanaEnglish").value = "";
+    $("editAsanaCategory").value = "";
+    $("editAsanaHold").value = "";
     $("editAsanaPlates").value = "";
     $("editAsanaPage2001").value = "";
     $("editAsanaPage2015").value = "";
@@ -4473,14 +4473,14 @@ function encodeToBase64(str) {
     if (id) {
         $("asanaEditorTitle").textContent = `Edit Asana: ${id}`;
         const a = asanaLibrary[id] || {};
-        
+
         $("editAsanaId").value = a.id || a.asanaNo || id;
         $("editAsanaName").value = a.name || a.Name || "";
         $("editAsanaIAST").value = a.iast || a.IAST || "";
         $("editAsanaEnglish").value = a.english || a.english_name || a.English_Name || "";
         $("editAsanaCategory").value = a.category || a.Category || "";
         $("editAsanaHold").value = a.hold || a.Hold || "";
-        
+
         let pStr = "";
         if (a.plates && (a.plates.final || a.plates.intermediate)) {
             if (a.plates.final && a.plates.final.length) pStr += `Final: ${a.plates.final.join(", ")}`;
@@ -4500,11 +4500,33 @@ function encodeToBase64(str) {
         $("editAsanaDescription").value = a.description || a.Description || "";
         $("editAsanaTechnique").value = a.technique || a.Technique || "";
         $("editAsanaRequiresSides").checked = !!(a.requiresSides || a.Requires_Sides);
-        
+
         if (a.variations) {
             Object.entries(a.variations).forEach(([sKey, sData]) => {
                 addStageToEditor(sKey, sData);
             });
+        }
+
+        try {
+            const paddedId = String(id).padStart(3, '0');
+            const { data: userStages } = await supabase.from('user_stages').select('*').eq('asana_id', paddedId);
+            if (userStages && userStages.length > 0) {
+                userStages.forEach((stage) => {
+                    const stageKey = stage.stage_name || '';
+                    if (!$("stagesContainer").querySelector(`input.stage-key[value="${stageKey}"]`)) {
+                        addStageToEditor(stageKey, {
+                            id: stage.id,
+                            stage_name: stageKey,
+                            title: stage.title || '',
+                            shorthand: stage.shorthand || '',
+                            full_technique: stage.full_technique || '',
+                            hold: stage.hold || ''
+                        });
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn("Could not load user stages for editor:", e.message);
         }
     } else {
         // We are ADDING NEW
