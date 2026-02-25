@@ -4828,6 +4828,16 @@ document.addEventListener("DOMContentLoaded", () => {
                             console.error("Stage insert error:", JSON.stringify(insErr));
                             throw new Error(`Stage insert failed: ${insErr.details || insErr.message}`);
                         }
+
+                        const { data: fetchedStages } = await supabase.from('user_stages').select('*').eq('asana_id', id).eq('user_id', userId);
+                        if (fetchedStages && fetchedStages.length > 0) {
+                            fetchedStages.forEach((stage) => {
+                                const stageKey = stage.stage_name || '';
+                                if (localVariations[stageKey]) {
+                                    localVariations[stageKey].id = stage.id;
+                                }
+                            });
+                        }
                     }
                 } else if (!userId) {
                     console.log("Guest mode: changes saved locally only (not persisted to database)");
