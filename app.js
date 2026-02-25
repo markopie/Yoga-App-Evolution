@@ -848,10 +848,15 @@ async function loadAsanaLibrary() {
             const stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
             if (!stageKey) return;
 
+            const holdStr = stage.Hold ?? stage.hold ?? '';
             normalized[parentKey].variations[stageKey] = {
+                id: stage.id ?? '',
                 technique: stage.Full_Technique ?? stage.full_technique ?? '',
+                full_technique: stage.Full_Technique ?? stage.full_technique ?? '',
                 shorthand: stage.Shorthand ?? stage.shorthand ?? '',
-                title: stage.Title ?? stage.title ?? `Stage ${stageKey}`
+                title: stage.Title ?? stage.title ?? `Stage ${stageKey}`,
+                hold: holdStr,
+                hold_data: parseHoldTimes(holdStr)
             };
         });
 
@@ -4532,14 +4537,29 @@ function encodeToBase64(str) {
     bd.style.display = "flex";
 };
 
-function getNextRomanNumeral() {
+async function getNextRomanNumeral() {
     const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X"];
-    const container = $("stagesContainer");
-    const existing = Array.from(container.querySelectorAll(".stage-key")).map(el => el.value.trim().toUpperCase());
-    for (const r of ROMAN) {
-        if (!existing.includes(r)) return r;
+    const asanaId = $("editAsanaId").value.trim().padStart(3, '0');
+    const inDom = Array.from($("stagesContainer").querySelectorAll(".stage-key")).map(el => el.value.trim().toUpperCase());
+    const taken = new Set(inDom);
+
+    if (supabase && asanaId) {
+        try {
+            const [{ data: s1 }, { data: s2 }] = await Promise.all([
+                supabase.from('stages').select('stage_name').contains('parent_id', [asanaId]),
+                supabase.from('user_stages').select('stage_name').contains('parent_id', [asanaId])
+            ]);
+            (s1 || []).forEach(r => r.stage_name && taken.add(String(r.stage_name).toUpperCase()));
+            (s2 || []).forEach(r => r.stage_name && taken.add(String(r.stage_name).toUpperCase()));
+        } catch (e) {
+            console.warn("Could not query stage names for Roman numeral calc:", e.message);
+        }
     }
-    return String(existing.length + 1);
+
+    for (const r of ROMAN) {
+        if (!taken.has(r)) return r;
+    }
+    return String(taken.size + 1);
 }
 
 function getVariationSuffixes() {
@@ -4560,10 +4580,10 @@ function getVariationSuffixes() {
     return Array.from(suffixes).sort();
 }
 
-window.addStageToEditor = function(stageKey = "", stageData = {}) {
+window.addStageToEditor = async function(stageKey = "", stageData = {}) {
     const container = $("stagesContainer");
 
-    const autoKey = stageKey || getNextRomanNumeral();
+    const autoKey = stageKey || await getNextRomanNumeral();
     const existingTitle = typeof stageData === 'object' ? (stageData.title || stageData.Title || "") : "";
     const prefixMatch = existingTitle.match(/^(Modified|Stage)\s+/i);
     const prefix = prefixMatch ? prefixMatch[1] : "Modified";
