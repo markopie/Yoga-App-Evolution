@@ -837,18 +837,23 @@ async function loadAsanaLibrary() {
         } catch (e) { console.warn("Could not load user_stages:", e.message); }
 
         allStagesData.forEach((stage) => {
-            const rawParentId = stage['ID (from Parent_ID)'] ?? stage.parent_id ?? null;
-            let parentIdStr = Array.isArray(rawParentId) ? String(rawParentId[0]) : String(rawParentId);
-            if (!parentIdStr || !/^\d/.test(parentIdStr)) return;
+            // THE FIX: Prioritize our new text 'asana_id', fallback to the old arrays just in case
+            let parentIdStr = stage.asana_id ?? (Array.isArray(stage.parent_id) ? stage.parent_id[0] : stage.parent_id) ?? null;
+            if (!parentIdStr) return;
 
-            const numPart = parentIdStr.match(/^(\d+)/);
-            const parentKey = numPart[1].replace(/^0+/, '').padStart(3, '0') + parentIdStr.replace(/^\d+/, '');
+            // Strip any alpha characters (e.g., '172a' -> '172') to match the parent
+            const numPart = String(parentIdStr).match(/^(\d+)/);
+            if (!numPart) return;
+            const parentKey = numPart[1].replace(/^0+/, '').padStart(3, '0') + String(parentIdStr).replace(/^\d+/, '');
+            
             if (!normalized[parentKey]) return;
 
             const stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
             if (!stageKey) return;
 
             const holdStr = stage.Hold ?? stage.hold ?? '';
+            
+            // By assigning this, User Stages will naturally overwrite Global stages with the same Roman Numeral
             normalized[parentKey].variations[stageKey] = {
                 id: stage.id ?? '',
                 technique: stage.Full_Technique ?? stage.full_technique ?? '',
@@ -856,12 +861,25 @@ async function loadAsanaLibrary() {
                 shorthand: stage.Shorthand ?? stage.shorthand ?? '',
                 title: stage.Title ?? stage.title ?? `Stage ${stageKey}`,
                 hold: holdStr,
-                hold_data: parseHoldTimes(holdStr)
+                hold_data: parseHoldTimes(holdStr),
+                // Flag to easily identify custom user edits in the UI later
+                isCustom: !!stage.user_id 
             };
         });
 
+        // --- DIAGNOSTIC PRINT ---
+        Object.entries(normalized).forEach(([poseId, pose]) => {
+            const keys = Object.keys(pose.variations);
+            if (keys.length > 1) { // Only log poses with multiple variations
+                console.log(`🧘 Pose ${poseId} variations:`);
+                keys.forEach(k => console.log(`   Key: "${k}" | Custom: ${!!pose.variations[k].isCustom} | Title: "${pose.variations[k].title}"`));
+            }
+        });
+        // ------------------------
+
         console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
         return normalized;
+
     } catch (e) {
         console.error("Exception loading asana library:", e);
         return {};
@@ -2426,9 +2444,10 @@ async function showAsanaDetail(asana) {
     // Safely append the gathered HTML string to the existing native elements
     d.insertAdjacentHTML('beforeend', detailHTML);
   
-    // 6. Variations Loop
+    // --- REPLACE YOUR SECTION 6 (Variations Loop) WITH THIS ---
     if (asana.variations && Object.keys(asana.variations).length > 0) {
         const varSection = document.createElement('div');
+        // We can just use one heading now since they are merged
         varSection.innerHTML = '<hr><h3>Variations & Stages</h3>';
 
         const sortedKeys = Object.keys(asana.variations).sort();
@@ -2436,23 +2455,34 @@ async function showAsanaDetail(asana) {
             const val = asana.variations[key];
             let techText = '';
             let shortText = '';
+            let holdText = val.hold || '';
             let titleText = `Stage ${key}`;
+            let isCustom = !!val.isCustom; // This is the flag we added to loadAsanaLibrary
 
             if (typeof val === 'string') {
                 techText = val;
             } else if (val && typeof val === 'object') {
-                techText = val.Full_Technique || val.technique || val.Technique || '';
+                techText = val.full_technique || val.Full_Technique || val.technique || '';
                 shortText = val.shorthand || val.Shorthand || '';
                 const actualTitle = val.Title || val.title || val.Stage_Title || val.stage_title;
                 if (actualTitle && String(actualTitle).trim() !== '') titleText = String(actualTitle).trim();
             }
 
             const wrapper = document.createElement('div');
-            wrapper.className = 'variation-block';
-            wrapper.style.cssText = 'background:#f9f9f9; padding:12px; margin-bottom:12px; border-radius:8px; border: 1px solid #eee;';
+            wrapper.className = isCustom ? 'user-variation-block' : 'variation-block';
+            
+            // STYLE OVERRIDE: If it's custom, give it the blue theme. Otherwise, the grey theme.
+            wrapper.style.cssText = isCustom 
+                ? 'background:#f0f7ff; padding:12px; margin-bottom:12px; border-radius:8px; border: 2px solid #2196f3;'
+                : 'background:#f9f9f9; padding:12px; margin-bottom:12px; border-radius:8px; border: 1px solid #eee;';
 
-            let html = `<h4 style="margin-top:0; margin-bottom:8px; color:#333; font-size:1.1rem;">${titleText}</h4>`;
-            if (shortText) html += `<div style="color:#2e7d32; font-weight:bold; margin-bottom:8px; font-family:monospace; font-size:1rem;">${shortText}</div>`;
+            let html = `<h4 style="margin-top:0; margin-bottom:8px; color:${isCustom ? '#1976d2' : '#333'}; font-size:1.1rem;">${titleText}</h4>`;
+            
+            if (shortText) html += `<div style="color:${isCustom ? '#1565c0' : '#2e7d32'}; font-weight:bold; margin-bottom:8px; font-family:monospace; font-size:1rem;">${shortText}</div>`;
+            
+            // Add the Hold time if it exists
+            if (holdText) html += `<div style="color:${isCustom ? '#0d47a1' : '#666'}; margin-bottom:8px; font-weight:600; font-size:0.95rem;">Hold: ${holdText}</div>`;
+
             if (techText) {
                 const formattedTech = typeof formatTechniqueText === 'function' ? formatTechniqueText(techText) : techText;
                 html += `<div class="technique-text" style="white-space: pre-wrap; font-size:0.95rem; color:#444;">${formattedTech}</div>`;
@@ -2465,42 +2495,9 @@ async function showAsanaDetail(asana) {
         });
         d.appendChild(varSection);
     }
+    // --- DELETE EVERYTHING FROM HERE DOWN TO THE END OF THE OLD SUPABASE CALL ---
 
-    try {
-        const paddedId = String(asana.id || asana.asanaNo).padStart(3, '0');
-        const { data: userStages } = await supabase.from('user_stages').select('*').eq('asana_id', paddedId);
-        if (userStages && userStages.length > 0) {
-            const userVarSection = document.createElement('div');
-            userVarSection.innerHTML = '<hr><h3>User Variations & Stages</h3>';
-
-            userStages.sort((a, b) => (a.stage_name || '').localeCompare(b.stage_name || '')).forEach(stage => {
-                const titleText = stage.title || `Stage ${stage.stage_name}`;
-                const shortText = stage.shorthand || '';
-                const techText = stage.full_technique || '';
-                const holdText = stage.hold || '';
-
-                const wrapper = document.createElement('div');
-                wrapper.className = 'user-variation-block';
-                wrapper.style.cssText = 'background:#f0f7ff; padding:12px; margin-bottom:12px; border-radius:8px; border: 2px solid #2196f3;';
-
-                let html = `<h4 style="margin-top:0; margin-bottom:8px; color:#1976d2; font-size:1.1rem;">${titleText}</h4>`;
-                if (shortText) html += `<div style="color:#1565c0; font-weight:bold; margin-bottom:8px; font-family:monospace; font-size:1rem;">${shortText}</div>`;
-                if (holdText) html += `<div style="color:#0d47a1; margin-bottom:8px; font-weight:600; font-size:0.95rem;">Hold: ${holdText}</div>`;
-                if (techText) {
-                    const formattedTech = typeof formatTechniqueText === 'function' ? formatTechniqueText(techText) : techText;
-                    html += `<div class="technique-text" style="white-space: pre-wrap; font-size:0.95rem; color:#333;">${formattedTech}</div>`;
-                } else {
-                    html += `<div class="muted" style="font-size:0.85rem;">No specific instructions provided.</div>`;
-                }
-
-                wrapper.innerHTML = html;
-                userVarSection.appendChild(wrapper);
-            });
-            d.appendChild(userVarSection);
-        }
-    } catch (e) {
-        console.warn("Could not load user stages for display:", e.message);
-    }
+    
 
     // 7. Bind Audio Button
     const playBtn = document.getElementById('playNameBtn');
@@ -4493,7 +4490,9 @@ function encodeToBase64(str) {
     $("editAsanaIAST").value = "";
     $("editAsanaEnglish").value = "";
     $("editAsanaCategory").value = "";
-    $("editAsanaHold").value = "";
+    if ($("editAsanaHoldStandard")) $("editAsanaHoldStandard").value = "30";
+    if ($("editAsanaHoldShort")) $("editAsanaHoldShort").value = "15";
+    if ($("editAsanaHoldLong")) $("editAsanaHoldLong").value = "60";
     $("editAsanaPlates").value = "";
     $("editAsanaPage2001").value = "";
     $("editAsanaPage2015").value = "";
@@ -4515,8 +4514,10 @@ function encodeToBase64(str) {
         $("editAsanaIAST").value = a.iast || a.IAST || "";
         $("editAsanaEnglish").value = a.english || a.english_name || a.English_Name || "";
         $("editAsanaCategory").value = a.category || a.Category || "";
-        $("editAsanaHold").value = a.hold || a.Hold || "";
-
+        const holdData = parseHoldTimes(a.hold || a.Hold || "");
+        if ($("editAsanaHoldStandard")) $("editAsanaHoldStandard").value = holdData.standard;
+        if ($("editAsanaHoldShort")) $("editAsanaHoldShort").value = holdData.short;
+        if ($("editAsanaHoldLong")) $("editAsanaHoldLong").value = holdData.long;
         let pStr = "";
         if (a.plates && (a.plates.final || a.plates.intermediate)) {
             if (a.plates.final && a.plates.final.length) pStr += `Final: ${a.plates.final.join(", ")}`;
@@ -4588,7 +4589,9 @@ function encodeToBase64(str) {
             note: $("editAsanaNote").value,
             category: $("editAsanaCategory").value,
             description: $("editAsanaDescription").value,
-            hold: $("editAsanaHold").value,
+            holdStd: $("editAsanaHoldStandard")?.value,
+            holdShort: $("editAsanaHoldShort")?.value,
+            holdLong: $("editAsanaHoldLong")?.value,
             stageCount: $("stagesContainer").querySelectorAll(".stage-row").length
         };
         window._asanaEditorOriginalStageData = Array.from($("stagesContainer").querySelectorAll(".stage-row")).map(div => ({
@@ -4607,19 +4610,31 @@ function encodeToBase64(str) {
 };
 
 async function getNextRomanNumeral() {
-    const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X"];
+    // Expanded up to 20 variations
+    const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X",
+                   "XI","XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX"];
+    
     const asanaId = $("editAsanaId").value.trim().padStart(3, '0');
     const inDom = Array.from($("stagesContainer").querySelectorAll(".stage-key")).map(el => el.value.trim().toUpperCase());
     const taken = new Set(inDom);
 
     if (supabase && asanaId) {
         try {
+            // THE FIX: Use .eq('asana_id', asanaId) instead of .contains('parent_id')
             const [{ data: s1 }, { data: s2 }] = await Promise.all([
-                supabase.from('stages').select('stage_name').contains('parent_id', [asanaId]),
-                supabase.from('user_stages').select('stage_name').contains('parent_id', [asanaId])
+                supabase.from('stages').select('"Stage_Name", stage_name').eq('asana_id', asanaId),
+                supabase.from('user_stages').select('"Stage_Name", stage_name').eq('asana_id', asanaId)
             ]);
-            (s1 || []).forEach(r => r.stage_name && taken.add(String(r.stage_name).toUpperCase()));
-            (s2 || []).forEach(r => r.stage_name && taken.add(String(r.stage_name).toUpperCase()));
+            
+            // Safely check both Title Case and lowercase column names
+            (s1 || []).forEach(r => {
+                const name = r.Stage_Name || r.stage_name;
+                if (name) taken.add(String(name).toUpperCase());
+            });
+            (s2 || []).forEach(r => {
+                const name = r.Stage_Name || r.stage_name;
+                if (name) taken.add(String(name).toUpperCase());
+            });
         } catch (e) {
             console.warn("Could not query stage names for Roman numeral calc:", e.message);
         }
@@ -4628,7 +4643,7 @@ async function getNextRomanNumeral() {
     for (const r of ROMAN) {
         if (!taken.has(r)) return r;
     }
-    return String(taken.size + 1);
+    return String(taken.size + 1); // Fallback to numbers if they exceed 20
 }
 
 function getVariationSuffixes() {
@@ -4752,7 +4767,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     note: $("editAsanaNote").value,
                     category: $("editAsanaCategory").value,
                     description: $("editAsanaDescription").value,
-                    hold: $("editAsanaHold").value,
+                    holdStd: $("editAsanaHoldStandard")?.value,
+                    holdShort: $("editAsanaHoldShort")?.value,
+                    holdLong: $("editAsanaHoldLong")?.value,
                     stageCount: currentStageCount
                 };
                 const stageCountChanged = currentStageCount !== (window._asanaEditorOriginalStageCount ?? snap.stageCount);
@@ -4794,6 +4811,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.warn("Could not get user ID:", e.message);
             }
 
+            // 1. Grab the 3 new hold inputs for the Main Asana (We will add these to HTML next)
+            const asanaHoldStd = parseInt($("editAsanaHoldStandard")?.value || "30", 10);
+            const asanaHoldShort = parseInt($("editAsanaHoldShort")?.value || "15", 10);
+            const asanaHoldLong = parseInt($("editAsanaHoldLong")?.value || "60", 10);
+            const asanaHoldStr = buildHoldString(asanaHoldStd, asanaHoldShort, asanaHoldLong);
+
             const asanaData = {
                 id: id,
                 user_id: userId,
@@ -4803,13 +4826,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 technique: $("editAsanaTechnique").value.trim(),
                 plate_numbers: $("editAsanaPlates").value.trim(),
                 requires_sides: $("editAsanaRequiresSides").checked,
-                page_2001: $("editAsanaPage2001").value.trim(),
-                page_2015: $("editAsanaPage2015").value.trim(),
-                intensity: $("editAsanaIntensity").value.trim(),
+                // THE FIX: Convert empty strings to null so Postgres BigInt doesn't crash
+                page_2001: $("editAsanaPage2001").value.trim() || null,
+                page_2015: $("editAsanaPage2015").value.trim() || null,
+                intensity: $("editAsanaIntensity").value.trim() || null,
                 note: $("editAsanaNote").value.trim(),
                 category: finalCategory,
                 description: $("editAsanaDescription").value.trim(),
-                hold: $("editAsanaHold").value.trim()
+                "hold": asanaHoldStr // Use the new 3-part string
             };
 
             const stageDivs = $("stagesContainer").querySelectorAll(".stage-row");
@@ -4829,18 +4853,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 const holdStr = buildHoldString(holdStd, holdShort, holdLong);
                 const dbId = div.dataset.dbId || "";
 
+                // THE FIX: Removed the junk parent_id array and forced Title Case to match your DB
                 const payload = {
                     user_id: asanaData.user_id,
-                    parent_id: [id],
-                    stage_name: key,
-                    title: composedTitle,
-                    shorthand: div.querySelector(".stage-short").value.trim(),
-                    full_technique: div.querySelector(".stage-tech").value.trim(),
-                    hold: holdStr,
-                    asana_id: id
+                    asana_id: id,
+                    "stage_name": key,
+                    "title": composedTitle,
+                    "full_technique": div.querySelector(".stage-tech")?.value.trim() || null,
+                    "hold": holdStr
+                    
                 };
+                
+                // Keep shorthand if your DB still uses it
+                const shorthandVal = div.querySelector(".stage-short")?.value.trim();
+                if (shorthandVal) payload.shorthand = shorthandVal;
 
-                if (dbId) {
+                // Check if the ID is a UUID (contains a dash). 
+                // If it's just a number like "133", treat it as a new insert for this user!
+                if (dbId && dbId.includes('-')) {
                     stagesToUpdate.push({ id: dbId, payload });
                 } else {
                     stagesToInsert.push(payload);

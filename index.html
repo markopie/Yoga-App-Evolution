@@ -49,8 +49,18 @@
             <datalist id="asanaCategoryList"></datalist>
           </div>
           <div>
-            <label class="muted" style="font-size:0.8rem;">Hold Time</label>
-            <input type="text" id="editAsanaHold" placeholder="e.g. 0:30" style="width:100%; padding:6px;">
+            <label class="muted" style="font-size:0.8rem;">Hold Times (seconds)</label>
+            <div style="display: flex; gap: 10px; margin-top: 4px;">
+              <label style="font-size:0.8rem; flex: 1;">Standard:
+                <input type="number" id="editAsanaHoldStandard" value="30" style="width: 100%; padding:6px; box-sizing: border-box;">
+              </label>
+              <label style="font-size:0.8rem; flex: 1;">Short:
+                <input type="number" id="editAsanaHoldShort" value="15" style="width: 100%; padding:6px; box-sizing: border-box;">
+              </label>
+              <label style="font-size:0.8rem; flex: 1;">Long:
+                <input type="number" id="editAsanaHoldLong" value="60" style="width: 100%; padding:6px; box-sizing: border-box;">
+              </label>
+            </div>
           </div>
           <div>
             <label class="muted" style="font-size:0.8rem;">Name (Sanskrit)</label>
