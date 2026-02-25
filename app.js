@@ -697,6 +697,16 @@ function parseHoldTimes(holdStr) {
     });
     return result;
 }
+
+function secsToMSS(secs) {
+    const s = Math.max(0, parseInt(secs, 10) || 0);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function buildHoldString(standard, short, long) {
+    return `Standard: ${secsToMSS(standard)} | Short: ${secsToMSS(short)} | Long: ${secsToMSS(long)}`;
+}
+
 // Helper function to parse sequence text into poses array
 // Input format: "074 | 60 |\n215 | 600 | [Pratiloma IVb]\n203 | 300 | [Ujjāyī II (lying)]"
 // Output format: [[id], duration, label, variationKey, note]
@@ -1698,11 +1708,15 @@ function prevPose() {
     // 3. SMART LOOKUP
     const asana = findAsanaByIdOrPlate(lookupId);
 
-    // VARIATION DURATION OVERRIDE: if pose has a stored variation key and that variation has a duration, use it
+    // VARIATION DURATION OVERRIDE: if pose has a variation key and that variation has a hold string, parse it
     const storedVarKey = currentPose[3];
     if (storedVarKey && asana && asana.variations && asana.variations[storedVarKey]) {
-        const varDur = asana.variations[storedVarKey].duration;
-        if (varDur != null && Number(varDur) > 0) seconds = Number(varDur);
+        const varData = asana.variations[storedVarKey];
+        const varHoldStr = varData.hold || varData.Hold || "";
+        if (varHoldStr) {
+            const varHd = parseHoldTimes(varHoldStr);
+            if (varHd.standard > 0) seconds = varHd.standard;
+        }
     }
 
     // Sides Check
@@ -3293,9 +3307,12 @@ function builderOpen(mode, seq) {
             if (vKey) {
                 const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === builderPoses[i].id);
                 const varData = asana && asana.variations && asana.variations[vKey];
-                if (varData && varData.duration != null) {
-                    builderPoses[i].duration = varData.duration;
-                    builderRender();
+                if (varData) {
+                    const holdStr = varData.hold || varData.Hold || "";
+                    if (holdStr) {
+                        const hd = parseHoldTimes(holdStr);
+                        if (hd.standard) { builderPoses[i].duration = hd.standard; builderRender(); }
+                    }
                 }
             }
         };
@@ -4551,15 +4568,22 @@ window.addStageToEditor = function(stageKey = "", stageData = {}) {
     const prefixMatch = existingTitle.match(/^(Modified|Stage)\s+/i);
     const prefix = prefixMatch ? prefixMatch[1] : "Modified";
     const suffix = existingTitle.replace(/^(Modified|Stage)\s+[IVXLCDM]+\s*/i, "").trim();
-    const existingDuration = typeof stageData === 'object' ? (stageData.duration || "") : "";
     const existingShorthand = typeof stageData === 'object' ? (stageData.shorthand || stageData.Shorthand || "") : "";
     const existingTech = typeof stageData === 'object' ? (stageData.full_technique || stageData.Full_Technique || stageData.technique || "") : (stageData || "");
+    const existingDbId = typeof stageData === 'object' ? (stageData.id || stageData.db_id || "") : "";
+
+    const existingHoldStr = typeof stageData === 'object' ? (stageData.hold || stageData.Hold || "") : "";
+    const parsedHold = parseHoldTimes(existingHoldStr);
+    const holdStd  = existingHoldStr ? parsedHold.standard : 30;
+    const holdShort = existingHoldStr ? parsedHold.short    : 15;
+    const holdLong  = existingHoldStr ? parsedHold.long     : 60;
 
     const suffixes = getVariationSuffixes();
     const datalistId = `stageSuffixList_${Date.now()}`;
 
     const div = document.createElement("div");
     div.className = "stage-row";
+    div.dataset.dbId = existingDbId;
     div.style.cssText = "border:1px solid #ddd; padding:10px; border-radius:6px; background:#fff; display:grid; gap:8px;";
 
     div.innerHTML = `
@@ -4580,16 +4604,26 @@ window.addStageToEditor = function(stageKey = "", stageData = {}) {
                <input type="text" class="stage-suffix" list="${datalistId}" value="${suffix}" placeholder="e.g. (on a bolster)" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
                <datalist id="${datalistId}">${suffixes.map(s => `<option value="${s}">`).join("")}</datalist>
            </div>
-           <div style="min-width:80px;">
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Duration (s)</label>
-               <input type="number" class="stage-duration" min="0" value="${existingDuration}" placeholder="e.g. 30" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">
-           </div>
            <div style="min-width:100px;">
                <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Shorthand</label>
                <input type="text" class="stage-short" value="${existingShorthand}" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
            </div>
            <div style="display:flex; align-items:flex-end; padding-bottom:2px;">
                <button type="button" class="tiny warn remove-stage-btn">✕ Remove</button>
+           </div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+           <div>
+               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Short Hold (s)</label>
+               <input type="number" class="stage-hold-short" min="0" value="${holdShort}" style="width:70px; padding:6px; border:1px solid #ccc; border-radius:4px;">
+           </div>
+           <div>
+               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Standard Hold (s)</label>
+               <input type="number" class="stage-hold-standard" min="0" value="${holdStd}" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">
+           </div>
+           <div>
+               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Long Hold (s)</label>
+               <input type="number" class="stage-hold-long" min="0" value="${holdLong}" style="width:70px; padding:6px; border:1px solid #ccc; border-radius:4px;">
            </div>
         </div>
         <div>
@@ -4677,35 +4711,46 @@ document.addEventListener("DOMContentLoaded", () => {
             };
 
             const stageDivs = $("stagesContainer").querySelectorAll(".stage-row");
-            const stagesToSave = [];
+            const stagesToInsert = [];
+            const stagesToUpdate = [];
             const localVariations = {};
 
             stageDivs.forEach(div => {
                 const key = div.querySelector(".stage-key").value.trim();
-                if (key) {
-                    const pfx = div.querySelector(".stage-prefix") ? div.querySelector(".stage-prefix").value.trim() : "Modified";
-                    const sfx = div.querySelector(".stage-suffix") ? div.querySelector(".stage-suffix").value.trim() : "";
-                    const composedTitle = sfx ? `${pfx} ${key} ${sfx}` : `${pfx} ${key}`;
-                    const durVal = div.querySelector(".stage-duration") ? div.querySelector(".stage-duration").value.trim() : "";
-                    const sData = {
-                        user_id: asanaData.user_id,
-                        parent_id: [id],
-                        stage_name: key,
-                        title: composedTitle,
-                        shorthand: div.querySelector(".stage-short").value.trim(),
-                        full_technique: div.querySelector(".stage-tech").value.trim(),
-                        duration: durVal !== "" ? parseInt(durVal, 10) : null
-                    };
-                    stagesToSave.push(sData);
+                if (!key) return;
+                const pfx = div.querySelector(".stage-prefix") ? div.querySelector(".stage-prefix").value.trim() : "Modified";
+                const sfx = div.querySelector(".stage-suffix") ? div.querySelector(".stage-suffix").value.trim() : "";
+                const composedTitle = sfx ? `${pfx} ${key} ${sfx}` : `${pfx} ${key}`;
+                const holdStd   = parseInt(div.querySelector(".stage-hold-standard")?.value || "30", 10);
+                const holdShort = parseInt(div.querySelector(".stage-hold-short")?.value    || "15", 10);
+                const holdLong  = parseInt(div.querySelector(".stage-hold-long")?.value     || "60", 10);
+                const holdStr = buildHoldString(holdStd, holdShort, holdLong);
+                const dbId = div.dataset.dbId || "";
 
-                    localVariations[key] = {
-                        title: sData.title,
-                        shorthand: sData.shorthand,
-                        technique: sData.full_technique,
-                        Full_Technique: sData.full_technique,
-                        duration: sData.duration
-                    };
+                const payload = {
+                    user_id: asanaData.user_id,
+                    parent_id: [id],
+                    stage_name: key,
+                    title: composedTitle,
+                    shorthand: div.querySelector(".stage-short").value.trim(),
+                    full_technique: div.querySelector(".stage-tech").value.trim(),
+                    hold: holdStr
+                };
+
+                if (dbId) {
+                    stagesToUpdate.push({ id: dbId, payload });
+                } else {
+                    stagesToInsert.push(payload);
                 }
+
+                localVariations[key] = {
+                    title: payload.title,
+                    shorthand: payload.shorthand,
+                    technique: payload.full_technique,
+                    Full_Technique: payload.full_technique,
+                    hold: holdStr,
+                    hold_data: parseHoldTimes(holdStr)
+                };
             });
 
             try {
@@ -4729,16 +4774,19 @@ document.addEventListener("DOMContentLoaded", () => {
                         throw new Error(`Save failed on field: ${asanaErr.details || asanaErr.message}`);
                     }
 
-                    const stageDeleteQuery = userId
-                        ? supabase.from('user_stages').delete().eq('user_id', userId).contains('parent_id', [id])
-                        : supabase.from('user_stages').delete().is('user_id', null).contains('parent_id', [id]);
-                    await stageDeleteQuery;
+                    for (const { id: rowId, payload } of stagesToUpdate) {
+                        const { error: updErr } = await supabase.from('user_stages').update(payload).eq('id', rowId);
+                        if (updErr) {
+                            console.error("Stage update error:", JSON.stringify(updErr));
+                            throw new Error(`Stage update failed: ${updErr.details || updErr.message}`);
+                        }
+                    }
 
-                    if (stagesToSave.length > 0) {
-                        const { error: stageErr } = await supabase.from('user_stages').insert(stagesToSave);
-                        if (stageErr) {
-                            console.error("Stage save error — column/field detail:", JSON.stringify(stageErr));
-                            throw new Error(`Stage save failed: ${stageErr.details || stageErr.message}`);
+                    if (stagesToInsert.length > 0) {
+                        const { error: insErr } = await supabase.from('user_stages').insert(stagesToInsert);
+                        if (insErr) {
+                            console.error("Stage insert error:", JSON.stringify(insErr));
+                            throw new Error(`Stage insert failed: ${insErr.details || insErr.message}`);
                         }
                     }
                 }
