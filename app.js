@@ -4774,26 +4774,15 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             try {
-                if (supabase) {
+                if (supabase && userId) {
                     let asanaErr;
-                    if (userId) {
-                        const { data: existing } = await supabase.from('user_asanas').select('id').eq('id', id).eq('user_id', userId).maybeSingle();
-                        if (existing) {
-                            const result = await supabase.from('user_asanas').update(asanaData).eq('id', id).eq('user_id', userId);
-                            asanaErr = result.error;
-                        } else {
-                            const result = await supabase.from('user_asanas').insert(asanaData);
-                            asanaErr = result.error;
-                        }
+                    const { data: existing } = await supabase.from('user_asanas').select('id').eq('id', id).eq('user_id', userId).maybeSingle();
+                    if (existing) {
+                        const result = await supabase.from('user_asanas').update(asanaData).eq('id', id).eq('user_id', userId);
+                        asanaErr = result.error;
                     } else {
-                        const { data: existing } = await supabase.from('user_asanas').select('id').eq('id', id).is('user_id', null).maybeSingle();
-                        if (existing) {
-                            const result = await supabase.from('user_asanas').update(asanaData).eq('id', id).is('user_id', null);
-                            asanaErr = result.error;
-                        } else {
-                            const result = await supabase.from('user_asanas').insert(asanaData);
-                            asanaErr = result.error;
-                        }
+                        const result = await supabase.from('user_asanas').insert(asanaData);
+                        asanaErr = result.error;
                     }
                     if (asanaErr) {
                         console.error("Asana save error — column/field detail:", JSON.stringify(asanaErr));
@@ -4815,6 +4804,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             throw new Error(`Stage insert failed: ${insErr.details || insErr.message}`);
                         }
                     }
+                } else if (!userId) {
+                    console.log("Guest mode: changes saved locally only (not persisted to database)");
                 }
                 
                 // Update local memory so edits take effect without needing to refresh
