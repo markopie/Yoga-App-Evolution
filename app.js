@@ -4778,7 +4778,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     title: composedTitle,
                     shorthand: div.querySelector(".stage-short").value.trim(),
                     full_technique: div.querySelector(".stage-tech").value.trim(),
-                    hold: holdStr
+                    hold: holdStr,
+                    asana_id: id
                 };
 
                 if (dbId) {
