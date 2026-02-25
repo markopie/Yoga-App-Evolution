@@ -4777,8 +4777,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (supabase) {
                     let asanaErr;
                     if (userId) {
-                        const result = await supabase.from('user_asanas').upsert(asanaData, { onConflict: 'id,user_id' });
-                        asanaErr = result.error;
+                        const { data: existing } = await supabase.from('user_asanas').select('id').eq('id', id).eq('user_id', userId).maybeSingle();
+                        if (existing) {
+                            const result = await supabase.from('user_asanas').update(asanaData).eq('id', id).eq('user_id', userId);
+                            asanaErr = result.error;
+                        } else {
+                            const result = await supabase.from('user_asanas').insert(asanaData);
+                            asanaErr = result.error;
+                        }
                     } else {
                         const { data: existing } = await supabase.from('user_asanas').select('id').eq('id', id).is('user_id', null).maybeSingle();
                         if (existing) {
