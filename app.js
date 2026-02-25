@@ -785,63 +785,79 @@ async function loadAsanaLibrary() {
     }
 
     try {
+        // 1. Load Global Asanas
         const { data: asanasData, error: asanasError } = await supabase.from('asanas').select('*');
-        let allAsanasData = asanasData && !asanasError ? [...asanasData] : [];
+        const normalized = {};
 
+        if (asanasData) {
+            asanasData.forEach((row) => {
+                const rawId = row.ID ?? row.id ?? '';
+                const paddedId = String(rawId).trim().replace(/^0+/, '') || '';
+                if (!paddedId) return;
+                const key = paddedId.padStart(3, '0');
+
+                normalized[key] = {
+                    id: key,
+                    name: row.Name ?? row.name ?? '',
+                    iast: row.IAST ?? row.iast ?? '',
+                    english: row.English_Name ?? row.english_name ?? '',
+                    technique: row.Technique ?? row.technique ?? '',
+                    requiresSides: !!(row.Requires_Sides ?? row.requires_sides ?? false),
+                    plates: typeof parsePlates === 'function' ? parsePlates(row.Plate_Numbers ?? row.plate_numbers ?? '') : (row.Plate_Numbers ?? row.plate_numbers ?? ''),
+                    page2001: String(row.Page_2001 ?? row.page_2001 ?? ''),
+                    page2015: String(row.Page_2015 ?? row.page_2015 ?? ''),
+                    intensity: String(row.Intensity ?? row.intensity ?? ''),
+                    note: row.Note ?? row.note ?? '',
+                    category: row.Category ?? row.category ?? '',
+                    description: row.Description ?? row.description ?? '',
+                    hold: String(row.Hold ?? row.hold ?? ''),
+                    Hold: String(row.Hold ?? row.hold ?? ''),
+                    hold_data: parseHoldTimes(String(row.Hold ?? row.hold ?? '')),
+                    variations: {},
+                    isCustom: false
+                };
+            });
+        }
+
+        // 2. Load User Asanas and OVERWRITE globals
         try {
             const { data: userAsanasData } = await supabase.from('user_asanas').select('*');
-            if (userAsanasData && userAsanasData.length > 0) {
-                const userIds = new Set(userAsanasData.map(a => String(a.id || '').trim().replace(/^0+/, '')));
-                allAsanasData = allAsanasData.filter(a => !userIds.has(String(a.id || '').trim().replace(/^0+/, '')));
-                allAsanasData = allAsanasData.concat(userAsanasData);
+            if (userAsanasData) {
+                userAsanasData.forEach(userRow => {
+                    const rawId = userRow.id ?? '';
+                    const key = String(rawId).trim().replace(/^0+/, '').padStart(3, '0');
+                    
+                    if (normalized[key]) {
+                        normalized[key] = {
+                            ...normalized[key],
+                            name: userRow.name ?? normalized[key].name,
+                            iast: userRow.iast ?? normalized[key].iast,
+                            english: userRow.english_name ?? normalized[key].english,
+                            technique: userRow.technique ?? normalized[key].technique,
+                            category: userRow.category ?? normalized[key].category,
+                            description: userRow.description ?? normalized[key].description,
+                            note: userRow.note ?? normalized[key].note,
+                            hold: String(userRow.Hold ?? userRow.hold ?? ''),
+                            Hold: String(userRow.Hold ?? userRow.hold ?? ''),
+                            hold_data: parseHoldTimes(String(userRow.Hold ?? userRow.hold ?? '')),
+                            isCustom: true
+                        };
+                    }
+                });
             }
         } catch (e) { console.warn("Could not load user_asanas:", e.message); }
 
-        const normalized = {};
-
-        allAsanasData.forEach((row, idx) => {
-            const rawId = row.ID ?? row.id ?? '';
-            const paddedId = String(rawId).trim().replace(/^0+/, '') || '';
-            if (!paddedId) return;
-            const key = paddedId.padStart(3, '0');
-
-            const platesObj = parsePlates(row.Plate_Numbers ?? row.plate_numbers ?? '');
-
-            normalized[key] = {
-                id: key,
-                name: row.Name ?? row.name ?? '',
-                iast: row.IAST ?? row.iast ?? '',
-                english: row.English_Name ?? row.english_name ?? '',
-                technique: row.Technique ?? row.technique ?? '',
-                requiresSides: !!(row.Requires_Sides ?? row.requires_sides ?? false),
-                plates: platesObj,
-                page2001: String(row.Page_2001 ?? row.page_2001 ?? ''),
-                page2015: String(row.Page_2015 ?? row.page_2015 ?? ''),
-                intensity: String(row.Intensity ?? row.intensity ?? ''),
-                note: row.Note ?? row.note ?? '',
-                category: row.Category ?? row.category ?? '',
-                description: row.Description ?? row.description ?? '',
-                // Hold data for the timing features
-                holdRaw: String(row.Hold ?? row.hold ?? ''),
-                hold_data: parseHoldTimes(String(row.Hold ?? row.hold ?? '')),
-                variations: {}
-            };
-        });
-
+        // 3. Load All Stages (Global + User)
         const { data: stagesData } = await supabase.from('stages').select('*');
+        const { data: userStagesData } = await supabase.from('user_stages').select('*');
+        
         let allStagesData = stagesData ? [...stagesData] : [];
-
-        try {
-            const { data: userStagesData } = await supabase.from('user_stages').select('*');
-            if (userStagesData && userStagesData.length > 0) allStagesData = allStagesData.concat(userStagesData);
-        } catch (e) { console.warn("Could not load user_stages:", e.message); }
+        if (userStagesData) allStagesData = allStagesData.concat(userStagesData);
 
         allStagesData.forEach((stage) => {
-            // THE FIX: Prioritize our new text 'asana_id', fallback to the old arrays just in case
             let parentIdStr = stage.asana_id ?? (Array.isArray(stage.parent_id) ? stage.parent_id[0] : stage.parent_id) ?? null;
             if (!parentIdStr) return;
 
-            // Strip any alpha characters (e.g., '172a' -> '172') to match the parent
             const numPart = String(parentIdStr).match(/^(\d+)/);
             if (!numPart) return;
             const parentKey = numPart[1].replace(/^0+/, '').padStart(3, '0') + String(parentIdStr).replace(/^\d+/, '');
@@ -853,7 +869,7 @@ async function loadAsanaLibrary() {
 
             const holdStr = stage.Hold ?? stage.hold ?? '';
             
-            // By assigning this, User Stages will naturally overwrite Global stages with the same Roman Numeral
+            // User stages naturally overwrite global stages here because they were concatenated last
             normalized[parentKey].variations[stageKey] = {
                 id: stage.id ?? '',
                 technique: stage.Full_Technique ?? stage.full_technique ?? '',
@@ -862,7 +878,6 @@ async function loadAsanaLibrary() {
                 title: stage.Title ?? stage.title ?? `Stage ${stageKey}`,
                 hold: holdStr,
                 hold_data: parseHoldTimes(holdStr),
-                // Flag to easily identify custom user edits in the UI later
                 isCustom: !!stage.user_id 
             };
         });
@@ -870,12 +885,11 @@ async function loadAsanaLibrary() {
         // --- DIAGNOSTIC PRINT ---
         Object.entries(normalized).forEach(([poseId, pose]) => {
             const keys = Object.keys(pose.variations);
-            if (keys.length > 1) { // Only log poses with multiple variations
-                console.log(`🧘 Pose ${poseId} variations:`);
+            if (keys.length > 1) {
+                console.log(`🧘 Pose ${poseId} variations (Merged):`);
                 keys.forEach(k => console.log(`   Key: "${k}" | Custom: ${!!pose.variations[k].isCustom} | Title: "${pose.variations[k].title}"`));
             }
         });
-        // ------------------------
 
         console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
         return normalized;
@@ -4490,9 +4504,9 @@ function encodeToBase64(str) {
     $("editAsanaIAST").value = "";
     $("editAsanaEnglish").value = "";
     $("editAsanaCategory").value = "";
-    if ($("editAsanaHoldStandard")) $("editAsanaHoldStandard").value = "30";
-    if ($("editAsanaHoldShort")) $("editAsanaHoldShort").value = "15";
-    if ($("editAsanaHoldLong")) $("editAsanaHoldLong").value = "60";
+    if ($("editAsanaHoldStandard")) $("editAsanaHoldStandard").value = "";
+    if ($("editAsanaHoldShort")) $("editAsanaHoldShort").value = "";
+    if ($("editAsanaHoldLong")) $("editAsanaHoldLong").value = "";
     $("editAsanaPlates").value = "";
     $("editAsanaPage2001").value = "";
     $("editAsanaPage2015").value = "";
@@ -4514,7 +4528,12 @@ function encodeToBase64(str) {
         $("editAsanaIAST").value = a.iast || a.IAST || "";
         $("editAsanaEnglish").value = a.english || a.english_name || a.English_Name || "";
         $("editAsanaCategory").value = a.category || a.Category || "";
-        const holdData = parseHoldTimes(a.hold || a.Hold || "");
+
+        // DEBUG: Let's see exactly what the library thinks the hold is
+        console.log(`Checking Hold for Asana ${id}:`, { hold: a.hold, Hold: a.Hold });
+
+        // We check a.Hold (Supabase) and a.hold (Local/Legacy)
+        const holdData = parseHoldTimes(a.Hold || a.hold || "");
         if ($("editAsanaHoldStandard")) $("editAsanaHoldStandard").value = holdData.standard;
         if ($("editAsanaHoldShort")) $("editAsanaHoldShort").value = holdData.short;
         if ($("editAsanaHoldLong")) $("editAsanaHoldLong").value = holdData.long;
@@ -4772,11 +4791,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     holdLong: $("editAsanaHoldLong")?.value,
                     stageCount: currentStageCount
                 };
+                
                 const stageCountChanged = currentStageCount !== (window._asanaEditorOriginalStageCount ?? snap.stageCount);
                 const currentStageData = Array.from($("stagesContainer").querySelectorAll(".stage-row")).map(div => ({
                     key: div.querySelector(".stage-key")?.value || "",
-                    prefix: div.querySelector(".stage-prefix")?.value || "",
-                    suffix: div.querySelector(".stage-suffix")?.value || "",
                     short: div.querySelector(".stage-short")?.value || "",
                     tech: div.querySelector(".stage-tech")?.value || "",
                     holdStandard: div.querySelector(".stage-hold-standard")?.value || "",
@@ -4786,8 +4804,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 const originalStageData = window._asanaEditorOriginalStageData || [];
                 const stageDataChanged = JSON.stringify(currentStageData) !== JSON.stringify(originalStageData);
                 const fieldsUnchanged = Object.keys(snap).every(k => snap[k] === current[k]);
-                const unchanged = !stageCountChanged && !stageDataChanged && fieldsUnchanged;
-                if (unchanged) {
+
+                if (!stageCountChanged && !stageDataChanged && fieldsUnchanged) {
                     $("asanaEditorStatus").textContent = "No changes made.";
                     $("asanaEditorStatus").style.color = "#888";
                     setTimeout(() => { $("asanaEditorStatus").textContent = ""; }, 2500);
@@ -4798,24 +4816,18 @@ document.addEventListener("DOMContentLoaded", () => {
             const btn = $("asanaEditorSaveBtn");
             btn.disabled = true;
             btn.textContent = "Saving...";
-            $("asanaEditorStatus").textContent = "";
-
-            // Automatically format the category if it's new
-            const finalCategory = formatCategoryName($("editAsanaCategory").value.trim());
-
+            
             let userId = null;
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 userId = user?.id;
-            } catch (e) {
-                console.warn("Could not get user ID:", e.message);
-            }
+            } catch (e) { console.warn("User ID fetch failed:", e.message); }
 
-            // 1. Grab the 3 new hold inputs for the Main Asana (We will add these to HTML next)
-            const asanaHoldStd = parseInt($("editAsanaHoldStandard")?.value || "30", 10);
-            const asanaHoldShort = parseInt($("editAsanaHoldShort")?.value || "15", 10);
-            const asanaHoldLong = parseInt($("editAsanaHoldLong")?.value || "60", 10);
-            const asanaHoldStr = buildHoldString(asanaHoldStd, asanaHoldShort, asanaHoldLong);
+            const asanaHoldStr = buildHoldString(
+                parseInt($("editAsanaHoldStandard")?.value || "30", 10),
+                parseInt($("editAsanaHoldShort")?.value || "15", 10),
+                parseInt($("editAsanaHoldLong")?.value || "60", 10)
+            );
 
             const asanaData = {
                 id: id,
@@ -4826,144 +4838,85 @@ document.addEventListener("DOMContentLoaded", () => {
                 technique: $("editAsanaTechnique").value.trim(),
                 plate_numbers: $("editAsanaPlates").value.trim(),
                 requires_sides: $("editAsanaRequiresSides").checked,
-                // THE FIX: Convert empty strings to null so Postgres BigInt doesn't crash
                 page_2001: $("editAsanaPage2001").value.trim() || null,
                 page_2015: $("editAsanaPage2015").value.trim() || null,
                 intensity: $("editAsanaIntensity").value.trim() || null,
                 note: $("editAsanaNote").value.trim(),
-                category: finalCategory,
+                category: formatCategoryName($("editAsanaCategory").value.trim()),
                 description: $("editAsanaDescription").value.trim(),
-                "hold": asanaHoldStr // Use the new 3-part string
+                hold: asanaHoldStr
             };
 
-            const stageDivs = $("stagesContainer").querySelectorAll(".stage-row");
-            const stagesToInsert = [];
-            const stagesToUpdate = [];
-            const localVariations = {};
-
-            stageDivs.forEach(div => {
-                const key = div.querySelector(".stage-key").value.trim();
-                if (!key) return;
-                const pfx = div.querySelector(".stage-prefix") ? div.querySelector(".stage-prefix").value.trim() : "Modified";
-                const sfx = div.querySelector(".stage-suffix") ? div.querySelector(".stage-suffix").value.trim() : "";
-                const composedTitle = sfx ? `${pfx} ${key} ${sfx}` : `${pfx} ${key}`;
-                const holdStd   = parseInt(div.querySelector(".stage-hold-standard")?.value || "30", 10);
-                const holdShort = parseInt(div.querySelector(".stage-hold-short")?.value    || "15", 10);
-                const holdLong  = parseInt(div.querySelector(".stage-hold-long")?.value     || "60", 10);
-                const holdStr = buildHoldString(holdStd, holdShort, holdLong);
-                const dbId = div.dataset.dbId || "";
-
-                // THE FIX: Removed the junk parent_id array and forced Title Case to match your DB
-                const payload = {
-                    user_id: asanaData.user_id,
-                    asana_id: id,
-                    "stage_name": key,
-                    "title": composedTitle,
-                    "full_technique": div.querySelector(".stage-tech")?.value.trim() || null,
-                    "hold": holdStr
-                    
-                };
-                
-                // Keep shorthand if your DB still uses it
-                const shorthandVal = div.querySelector(".stage-short")?.value.trim();
-                if (shorthandVal) payload.shorthand = shorthandVal;
-
-                // Check if the ID is a UUID (contains a dash). 
-                // If it's just a number like "133", treat it as a new insert for this user!
-                if (dbId && dbId.includes('-')) {
-                    stagesToUpdate.push({ id: dbId, payload });
-                } else {
-                    stagesToInsert.push(payload);
-                }
-
-                localVariations[key] = {
-                    title: payload.title,
-                    shorthand: payload.shorthand,
-                    technique: payload.full_technique,
-                    Full_Technique: payload.full_technique,
-                    hold: holdStr,
-                    hold_data: parseHoldTimes(holdStr)
-                };
-            });
-
             try {
+                // Save Main Asana
                 if (supabase && userId) {
-                    let asanaErr;
-                    const { data: existing } = await supabase.from('user_asanas').select('id').eq('id', id).eq('user_id', userId).maybeSingle();
-                    if (existing) {
-                        const result = await supabase.from('user_asanas').update(asanaData).eq('id', id).eq('user_id', userId);
-                        asanaErr = result.error;
-                    } else {
-                        const result = await supabase.from('user_asanas').insert(asanaData);
-                        asanaErr = result.error;
-                    }
-                    if (asanaErr) {
-                        console.error("Asana save error — column/field detail:", JSON.stringify(asanaErr));
-                        throw new Error(`Save failed on field: ${asanaErr.details || asanaErr.message}`);
+                    const { error: asanaErr } = await supabase
+                        .from('user_asanas')
+                        .upsert(asanaData, { onConflict: 'id' });
+                    if (asanaErr) throw new Error(asanaErr.message);
+
+                    // Process Variations
+                    const stageDivs = $("stagesContainer").querySelectorAll(".stage-row");
+                    const localVariations = {};
+
+                    for (const div of stageDivs) {
+                        const key = div.querySelector(".stage-key").value.trim();
+                        if (!key) continue;
+                        
+                        const pfx = div.querySelector(".stage-prefix")?.value.trim() || "Modified";
+                        const sfx = div.querySelector(".stage-suffix")?.value.trim() || "";
+                        const holdStr = buildHoldString(
+                            parseInt(div.querySelector(".stage-hold-standard")?.value || "30", 10),
+                            parseInt(div.querySelector(".stage-hold-short")?.value || "15", 10),
+                            parseInt(div.querySelector(".stage-hold-long")?.value || "60", 10)
+                        );
+                        const dbId = div.dataset.dbId || "";
+
+                        const payload = {
+                            user_id: userId,
+                            asana_id: id,
+                            stage_name: key,
+                            title: sfx ? `${pfx} ${key} ${sfx}` : `${pfx} ${key}`,
+                            full_technique: div.querySelector(".stage-tech")?.value.trim() || null,
+                            shorthand: div.querySelector(".stage-short")?.value.trim() || null,
+                            hold: holdStr
+                        };
+
+                        if (dbId && dbId.includes('-')) {
+                            await supabase.from('user_stages').update(payload).eq('id', dbId);
+                        } else {
+                            const { data: newRow } = await supabase.from('user_stages').insert(payload).select().single();
+                            if (newRow) div.dataset.dbId = newRow.id;
+                        }
+
+                        localVariations[key] = {
+                            title: payload.title,
+                            shorthand: payload.shorthand,
+                            full_technique: payload.full_technique,
+                            hold: holdStr,
+                            hold_data: parseHoldTimes(holdStr),
+                            isCustom: true
+                        };
                     }
 
-                    for (const { id: rowId, payload } of stagesToUpdate) {
-                        const { error: updErr } = await supabase.from('user_stages').update(payload).eq('id', rowId);
-                        if (updErr) {
-                            console.error("Stage update error:", JSON.stringify(updErr));
-                            throw new Error(`Stage update failed: ${updErr.details || updErr.message}`);
-                        }
-                    }
+                    // Update local memory
+                    asanaLibrary[id] = {
+                        ...asanaLibrary[id],
+                        ...asanaData,
+                        english: asanaData.english_name,
+                        hold_data: parseHoldTimes(asanaData.hold),
+                        variations: { ...asanaLibrary[id].variations, ...localVariations },
+                        isCustom: true
+                    };
 
-                    if (stagesToInsert.length > 0) {
-                        const { error: insErr } = await supabase.from('user_stages').insert(stagesToInsert);
-                        if (insErr) {
-                            console.error("Stage insert error:", JSON.stringify(insErr));
-                            throw new Error(`Stage insert failed: ${insErr.details || insErr.message}`);
-                        }
-
-                        const { data: fetchedStages } = await supabase.from('user_stages').select('*').eq('asana_id', id).eq('user_id', userId);
-                        if (fetchedStages && fetchedStages.length > 0) {
-                            fetchedStages.forEach((stage) => {
-                                const stageKey = stage.stage_name || '';
-                                if (localVariations[stageKey]) {
-                                    localVariations[stageKey].id = stage.id;
-                                }
-                            });
-                        }
-                    }
-                } else if (!userId) {
-                    console.log("Guest mode: changes saved locally only (not persisted to database)");
+                    $("asanaEditorStatus").textContent = "✓ Saved Successfully!";
+                    setTimeout(() => {
+                        $("asanaEditorBackdrop").style.display = "none";
+                        btn.disabled = false;
+                        btn.textContent = "Save Asana";
+                        if (window.showAsanaDetail) showAsanaDetail(asanaLibrary[id]);
+                    }, 1000);
                 }
-                
-                // Update local memory so edits take effect without needing to refresh
-                asanaLibrary[id] = {
-                    ...asanaLibrary[id],
-                    id: id,
-                    asanaNo: id,
-                    name: asanaData.name,
-                    english: asanaData.english_name,
-                    english_name: asanaData.english_name,
-                    iast: asanaData.iast,
-                    technique: asanaData.technique,
-                    requiresSides: asanaData.requires_sides,
-                    category: asanaData.category,
-                    description: asanaData.description,
-                    plates: typeof parsePlates === 'function' ? parsePlates(asanaData.plate_numbers) : asanaData.plate_numbers,
-                    plate_numbers: asanaData.plate_numbers,
-                    page2001: asanaData.page_2001,
-                    page2015: asanaData.page_2015,
-                    intensity: asanaData.intensity,
-                    note: asanaData.note,
-                    variations: localVariations,
-                    allPlates: [id] 
-                };
-
-                $("asanaEditorStatus").textContent = "✓ Saved successfully!";
-                if (typeof applyBrowseFilters === 'function') applyBrowseFilters();
-                
-                setTimeout(() => {
-                   $("asanaEditorBackdrop").style.display = "none";
-                   btn.disabled = false;
-                   btn.textContent = "Save Asana";
-                   showAsanaDetail(asanaLibrary[id]); // Refresh detail view
-                }, 1000);
-
             } catch (e) {
                 console.error(e);
                 alert("Error saving: " + e.message);
