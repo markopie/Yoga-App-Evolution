@@ -1112,10 +1112,11 @@ async function fetchServerHistory() {
          return serverHistoryCache;
       }
 
-      const { data, error } = await supabase
-         .from('sequence_completions')
-         .select('*')
-         .order('completed_at', { ascending: false });
+        // Fetch only the essentials for the list. 
+    // We will fetch the 'Description' later only when a user selects a pose.
+    const { data, error } = await supabase
+    .from('asanas')
+    .select('ID, Name, Category, Plate_Numbers, is_system');
 
       if (error) throw error;
 
