@@ -50,6 +50,21 @@ let audioOverrides = {};
 let serverAudioFiles = []; // Holds the list of files on server
 let serverImageFiles = [];
 let idAliases = {};
+// --- GOD MODE / ADMIN CONTROLS ---
+window.adminMode = false;
+
+window.loadAdminMode = function() {
+    window.adminMode = localStorage.getItem(ADMIN_MODE_KEY) === "true";
+    console.log("God Mode is " + (window.adminMode ? "ON 🟢" : "OFF 🔴"));
+};
+
+window.toggleGodMode = function() {
+    window.adminMode = !window.adminMode;
+    localStorage.setItem(ADMIN_MODE_KEY, window.adminMode);
+    alert("God Mode is now " + (window.adminMode ? "ON 🟢" : "OFF 🔴"));
+    loadCourses(); // Instantly refresh the dropdown with community sequences
+};
+
 
 // Playback State
 let currentSequence = null;
@@ -272,7 +287,7 @@ function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
     const rawID = asana.asanaNo || asana.id; 
     const idStr = normalizePlate(rawID);
     
-    console.log(`[Audio Debug] Playing ID: ${idStr}, Name: ${asana.english || asana.name}`);
+// console.log(`[Audio Debug] Playing ID: ${idStr}, Name: ${asana.english || asana.name}`);
 
     // Helper to play and attach the 'onended' listener
     const playSrc = (src) => {
@@ -284,7 +299,7 @@ function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
         a.play()
             .then(() => { currentAudio = a; })
             .catch(e => {
-                console.warn(`[Audio Debug] Failed: ${src}`, e);
+// console.warn(`[Audio Debug] Failed: ${src}`, e);
                 // If main audio fails, still trigger callback so flow continues
                 if (onComplete) onComplete();
             });
@@ -306,7 +321,7 @@ function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
     }
 
     if (overrideSrc) {
-       console.log(`[Audio Debug] Using Override: ${overrideSrc}`);
+// console.log(`[Audio Debug] Using Override: ${overrideSrc}`);
        const src = overrideSrc.includes("/") ? overrideSrc : (AUDIO_BASE + overrideSrc);
        playSrc(src);
        return; 
@@ -320,14 +335,14 @@ function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
         const match = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
         
         if (match) {
-            console.log(`[Audio Debug] FOUND MATCH: ${match}`);
+// console.log(`[Audio Debug] FOUND MATCH: ${match}`);
             playSrc(AUDIO_BASE + match);
             return;
         }
     }
 
     // 5. Legacy Fallback (If not in manifest)
-    console.log("[Audio Debug] Falling back to legacy guessing...");
+// console.log("[Audio Debug] Falling back to legacy guessing...");
     
     // If no ID found at all, skip
     if (!idStr) { 
@@ -342,7 +357,7 @@ function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
     const a = new Audio(candidate);
     if (onComplete) a.onended = onComplete;
     a.play().catch(() => {
-        console.warn("Legacy guess failed too.");
+// console.warn("Legacy guess failed too.");
         if (onComplete) onComplete();
     });
 }
@@ -568,16 +583,15 @@ async function loadJSON(url, fallback = null) {
         // ✅ FIX: Use the 'url' passed to the function, not HISTORY_URL
         const res = await fetch(url);
         if (!res.ok) {
-             console.warn(`Fetch failed ${res.status} for ${url}`);
+// console.warn(`Fetch failed ${res.status} for ${url}`);
              return fallback;
         }
         return await res.json();
     } catch (e) {
-        console.warn(`Error loading ${url}:`, e);
+// console.warn(`Error loading ${url}:`, e);
         return fallback;
     }
 }
-
 async function loadCourses() {
     if (!supabase) {
         console.error("Supabase client not initialized");
@@ -589,35 +603,28 @@ async function loadCourses() {
         const { data: coursesData, error: coursesError } = await supabase.from('courses').select('*');
         if (coursesError) throw coursesError;
 
-        console.log(`Fetched ${coursesData ? coursesData.length : 0} courses`);
-        if (coursesData?.[0]) {
-            console.warn('DIAG course row[0] keys:', Object.keys(coursesData[0]));
-            console.warn('DIAG course row[0] sample:', JSON.stringify(coursesData[0]).slice(0, 300));
-        }
-
         const rawAccumulator = [];
 
-        // 2. Transform System Courses (Legacy Airtable + Snake_Case support)
+        // 2. Transform System Courses
         if (coursesData) {
-            coursesData.forEach((row, idx) => {
-                const title = (row.Course_Title ?? row.course_title ?? '').trim();
-                const category = row.Category ?? row.category ?? '';
-                const sequenceText = row.Sequence_Text ?? row.sequence_text ?? '';
+            coursesData.forEach((row) => {
+                // FIXED: Now uses the exact 'title' column from Supabase
+                const title = (row.title || '').trim();
+                const category = (row.category || '').trim();
+                const sequenceText = row.sequence_text || '';
 
-                if (!title) return;
+                if (!title) return; // Skips empty rows
 
                 const poses = parseSequenceText(sequenceText);
-                if (idx < 2) console.warn(`DIAG row[${idx}] title="${title}" poses=${poses.length}`);
-
                 if (Array.isArray(poses) && poses.length > 0) {
                     rawAccumulator.push({ 
                         title, 
                         category, 
                         poses,
                         isUserSequence: false,
-                        // Maintain SN metadata if present
-                        Inc_Namaskara: row.Inc_Namaskara ?? row.inc_namaskara ?? null,
-                        Namaskara_Reps: row.Namaskara_Reps ?? row.namaskara_reps ?? null
+                        id: String(row.id),
+                        inc_namaskara: row.inc_namaskara || null,
+                        namaskara_reps: row.namaskara_reps || null
                     });
                 }
             });
@@ -629,28 +636,47 @@ async function loadCourses() {
 
         if (userSeqs) {
             userSeqs.forEach(seq => {
+                const title = (seq.title || '').trim();
+                if (!title) return;
+
+                // Check if this sequence belongs to the current logged-in user
+                const isMine = window.currentUserId && seq.user_id === window.currentUserId;
+                
+                // GOD MODE GATEKEEPER: Hide other people's sequences unless God Mode is ON
+                if (!isMine && !window.adminMode) return;
+
                 const poses = parseSequenceText(seq.sequence_text);
                 if (poses && poses.length > 0) {
+                    
+                    let finalTitle = title;
+                    let finalCategory = seq.category || 'My Sequences';
+
+                    if (!isMine && window.adminMode) {
+                        // Keep the original category instead of overriding it
+                        finalCategory = seq.category || 'Community'; 
+                        
+                        const shortId = seq.user_id ? seq.user_id.substring(0, 5) : "Anon";
+                        finalTitle = `${title} [User: ${shortId}]`;
+                    }
+
                     rawAccumulator.push({
-                        title: (seq.title || '').trim(),
-                        category: seq.category || 'My Sequences',
+                        title: finalTitle,
+                        category: finalCategory,
                         poses: poses,
                         isUserSequence: true,
                         supabaseId: seq.id,
-                        Inc_Namaskara: seq.inc_namaskara ?? null,
-                        Namaskara_Reps: seq.namaskara_reps ?? null
+                        inc_namaskara: seq.inc_namaskara || null,
+                        namaskara_reps: seq.namaskara_reps || null,
+                        user_id: seq.user_id
                     });
                 }
             });
         }
 
-        // 4. THE DEDUPLICATOR (The critical fix)
-        // We use the trimmed, lowercase title as the key.
+        // 4. THE DEDUPLICATOR
         const finalMap = new Map();
         rawAccumulator.forEach(item => {
             const key = String(item.title || "").trim().toLowerCase();
-            // Since User sequences were added LAST to rawAccumulator, 
-            // they will overwrite System sequences in the Map here.
             finalMap.set(key, item);
         });
 
@@ -659,26 +685,20 @@ async function loadCourses() {
             a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' })
         );
 
-        // Update all global references to the CLEAN, deduplicated list only.
         courses = deduplicated;
         sequences = deduplicated;
         window.courses = deduplicated;
 
-        console.log(`✅ Load complete. Unique sequences: ${courses.length}`);
-
         // 6. Trigger UI updates
-        if (typeof renderSequenceDropdown === "function") {
-            renderSequenceDropdown();
-        } 
-        if (typeof renderCourseUI === "function") {
-            renderCourseUI();
-        }
+        if (typeof renderSequenceDropdown === "function") renderSequenceDropdown(); 
+        if (typeof renderCourseUI === "function") renderCourseUI();
 
     } catch (e) {
         console.error("Exception loading courses:", e);
         courses = []; sequences = [];
     }
 }
+
 // --- TIME PARSER HELPER ---
 function parseHoldTimes(holdStr) {
     const result = { standard: 30, short: 15, long: 60 }; // Fallbacks
@@ -792,17 +812,17 @@ async function loadAsanaLibrary() {
 
                 normalized[key] = {
                     id: key,
-                    name: row.Name ?? row.name ?? '',
+                    name: row.name ?? '',
                     iast: row.IAST ?? row.iast ?? '',
-                    english: row.English_Name ?? row.english_name ?? '',
+                    english: row.english_name ?? '',
                     technique: row.Technique ?? row.technique ?? '',
                     requiresSides: !!(row.Requires_Sides ?? row.requires_sides ?? false),
-                    plates: typeof parsePlates === 'function' ? parsePlates(row.Plate_Numbers ?? row.plate_numbers ?? '') : (row.Plate_Numbers ?? row.plate_numbers ?? ''),
+                    plates: typeof parsePlates === 'function' ? parsePlates(row.plate_numbers ?? '') : (row.plate_numbers ?? ''),
                     page2001: String(row.Page_2001 ?? row.page_2001 ?? ''),
                     page2015: String(row.Page_2015 ?? row.page_2015 ?? ''),
                     intensity: String(row.Intensity ?? row.intensity ?? ''),
                     note: row.Note ?? row.note ?? '',
-                    category: row.Category ?? row.category ?? '',
+                    category: row.category ?? '',
                     description: row.Description ?? row.description ?? '',
                     hold: String(row.Hold ?? row.hold ?? ''),
                     Hold: String(row.Hold ?? row.hold ?? ''),
@@ -876,16 +896,8 @@ async function loadAsanaLibrary() {
             };
         });
 
-        // --- DIAGNOSTIC PRINT ---
-        Object.entries(normalized).forEach(([poseId, pose]) => {
-            const keys = Object.keys(pose.variations);
-            if (keys.length > 1) {
-                console.log(`🧘 Pose ${poseId} variations (Merged):`);
-                keys.forEach(k => console.log(`   Key: "${k}" | Custom: ${!!pose.variations[k].isCustom} | Title: "${pose.variations[k].title}"`));
-            }
-        });
 
-        console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
+// console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
         return normalized;
 
     } catch (e) {
@@ -948,9 +960,9 @@ async function buildImageIndexes() {
             if (!window.asanaToUrls[cleanId]) window.asanaToUrls[cleanId] = [];
             window.asanaToUrls[cleanId].push(url);
         });
-        console.log(`✓ Image Indexing complete: ${manifest.images.length} files`);
+// console.log(`✓ Image Indexing complete: ${manifest.images.length} files`);
     } else {
-        console.warn("Manifest images not found or invalid format");
+// console.warn("Manifest images not found or invalid format");
     }
 }
 
@@ -992,12 +1004,12 @@ async function setupHistory() {
         const res = await fetch("history.json?t=" + Date.now()); 
         if (res.ok) {
             window.completionHistory = await res.json();
-            console.log(`History Loaded: ${Object.keys(window.completionHistory).length} sequences`);
+// console.log(`History Loaded: ${Object.keys(window.completionHistory).length} sequences`);
         } else {
             window.completionHistory = {};
         }
     } catch (e) {
-        console.warn("History not found (starting fresh)");
+// console.warn("History not found (starting fresh)");
         window.completionHistory = {};
     }
 }
@@ -1306,26 +1318,26 @@ function showResumePrompt(state) {
    APP INITIALIZATION (Controller)
    ========================================================================== */
    async function loadManifestAndPopulateLists() {
-    console.log("Fetching manifest from:", MANIFEST_URL); // Debug 1
+// console.log("Fetching manifest from:", MANIFEST_URL); // Debug 1
     const manifest = await loadJSON(MANIFEST_URL, null);
 
     if (!manifest) {
-        console.warn("❌ Manifest failed to load (404 or Invalid JSON)");
+// console.warn("❌ Manifest failed to load (404 or Invalid JSON)");
         return;
     }
 
     // Debug 2: See exactly what keys exist. 
     // If you see "Images" (capital I) instead of "images", that's the bug.
-    console.log("Raw Manifest Data:", manifest); 
+// console.log("Raw Manifest Data:", manifest); 
 
     // Robust check for lowercase OR uppercase keys
     window.serverAudioFiles = manifest.audio || manifest.Audio || [];
     window.serverImageFiles = manifest.images || manifest.Images || [];
 
-    console.log(`Manifest loaded: ${window.serverAudioFiles.length} audio, ${window.serverImageFiles.length} images`);
+// console.log(`Manifest loaded: ${window.serverAudioFiles.length} audio, ${window.serverImageFiles.length} images`);
 }
 async function init() {
-    console.log("init() has started executing!");
+// console.log("init() has started executing!");
     window.appInitialized = true; // Prevents the fallback from running twice
     try {
         const statusEl = $("statusText");
@@ -2146,12 +2158,12 @@ function descriptionForPose(asana, fullLabel) {
    ========================================================================== */
 
    function setupBrowseUI() {
-    console.log("setupBrowseUI() is running...");
+// console.log("setupBrowseUI() is running...");
 
     // 1. Wire up the main Browse button
     const bBtn = document.getElementById("browseBtn");
     if (bBtn) {
-        console.log("✅ Browse button found! Attaching click listener.");
+// console.log("✅ Browse button found! Attaching click listener.");
         bBtn.onclick = (e) => {
             e.preventDefault();
             window.openBrowse();
@@ -2234,10 +2246,10 @@ function descriptionForPose(asana, fullLabel) {
 
 
 window.openBrowse = function() {
-    console.log("✅ openBrowse() was successfully triggered!");
+// console.log("✅ openBrowse() was successfully triggered!");
     
     const bd = $("browseBackdrop");
-    console.log("🔍 Looking for backdrop element:", bd);
+// console.log("🔍 Looking for backdrop element:", bd);
     
     if (!bd) {
         console.error("❌ ERROR: browseBackdrop not found in the HTML!");
@@ -2246,12 +2258,12 @@ window.openBrowse = function() {
     
     bd.style.display = "flex";
     bd.setAttribute("aria-hidden", "false");
-    console.log("✅ Backdrop display set to flex.");
+// console.log("✅ Backdrop display set to flex.");
     
     try {
-        console.log("🔄 Calling applyBrowseFilters()...");
+// console.log("🔄 Calling applyBrowseFilters()...");
         applyBrowseFilters(); 
-        console.log("✅ Filters applied successfully.");
+// console.log("✅ Filters applied successfully.");
     } catch (e) {
         console.error("❌ ERROR inside applyBrowseFilters:", e);
     }
@@ -2386,35 +2398,35 @@ function startBrowseAsana(asma) {
    closeBrowse();
 }
 async function showAsanaDetail(asana) {
-    console.log("showAsanaDetail called with:", asana);
+// console.log("showAsanaDetail called with:", asana);
     const d = document.getElementById('browseDetail');
-    console.log("browseDetail element found:", d);
+// console.log("browseDetail element found:", d);
     if (!d) {
         console.error("browseDetail element not found!");
         return;
     }
 
     d.innerHTML = "";
-    console.log("browseDetail cleared");
+// console.log("browseDetail cleared");
 
     const titleEl = document.createElement("h2");
     titleEl.style.margin = "0 0 10px 0";
     titleEl.textContent = displayName(asana);
     d.appendChild(titleEl);
-    console.log("Title appended");
+// console.log("Title appended");
 
     const editBtn = document.createElement("button");
     editBtn.textContent = "✏️ Edit Asana";
     editBtn.className = "edit-asana-btn";
     editBtn.style.cssText = "background: #2196f3; color: white; padding: 6px 12px; cursor: pointer; margin-bottom: 10px; font-weight: bold; border: none; border-radius: 6px;";
     editBtn.onclick = () => {
-        console.log("Edit button onclick fired");
-        console.log("Edit button clicked, asana.id:", asana.id, "asana.asanaNo:", asana.asanaNo);
+// console.log("Edit button onclick fired");
+// console.log("Edit button clicked, asana.id:", asana.id, "asana.asanaNo:", asana.asanaNo);
         window.openAsanaEditor(asana.id || asana.asanaNo);
     };
     d.appendChild(editBtn);
-    console.log("Edit button appended:", editBtn);
-    console.log("Edit button onclick property:", editBtn.onclick);
+// console.log("Edit button appended:", editBtn);
+// console.log("Edit button onclick property:", editBtn.onclick);
 
     // 3. Build the rest of the Info via a single HTML string
     // Use a unique name for this string variable to avoid re-declaration errors
@@ -3220,7 +3232,7 @@ function builderOpen(mode, seq) {
        rawPoses.forEach(p => {
           const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
           const id = String(rawId || "").padStart(3, '0');
-          const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === id);
+          const asana = libraryArray.find(a => (a.id || a.asanaNo) === id);
           
           // 1. Reconstruct everything after the duration using pipes
           let rawExtras = [p[2], p[3], p[4]].filter(Boolean).join(" | ").trim();
@@ -3261,7 +3273,7 @@ function builderOpen(mode, seq) {
           // 4. Base Pose Check (if it's just "[Savasana]", consume it)
           if (!variation && asana && extractedLabel) {
               const target = extractedLabel.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-              const name = (asana.Name || asana.name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              const name = (asana.name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
               if (target.includes(name)) {
                   extractedLabel = ""; 
               }
@@ -3274,7 +3286,7 @@ function builderOpen(mode, seq) {
  
           builderPoses.push({
              id: id,
-             name: asana ? (asana.Name || asana.name || displayName(asana)) : id,
+             name: asana ? (asana.name || displayName(asana)) : id,
              duration: Number(p[1]) || 30,
              variation: variation,
              note: rawExtras
@@ -3300,7 +3312,7 @@ function builderOpen(mode, seq) {
        totalSec += Number(pose.duration) || 0;
        const tr = document.createElement("tr");
        
-       const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === pose.id);
+       const asana = libraryArray.find(a => (a.id || a.asanaNo) === pose.id);
        const variations = asana ? (asana.variations || {}) : {};
        const hasVars = Object.keys(variations).length > 0;
  
@@ -3352,8 +3364,8 @@ function builderOpen(mode, seq) {
            if (!isNaN(newId) && newId.length > 0) newId = newId.padStart(3, '0');
            builderPoses[idx].id = newId;
 
-           const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === newId);
-           builderPoses[idx].name = asana ? (asana.Name || asana.name || displayName(asana)) : "Unknown Pose";
+           const asana = libraryArray.find(a => (a.id || a.asanaNo) === newId);
+           builderPoses[idx].name = asana ? (asana.name || displayName(asana)) : "Unknown Pose";
            builderPoses[idx].variation = "";
            if (asana && asana.hold_data && asana.hold_data.standard) {
                builderPoses[idx].duration = asana.hold_data.standard;
@@ -3367,7 +3379,7 @@ function builderOpen(mode, seq) {
          el.onclick = (e) => {
             const idx = el.dataset.idx; 
             const poseId = builderPoses[idx].id;
-            const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === poseId);
+            const asana = libraryArray.find(a => (a.id || a.asanaNo) === poseId);
             
             if (asana && asana.hold_data && asana.hold_data.standard) {
                builderPoses[idx].duration = asana.hold_data.standard;
@@ -3384,7 +3396,7 @@ function builderOpen(mode, seq) {
             const vKey = e.target.value;
             builderPoses[i].variation = vKey;
             if (vKey) {
-                const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === builderPoses[i].id);
+                const asana = libraryArray.find(a => (a.id || a.asanaNo) === builderPoses[i].id);
                 const varData = asana && asana.variations && asana.variations[vKey];
                 if (varData) {
                     const holdStr = varData.hold || varData.Hold || "";
@@ -3655,7 +3667,7 @@ function expandSequenceWithNamaskara(rawSeq) {
             }
 
             processed.poses = namaskaraBlock.concat(processed.poses);
-            console.log(`[Sequence Expansion] Merged ${reps} rounds of ${processed.includeNamaskara}`);
+// console.log(`[Sequence Expansion] Merged ${reps} rounds of ${processed.includeNamaskara}`);
         }
     }
 
@@ -4195,9 +4207,9 @@ safeListen("completeBtn", "click", async () => {
         const success = await appendServerHistory(title, now, category);
 
         if (success) {
-            console.log("✅ Server sync success");
+// console.log("✅ Server sync success");
         } else {
-            console.warn("⚠️ Saved locally only (Server sync failed)");
+// console.warn("⚠️ Saved locally only (Server sync failed)");
         }
         
         // Optional: Play a success sound or visual cue
@@ -4249,7 +4261,7 @@ function builderCompileSequenceText() {
     return builderPoses.map(p => {
        const id = String(p.id || "000").padStart(3, '0');
        const dur = p.duration || 30;
-       const asana = libraryArray.find(a => (a.id || a.ID || a.asanaNo) === id);
+       const asana = libraryArray.find(a => (a.id || a.asanaNo) === id);
        
        let labelPart = "";
        
@@ -4264,7 +4276,7 @@ function builderCompileSequenceText() {
        } 
        // If NO variation -> Wrap Base Name in Brackets
        else if (asana) {
-           const displayName = asana.Name || asana.name || asana.IAST || asana.English_Name;
+           const displayName = asana.name || asana.IAST || asana.English_Name;
            if (displayName) {
                labelPart = `[${displayName}]`;
            }
@@ -4315,7 +4327,7 @@ async function builderSave() {
          }
       }
    } catch(e) {
-      console.warn("Supabase save failed:", e);
+// console.warn("Supabase save failed:", e);
    }
 
    await loadCourses();
@@ -4517,14 +4529,14 @@ function encodeToBase64(str) {
    ========================================================================== */
 
    window.openAsanaEditor = async function(id) {
-    console.log("openAsanaEditor() called with id:", id);
+// console.log("openAsanaEditor() called with id:", id);
     const bd = $("asanaEditorBackdrop");
-    console.log("asanaEditorBackdrop element found:", bd);
+// console.log("asanaEditorBackdrop element found:", bd);
     if (!bd) {
         console.error("asanaEditorBackdrop not found!");
         return alert("Editor HTML missing");
     }
-
+    bd.style.display = "flex";
     // Populate Category Datalist dynamically
     const dl = $("asanaCategoryList");
     if (dl) {
@@ -4562,13 +4574,13 @@ function encodeToBase64(str) {
         const a = asanaLibrary[id] || {};
 
         $("editAsanaId").value = a.id || a.asanaNo || id;
-        $("editAsanaName").value = a.name || a.Name || "";
+        $("editAsanaName").value = a.name || "";
         $("editAsanaIAST").value = a.iast || a.IAST || "";
-        $("editAsanaEnglish").value = a.english || a.english_name || a.English_Name || "";
-        $("editAsanaCategory").value = a.category || a.Category || "";
+        $("editAsanaEnglish").value = a.english || a.english_name || "";
+        $("editAsanaCategory").value = a.category || "";
 
         // DEBUG: Let's see exactly what the library thinks the hold is
-        console.log(`Checking Hold for Asana ${id}:`, { hold: a.hold, Hold: a.Hold });
+// console.log(`Checking Hold for Asana ${id}:`, { hold: a.hold, Hold: a.Hold });
 
         // We check a.Hold (Supabase) and a.hold (Local/Legacy)
         const holdData = parseHoldTimes(a.Hold || a.hold || "");
@@ -4583,7 +4595,7 @@ function encodeToBase64(str) {
                 pStr += `Intermediate: ${a.plates.intermediate.join(", ")}`;
             }
         } else {
-            pStr = a.plate_numbers || a.Plate_Numbers || "";
+            pStr = a.plate_numbers || "";
         }
         $("editAsanaPlates").value = pStr;
 
@@ -4620,7 +4632,7 @@ function encodeToBase64(str) {
                 });
             }
         } catch (e) {
-            console.warn("Could not load user stages for editor:", e.message);
+// console.warn("Could not load user stages for editor:", e.message);
         }
     } else {
         // We are ADDING NEW
@@ -4663,7 +4675,6 @@ function encodeToBase64(str) {
         }));
     });
 
-    bd.style.display = "flex";
 };
 
 async function getNextRomanNumeral() {
@@ -4693,7 +4704,7 @@ async function getNextRomanNumeral() {
                 if (name) taken.add(String(name).toUpperCase());
             });
         } catch (e) {
-            console.warn("Could not query stage names for Roman numeral calc:", e.message);
+// console.warn("Could not query stage names for Roman numeral calc:", e.message);
         }
     }
 
@@ -5009,7 +5020,7 @@ function formatCategoryName(inputCat) {
     return `${nextPrefix}_${cleanInput}`;
 }
 // 4. APP STARTUP (Auth-Gated)
-console.log("Script parsed. Attempting startup...");
+// console.log("Script parsed. Attempting startup...");
 
 function showApp() {
     document.getElementById("loginScreen").style.display = "none";
