@@ -592,107 +592,67 @@ async function loadJSON(url, fallback = null) {
         return fallback;
     }
 }
-async function loadCourses() {
-    if (!supabase) {
-        console.error("Supabase client not initialized");
-        courses = []; sequences = []; return;
-    }
+window.loadCourses = async function() {
+    if (!supabase) return;
 
     try {
-        // 1. Fetch System Courses
-        const { data: coursesData, error: coursesError } = await supabase.from('courses').select('*');
-        if (coursesError) throw coursesError;
-
         const rawAccumulator = [];
 
-        // 2. Transform System Courses
+        // 1. System Courses
+        const { data: coursesData } = await supabase.from('courses').select('*');
         if (coursesData) {
-            coursesData.forEach((row) => {
-                // FIXED: Now uses the exact 'title' column from Supabase
-                const title = (row.title || '').trim();
-                const category = (row.category || '').trim();
-                const sequenceText = row.sequence_text || '';
-
-                if (!title) return; // Skips empty rows
-
-                const poses = parseSequenceText(sequenceText);
-                if (Array.isArray(poses) && poses.length > 0) {
+            coursesData.forEach(row => {
+                const poses = parseSequenceText(row.sequence_text || '');
+                if (row.title && poses.length > 0) {
                     rawAccumulator.push({ 
-                        title, 
-                        category, 
-                        poses,
-                        isUserSequence: false,
-                        id: String(row.id),
-                        inc_namaskara: row.inc_namaskara || null,
-                        namaskara_reps: row.namaskara_reps || null
+                        title: row.title.trim(), 
+                        category: (row.category || '').trim(), 
+                        poses, isUserSequence: false, id: String(row.id)
                     });
                 }
             });
         }
 
-     // 3. Fetch & Add User Sequences
-     const { data: userSeqs, error: userError } = await supabase.from('user_sequences').select('*');
-     if (userError) console.error("Error loading user sequences", userError);
+        // 2. User Sequences
+        const { data: userSeqs } = await supabase.from('user_sequences').select('*');
+        if (userSeqs) {
+            userSeqs.forEach(seq => {
+                const isMine = window.currentUserId && seq.user_id === window.currentUserId;
+                if (!seq.title || (!isMine && !window.adminMode)) return;
 
-     if (userSeqs) {
-         userSeqs.forEach(seq => {
-             const title = (seq.title || '').trim();
-             if (!title) return;
+                const poses = parseSequenceText(seq.sequence_text);
+                if (poses && poses.length > 0) {
+                    rawAccumulator.push({
+                        title: seq.title.trim(),
+                        category: (seq.category || 'My Sequences').trim(),
+                        poses, isUserSequence: true, supabaseId: seq.id
+                    });
+                }
+            });
+        }
 
-             // Check if this sequence belongs to the current logged-in user
-             const isMine = window.currentUserId && seq.user_id === window.currentUserId;
-             
-             // GOD MODE GATEKEEPER: Since you want to edit everything, 
-             // we allow everything through if adminMode is ON.
-             if (!isMine && !window.adminMode) return;
-
-             const poses = parseSequenceText(seq.sequence_text);
-             if (poses && poses.length > 0) {
-                 
-                 // FIXED: Removed the "Community" category override.
-                 // This puts everything back in its original category.
-                 let finalCategory = seq.category || 'My Sequences';
-                 let finalTitle = title;
-
-                 rawAccumulator.push({
-                     title: finalTitle,
-                     category: finalCategory,
-                     poses: poses,
-                     isUserSequence: true,
-                     supabaseId: seq.id,
-                     inc_namaskara: seq.inc_namaskara || null,
-                     namaskara_reps: seq.namaskara_reps || null,
-                     user_id: seq.user_id
-                 });
-             }
-         });
-     }
-
-        // 4. THE DEDUPLICATOR
+        // 3. Deduplicate using Composite Key
         const finalMap = new Map();
         rawAccumulator.forEach(item => {
-            const key = String(item.title || "").trim().toLowerCase();
-            finalMap.set(key, item);
+            const compositeKey = `${item.category.toLowerCase()} | ${item.title.toLowerCase()}`;
+            finalMap.set(compositeKey, item);
         });
 
-        // 5. Final Sort and Global Assignment
-        const deduplicated = Array.from(finalMap.values()).sort((a, b) => 
-            a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' })
-        );
+        // 4. Final Sort and Assign
+        const deduplicated = Array.from(finalMap.values()).sort((a, b) => {
+            const catSort = a.category.localeCompare(b.category, undefined, { numeric: true });
+            return catSort !== 0 ? catSort : a.title.localeCompare(b.title, undefined, { numeric: true });
+        });
 
+        window.courses = deduplicated;
         courses = deduplicated;
         sequences = deduplicated;
-        window.courses = deduplicated;
 
-        // 6. Trigger UI updates
         if (typeof renderSequenceDropdown === "function") renderSequenceDropdown(); 
-        if (typeof renderCourseUI === "function") renderCourseUI();
-
     } catch (e) {
-        console.error("Exception loading courses:", e);
-        courses = []; sequences = [];
+        console.error("Load courses failed:", e);
     }
-}
+};
 
 // --- TIME PARSER HELPER ---
 function parseHoldTimes(holdStr) {
@@ -2975,53 +2935,45 @@ function renderMediaManager(container, asma, rowVariations) {
     const sel = document.getElementById("sequenceSelect");
     const filterEl = document.getElementById("categoryFilter");
     if (!sel) return;
- 
+
     const filterVal = filterEl ? filterEl.value : "ALL";
     const currentVal = sel.value; 
- 
+
     sel.innerHTML = `<option value="">Select a course</option>`;
- 
+
+    // Grouping by EXACT category string
     const grouped = {};
-    
     courses.forEach((course, idx) => {
        const cat = course.category ? course.category.trim() : "Uncategorized";
        
-       // FILTER: Skip if category doesn't match (unless ALL is selected)
        if (filterVal !== "ALL" && cat !== filterVal) return;
- 
+
        if (!grouped[cat]) grouped[cat] = [];
        grouped[cat].push({ course, idx });
     });
- 
-    Object.keys(grouped).sort().forEach(catName => {
-       // Only show OptGroups if viewing ALL (otherwise it's redundant)
-       if (filterVal === "ALL") {
-           const groupEl = document.createElement("optgroup");
-           groupEl.label = catName;
-           grouped[catName].forEach(item => {
-              const opt = document.createElement("option");
-              opt.value = String(item.idx);
-              opt.textContent = item.course.title || `Course ${item.idx + 1}`;
-              groupEl.appendChild(opt);
-           });
-           sel.appendChild(groupEl);
-       } else {
-           // Flat list for specific categories
-           grouped[catName].forEach(item => {
-              const opt = document.createElement("option");
-              opt.value = String(item.idx);
-              opt.textContent = item.course.title || `Course ${item.idx + 1}`;
-              sel.appendChild(opt);
-           });
-       }
+
+    // Sort categories alphabetically
+    const sortedCats = Object.keys(grouped).sort();
+
+    sortedCats.forEach(catName => {
+        const groupEl = document.createElement("optgroup");
+        groupEl.label = catName;
+        
+        grouped[catName].forEach(item => {
+            const opt = document.createElement("option");
+            opt.value = String(item.idx);
+            // Show the title. The value (idx) points to the unique object in the courses array.
+            opt.textContent = item.course.title || `Course ${item.idx + 1}`;
+            groupEl.appendChild(opt);
+        });
+        sel.appendChild(groupEl);
     });
- 
+
     if (currentVal) {
-        // Check if the previously selected value is still in the filtered list
         const exists = Array.from(sel.options).some(o => o.value === currentVal);
         if (exists) sel.value = currentVal;
     }
- }
+}
  
  // Main Entry Point for Dropdowns
  function renderSequenceDropdown() {
