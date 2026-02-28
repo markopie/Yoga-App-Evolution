@@ -2,7 +2,7 @@
    0. AUTH / LOGIN SCREEN
    ========================================================================== */
 
-#loginScreen {
+   #loginScreen {
     position: fixed;
     inset: 0;
     display: flex;
@@ -683,7 +683,27 @@ th {
     padding: 20px;
     box-sizing: border-box;
 }
+#builderCategory {
+    width: 280px !important;
+    min-width: 280px;
+    flex: none !important;
+}
+/* Removes the default dropdown arrow from the category input */
+#builderCategory::-webkit-calendar-picker-indicator {
+    display: none !important;
+}
 
+/* For consistency across browsers */
+#builderCategory {
+    appearance: none;
+    -moz-appearance: none;
+    -webkit-appearance: none;
+}
+/* Optional: Style the datalist dropdown behavior for better visibility */
+#builderCategoryList {
+    background-color: white;
+    border: 1px solid #ddd;
+}
 /* 1. Header Info */
 .focus-header {
     text-align: center;
@@ -1004,7 +1024,11 @@ header .row {
     font-variant-numeric: tabular-nums;
     line-height: 1;
 }
-
+/* Class to lock background scrolling */
+body.modal-open {
+    overflow: hidden;
+    height: 100vh;
+}
 #transitionOverlay .transition-next {
     font-size: 1.1rem;
     color: #666;
