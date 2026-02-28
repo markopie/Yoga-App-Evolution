@@ -1097,46 +1097,43 @@ function _rebuildLegacyHistory(entries) {
    });
    window.completionHistory = hist;
 }
-
 async function fetchServerHistory() {
-   try {
-      if (!supabase) {
-         serverHistoryCache = loadCompletionLog();
-         _rebuildLegacyHistory(serverHistoryCache);
-         return serverHistoryCache;
-      }
-
-        // Fetch only the essentials for the list. 
-    // We will fetch the 'Description' later only when a user selects a pose.
-    const { data, error } = await supabase
-    .from('asanas')
-    .select('ID, Name, Category, Plate_Numbers, is_system');
-
-      if (error) throw error;
-
-      serverHistoryCache = data.map(r => ({
-         id: r.id,
-         title: r.title,
-         category: r.category || '',
-         ts: new Date(r.completed_at).getTime(),
-         local: new Date(r.completed_at).toLocaleString("en-AU", {
-            year: "numeric", month: "2-digit", day: "2-digit",
-            hour: "2-digit", minute: "2-digit"
-         }),
-         iso: r.completed_at,
-         notes: r.notes || ''
-      }));
-
-      _rebuildLegacyHistory(serverHistoryCache);
-      return serverHistoryCache;
-
-   } catch (e) {
-      console.error("Failed to fetch server history:", e);
-      serverHistoryCache = loadCompletionLog();
-      _rebuildLegacyHistory(serverHistoryCache);
-      return serverHistoryCache;
-   }
-}
+    try {
+       if (!supabase) {
+          serverHistoryCache = loadCompletionLog();
+          _rebuildLegacyHistory(serverHistoryCache);
+          return serverHistoryCache;
+       }
+ 
+       // FIX: Query the actual completions table, not the Asanas table!
+       const { data, error } = await supabase
+          .from('sequence_completions')
+          .select('id, title, category, completed_at');
+ 
+       if (error) throw error;
+ 
+       serverHistoryCache = data.map(r => ({
+          id: r.id,
+          title: r.title,
+          category: r.category || '',
+          ts: new Date(r.completed_at).getTime(),
+          local: new Date(r.completed_at).toLocaleString("en-AU", {
+             year: "numeric", month: "2-digit", day: "2-digit",
+             hour: "2-digit", minute: "2-digit"
+          }),
+          iso: r.completed_at
+       }));
+ 
+       _rebuildLegacyHistory(serverHistoryCache);
+       return serverHistoryCache;
+ 
+    } catch (e) {
+       console.error("Failed to fetch server history:", e);
+       serverHistoryCache = loadCompletionLog();
+       _rebuildLegacyHistory(serverHistoryCache);
+       return serverHistoryCache;
+    }
+ }
 
 async function appendServerHistory(title, whenDate, category = null) {
    addCompletion(title, whenDate, category);
@@ -2277,77 +2274,91 @@ function closeBrowse() {
 }
 
 function renderBrowseList(items) {
-   const list = document.getElementById("browseList");
-   if (!list) return;
-   
-   list.innerHTML = "";
-   const countEl = document.getElementById("browseCount");
-   const asanaIndex = getAsanaIndex();
-   if (countEl) countEl.textContent = `Showing ${items.length} of ${asanaIndex.length}`;
+    const list = document.getElementById("browseList");
+    if (!list) return;
+    
+    list.innerHTML = "";
+    const countEl = document.getElementById("browseCount");
+    
+    const totalCount = Object.keys(asanaLibrary || {}).length;
+    if (countEl) countEl.textContent = `Showing ${items.length} of ${totalCount}`;
 
-   if (!items.length) {
-      list.innerHTML = `<div class="msg" style="padding:10px 0">No matches found.</div>`;
-      return;
-   }
+    if (!items.length) {
+       list.innerHTML = `<div class="msg" style="padding:10px 0">No matches found.</div>`;
+       return;
+    }
 
-   const frag = document.createDocumentFragment();
-   
-   items.slice(0, 400).forEach(asma => {
-      const row = document.createElement("div");
-      row.className = "browse-item";
+    const frag = document.createDocumentFragment();
+    
+    items.slice(0, 400).forEach(asma => {
+       const row = document.createElement("div");
+       row.className = "browse-item";
 
-      const left = document.createElement("div");
-      const title = document.createElement("div");
-      title.className = "title";
-      
-      let titleText = displayName(asma) || "(no name)";
-      if (asma.variation) titleText += ` <span style="font-weight:normal; color:#666; font-size:0.9em;">(${asma.variation})</span>`;
-      title.innerHTML = titleText;
+       const left = document.createElement("div");
+       
+       const title = document.createElement("div");
+       title.className = "title";
+       
+       // Fallback logic for title
+       let titleText = (typeof displayName === "function" ? displayName(asma) : null);
+       if (!titleText || titleText === "(no name)") {
+           titleText = asma.name || asma.english || asma.iast || "(no name)";
+       }
+       
+       // Use plural 'variations' length if present
+       const varCount = asma.variations ? Object.keys(asma.variations).length : 0;
+       if (varCount > 0) {
+           titleText += ` <span style="font-weight:normal; color:#666; font-size:0.9em;">(${varCount} variations)</span>`;
+       }
+       title.innerHTML = titleText;
 
-      const meta = document.createElement("div");
-      meta.className = "meta";
-      const catDisplay = asma.category ? asma.category.replace(/^\d+_/, "").replace(/_/g, " ") : "";
-      const catBadge = catDisplay ? ` <span class="badge">${catDisplay}</span>` : "";
-      
-      meta.innerHTML = `
-        <span style="color:#000; font-weight:bold;">ID: ${asma.asanaNo}</span>
-        ${asma.interRaw ? ` • Int: ${asma.interRaw}` : ""}
-        ${asma.finalRaw ? ` • Final: ${asma.finalRaw}` : ""}
-        ${catBadge}
-      `;
-      
-      left.appendChild(title);
-      left.appendChild(meta);
+       const meta = document.createElement("div");
+       meta.className = "meta";
+       const catDisplay = asma.category ? asma.category.replace(/^\d+_/, "").replace(/_/g, " ") : "Uncategorized";
+       const catBadge = catDisplay ? ` <span class="badge">${catDisplay}</span>` : "";
+       
+        // Smart plate formatter
+        let platesText = "";
+        if (typeof asma.plates === 'object' && asma.plates !== null) {
+            const finalStr = asma.plates.final && asma.plates.final.length ? `Final: ${asma.plates.final.join(", ")}` : "";
+            const interStr = asma.plates.intermediate && asma.plates.intermediate.length ? `Int: ${asma.plates.intermediate.join(", ")}` : "";
+            platesText = [finalStr, interStr].filter(Boolean).join(" | ");
+        } else {
+            platesText = asma.plates || asma.plate_numbers || "";
+        }
+       meta.innerHTML = `
+         <span style="color:#000; font-weight:bold;">ID: ${asma.id || asma.asanaNo || "?"}</span>
+         ${platesText ? ` • Plates: ${platesText}` : ""}
+         ${catBadge}
+       `;
+       
+       left.appendChild(title);
+       left.appendChild(meta);
 
-      const btn = document.createElement("button");
-      btn.textContent = "View";
-      btn.className = "tiny";
-      btn.addEventListener("click", () => {
-         console.log("View button clicked for asana:", asma);
-         showAsanaDetail(asma);
-         console.log("showAsanaDetail() completed");
-         if (typeof isBrowseMobile === 'function' && isBrowseMobile()) {
-            console.log("isBrowseMobile() returned true, calling enterBrowseDetailMode()");
-            enterBrowseDetailMode();
-         } else {
-            console.log("isBrowseMobile() returned false or not a function");
-         }
-      });
+       const btn = document.createElement("button");
+       btn.textContent = "View";
+       btn.className = "tiny";
+       btn.addEventListener("click", () => {
+          if (typeof showAsanaDetail === "function") showAsanaDetail(asma);
+          if (typeof isBrowseMobile === 'function' && isBrowseMobile()) {
+             if (typeof enterBrowseDetailMode === "function") enterBrowseDetailMode();
+          }
+       });
 
-      row.appendChild(left);
-      row.appendChild(btn);
-      frag.appendChild(row);
-   });
-   
-   list.appendChild(frag);
+       row.appendChild(left);
+       row.appendChild(btn);
+       frag.appendChild(row);
+    });
+    
+    list.appendChild(frag);
 
-   if (items.length > 400) {
-      const more = document.createElement("div");
-      more.className = "msg";
-      more.style.padding = "10px 0";
-      more.textContent = `Showing first 400 results. Narrow your filters.`;
-      list.appendChild(more);
-   }
+    if (items.length > 400) {
+       const more = document.createElement("div");
+       more.className = "msg";
+       more.style.padding = "10px 0";
+       more.textContent = `Showing first 400 results. Narrow your filters.`;
+       list.appendChild(more);
+    }
 }
 
 /* ==========================================================================
@@ -3039,53 +3050,74 @@ function renderMediaManager(container, asma, rowVariations) {
    ========================================================================== */
 
    function applyBrowseFilters() {
-    const q = $("browseSearch").value.trim();
-    const plateQ = parsePlateQuery($("browsePlate").value);
-    const noQ = $("browseAsanaNo").value.trim();
-    const cat = $("browseCategory").value;
-    const finalsOnly = $("browseFinalOnly").checked;
- 
-    // NEW HELPER: Strips all accents/diacritics and converts to lowercase
+    const q = document.getElementById("browseSearch")?.value.trim() || "";
+    const plateStr = document.getElementById("browsePlate")?.value.trim() || "";
+    const noQ = document.getElementById("browseAsanaNo")?.value.trim() || "";
+    const cat = document.getElementById("browseCategory")?.value || "";
+    const finalsOnly = document.getElementById("browseFinalOnly")?.checked || false;
+
     const normalizeText = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     const normQ = normalizeText(q);
- 
-    const asanaIndex = getAsanaIndex();
-    const filtered = asanaIndex.filter(a => {
-       // 1. Accent-aware text match
-       if (normQ) {
-           const name = normalizeText(a.Name || a.name || "");
-           const eng = normalizeText(a.English_Name || a.english || "");
-           const iast = normalizeText(a.IAST || a.iast || a['Yogasana Name'] || "");
-           
-           const isMatch = name.includes(normQ) || eng.includes(normQ) || iast.includes(normQ);
-           if (!isMatch) return false;
-       }
- 
-       // 2. Your existing custom filters
-       if (!matchesPlate(a, plateQ)) return false;
-       if (!matchesAsanaNo(a, noQ)) return false;
-       if (!matchesCategory(a, cat)) return false;
-       if (finalsOnly && (!a.finalPlates || !a.finalPlates.length)) return false;
-       return true;
+
+    // Get all asanas as an array
+    const asanaArray = Object.values(window.asanaIndex || asanaLibrary || {});
+
+    const filtered = asanaArray.filter(a => {
+        if (!a) return false;
+
+        // 1. Text Search (Null-proof)
+        if (normQ) {
+            const searchStr = normalizeText(a.name) + " " + normalizeText(a.english) + " " + normalizeText(a.iast);
+            if (!searchStr.includes(normQ)) return false;
+        }
+
+        // 2. Category Dropdown
+        if (cat && cat !== "") {
+            const safeCat = String(a.category || "");
+            if (cat === "__UNCAT__") {
+                if (safeCat && safeCat !== "Uncategorized") return false;
+            } else {
+                if (!safeCat.includes(cat) && safeCat !== cat) return false;
+            }
+        }
+
+        // 3. Asana ID 
+        if (noQ && String(a.id) !== noQ && String(a.asanaNo) !== noQ) return false;
+
+        // 4. Plates
+        if (plateStr) {
+            const plateArr = plateStr.match(/\d+/g) || [];
+            const aPlates = String(a.plates || a.plate_numbers || "").match(/\d+/g) || [];
+            const hasPlate = plateArr.some(p => aPlates.includes(p));
+            if (!hasPlate) return false;
+        }
+
+        return true;
     });
- 
+
+    // 5. Safe Deduplication by ID
     const uniqueFiltered = [];
     const seen = new Set();
     filtered.forEach(a => {
-       const name = (a.english || a['Yogasana Name'] || "").toLowerCase().trim();
-       if (!seen.has(name)) {
-          seen.add(name);
-          uniqueFiltered.push(a);
-       }
+        const uniqueKey = String(a.id || a.asanaNo || a.name || "").toLowerCase().trim();
+        if (uniqueKey && !seen.has(uniqueKey)) {
+            seen.add(uniqueKey);
+            uniqueFiltered.push(a);
+        }
     });
- 
+
+    // 6. Sort Numerically by ID
     uniqueFiltered.sort((x, y) => {
-       const ax = parseFloat(x.asanaNo), ay = parseFloat(y.asanaNo);
-       return (Number.isFinite(ax) ? ax : 9999) - (Number.isFinite(ay) ? ay : 9999);
+        const idX = String(x.id || x.asanaNo || "9999");
+        const idY = String(y.id || y.asanaNo || "9999");
+        // { numeric: true } ensures that "2" comes before "10"
+        return idX.localeCompare(idY, undefined, { numeric: true });
     });
- 
-    renderBrowseList(uniqueFiltered);
- }
+
+    if (typeof renderBrowseList === "function") {
+        renderBrowseList(uniqueFiltered);
+    }
+}
 
 function matchesText(asma, q) {
    if (!q) return true;
@@ -3393,26 +3425,37 @@ function removePose(idx) {
     builderPoses.splice(idx, 1);
     builderRender();
 }
-
-// Search Logic
 document.getElementById('builderSearch').addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const val = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     const resBox = document.getElementById('builderSearchResults');
-    if (q.length === 0) return resBox.style.display = 'none';
+    if (val.length === 0) return resBox.style.display = 'none';
 
-    const hits = getAsanaIndex().filter(a => {
-        const txt = ((a.Name||"") + " " + (a.English_Name||"") + " " + (a.IAST||"") + " " + (a.ID||"")).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        return txt.includes(q);
+    // Get data directly from the raw library
+    const libraryArray = Object.values(asanaLibrary || {});
+
+    const hits = libraryArray.filter(a => {
+        if (!a) return false;
+        
+        // Null-safe string conversion for searching
+        const safeName = String(a.name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const safeEng = String(a.english || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const safeIast = String(a.iast || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const safeId = String(a.id || a.asanaNo || "").toLowerCase();
+        
+        return safeName.includes(val) || safeEng.includes(val) || safeIast.includes(val) || safeId.includes(val);
     }).slice(0, 15);
 
     resBox.innerHTML = hits.map(a => {
         const defaultDur = (a.hold_data && a.hold_data.standard) ? a.hold_data.standard : 30;
+        const displayId = a.id || a.asanaNo || "?";
+        const displayName = a.name || a.english || a.iast || "Unknown";
+        
         return `
         <div style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;"
-             onclick="builderPoses.push({id: '${a.ID || a.id}', name: '${(a.Name || a.name).replace(/'/g,"\\'")}', duration: ${defaultDur}, note: ''}); document.getElementById('builderSearch').value=''; document.getElementById('builderSearchResults').style.display='none'; builderRender();">
-            <strong>${a.Name || a.name}</strong> <span style="color:#888; font-size:0.8em;">(ID: ${a.ID || a.id})</span>
+             onclick="builderPoses.push({id: '${displayId}', name: '${displayName.replace(/'/g,"\\'")}', duration: ${defaultDur}, note: ''}); document.getElementById('builderSearch').value=''; document.getElementById('builderSearchResults').style.display='none'; builderRender();">
+            <strong>${displayName}</strong> <span style="color:#888; font-size:0.8em;">(ID: ${displayId})</span>
         </div>
-    `;
+        `;
     }).join("");
     resBox.style.display = hits.length ? 'block' : 'none';
 });
