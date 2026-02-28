@@ -578,103 +578,105 @@ async function loadJSON(url, fallback = null) {
     }
 }
 
-// 2. Load Courses
 async function loadCourses() {
     if (!supabase) {
         console.error("Supabase client not initialized");
-        courses = [];
-        sequences = [];
-        return;
+        courses = []; sequences = []; return;
     }
 
     try {
-        // Fetch courses from Supabase
-        const { data: coursesData, error: coursesError } = await supabase
-            .from('courses')
-            .select('*');
+        // 1. Fetch System Courses
+        const { data: coursesData, error: coursesError } = await supabase.from('courses').select('*');
+        if (coursesError) throw coursesError;
 
-        if (coursesError) {
-            console.error("Error fetching courses:", coursesError);
-            courses = [];
-            sequences = [];
-            return;
-        }
-
-        if (!coursesData || coursesData.length === 0) {
-            console.warn("No courses found in database");
-        }
         console.log(`Fetched ${coursesData ? coursesData.length : 0} courses`);
-        if (coursesData && coursesData.length > 0) {
+        if (coursesData?.[0]) {
             console.warn('DIAG course row[0] keys:', Object.keys(coursesData[0]));
             console.warn('DIAG course row[0] sample:', JSON.stringify(coursesData[0]).slice(0, 300));
         }
 
-        // Transform courses into legacy format
-        const transformedCourses = [];
+        const rawAccumulator = [];
 
-        if (coursesData && coursesData.length > 0) {
+        // 2. Transform System Courses (Legacy Airtable + Snake_Case support)
+        if (coursesData) {
             coursesData.forEach((row, idx) => {
-            // Support both snake_case (our schema) and original Airtable column names
-            const title = row.Course_Title ?? row.course_title ?? '';
-            const category = row.Category ?? row.category ?? '';
-            const sequenceText = row.Sequence_Text ?? row.sequence_text ?? '';
+                const title = (row.Course_Title ?? row.course_title ?? '').trim();
+                const category = row.Category ?? row.category ?? '';
+                const sequenceText = row.Sequence_Text ?? row.sequence_text ?? '';
 
-            if (!title) {
-                if (idx < 3) console.warn(`DIAG course row[${idx}] has no title, keys:`, Object.keys(row));
-                return;
-            }
+                if (!title) return;
 
-            const poses = parseSequenceText(sequenceText);
+                const poses = parseSequenceText(sequenceText);
+                if (idx < 2) console.warn(`DIAG row[${idx}] title="${title}" poses=${poses.length}`);
 
-            if (idx < 2) {
-                console.warn(`DIAG course row[${idx}] title="${title}" sequenceText length=${sequenceText.length} poses parsed=${poses.length}`);
-            }
-
-            if (Array.isArray(poses) && poses.length > 0) {
-                transformedCourses.push({ title, category, poses });
-            } else {
-                if (idx < 3) console.warn(`DIAG course row[${idx}] "${title}" produced 0 poses from sequenceText: "${sequenceText.slice(0, 80)}"`);
-            }
-        });
+                if (Array.isArray(poses) && poses.length > 0) {
+                    rawAccumulator.push({ 
+                        title, 
+                        category, 
+                        poses,
+                        isUserSequence: false,
+                        // Maintain SN metadata if present
+                        Inc_Namaskara: row.Inc_Namaskara ?? row.inc_namaskara ?? null,
+                        Namaskara_Reps: row.Namaskara_Reps ?? row.namaskara_reps ?? null
+                    });
+                }
+            });
         }
 
-        // Add user sequences
-        try {
-            const { data: userSeqs } = await supabase.from('user_sequences').select('*');
-            if (userSeqs) {
-                userSeqs.forEach(seq => {
-                    const poses = parseSequenceText(seq.sequence_text);
-                    if (poses && poses.length > 0) {
-                        transformedCourses.push({
-                            title: seq.title,
-                            category: seq.category || 'My Sequences',
-                            poses: poses,
-                            isUserSequence: true,
-                            supabaseId: seq.id
-                        });
-                    }
-                });
-            }
-        } catch(e) { console.error("Error loading user sequences", e); }
+        // 3. Fetch & Add User Sequences
+        const { data: userSeqs, error: userError } = await supabase.from('user_sequences').select('*');
+        if (userError) console.error("Error loading user sequences", userError);
 
-        // Assign to globals
-        courses = transformedCourses;
-        sequences = courses;
-        window.courses = courses;
+        if (userSeqs) {
+            userSeqs.forEach(seq => {
+                const poses = parseSequenceText(seq.sequence_text);
+                if (poses && poses.length > 0) {
+                    rawAccumulator.push({
+                        title: (seq.title || '').trim(),
+                        category: seq.category || 'My Sequences',
+                        poses: poses,
+                        isUserSequence: true,
+                        supabaseId: seq.id,
+                        Inc_Namaskara: seq.inc_namaskara ?? null,
+                        Namaskara_Reps: seq.namaskara_reps ?? null
+                    });
+                }
+            });
+        }
 
-        console.log(`Loaded ${courses.length} courses`);
+        // 4. THE DEDUPLICATOR (The critical fix)
+        // We use the trimmed, lowercase title as the key.
+        const finalMap = new Map();
+        rawAccumulator.forEach(item => {
+            const key = String(item.title || "").trim().toLowerCase();
+            // Since User sequences were added LAST to rawAccumulator, 
+            // they will overwrite System sequences in the Map here.
+            finalMap.set(key, item);
+        });
 
-        // Trigger UI update
+        // 5. Final Sort and Global Assignment
+        const deduplicated = Array.from(finalMap.values()).sort((a, b) => 
+            a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' })
+        );
+
+        // Update all global references to the CLEAN, deduplicated list only.
+        courses = deduplicated;
+        sequences = deduplicated;
+        window.courses = deduplicated;
+
+        console.log(`✅ Load complete. Unique sequences: ${courses.length}`);
+
+        // 6. Trigger UI updates
         if (typeof renderSequenceDropdown === "function") {
             renderSequenceDropdown();
-        } else if (typeof renderCourseUI === "function") {
+        } 
+        if (typeof renderCourseUI === "function") {
             renderCourseUI();
         }
 
     } catch (e) {
         console.error("Exception loading courses:", e);
-        courses = [];
-        sequences = [];
+        courses = []; sequences = [];
     }
 }
 // --- TIME PARSER HELPER ---
@@ -711,49 +713,41 @@ function buildHoldString(standard, short, long) {
 // Input format: "074 | 60 |\n215 | 600 | [Pratiloma IVb]\n203 | 300 | [Ujjāyī II (lying)]"
 // Output format: [[id], duration, label, variationKey, note]
 function parseSequenceText(sequenceText) {
-    if (!sequenceText || typeof sequenceText !== 'string') {
-        return [];
-    }
+    if (!sequenceText || typeof sequenceText !== 'string') return [];
 
-    const lines = sequenceText.split('\n').map(line => line.trim()).filter(line => line);
+    const lines = sequenceText.split('\n').map(line => line.trim()).filter(Boolean);
     const poses = [];
 
     lines.forEach(line => {
-        // Split by pipe character
         const parts = line.split('|').map(p => p.trim());
-
-        if (parts.length < 2) {
-            return; // Skip invalid lines
-        }
+        if (parts.length < 2) return;
 
         const id = parts[0] || '';
         const duration = parseInt(parts[1], 10) || 0;
-        const noteSection = parts[2] || '';
+        
+        // FIX: Grab everything from the 3rd part onwards and join with pipes
+        // This ensures [Tadasana] | Prayer is captured as a single string
+        const noteSection = parts.slice(2).join(' | ').trim();
 
-        // Parse the note section for variation key
-        // Example: "[Pratiloma IVb]" -> variationKey = "IVb", note = "[Pratiloma IVb]"
         let variationKey = '';
-        let note = noteSection;
+        const note = noteSection;
 
-        // Extract variation key from brackets (look for patterns like "IVb", "II", "IIa", etc.)
+        // Maintain your existing variation extraction logic
         const variationMatch = noteSection.match(/\[.*?\b([IVX]+[a-z]?)\]/);
         if (variationMatch) {
             variationKey = variationMatch[1];
         }
 
-        // Normalize ID: strip leading zeros then re-pad to 3 digits
-        // Handles both "074" and "172a" (alpha suffix preserved)
         const numericPart = id.match(/^(\d+)/);
         const suffix = id.replace(/^\d+/, '');
         const normalizedId = numericPart
             ? numericPart[1].replace(/^0+/, '').padStart(3, '0') + suffix
             : id;
 
-        // Create pose entry in legacy format: [[id], duration, label, variationKey, note]
         poses.push([
             [normalizedId],
             duration,
-            '', // label (empty string as per legacy format)
+            '', 
             variationKey,
             note
         ]);
