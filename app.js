@@ -4254,17 +4254,24 @@ function interpolateDuration(pos, short, defaultDur, long) {
     return Math.round(defaultDur + (long - defaultDur) * t);
 }
 
-function dialReset() {
-    const dial = $("durationDial");
+// Change 'function dialReset()' to 'window.dialReset = function()'
+window.dialReset = function() {
+    const dial = document.getElementById("durationDial");
     if (!dial) return;
+    
     dial.value = 50;
-    updateDialUI();
-    if (currentSequence) {
-        applyDurationDial();
-        stopTimer();
-        setPose(currentIndex);
+    
+    // Trigger the logic to update the app
+    if (typeof updateDialUI === "function") updateDialUI();
+    if (typeof applyDurationDial === "function") applyDurationDial();
+    
+    // Optional: If you want it to refresh the current pose timer immediately
+    if (typeof currentSequence !== "undefined" && currentSequence) {
+        if (typeof setPose === "function") setPose(currentIndex);
     }
-}
+    
+    console.log("Dial reset via touch");
+};
 
 function updateDialUI() {
     const dial = $("durationDial");
@@ -4323,6 +4330,31 @@ if (durationDial) {
         if (typeof updateDialUI === "function") updateDialUI();
         if (currentSequence) applyDurationDial();
     });
+// --- THE MOBILE RESET FIX ---
+const resetText = document.getElementById("dialResetBtn");
+if (resetText) {
+    const performReset = (e) => {
+        e.preventDefault(); // Stop mobile "ghost clicks"
+        const dial = document.getElementById("durationDial");
+        if (!dial) return;
+
+        dial.value = 50;
+        
+        // Call the functions that already exist in your app.js
+        if (typeof updateDialUI === "function") updateDialUI();
+        if (typeof applyDurationDial === "function") applyDurationDial();
+        
+        // Refresh the pose timer if it's currently running
+        if (typeof currentSequence !== "undefined" && currentSequence && typeof setPose === "function") {
+            setPose(currentIndex);
+        }
+        console.log("Dial reset via mobile tap");
+    };
+
+    resetText.addEventListener("click", performReset);
+    resetText.addEventListener("touchend", performReset);
+}
+
 }
 function applyDurationDial() {
     if (!currentSequence) return;
