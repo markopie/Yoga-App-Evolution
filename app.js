@@ -31,7 +31,7 @@ const LOCAL_SEQ_KEY = "yoga_sequences_v1";
 const SUPABASE_URL = "https://qrcpiyncvfmpmeuyhsha.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyY3BpeW5jdmZtcG1ldXloc2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTA2NDgsImV4cCI6MjA4NzI4NjY0OH0.7sjbfwdT_aYmrJyVFYWpfMNBQpCJAI7Vd5uNEkzD4GI";
 const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-
+window.db = supabase;
 window.currentUserId = null;
 
 /* ==========================================================================
@@ -40,8 +40,10 @@ window.currentUserId = null;
 
 // Data storage
 let courses = [];
+window.courses = courses; // 👈 Add this line
 let sequences = [];  // For backwards compatibility during transition
 let asanaLibrary = {};  // JSON object keyed by ID (e.g. "003" -> pose data)
+window.asanaLibrary = asanaLibrary; // 👈 Add this line
 let plateGroups = {};   // "18" -> ["18","19"] (optional)
 
 // Admin Overrides
@@ -67,6 +69,8 @@ window.toggleGodMode = function() {
 
 
 // Playback State
+let activePlaybackList = []; // This will hold the "unpacked" poses (Macros + Reps)
+window.activePlaybackList = activePlaybackList; // 👈 Add this line
 let currentSequence = null;
 let currentIndex = 0;
 let currentAudio = null; // Tracks the currently playing sound
@@ -765,6 +769,12 @@ async function loadAsanaLibrary() {
                 if (!paddedId) return;
                 const key = paddedId.padStart(3, '0');
 
+                // 🌟 ADD THIS: Define holdData BEFORE creating the object 🌟
+                const rawHoldText = String(row.Hold ?? row.hold ?? '');
+                const holdData = (row.hold_json && typeof row.hold_json === 'object') 
+                    ? row.hold_json 
+                    : parseHoldTimes(rawHoldText);
+
                 normalized[key] = {
                     id: key,
                     name: row.name ?? '',
@@ -779,9 +789,13 @@ async function loadAsanaLibrary() {
                     note: row.Note ?? row.note ?? '',
                     category: row.category ?? '',
                     description: row.Description ?? row.description ?? '',
-                    hold: String(row.Hold ?? row.hold ?? ''),
-                    Hold: String(row.Hold ?? row.hold ?? ''),
-                    hold_data: parseHoldTimes(String(row.Hold ?? row.hold ?? '')),
+                    
+                    // 🌟 NOW WE USE IT 🌟
+                    hold: rawHoldText,
+                    Hold: rawHoldText,
+                    hold_json: holdData, 
+                    hold_data: holdData, 
+                    
                     variations: {},
                     isCustom: false
                 };
@@ -789,32 +803,22 @@ async function loadAsanaLibrary() {
         }
 
         // 2. Load User Asanas and OVERWRITE globals
-        try {
-            const { data: userAsanasData } = await supabase.from('user_asanas').select('*');
-            if (userAsanasData) {
-                userAsanasData.forEach(userRow => {
-                    const rawId = userRow.id ?? '';
-                    const key = String(rawId).trim().replace(/^0+/, '').padStart(3, '0');
-                    
-                    if (normalized[key]) {
-                        normalized[key] = {
-                            ...normalized[key],
-                            name: userRow.name ?? normalized[key].name,
-                            iast: userRow.iast ?? normalized[key].iast,
-                            english: userRow.english_name ?? normalized[key].english,
-                            technique: userRow.technique ?? normalized[key].technique,
-                            category: userRow.category ?? normalized[key].category,
-                            description: userRow.description ?? normalized[key].description,
-                            note: userRow.note ?? normalized[key].note,
-                            hold: String(userRow.Hold ?? userRow.hold ?? ''),
-                            Hold: String(userRow.Hold ?? userRow.hold ?? ''),
-                            hold_data: parseHoldTimes(String(userRow.Hold ?? userRow.hold ?? '')),
-                            isCustom: true
-                        };
-                    }
-                });
+try {
+    // IMPORTANT: Ensure your .select('*') or .select('..., hold_json') includes the new field
+    const { data: userAsanasData } = await supabase.from('user_asanas').select('*');
+    
+    if (userAsanasData) {
+        userAsanasData.forEach(userRow => {
+            const key = String(userRow.id).trim().replace(/^0+/, '').padStart(3, '0');
+            
+            if (normalized[key]) {
+                // Use the universal normalizer to update the object
+                normalized[key] = normalizeAsanaRow(userRow, normalized[key]);
+                normalized[key].isCustom = true; 
             }
-        } catch (e) { console.warn("Could not load user_asanas:", e.message); }
+        });
+    }
+} catch (err) { console.error("Error loading user asanas:", err); }
 
         // 3. Load All Stages (Global + User)
         const { data: stagesData } = await supabase.from('stages').select('*');
@@ -853,13 +857,45 @@ async function loadAsanaLibrary() {
 
 
 // console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
+        window.asanaLibrary = normalized;
+        if (typeof asanaLibrary !== 'undefined') {
+            asanaLibrary = normalized;
+        }
+
+        // console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
         return normalized;
 
-    } catch (e) {
+        } catch (e) {
         console.error("Exception loading asana library:", e);
         return {};
-    }
 }
+}
+
+/**
+ * Standardizes a database row into a clean Asana object.
+ * Prioritizes hold_json, fallbacks to parsing the 'hold' string.
+ */
+function normalizeAsanaRow(row, existingData = {}) {
+    const rawHoldText = String(row.Hold ?? row.hold ?? '');
+    
+    // JSON-First Logic: Check if DB sent hold_json, otherwise parse text
+    const holdData = (row.hold_json && typeof row.hold_json === 'object') 
+        ? row.hold_json 
+        : (typeof parseHoldTimes === 'function' ? parseHoldTimes(rawHoldText) : { standard: 30 });
+
+    return {
+        ...existingData, // Preserve existing fields if overwriting
+        id: existingData.id || String(row.id || row.ID || '').trim().replace(/^0+/, '').padStart(3, '0'),
+        name: row.name ?? row.Name ?? existingData.name,
+        english: row.english_name ?? row.English ?? existingData.english,
+        category: row.category ?? existingData.category,
+        hold: rawHoldText,
+        hold_json: holdData, // <--- YOUR NEW DURATION BRAIN
+        standard_seconds: holdData.standard || 30, // Shortcut for the Slider
+        isCustom: !!row.is_custom || false
+    };
+}
+
 
 // Helper function to parse plates string like "Final: 1, 2" or "Intermediate: 3"
 function parsePlates(plateStr) {
@@ -947,8 +983,17 @@ function smartUrlsForPoseId(idField) {
 // Helper: Find Data
 function findAsanaByIdOrPlate(id) {
     if (!id) return null;
-    if (typeof normalizePlate === 'function') id = normalizePlate(id);
-    return asanaLibrary[id] || null;
+    const lib = window.asanaLibrary || {};
+    const asanaArray = Object.values(lib);
+    
+    // Clean the incoming ID (remove leading zeros and whitespace)
+    const cleanSearchId = String(id).trim().replace(/^0+/, '');
+
+    // Search by comparing "Cleaned" IDs
+    return asanaArray.find(a => {
+        const cleanLibId = String(a.id || a.asanaNo || '').trim().replace(/^0+/, '');
+        return cleanLibId === cleanSearchId;
+    }) || null;
 }
 
 // History Loader (Clean version)
@@ -973,6 +1018,33 @@ async function setupHistory() {
 /* ==========================================================================
    LOCAL LOGGING & PERSISTENCE
    ========================================================================== */
+
+
+   function getEffectiveTime(id, dur) {
+    // 1. Unwrap the ID if it's hiding in an array (fixes Player math)
+    let rawId = id;
+    if (Array.isArray(rawId)) rawId = rawId[0];
+    if (Array.isArray(rawId)) rawId = rawId[0]; // Double unwrap just in case
+    
+    const lib = window.asanaLibrary || {};
+    
+    // 2. The ID Fix: Compare them mathematically (so "003" safely matches "3")
+    const searchId = Number(rawId);
+    const asana = Object.values(lib).find(a => Number(a.id || a.asanaNo) === searchId);
+    
+    const duration = Number(dur) || 0;
+
+    // 3. Double the time if the pose requires sides
+    if (asana && (asana.requiresSides || asana.requires_sides)) {
+        return duration * 2;
+    }
+    
+    return duration;
+}
+
+
+
+window.getEffectiveTime = getEffectiveTime; // Make it global
 
 const COMPLETION_KEY = "yogaCompletionLog_v2";
 
@@ -1350,64 +1422,98 @@ async function init() {
         if ($("statusText")) $("statusText").textContent = "Error loading app data";
     }
 }
+
+function getExpandedPoses(sequence) {
+    let expanded = [];
+    if (!sequence || !sequence.poses) return [];
+
+    const allCourses = window.courses || [];
+
+    // 1. Unpack Macros
+    sequence.poses.forEach((p, originalIdx) => {
+        const idStr = String(p[0]);
+        const durOrReps = Number(p[1]) || 1; 
+
+        if (idStr.startsWith("MACRO:")) {
+            const targetTitle = idStr.replace("MACRO:", "").trim();
+            const sub = allCourses.find(c => c.title === targetTitle);
+            
+            if (sub && sub.poses) {
+                for (let i = 0; i < durOrReps; i++) {
+                    sub.poses.forEach(sp => {
+                        let cloned = [...sp];
+                        cloned[5] = originalIdx; 
+                        expanded.push(cloned);
+                    });
+                }
+            }
+        } else {
+            let cloned = [...p];
+            cloned[5] = originalIdx; 
+            expanded.push(cloned);
+        }
+    });
+
+    return expanded;
+}
 /* ==========================================================================
-   TIMER ENGINE (Updated for Centered Focus Mode)
+   TIMER ENGINE (Updated for Centered Focus Mode & Macro Engine)
    ========================================================================== */
 
    function startTimer() {
     if (!currentSequence) return;
+    
+    // Main screen toggle: If running, stop.
     if (running) { stopTimer(); return; }
 
     running = true;
-    enableWakeLock();
+    if (typeof enableWakeLock === "function") enableWakeLock();
 
-    // --- ACTIVATE OVERLAY ---
+    // --- 1. UI Setup ---
     const overlay = document.getElementById("focusOverlay");
-    if (overlay) {
-        overlay.style.display = "flex";
-        
-        // Setup Button Action
-        document.getElementById("focusPauseBtn").onclick = stopTimer;
-        
-        // Initial Data Populate
-        document.getElementById("focusCourseTitle").textContent = currentSequence.title;
-        // Trigger one UI update immediately to fill timer/images
-        updateTimerUI();
-        // Force image refresh for overlay
-        const imgWrap = document.getElementById("focusImageWrap");
-        const mainImg = document.querySelector("#collageWrap img");
-        if(imgWrap && mainImg) {
-             imgWrap.innerHTML = "";
-             imgWrap.appendChild(mainImg.cloneNode(true));
-        }
-        document.getElementById("focusPoseName").textContent = document.getElementById("poseName").textContent;
-    }
-    // ------------------------
-
+    if (overlay) overlay.style.display = "flex";
+    
     const statusEl = document.getElementById("statusText");
     if (statusEl) statusEl.textContent = "Running";
 
-    // Play Audio
-    const currentPose = currentSequence.poses[currentIndex];
-    if (currentPose) {
-        const [idField, , poseLabel] = currentPose;
-        const plate = Array.isArray(idField) ? normalizePlate(idField[0]) : normalizePlate(idField);
-        const asana = findAsanaByIdOrPlate(plate);
-        if (asana) playAsanaAudio(asana, poseLabel, false);
+    const startBtn = document.getElementById("startStopBtn");
+    if (startBtn) startBtn.textContent = "Pause"; // The main screen button becomes 'Pause'
+
+    // --- 2. ORIGINAL PAUSE UX ---
+    // Clicking pause on the overlay simply stops the clock and hides the overlay,
+    // returning the user to the main screen. State is preserved automatically!
+    const pauseBtn = document.getElementById("focusPauseBtn");
+    if (pauseBtn) {
+        pauseBtn.onclick = () => {
+            stopTimer(); 
+        };
     }
 
+    // --- 3. THE MAIN CLOCK TICK ---
     timer = setInterval(() => {
-        if (remaining > 0) remaining--;
-        updateTimerUI();
+        if (remaining > 0) {
+            remaining--;
+            updateTimerUI();
+        }
+        
         if (remaining <= 0) {
+            // Clear immediately to prevent double-ticks
+            clearInterval(timer); 
+            timer = null;
+
             const wasLongHold = currentPoseSeconds >= 60;
-            if (running && wasLongHold) playFaintGong();
+            if (wasLongHold && typeof playFaintGong === "function") playFaintGong();
+            
             if (wasLongHold) {
-                clearInterval(timer);
-                timer = null;
                 startTransitionPause();
             } else {
-                nextPose();
+                nextPose(); 
+                
+                // Reset running state before auto-triggering the next pose
+                if (running) {
+                    running = false; 
+                    startTimer(); 
+                }
             }
         }
     }, 1000);
@@ -1418,26 +1524,35 @@ function startTransitionPause() {
     const countdownEl = document.getElementById("transitionCountdown");
     const nextPoseEl = document.getElementById("transitionNextPose");
 
-    if (!overlay) { nextPose(); return; }
+    // If no overlay exists, skip the pause and resume
+    if (!overlay) { 
+        nextPose(); 
+        running = false; 
+        startTimer(); 
+        return; 
+    }
 
-    const poses = currentSequence ? (currentSequence.poses || []) : [];
+    // Look ahead to the NEXT pose using the active list
+    const poses = (activePlaybackList && activePlaybackList.length > 0) ? activePlaybackList : (currentSequence.poses || []);
     let previewName = "";
     const nextIdx = currentIndex + 1;
+    
     if (nextIdx < poses.length) {
         const np = poses[nextIdx];
         const id = Array.isArray(np[0]) ? np[0][0] : np[0];
-        const asana = findAsanaByIdOrPlate(normalizePlate(id));
-        previewName = asana ? displayName(asana) : "";
+        const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
+        previewName = asana ? (typeof displayName === "function" ? displayName(asana) : asana.name) : "";
     }
     if (nextPoseEl) nextPoseEl.textContent = previewName ? `Next: ${previewName}` : "";
 
     let secs = 15;
     if (countdownEl) countdownEl.textContent = secs;
+    
     overlay.style.display = "flex";
-
     const focusOverlay = document.getElementById("focusOverlay");
     if (focusOverlay) focusOverlay.style.display = "none";
 
+    // --- TRANSITION CLOCK TICK ---
     let transitionTimer = setInterval(() => {
         secs--;
         if (countdownEl) countdownEl.textContent = secs;
@@ -1450,41 +1565,17 @@ function startTransitionPause() {
     function finishTransition() {
         overlay.style.display = "none";
         if (!running) return;
+        
         nextPose();
-        if (running) {
-            const focusOvr = document.getElementById("focusOverlay");
-            if (focusOvr) {
-                focusOvr.style.display = "flex";
-                const imgWrap = document.getElementById("focusImageWrap");
-                const mainImg = document.querySelector("#collageWrap img");
-                if (imgWrap && mainImg) {
-                    imgWrap.innerHTML = "";
-                    imgWrap.appendChild(mainImg.cloneNode(true));
-                }
-                const fName = document.getElementById("focusPoseName");
-                const pName = document.getElementById("poseName");
-                if (fName && pName) fName.textContent = pName.textContent;
-            }
-            timer = setInterval(() => {
-                if (remaining > 0) remaining--;
-                updateTimerUI();
-                if (remaining <= 0) {
-                    const wasLong = currentPoseSeconds >= 60;
-                    if (running && wasLong) playFaintGong();
-                    if (wasLong) {
-                        clearInterval(timer);
-                        timer = null;
-                        startTransitionPause();
-                    } else {
-                        nextPose();
-                    }
-                }
-            }, 1000);
-        }
+        // Force the main loop to pick up seamlessly where it left off
+        running = false; 
+        startTimer(); 
     }
 
+    // Handle Skip Button
     const skipBtn = document.getElementById("transitionSkipBtn");
     if (skipBtn) {
+        // Clone to remove old event listeners safely
         const newSkip = skipBtn.cloneNode(true);
         skipBtn.parentNode.replaceChild(newSkip, skipBtn);
         newSkip.onclick = () => {
@@ -1505,7 +1596,7 @@ function stopTimer() {
     const transOverlay = document.getElementById("transitionOverlay");
     if (transOverlay) transOverlay.style.display = "none";
 
-    updateTotalAndLastUI(); 
+    if (typeof updateTotalAndLastUI === "function") updateTotalAndLastUI(); 
 
     const btn = document.getElementById("startStopBtn");
     if(btn) btn.textContent = "Start"; 
@@ -1513,19 +1604,24 @@ function stopTimer() {
     const statusEl = document.getElementById("statusText");
     if (statusEl) statusEl.textContent = "Paused";
 
-    disableWakeLock();
+    if (typeof disableWakeLock === "function") disableWakeLock();
 }
+
 function updateTimerUI() {
-    const timerEl = $("poseTimer");
+    const timerEl = document.getElementById("poseTimer");
+    const focusTimerEl = document.getElementById("focusTimer");
+    
+    // --- 1. Current Clock ---
     if (timerEl) {
         if (!currentSequence) {
             timerEl.textContent = "–";
+            if (focusTimerEl) focusTimerEl.textContent = "–";
         } else {
             const mm = Math.floor(remaining / 60);
             const ss = remaining % 60;
             const timeStr = `${mm}:${String(ss).padStart(2,"0")}`;
             timerEl.textContent = timeStr;
-            if($("focusTimer")) $("focusTimer").textContent = timeStr;
+            if (focusTimerEl) focusTimerEl.textContent = timeStr;
 
             timerEl.className = "";
             if (remaining <= 5 && remaining > 0) timerEl.className = "critical";
@@ -1533,30 +1629,37 @@ function updateTimerUI() {
         }
     }
 
+    // --- 2. Dashboard Pill ---
     if (currentSequence) {
-        let secondsLeft = remaining;
-        const libraryArray = Object.values(asanaLibrary || {});
-
-        // Add 2nd side if currently on 1st side
-        if (needsSecondSide && currentSequence.poses[currentIndex]) {
-             secondsLeft += Number(currentSequence.poses[currentIndex][1]) || 0;
-        }
-
-        // Future poses: Check audited 'requires_sides' key
-        for (let i = currentIndex + 1; i < currentSequence.poses.length; i++) {
-             const p = currentSequence.poses[i];
-             const dur = Number(p[1]) || 0;
-             const id = normalizePlate(Array.isArray(p[0]) ? p[0][0] : p[0]);
-             const asana = libraryArray.find(a => String(a.id) === id);
-             
-             secondsLeft += (asana && asana.requires_sides) ? dur * 2 : dur;
-        }
+        const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
+            ? window.activePlaybackList 
+            : (currentSequence.poses || []);
         
-        const totalSeconds = calculateTotalSequenceTime();
-        if ($("timeRemainingDisplay")) $("timeRemainingDisplay").textContent = formatHMS(secondsLeft);
-        if ($("timeTotalDisplay")) $("timeTotalDisplay").textContent = formatHMS(totalSeconds);
+        // 1. Calculate TOTAL TIME (The right side of the slash)
+        // This will correctly return 80 seconds (1:20) for a 40s Trikonasana
+        const totalSeconds = poses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
 
-        const bar = $("timeProgressFill");
+        // 2. Calculate REMAINING TIME (The left side of the slash)
+        let secondsLeft = remaining; // Time left on the CURRENT side of the current pose
+
+        // If we are currently playing Side 1, we must add the duration of Side 2 to the remaining total
+        if (typeof needsSecondSide !== "undefined" && needsSecondSide && poses[currentIndex]) {
+             secondsLeft += (Number(poses[currentIndex][1]) || 0);
+        }
+
+        // Add the effective time of all FUTURE rows
+        for (let i = currentIndex + 1; i < poses.length; i++) {
+             secondsLeft += getEffectiveTime(poses[i][0], poses[i][1]);
+        }
+
+        // 3. Render
+        const remDisp = document.getElementById("timeRemainingDisplay");
+        const totDisp = document.getElementById("timeTotalDisplay");
+        
+        if (remDisp && typeof formatHMS === "function") remDisp.textContent = formatHMS(secondsLeft);
+        if (totDisp && typeof formatHMS === "function") totDisp.textContent = formatHMS(totalSeconds);
+
+        const bar = document.getElementById("timeProgressFill");
         if (bar && totalSeconds > 0) {
             const pct = Math.max(0, Math.min(100, (secondsLeft / totalSeconds) * 100));
             bar.style.width = `${pct}%`;
@@ -1565,19 +1668,16 @@ function updateTimerUI() {
     }
 }
 
-// B. IMPROVED TOTAL TIME CALCULATION
-function calculateTotalSequenceTime() {
-    if (!currentSequence || !currentSequence.poses) return 0;
+// B. STATIC TOTAL TIME CALCULATION (For Builder & Dropdowns)
+function calculateTotalSequenceTime(seq) {
+    if (!seq || !seq.poses) return 0;
     
-    return currentSequence.poses.reduce((acc, p) => {
-        const dur = Number(p[1]) || 0;
-        const id = Array.isArray(p[0]) ? p[0][0] : p[0];
-        const asana = findAsanaByIdOrPlate(normalizePlate(id));
-        
-        // CHECK BOTH: ensures it works regardless of which screen is calculating
-        const hasSides = asana && (asana.requiresSides || asana.requires_sides);
-        
-        return acc + (hasSides ? dur * 2 : dur);
+    // Unpack macros first
+    const expanded = typeof getExpandedPoses === "function" ? getExpandedPoses(seq) : seq.poses;
+
+    // Use the global helper for every pose in the expanded list
+    return expanded.reduce((acc, p) => {
+        return acc + getEffectiveTime(p[0], p[1]);
     }, 0);
 }
 /* ==========================================================================
@@ -1585,74 +1685,77 @@ function calculateTotalSequenceTime() {
    ========================================================================== */
 
    function nextPose() {
-    if (!currentSequence) return;
-    const poses = currentSequence.poses || [];
+    // 1. Get the correct list (Always prefer the expanded playback list)
+    const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
+                  ? window.activePlaybackList 
+                  : (currentSequence.poses || []);
 
-    // SCENARIO 1: Currently on Right Side of a two-sided pose? Go to Left.
-    const currentPose = poses[currentIndex];
-    
-    // We check needsSecondSide. 
-    // Note: In prevPose, we set this to TRUE if we moved back to the Right side.
-    if (currentPose && needsSecondSide) {
+    if (!poses.length) return;
+
+    // 2. Scenario: Two-Sided Pose
+    if (needsSecondSide) {
         currentSide = "left";
-        needsSecondSide = false; // Next click will move to new pose
-        setPose(currentIndex, true); // Keep same pose index
+        needsSecondSide = false; 
+        setPose(currentIndex, true); // Stays on same index, just swaps side
         return;
     }
 
-    // SCENARIO 2: Move to Next Index
+    // 3. Scenario: Advance to next index in the 87-item list
     if (currentIndex < poses.length - 1) {
-        currentSide = "right"; // Always start new poses on Right
-        needsSecondSide = false; // setPose will recalculate this based on the new pose data
+        currentSide = "right";
+        needsSecondSide = false;
         setPose(currentIndex + 1);
     } else {
         // End of Sequence
         stopTimer();
-        const compBtn = $("completeBtn");
+        const compBtn = document.getElementById("completeBtn");
         if (compBtn) compBtn.style.display = "inline-block";
     }
 }
 
 function prevPose() {
-    if (!currentSequence) return;
+    const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
+                  ? window.activePlaybackList 
+                  : (currentSequence.poses || []);
 
-    // SCENARIO 1: Currently on Left Side? Go back to Right Side of SAME pose.
     if (currentSide === "left") {
         currentSide = "right";
-        needsSecondSide = true; // Re-enable the flag so "Next" will trigger Left again
-        setPose(currentIndex, true); // true = don't reset state, keep manual side override
+        needsSecondSide = true; 
+        setPose(currentIndex, true);
         return;
     }
 
-    // SCENARIO 2: Go to Previous Index
     if (currentIndex > 0) {
         const newIndex = currentIndex - 1;
+        const prevPoseData = poses[newIndex];
         
-        // Check the Previous Pose to see if it has sides
-        const prevPoseData = currentSequence.poses[newIndex];
-        const idField = prevPoseData[0];
-        const id = Array.isArray(idField) ? idField[0] : idField;
-        const cleanId = normalizePlate(id);
-        const asana = findAsanaByIdOrPlate(cleanId);
+        // Use our helper to check if the previous pose in the list has sides
+        const id = Array.isArray(prevPoseData[0]) ? prevPoseData[0][0] : prevPoseData[0];
+        const asana = findAsanaByIdOrPlate(normalizePlate(id));
 
         if (asana && asana.requiresSides) {
-            // It is two-sided. Since we are reversing, we land on the LEFT side.
             currentSide = "left";
-            needsSecondSide = false; // We are on the final side, so next step is New Pose, not side switch
-            setPose(newIndex, true); // true = preserve the 'left' side we just set
+            needsSecondSide = false;
+            setPose(newIndex, true); 
         } else {
-            // Standard pose
-            setPose(newIndex); // Standard reset
+            setPose(newIndex);
         }
     }
 }
+
+
+
+
 
 /* ==========================================================================
    RENDERER (SetPose)
    ========================================================================== */
    function setPose(idx, keepSamePose = false) {
     if (!currentSequence) return;
-    const poses = currentSequence.poses || [];
+    const poses = (activePlaybackList && activePlaybackList.length > 0) 
+                  ? activePlaybackList 
+                  : (currentSequence.poses || []);
+
     if (idx < 0 || idx >= poses.length) return;
 
     // 1. SAVE PROGRESS (update currentIndex first so the correct pose index is saved)
@@ -1665,8 +1768,23 @@ function prevPose() {
         needsSecondSide = false;
     }
 
-    // 2. DATA EXTRACTION
-    const currentPose = poses[idx];
+// 2. DATA EXTRACTION
+const currentPose = poses[idx];
+const originalRowIndex = (currentPose && currentPose[5] !== undefined) 
+                        ? currentPose[5] 
+                        : idx;
+
+// FIX: Use the original sequence length instead of the expanded 'poses.length'
+const displayTotal = currentSequence.poses ? currentSequence.poses.length : poses.length;
+
+
+
+// Update the Focus/Overlay Count
+const focusCounter = document.getElementById("focusPoseCounter");
+if (focusCounter) {
+    focusCounter.textContent = `${originalRowIndex + 1} / ${displayTotal}`;
+
+}
     const rawIdField = currentPose[0];
     let seconds      = currentPose[1];
 
@@ -1683,19 +1801,50 @@ function prevPose() {
     // 3. SMART LOOKUP
     const asana = findAsanaByIdOrPlate(lookupId);
 
-    // VARIATION DURATION OVERRIDE: if pose has a variation key and that variation has a hold string, parse it
+    // VARIATION DURATION OVERRIDE:
     const storedVarKey = currentPose[3];
     if (storedVarKey && asana && asana.variations && asana.variations[storedVarKey]) {
         const varData = asana.variations[storedVarKey];
         const varHoldStr = varData.hold || varData.Hold || "";
+        
         if (varHoldStr) {
-            const varHd = parseHoldTimes(varHoldStr);
-            if (varHd.standard > 0) seconds = varHd.standard;
+            const varHd = typeof parseHoldTimes === "function" ? parseHoldTimes(varHoldStr) : {};
+            if (varHd.standard > 0) {
+                const dial = document.getElementById("durationDial");
+                const val = dial ? Number(dial.value) : 50;
+                
+                // MATCH: Use .short and .long here too
+                const min = varHd.short || Math.max(5, Math.round(varHd.standard * 0.5));
+                const std = varHd.standard;
+                const max = varHd.long || Math.round(varHd.standard * 2.0);
+            
+                if (val < 50) seconds = Math.round(min + (std - min) * (val / 50));
+                else if (val > 50) seconds = Math.round(std + (max - std) * ((val - 50) / 50));
+                else seconds = std;
+            }
         }
     }
 
     // Sides Check
-    if (asana && asana.requiresSides && !keepSamePose) {
+    if (asana && (asana.requiresSides || asana.requires_sides) && !keepSamePose) {
+        needsSecondSide = true;
+    }
+
+    // --- NEW: THE DIAL ENFORCER ---
+    // Make absolutely sure 'seconds' respects the current dial multiplier!
+    const dial = document.getElementById("durationDial");
+    if (dial) {
+        const val = Number(dial.value);
+        if (val !== 50) {
+            let mult = 1.0;
+            if (val < 50) mult = 0.5 + (val / 50) * 0.5; // Faster (0.5x to 1x)
+            else mult = 1.0 + ((val - 50) / 50) * 1.0;   // Slower (1x to 2x)
+            seconds = Math.round(seconds * mult);
+        }
+    }
+
+    // Sides Check
+    if (asana && (asana.requiresSides || asana.requires_sides) && !keepSamePose) {
         needsSecondSide = true;
     }
 
@@ -1843,9 +1992,20 @@ function prevPose() {
         metaContainer.innerHTML = ""; 
 
         const infoSpan = document.createElement("span");
-        infoSpan.className = "meta-text-only"; 
-        infoSpan.textContent = `ID: ${lookupId} • ${seconds}s `;
-        metaContainer.appendChild(infoSpan);
+    infoSpan.className = "meta-text-only"; 
+
+    // 1. Get current dynamic time from the active list
+    const currentSeconds = window.activePlaybackList[idx][1];
+
+    // 2. Get range from library
+    const hj = asana?.hold_json;
+    let rangeText = "";
+    if (hj && hj.standard) {
+        rangeText = ` (Range: ${hj.short}s - ${hj.long}s)`;
+    }
+
+infoSpan.textContent = `ID: ${lookupId} • ${currentSeconds}s${rangeText}`;
+metaContainer.appendChild(infoSpan);
 
         if (asana) {
             const btn = document.createElement("button");
@@ -1861,7 +2021,10 @@ function prevPose() {
     }
 
     if(document.getElementById("poseCounter")) {
-        document.getElementById("poseCounter").textContent = `${idx + 1} / ${poses.length}`;
+        const displayIdx = (currentPose && currentPose[5] !== undefined) ? currentPose[5] + 1 : idx + 1;
+        const displayTotal = currentSequence.poses ? currentSequence.poses.length : poses.length;
+        
+        document.getElementById("poseCounter").textContent = `${displayIdx} / ${displayTotal}`;
     }
 
     // 10. TIMER & IMAGE LOGIC
@@ -1969,11 +2132,13 @@ function updatePoseDescription(idField, label) {
       body.innerHTML = '<div class="msg">No notes</div>';
    }
 }
-
 function updateTotalAndLastUI() {
-    const poses = (currentSequence && currentSequence.poses) ? currentSequence.poses : [];
- 
-    // 1. Calculate Total Time
+    // 1. EXPLORER FIX: Look at the activePlaybackList to include the injected standing poses
+    const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
+        ? window.activePlaybackList 
+        : ((currentSequence && currentSequence.poses) ? currentSequence.poses : []);
+
+    // 2. Calculate Total Time
     const total = poses.reduce((acc, p) => {
        const duration = Number(p?.[1]) || 0;
        const idField = p?.[0];
@@ -1982,20 +2147,20 @@ function updateTotalAndLastUI() {
        const asana = (typeof findAsanaByIdOrPlate === 'function') 
           ? findAsanaByIdOrPlate(id) 
           : null;
- 
+
        if (asana && asana.requiresSides) {
           return acc + (duration * 2);
        }
        return acc + duration;
     }, 0);
- 
-    // 2. Update Total Time UI (Safely)
+
+    // 3. Update Total Time UI
     const totalEl = document.getElementById("totalTimePill");
     if (totalEl) {
         totalEl.textContent = `Total: ${formatHMS(total)}`;
     }
- 
-    // 3. Update History UI (Safely)
+
+    // 4. Update History UI
     const lastEl = document.getElementById("lastCompletedPill");
     
     if (lastEl) {
@@ -2005,11 +2170,11 @@ function updateTotalAndLastUI() {
            const source = (typeof serverHistoryCache !== 'undefined' && Array.isArray(serverHistoryCache) && serverHistoryCache.length) 
               ? serverHistoryCache 
               : (typeof loadCompletionLog === 'function' ? loadCompletionLog() : []);
- 
+
            const last = source
               .filter(x => x && x.title === title && typeof x.ts === "number")
               .sort((a, b) => b.ts - a.ts)[0];
- 
+
            lastEl.textContent = last ?
               `Last: ${new Date(last.ts).toLocaleString("en-AU", {
                year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
@@ -2018,7 +2183,7 @@ function updateTotalAndLastUI() {
            lastEl.textContent = "Last: –";
         }
     }
- }
+}
  function loadUserPersonalNote(idField) {
     const container = document.getElementById("poseDescBody");
     if (!container) return;
@@ -3125,7 +3290,14 @@ function builderOpen(mode, seq) {
     builderMode = mode;
     builderPoses = [];
     builderEditingCourseIndex = -1;
-    builderEditingSupabaseId = seq ? (seq.supabaseId || seq.id) : null;
+    let targetId = seq ? (seq.supabaseId || seq.id) : null;
+
+    // Global IDs are short integers (e.g., "170"). User sequences use long UUIDs.
+    // If it's a short global ID, reset it to null so the save function knows to INSERT a new record instead of trying to UPDATE.
+    if (targetId && String(targetId).length < 30) {
+        targetId = null;
+    }
+    builderEditingSupabaseId = targetId;
     document.body.classList.add("modal-open");
     const titleEl = $("builderTitle");
     const modeLabel = $("builderModeLabel");
@@ -3198,37 +3370,90 @@ function builderOpen(mode, seq) {
     builderRender();
     $("editCourseBackdrop").style.display = "flex";
     setTimeout(() => { if($("builderSearch")) $("builderSearch").focus(); }, 50);
+
+    
 }
  
 function builderRender() {
-    const tbody = $("builderTableBody");
+    const tbody = document.getElementById("builderTableBody");
     if (!tbody) return;
 
     tbody.innerHTML = "";
-    $("builderEmptyMsg").style.display = builderPoses.length ? "none" : "block";
+    const emptyMsg = document.getElementById("builderEmptyMsg");
+    if (emptyMsg) emptyMsg.style.display = builderPoses.length ? "none" : "block";
  
     let totalSec = 0;
-    const libraryArray = Object.values(asanaLibrary || {});
+    const libraryArray = Object.values(window.asanaLibrary || {});
  
     builderPoses.forEach((pose, idx) => {
-        const dur = Number(pose.duration) || 0;
-        const asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(pose.id));
-        
-        // Calculate effective duration (doubled if sides are required)
-        const effectiveDur = (asana && asana.requires_sides) ? (dur * 2) : dur;
-        totalSec += effectiveDur;
+        const idStr = String(pose.id);
+        const durOrReps = Number(pose.duration) || 0;
+        const isMacro = idStr.startsWith("MACRO:");
+        let asana = null;
     
+        // --- 1. TIME CALCULATION (Using Helper) ---
+        if (isMacro) {
+            const targetTitle = idStr.replace("MACRO:", "").trim();
+            const subCourse = window.courses ? window.courses.find(c => c.title === targetTitle) : null;
+            
+            if (subCourse && subCourse.poses) {
+                const oneRoundSecs = subCourse.poses.reduce((acc, sp) => {
+                    // Use helper for poses inside the macro
+                    return acc + getEffectiveTime(sp[0], sp[1]);
+                }, 0);
+                totalSec += (oneRoundSecs * durOrReps); 
+            }
+        } else {
+            // Use helper for standard pose
+            totalSec += getEffectiveTime(idStr, durOrReps);
+            
+            // Still need the 'asana' object for UI badges/variations
+            const normId = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
+            asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
+        }
+
+        // --- 2. UI RENDERING ---
         const tr = document.createElement("tr");
-        const variations = asana ? (asana.variations || {}) : {};
-        const hasVars = Object.keys(variations).length > 0;
+        tr.draggable = true; // Make the row draggable
+        tr.dataset.idx = idx;
+        tr.ondragstart = (e) => {
+            e.dataTransfer.setData("text/plain", idx);
+            tr.style.opacity = "0.4";
+        };
+        
+        tr.ondragend = () => tr.style.opacity = "1";
+        
+        tr.ondragover = (e) => {
+            e.preventDefault();
+            tr.style.borderTop = "2px solid #007aff"; // Visual indicator
+        };
+        
+        tr.ondragleave = () => {
+            tr.style.borderTop = "none"; // Clear indicator
+        };
+        
+        tr.ondrop = (e) => {
+            e.preventDefault();
+            tr.style.borderTop = "none"; // Clear indicator
+            const fromIdx = parseInt(e.dataTransfer.getData("text/plain"));
+            const toIdx = idx;
+            
+            if (fromIdx !== toIdx) {
+                const item = builderPoses.splice(fromIdx, 1)[0];
+                builderPoses.splice(toIdx, 0, item);
+                builderRender();
+            }
+        };
+        if (isMacro) tr.className = "builder-macro-row";
     
-        // Build the sideBadge logic HERE
-        const sideBadge = (asana && asana.requires_sides) 
+        const hasSides = asana && (asana.requires_sides || asana.requiresSides);
+        const sideBadge = (!isMacro && hasSides) 
             ? `<span style="color:#2e7d32; font-size:0.7rem; font-weight:bold; margin-left:4px;">[Sides ×2]</span>` 
             : '';
     
         let varSelectHTML = '';
-        if (hasVars) {
+        const variations = asana ? (asana.variations || {}) : {};
+        if (!isMacro && Object.keys(variations).length > 0) {
             varSelectHTML = `
                <select class="b-var" data-idx="${idx}" style="margin-left:8px; padding:2px 4px; border:1px solid #1976d2; border-radius:4px; font-size:0.75rem; background:#e3f2fd; color:#005580; max-width: 160px;">
                   <option value="">Base Pose</option>
@@ -3247,79 +3472,153 @@ function builderRender() {
                  ${pose.name || 'Unknown'} ${sideBadge}
               </div>
               <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; font-size:0.75rem; color:#666;">
-                 ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" style="width:50px; padding:2px; border:1px solid #ccc; border-radius:4px;">
+                 ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" ${isMacro ? 'readonly' : ''} style="width:${isMacro ? 'auto' : '50px'}; padding:2px; border:1px solid #ccc; border-radius:4px; ${isMacro ? 'background:#f0f0f0;' : ''}">
                  ${varSelectHTML}
               </div>
            </td>
-           <td style="padding:8px;">
-              <input type="number" class="b-dur" data-idx="${idx}" value="${pose.duration}" style="width:60px; padding:4px; border:1px solid #ccc;">
-              <button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin-top:4px;">⏱ Std</button>
+           <td style="padding:8px; text-align:center;">
+              <input type="number" class="b-dur" data-idx="${idx}" value="${pose.duration || 1}" min="1" style="width:60px; padding:4px; border:1px solid #ccc; text-align:center;">
+              ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`}
            </td>
            <td style="padding:8px;">
               <input type="text" class="b-note" data-idx="${idx}" value="${(pose.note || '').replace(/"/g, '&quot;')}" placeholder="Notes..." style="width:100%; padding:4px; border:1px solid #ccc;">
            </td>
            <td style="padding:8px; text-align:center; white-space:nowrap;">
+           <button class="tiny b-move-top" 
+           data-idx="${idx}" 
+           title="Move to Top" 
+           ${idx === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>
+       ⤒
+             </button>
+             <button class="tiny b-move-bot" 
+        data-idx="${idx}" 
+        title="Move to Bottom" 
+        ${idx === builderPoses.length - 1 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>
+    ⤓
+</button>
               <button class="tiny b-move-up" data-idx="${idx}">▲</button>
               <button class="tiny b-move-dn" data-idx="${idx}">▼</button>
               <button class="tiny warn b-remove" data-idx="${idx}">✕</button>
-           </td>`;
+           </td>`; // <--- Corrected backtick and semicolon
         tbody.appendChild(tr);
+        // Inside the forEach loop in builderRender, after tbody.appendChild(tr):
+        if (idx === 0 && builderPoses.length > 1) {
+            tr.style.backgroundColor = "#fff9c4"; // Light yellow highlight
+            setTimeout(() => { tr.style.transition = "background 1s"; tr.style.backgroundColor = ""; }, 100);
+        }
     });
  
-    // Listeners
-    tbody.querySelectorAll('.b-id').forEach(el => el.onchange = (e) => {
-        const idx = e.target.dataset.idx;
-        let newId = e.target.value.trim().padStart(3, '0');
-        builderPoses[idx].id = newId;
-        const asana = libraryArray.find(a => String(a.id) === newId);
-        builderPoses[idx].name = asana ? asana.name : "Unknown";
-        if (asana?.hold_data?.standard) builderPoses[idx].duration = asana.hold_data.standard;
+    // --- 3. LISTENERS ---
+    
+    
+    const qS = (sel) => tbody.querySelectorAll(sel);
+    qS('.b-id').forEach(el => el.onchange = (e) => {
+        const i = e.target.dataset.idx;
+        let val = e.target.value.trim();
+        if(!val.startsWith("MACRO:")) val = val.padStart(3, '0');
+        builderPoses[i].id = val;
+        const normId = typeof normalizePlate === "function" ? normalizePlate(val) : val;
+        const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
+        if (asanaMatch) {
+            builderPoses[i].name = asanaMatch.name;
+            if (asanaMatch.hold_data?.standard) builderPoses[i].duration = asanaMatch.hold_data.standard;
+        }
         builderRender();
     });
 
-    tbody.querySelectorAll('.b-std-time').forEach(el => el.onclick = () => {
-        const idx = el.dataset.idx;
-        const asana = libraryArray.find(a => String(a.id) === String(builderPoses[idx].id));
-        if (asana?.hold_data?.standard) { builderPoses[idx].duration = asana.hold_data.standard; builderRender(); }
+    qS('.b-std-time').forEach(el => el.onclick = () => {
+        const i = el.dataset.idx;
+        const normId = typeof normalizePlate === "function" ? normalizePlate(builderPoses[i].id) : builderPoses[i].id;
+        const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
+        if (asanaMatch?.hold_data?.standard) { builderPoses[i].duration = asanaMatch.hold_data.standard; builderRender(); }
     });
 
-    tbody.querySelectorAll('.b-var').forEach(el => el.onchange = (e) => {
+    qS('.b-var').forEach(el => el.onchange = (e) => {
         const i = e.target.dataset.idx;
         builderPoses[i].variation = e.target.value;
-        const asana = libraryArray.find(a => String(a.id) === String(builderPoses[i].id));
-        const vHold = asana?.variations?.[e.target.value]?.hold;
-        if (vHold) { const hd = parseHoldTimes(vHold); if(hd.standard) builderPoses[i].duration = hd.standard; }
+        const normId = typeof normalizePlate === "function" ? normalizePlate(builderPoses[i].id) : builderPoses[i].id;
+        const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
+        const vHold = asanaMatch?.variations?.[e.target.value]?.hold;
+        if (vHold && typeof parseHoldTimes === "function") { 
+            const hd = parseHoldTimes(vHold); 
+            if(hd.standard) builderPoses[i].duration = hd.standard; 
+        }
         builderRender();
     });
-
-    tbody.querySelectorAll('.b-dur').forEach(el => el.onchange = (e) => { builderPoses[e.target.dataset.idx].duration = Number(e.target.value); builderRender(); });
-    tbody.querySelectorAll('.b-note').forEach(el => el.oninput = (e) => builderPoses[e.target.dataset.idx].note = e.target.value);
-    tbody.querySelectorAll('.b-move-up').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), -1));
-    tbody.querySelectorAll('.b-move-dn').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), 1));
-    tbody.querySelectorAll('.b-remove').forEach(el => el.onclick = () => removePose(parseInt(el.dataset.idx)));
+    qS('.b-dur').forEach(el => {
+        el.onchange = (e) => {
+            const idx = e.target.dataset.idx;
+            let val = parseInt(e.target.value);
+    
+            // Snap back to 1 if user enters 0, negative, or deletes the number
+            if (isNaN(val) || val < 1) {
+                val = 1;
+                e.target.value = 1;
+            }
+    
+            builderPoses[idx].duration = val;
+            builderRender(); 
+        };
+    });
+    qS('.b-note').forEach(el => el.oninput = (e) => builderPoses[e.target.dataset.idx].note = e.target.value);
+    qS('.b-move-up').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), -1));
+    qS('.b-move-dn').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), 1));
+    qS('.b-remove').forEach(el => el.onclick = () => removePose(parseInt(el.dataset.idx)));
   
-    // --- CORRECTED STATS CALCULATION ---
+    // --- 6. STATS UPDATER (Builder Modal) ---
     const statsEl = document.getElementById("builderStats");
     if (statsEl) {
-        let totalSec = 0;
-        const libraryArray = Object.values(asanaLibrary || {});
+        let finalTotalSecs = 0;
+        let expandedPoseCount = 0;
 
         builderPoses.forEach(p => {
-            const dur = Number(p.duration) || 0;
-            // Find the asana to check for sides
-            const asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(p.id));
-            
-            // Check both naming conventions for safety
-            const hasSides = asana && (asana.requiresSides || asana.requires_sides);
-            
-            totalSec += (hasSides ? (dur * 2) : dur);
+            const idStr = String(p.id);
+            const durOrReps = Number(p.duration) || 0;
+
+            if (idStr.startsWith("MACRO:")) {
+                const targetTitle = idStr.replace("MACRO:", "").trim();
+                const sub = (window.courses || []).find(c => c.title === targetTitle);
+                if (sub && sub.poses) {
+                    const oneRound = sub.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1]), 0);
+                    finalTotalSecs += (oneRound * durOrReps);
+                    expandedPoseCount += 1;
+                }
+            } else {
+                const effective = getEffectiveTime(p.id, durOrReps);
+                finalTotalSecs += effective;
+                // If the time was doubled, it counts as 2 "physical" poses
+                expandedPoseCount += (effective > durOrReps) ? 2 : 1;
+            }
         });
 
-        const m = Math.floor(totalSec / 60);
-        const s = totalSec % 60;
-        statsEl.textContent = `${builderPoses.length} poses · ${m}m ${s}s total (incl. sides)`;
+        const m = Math.floor(finalTotalSecs / 60);
+        const s = finalTotalSecs % 60;
+        
+        // This will now say "2 poses · 1m 20s total"
+        statsEl.textContent = `${expandedPoseCount} poses · ${m}m ${s}s total (incl. reps & sides)`;
     }
+    qS('.b-move-top').forEach(el => el.onclick = () => {
+        const idx = parseInt(el.dataset.idx);
+        
+        // Only move if it's NOT already the first item
+        if (idx > 0) {
+            const item = builderPoses.splice(idx, 1)[0];
+            builderPoses.unshift(item);
+            builderRender();
+        }
+    });
+    qS('.b-move-bot').forEach(el => el.onclick = () => {
+        const idx = parseInt(el.dataset.idx);
+        if (idx < builderPoses.length - 1) {
+            const item = builderPoses.splice(idx, 1)[0];
+            builderPoses.push(item);
+            builderRender();
+        }
+    });
+    
 }
+
+
 function movePose(idx, dir) {
     if (idx + dir < 0 || idx + dir >= builderPoses.length) return;
     const temp = builderPoses[idx];
@@ -3390,23 +3689,55 @@ function setupBuilderKeyboardSearch() {
         });
     }
 
-    // 🔹 AND THIS
-    function addHit(el) {
-        builderPoses.push({
-            id: el.getAttribute('data-id'),
-            name: el.getAttribute('data-name'),
-            duration: 30,
-            note: ''
-        });
-
-        input.value = '';
-        resBox.style.display = 'none';
-        builderRender();
-        input.focus();
-    }
+    
 }
 
 
+
+
+// --- 1. THE LINK SEQUENCE BUTTON ---
+const actionRow = document.querySelector('.builder-action-row'); // Adjust selector to your specific container
+if (actionRow) {
+    const linkBtn = document.createElement("button");
+    linkBtn.innerHTML = "🔗 Link Sequence";
+    linkBtn.className = "secondary"; // Use your existing secondary button style
+    linkBtn.style.marginLeft = "8px";
+    
+    linkBtn.onclick = () => openLinkSequenceModal();
+    actionRow.appendChild(linkBtn);
+}
+
+// --- 2. THE SEARCHABLE LINK MODAL ---
+function openLinkSequenceModal() {
+    // We can use a simple prompt for now, but a searchable dropdown is better.
+    // Let's create a tiny temporary overlay or use a prompt with a datalist hint.
+    const allTitles = courses.map(c => c.title).filter(Boolean);
+    const targetTitle = prompt(`Enter Sequence Title to link:\nAvailable: ${allTitles.join(", ")}`);
+    
+    if (!targetTitle) return;
+    
+    // Validate that the course exists
+    const exists = courses.find(c => c.title.trim().toLowerCase() === targetTitle.trim().toLowerCase());
+    if (!exists) {
+        alert("Sequence not found. Please enter the exact title.");
+        return;
+    }
+
+    const reps = prompt(`How many repetitions for "${exists.title}"?`, "1");
+    if (reps === null) return;
+
+    // Add as a Macro row to builderPoses
+    
+    builderPoses.unshift({ // Changed from .push()
+    id: `MACRO:${exists.title}`,
+    name: `[Sequence] ${exists.title}`,
+    duration: parseInt(reps) || 1,
+    variation: "",
+    note: `Linked Sequence: ${reps} Rounds`
+});
+
+    builderRender(); // Refresh the table
+}
 /* ==========================================================================
    DATA SAVING (CORE)
    ========================================================================== */
@@ -3565,48 +3896,7 @@ function renderIdFixer(container, brokenId) {
 /* ==========================================================================
    EVENT LISTENERS & INITIALIZATION
    ========================================================================== */
-/**
- * Expands a course object if it references a Namaskara sequence.
- * Injects the Namaskara poses X times before the main poses.
- */
-function expandSequenceWithNamaskara(rawSeq) {
-    const processed = JSON.parse(JSON.stringify(rawSeq));
 
-    if (processed.includeNamaskara) {
-        const refSeq = courses.find(c => c.courseId === processed.includeNamaskara);
-
-        if (refSeq && refSeq.poses) {
-            const reps = parseInt(processed.namaskaraRepetitions) || 1;
-            let namaskaraBlock = [];
-
-            for (let i = 0; i < reps; i++) {
-                let roundPoses = JSON.parse(JSON.stringify(refSeq.poses));
-
-                roundPoses.forEach(p => {
-                    const id = Array.isArray(p[0]) ? p[0][0] : p[0];
-                    const asana = findAsanaByIdOrPlate(normalizePlate(id));
-                    
-                    // 1. Determine the base name (Use Label -> then Library English -> then "Pose")
-                    let baseName = p[2] || (asana ? displayName(asana) : "Pose");
-
-                    // 2. Append the Round number if more than 1 repetition exists
-                    if (reps > 1 && !baseName.includes("(Round")) {
-                        p[2] = `${baseName} (Round ${i + 1})`;
-                    } else {
-                        // Ensure it has at least the baseName even if 1 rep
-                        p[2] = baseName;
-                    }
-                });
-                namaskaraBlock = namaskaraBlock.concat(roundPoses);
-            }
-
-            processed.poses = namaskaraBlock.concat(processed.poses);
-// console.log(`[Sequence Expansion] Merged ${reps} rounds of ${processed.includeNamaskara}`);
-        }
-    }
-
-    return processed;
-}
 
 // 1. Sequence Dropdown Selection
 const seqSelect = $("sequenceSelect");
@@ -3645,43 +3935,56 @@ if (seqSelect) {
     }
 
     // C. Dropdown Logic (Fixed: Stops timer, Waits for user to click Start)
-    seqSelect.addEventListener("change", () => {
-       const idx = seqSelect.value;
-       stopTimer(); 
-       
-       const setStatus = (text) => {
-           const el = document.getElementById("statusText") || document.getElementById("status");
-           if (el) el.textContent = text;
-       };
+seqSelect.addEventListener("change", () => {
+    const idx = seqSelect.value;
+    if (typeof stopTimer === "function") stopTimer(); 
+    
+    const setStatus = (text) => {
+        const el = document.getElementById("statusText") || document.getElementById("status");
+        if (el) el.textContent = text;
+    };
 
-       if (!idx) {
-          currentSequence = null;
-          setStatus("Select a sequence");
-          if($("collageWrap")) $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`;
-          return;
-       }
+    if (!idx) {
+        currentSequence = null;
+        setStatus("Select a sequence");
+        if($("collageWrap")) $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`;
+        return;
+    }
 
-       // NEW CODE
-       const rawSequence = sequences[parseInt(idx, 10)];
-       currentSequence = expandSequenceWithNamaskara(rawSequence);
-       
-       // Save a pure copy of the sequence so the Dial can reset to it
-       window.currentSequenceOriginalPoses = JSON.parse(JSON.stringify(currentSequence.poses));
+    // --- 1. SET CURRENT SEQUENCE ---
+    // (Checks both 'courses' and 'sequences' arrays to be safe)
+    const rawSequence = (typeof courses !== "undefined" ? courses : sequences)[parseInt(idx, 10)];
+    currentSequence = rawSequence; 
+    
+    // 👈 EXPOSE TO CONSOLE
+    window.currentSequence = currentSequence; 
 
-       if (typeof applyDurationDial === 'function') applyDurationDial();
-       if (typeof updateDialUI === 'function') updateDialUI();
+    // --- 2. GENERATE EXPANDED LIST (MACROS) ---
+    if (typeof getExpandedPoses === "function") {
+        activePlaybackList = getExpandedPoses(currentSequence);
+    } else {
+        activePlaybackList = currentSequence.poses ? [...currentSequence.poses] : [];
+    }
+    
+    // 👈 EXPOSE TO CONSOLE
+    window.activePlaybackList = activePlaybackList; 
 
-       updateTotalAndLastUI();
+    // --- 3. APPLY SLIDER & UI ---
+    if (typeof applyDurationDial === 'function') applyDurationDial();
+    if (typeof updateDialUI === 'function') updateDialUI();
 
-       try {
-          setPose(0);
-          setStatus("Ready to Start"); 
-          const btn = $("startStopBtn");
-          if (btn) btn.textContent = "Start";
-       } catch (e) {
-          console.error(e);
-       }
-    });
+    if (typeof updateTotalAndLastUI === 'function') updateTotalAndLastUI();
+
+    try {
+        currentIndex = 0; // Ensure we start at the beginning
+        setPose(0);
+        setStatus("Ready to Start"); 
+        const btn = document.getElementById("startStopBtn");
+        if (btn) btn.textContent = "Start";
+    } catch (e) {
+        console.error("Error setting initial pose:", e);
+    }
+});
 }
 
 // IAST Toggle Button
@@ -4083,38 +4386,101 @@ function updateDialUI() {
     }
 }
 
-const durationDial = $("durationDial");
+const durationDial = document.getElementById("durationDial");
 if (durationDial) {
+    // 1. Sliding: Updates math and UI dynamically
     durationDial.addEventListener("input", () => {
-        updateDialUI();
+        if (typeof updateDialUI === "function") updateDialUI();
         if (currentSequence) applyDurationDial();
     });
+    
+    // 2. Releasing: Just forces one final sync, NO stopping the timer!
     durationDial.addEventListener("change", () => {
-        if (currentSequence) {
-            stopTimer();
-            setPose(currentIndex);
-        }
+        if (currentSequence) applyDurationDial();
     });
-    durationDial.addEventListener("dblclick", dialReset);
+    
+    // 3. Double Click: Reset
+    durationDial.addEventListener("dblclick", () => {
+        durationDial.value = 50;
+        if (typeof updateDialUI === "function") updateDialUI();
+        if (currentSequence) applyDurationDial();
+    });
 }
-
 function applyDurationDial() {
-    if (!currentSequence || !window.currentSequenceOriginalPoses) return;
-    const pos = getDialPosition();
+    if (!currentSequence) return;
+    const dial = document.getElementById("durationDial");
+    if (!dial) return;
+    
+    const val = Number(dial.value); // 0 to 100
 
-    currentSequence.poses = window.currentSequenceOriginalPoses.map(p => {
-        const copy = [...p];
-        const origDur = Number(p[1]) || 0;
-        const id = Array.isArray(p[0]) ? p[0][0] : p[0];
-        const asana = findAsanaByIdOrPlate ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
-        const { short, defaultDur, long } = resolveDialAnchors(origDur, asana);
-        copy[1] = interpolateDuration(pos, short, defaultDur, long);
-        return copy;
+    // 1. Expand a fresh list from the raw sequence
+    const baseList = typeof getExpandedPoses === "function" ? getExpandedPoses(currentSequence) : currentSequence.poses;
+
+    // 2. Apply the dynamic database scale
+    window.activePlaybackList = baseList.map(p => {
+        let cloned = [...p];
+        const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
+        
+        // Ensure we are looking in window.asanaLibrary for the normalized object
+        const lib = window.asanaLibrary || {};
+        const key = String(rawId).trim().replace(/^0+/, '').padStart(3, '0');
+        const asana = lib[key];
+
+        // NEW: Check for the hold_json column we just created
+        if (asana && asana.hold_json && typeof asana.hold_json.standard === 'number') {
+            const hj = asana.hold_json;
+            
+            // Logic: Short (0) | Standard (50) | Long (100)
+            const min = hj.short || Math.max(5, Math.round(hj.standard * 0.5));
+            const std = hj.standard;
+            const max = hj.long  || Math.round(hj.standard * 2.0);
+        
+            if (val < 50) {
+                // Interpolate Short -> Standard
+                cloned[1] = Math.round(min + (std - min) * (val / 50));
+            } else if (val > 50) {
+                // Interpolate Standard -> Long
+                cloned[1] = Math.round(std + (max - std) * ((val - 50) / 50));
+            } else {
+                cloned[1] = std;
+            }
+        } else {
+            // Failsafe: Global % scaling if JSON is missing
+            const originalSeconds = Number(cloned[1]) || 30;
+            let mult = (val < 50) ? (0.5 + (val / 50) * 0.5) : (1.0 + ((val - 50) / 50) * 1.0);
+            cloned[1] = Math.round(originalSeconds * mult);
+        }
+        return cloned;
     });
 
-    if (typeof updateTotalAndLastUI === 'function') updateTotalAndLastUI();
-    if (typeof updateTimerUI === 'function') updateTimerUI();
+    // 3. UI Updates (Labels)
+    const label = document.getElementById("durationDialLabel");
+    if(label) {
+        if (val === 50) label.textContent = "Standard Holds";
+        else if (val < 50) label.textContent = "Shorter Holds (-)";
+        else label.textContent = "Longer Holds (+)";
+    }
+
+    // 4. Update the Active Timer (Mid-pose scaling)
+    if (window.activePlaybackList[currentIndex]) {
+        const newPoseSeconds = Number(window.activePlaybackList[currentIndex][1]) || 0;
+        if (currentPoseSeconds > 0) {
+            const ratio = remaining / currentPoseSeconds;
+            remaining = Math.round(newPoseSeconds * ratio);
+        } else {
+            remaining = newPoseSeconds;
+        }
+        currentPoseSeconds = newPoseSeconds; 
+    }
+
+    if (typeof updateTimerUI === "function") updateTimerUI();
+    
+    // IMPORTANT: Recalculate the "87 poses • 32m 50s" text
+    if (typeof builderRender === "function") builderRender();
 }
+
+
+
 // 3. UI Toggles
 safeListen("historyLink", "click", (e) => {
     e.preventDefault();
@@ -4172,7 +4538,28 @@ let builderMode = "edit"; // "edit" | "new"
 let builderEditingCourseIndex = -1;
 let builderEditingSupabaseId = null;
 
+function addHit(el) {
+    const id = el.getAttribute('data-id');
+    const name = el.getAttribute('data-name');
+    
+    console.log("Adding pose to top:", name);
 
+    builderPoses.unshift({ 
+        id: id,
+        name: name,
+        duration: 30,
+        note: ''
+    });
+
+    const input = document.getElementById('builderSearch');
+    const resBox = document.getElementById('builderSearchResults');
+    
+    if (input) input.value = '';
+    if (resBox) resBox.style.display = 'none';
+    
+    builderRender();
+    if (input) input.focus();
+}
 
 function openEditCourse() {
    if (!currentSequence) { alert("Please select a course first."); return; }
@@ -4189,43 +4576,22 @@ function builderUpdateStats() {
 }
 
 function builderCompileSequenceText() {
-    const library = getAsanaIndex();
-    const libraryArray = Array.isArray(library) ? library : Object.values(library);
- 
+    // Strictly map over the builderPoses array to avoid DOM duplication issues
     return builderPoses.map(p => {
-       const id = String(p.id || "000").padStart(3, '0');
-       const dur = p.duration || 30;
-       const asana = libraryArray.find(a => (a.id || a.asanaNo) === id);
-       
-       let labelPart = "";
-       
-       // If Variation is selected -> Wrap Title in Brackets
-       if (p.variation) {
-           const vData = (asana && asana.variations) ? asana.variations[p.variation] : null;
-           if (vData && typeof vData === 'object' && vData.Title) {
-               labelPart = `[${vData.Title.trim()}]`; 
-           } else {
-               labelPart = `[Stage ${p.variation}]`;
-           }
-       } 
-       // If NO variation -> Wrap Base Name in Brackets
-       else if (asana) {
-           const displayName = asana.name || asana.IAST || asana.English_Name;
-           if (displayName) {
-               labelPart = `[${displayName}]`;
-           }
-       }
-       
-       // Rebuild string with pipes
-       let extraParts = [];
-       if (labelPart) extraParts.push(labelPart);
-       if (p.note) extraParts.push(p.note.trim());
-       
-       const noteStr = extraParts.length > 0 ? ` | ${extraParts.join(" | ")}` : "";
-       
-       return `${id} | ${dur}${noteStr}`;
+        const idStr = String(p.id);
+
+        if (idStr.startsWith("MACRO:")) {
+            // Save format: MACRO:Title | Reps | [Link] | Note
+            return `${idStr} | ${p.duration} | [Sequence Link] | ${p.note || ''}`;
+        }
+
+        // Standard Pose save format
+        let line = `${p.id} | ${p.duration}`;
+        if (p.variation) line += ` | [${p.variation}]`;
+        if (p.note) line += ` | ${p.note}`;
+        return line;
     }).join("\n");
- }
+}
 
 function builderGetTitle() {
    return ($("builderTitle")?.value || "").trim();
@@ -4236,6 +4602,8 @@ function builderGetCategory() {
 }
 
 async function builderSave() {
+    console.log("DB Target ID:", builderEditingSupabaseId);
+    console.log("Current User ID:", window.currentUserId);
     const title = builderGetTitle();
     if (!title) { alert("Please enter a title."); return; }
     
@@ -4300,6 +4668,44 @@ async function builderSave() {
         alert("Failed to save: " + (e.message || "Unknown error"));
     }
 }
+
+// Open the Modal and populate the searchable datalist
+document.getElementById("btnOpenLinkModal")?.addEventListener("click", () => {
+    const datalist = document.getElementById("linkSequenceList");
+    if (datalist && window.courses) {
+        // Grab all unique sequence titles
+        const allTitles = [...new Set(window.courses.map(c => c.title).filter(Boolean))].sort();
+        datalist.innerHTML = allTitles.map(t => `<option value="${t}"></option>`).join("");
+    }
+    
+    document.getElementById("linkSequenceInput").value = "";
+    document.getElementById("linkSequenceReps").value = "1";
+    document.getElementById("linkSequenceOverlay").style.display = "flex";
+});
+
+// Confirm and Add to Builder
+document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
+    const targetTitle = document.getElementById("linkSequenceInput").value.trim();
+    const reps = parseInt(document.getElementById("linkSequenceReps").value, 10) || 1;
+    
+    if (!targetTitle) return alert("Please select a sequence.");
+
+    // Add as a Macro row to the builderPoses array
+    builderPoses.unshift({
+        id: `MACRO:${targetTitle}`,
+        name: `<span class="macro-title-badge">LINK</span> ${targetTitle}`,
+        duration: reps, // We store reps in the duration column
+        variation: "",
+        note: `Repeats: ${reps}x`,
+        isMacro: true // Flag it so we can style it in the table render
+    });
+
+    document.getElementById("linkSequenceOverlay").style.display = "none";
+    
+    // Call your function that redraws the table (e.g., builderRender)
+    if (typeof builderRender === "function") builderRender();
+});
+
 (function setupBuilderSearch() {
     const input = document.getElementById("builderSearch");
     const results = document.getElementById("builderSearchResults");
@@ -4317,7 +4723,8 @@ async function builderSave() {
        results.style.width = Math.max(rect.width, 280) + "px";
     }
  
-    input.addEventListener("input", () => {
+
+        input.addEventListener("input", () => {
        clearTimeout(debounceTimer);
        debounceTimer = setTimeout(() => {
           const rawQ = input.value.trim();
@@ -4381,7 +4788,7 @@ async function builderSave() {
        
        const defaultDuration = (asana && asana.hold_data && asana.hold_data.standard) ? asana.hold_data.standard : 30;
        
-       builderPoses.push({
+       builderPoses.unshift({
           id: item.dataset.id,
           name: item.dataset.name,
           englishName: item.dataset.english,
@@ -4403,13 +4810,29 @@ async function builderSave() {
     });
  
     // Blank row helper
-    const blankBtn = document.getElementById("builderAddBlank");
-    if (blankBtn) {
-       blankBtn.addEventListener("click", () => {
-          builderPoses.push({ id: "", name: "", englishName: "", duration: 30, variation: "", note: "" });
-          builderRender();
-       });
-    }
+const blankBtn = document.getElementById("builderAddBlank");
+if (blankBtn) {
+   blankBtn.addEventListener("click", () => {
+      // 1. Add to the top of the array
+      builderPoses.unshift({ 
+          id: "", 
+          name: "", 
+          englishName: "", 
+          duration: 30, 
+          variation: "", 
+          note: "" 
+      });
+      
+      // 2. THIS IS THE MISSING PIECE: Force the UI to update
+      builderRender(); 
+      
+      // 3. Optional: Auto-focus the ID input of the new top row
+      setTimeout(() => {
+          const firstIdInput = document.querySelector('.b-id');
+          if (firstIdInput) firstIdInput.focus();
+      }, 50);
+   });
+}
  })();
 
 
@@ -4535,9 +4958,9 @@ function encodeToBase64(str) {
    ========================================================================== */
 
    window.openAsanaEditor = async function(id) {
-// console.log("openAsanaEditor() called with id:", id);
+
     const bd = $("asanaEditorBackdrop");
-// console.log("asanaEditorBackdrop element found:", bd);
+
     if (!bd) {
         console.error("asanaEditorBackdrop not found!");
         return alert("Editor HTML missing");
@@ -5025,6 +5448,8 @@ function formatCategoryName(inputCat) {
     const nextPrefix = String(maxPrefix + 1).padStart(2, '0');
     return `${nextPrefix}_${cleanInput}`;
 }
+
+
 // 4. APP STARTUP (Auth-Gated)
 // console.log("Script parsed. Attempting startup...");
 
@@ -5052,6 +5477,7 @@ function setupAuthListeners() {
             googleBtn.disabled = true;
             googleBtn.textContent = "Redirecting…";
             loginError.style.display = "none";
+            
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: "google",
                 options: { redirectTo: window.location.origin + window.location.pathname }
@@ -5085,6 +5511,7 @@ function setupAuthListeners() {
     }
 
     supabase.auth.onAuthStateChange((event, session) => {
+        
         if (session && session.user) {
             window.isGuestMode = false;
             window.currentUserId = session.user.id;

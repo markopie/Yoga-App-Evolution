@@ -1044,3 +1044,32 @@ body.modal-open {
     font-size: 1rem;
     cursor: pointer;
 }
+
+/* --- SEQUENCE BUILDER MACRO ROWS --- */
+/* Highlights the table row representing a linked sequence */
+.builder-macro-row {
+    background-color: #e3f2fd !important; /* Soft blue background */
+    border-left: 4px solid #1976d2 !important; /* Bold blue left indicator */
+}
+
+/* Make the text slightly different to indicate it's a sub-routine */
+.builder-macro-row td {
+    font-style: italic;
+    color: #0d47a1;
+}
+
+/* A neat little badge for the title */
+.macro-title-badge {
+    display: inline-block;
+    background-color: #1976d2;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 8px;
+    font-style: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+

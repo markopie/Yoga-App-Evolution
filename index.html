@@ -252,6 +252,7 @@
           autocomplete="off">
         <div id="builderSearchResults" style="display:none;position:absolute;z-index:9999;background:#fff;border:1px solid #ddd;border-radius:6px;max-height:240px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,0.12);min-width:280px;"></div>
         <button id="builderAddBlank" class="tiny" style="white-space:nowrap;">+ Blank row</button>
+        <button id="btnOpenLinkModal" type="button" class="secondary" style="margin-left: 8px;">🔗 Link Sequence</button>
       </div>
 
       <div class="modal-body" style="max-height:55vh; overflow-y:auto; padding:0;">
@@ -405,9 +406,36 @@
    <div id="focusImageWrap"></div>
  
    <button id="focusPauseBtn">PAUSE</button>
+   
   </div>
-
+  <div id="linkSequenceOverlay" class="modal-backdrop" style="display:none; z-index: 4000; align-items:center; justify-content:center;">
+    <div class="modal" style="max-width: 400px; width: 90vw; padding: 20px; border-radius: 8px; background: #fff;">
+        <h3 style="margin-top:0; color:#1976d2; display:flex; align-items:center; gap:8px;">
+            🔗 Link a Sequence
+        </h3>
+        <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">
+            Insert an entire sequence as a single repeating block. It will automatically expand during playback.
+        </p>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display:block; font-size:0.85rem; font-weight:bold; margin-bottom:4px;">Select Sequence:</label>
+            <input type="text" id="linkSequenceInput" list="linkSequenceList" placeholder="Search your sequences..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+            <datalist id="linkSequenceList"></datalist>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <label style="display:block; font-size:0.85rem; font-weight:bold; margin-bottom:4px;">Repetitions (Rounds):</label>
+            <input type="number" id="linkSequenceReps" value="1" min="1" max="50" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+        </div>
+        
+        <div style="display:flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" id="btnCancelLink" class="secondary" onclick="document.getElementById('linkSequenceOverlay').style.display='none'">Cancel</button>
+            <button type="button" id="btnConfirmLink" class="primary">Add Link</button>
+        </div>
+    </div>
+</div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="module" src="app.js"></script>
+
 </body>
 </html>
