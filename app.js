@@ -4315,23 +4315,29 @@ const durationDial = document.getElementById("durationDial");
 if (durationDial) {
     // 1. Sliding: Updates math and UI dynamically
     durationDial.addEventListener("input", () => {
+        // --- START MAGNETIC SNAP LOGIC ---
+        let val = parseInt(durationDial.value, 10);
+        // If the finger is between 45 and 55, force it to 50
+        if (val > 45 && val < 55) {
+            durationDial.value = 50;
+        }
+        // --- END MAGNETIC SNAP LOGIC ---
+
         if (typeof updateDialUI === "function") updateDialUI();
         if (currentSequence) applyDurationDial();
     });
     
-    // 2. Releasing: Just forces one final sync, NO stopping the timer!
+    // 2. Releasing: Just forces one final sync
     durationDial.addEventListener("change", () => {
         if (currentSequence) applyDurationDial();
     });
     
-    // 3. Double Click: Reset
+    // 3. Double Click: Reset (Keep for desktop users)
     durationDial.addEventListener("dblclick", () => {
         durationDial.value = 50;
         if (typeof updateDialUI === "function") updateDialUI();
         if (currentSequence) applyDurationDial();
     });
-
-
 }
 function applyDurationDial() {
     if (!currentSequence) return;
