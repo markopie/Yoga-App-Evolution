@@ -1992,20 +1992,22 @@ if (focusCounter) {
         metaContainer.innerHTML = ""; 
 
         const infoSpan = document.createElement("span");
-    infoSpan.className = "meta-text-only"; 
+        infoSpan.className = "meta-text-only"; 
 
-    // 1. Get current dynamic time from the active list
-    const currentSeconds = window.activePlaybackList[idx][1];
+        // --- THE FIX: Use the sequence duration for the display string ---
+        // currentPose[1] contains the duration defined in your sequence/macro
+        const currentSeconds = currentPose[1]; 
 
-    // 2. Get range from library
-    const hj = asana?.hold_json;
-    let rangeText = "";
-    if (hj && hj.standard) {
-        rangeText = ` (Range: ${hj.short}s - ${hj.long}s)`;
-    }
+        // Get range from library for reference
+        const hj = asana?.hold_json || asana?.hold_data;
+        let rangeText = "";
+        if (hj && hj.standard) {
+            rangeText = ` (Range: ${hj.short}s - ${hj.long}s)`;
+        }
 
-infoSpan.textContent = `ID: ${lookupId} • ${currentSeconds}s${rangeText}`;
-metaContainer.appendChild(infoSpan);
+        // Update the text content to use the dynamic currentSeconds
+        infoSpan.textContent = `ID: ${lookupId} • ${currentSeconds}s${rangeText}`;
+        metaContainer.appendChild(infoSpan);
 
         if (asana) {
             const btn = document.createElement("button");
@@ -2018,13 +2020,6 @@ metaContainer.appendChild(infoSpan);
             };
             metaContainer.appendChild(btn);
         }
-    }
-
-    if(document.getElementById("poseCounter")) {
-        const displayIdx = (currentPose && currentPose[5] !== undefined) ? currentPose[5] + 1 : idx + 1;
-        const displayTotal = currentSequence.poses ? currentSequence.poses.length : poses.length;
-        
-        document.getElementById("poseCounter").textContent = `${displayIdx} / ${displayTotal}`;
     }
 
     // 10. TIMER & IMAGE LOGIC
@@ -3284,96 +3279,6 @@ function exitBrowseDetailMode() {
 // #region 8. ADMIN & DATA LAYER
 
 
-
-
-function builderOpen(mode, seq) {
-    builderMode = mode;
-    builderPoses = [];
-    builderEditingCourseIndex = -1;
-    let targetId = seq ? (seq.supabaseId || seq.id) : null;
-
-    // Global IDs are short integers (e.g., "170"). User sequences use long UUIDs.
-    // If it's a short global ID, reset it to null so the save function knows to INSERT a new record instead of trying to UPDATE.
-    if (targetId && String(targetId).length < 30) {
-        targetId = null;
-    }
-    builderEditingSupabaseId = targetId;
-    document.body.classList.add("modal-open");
-    const titleEl = $("builderTitle");
-    const modeLabel = $("builderModeLabel");
-    const catInput = $("builderCategory");
-    const datalist = $("builderCategoryList");
-
-    if (catInput && datalist) {
-        const allCats = [...new Set(courses.map(c => c.category).filter(Boolean))].sort();
-        datalist.innerHTML = allCats.map(c => `<option value="${c}"></option>`).join("");
-
-        let tempVal = "";
-        catInput.onfocus = () => { tempVal = catInput.value; catInput.value = ""; };
-        catInput.onblur = () => { if (catInput.value === "") catInput.value = tempVal; };
-    }
-
-    if (mode === "new") {
-       if (modeLabel) modeLabel.textContent = "New Sequence";
-       if (titleEl) titleEl.value = "";
-       if (catInput) catInput.value = "";
-    } else {
-       if (!seq) return;
-       if (modeLabel) modeLabel.textContent = "Edit Sequence";
-       if (titleEl) titleEl.value = seq.title || "";
-       if (catInput) catInput.value = seq.category || "";
-       
-       const libraryArray = Object.values(asanaLibrary || {});
-       const rawPoses = (window.currentSequenceOriginalPoses && seq === currentSequence)
-           ? window.currentSequenceOriginalPoses : (seq.poses || []);
-
-       rawPoses.forEach(p => {
-          const id = String(Array.isArray(p[0]) ? p[0][0] : p[0] || "").padStart(3, '0');
-          const asana = libraryArray.find(a => String(a.id) === id);
-          
-          let rawExtras = [p[2], p[3], p[4]].filter(Boolean).join(" | ").trim();
-          let variation = "", extractedLabel = "";
- 
-          const bracketMatch = rawExtras.match(/\[(.*?)\]/);
-          if (bracketMatch) {
-              extractedLabel = bracketMatch[1].trim(); 
-              rawExtras = rawExtras.replace(bracketMatch[0], "").replace(/^[\s\|]+/, "").trim();
-          } else {
-              extractedLabel = rawExtras; rawExtras = "";
-          }
- 
-          if (asana?.variations && extractedLabel) {
-              const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
-              for (const vKey of sortedKeys) {
-                  const vData = asana.variations[vKey];
-                  const vTitle = (vData?.title || "").toLowerCase();
-                  if (extractedLabel.toLowerCase() === vTitle || new RegExp(`\\b${vKey}\\b`, 'i').test(extractedLabel)) {
-                      variation = vKey; extractedLabel = ""; break;
-                  }
-              }
-          }
- 
-          if (extractedLabel && !variation) {
-              rawExtras = (extractedLabel + (rawExtras ? " | " + rawExtras : "")).trim();
-          }
- 
-          builderPoses.push({
-             id: id,
-             name: asana ? (asana.name || displayName(asana)) : id,
-             duration: Number(p[1]) || 30,
-             variation: variation,
-             note: rawExtras
-          });
-       });
-    }
- 
-    builderRender();
-    $("editCourseBackdrop").style.display = "flex";
-    setTimeout(() => { if($("builderSearch")) $("builderSearch").focus(); }, 50);
-
-    
-}
- 
 function builderRender() {
     const tbody = document.getElementById("builderTableBody");
     if (!tbody) return;
@@ -3384,6 +3289,10 @@ function builderRender() {
  
     let totalSec = 0;
     const libraryArray = Object.values(window.asanaLibrary || {});
+    
+    // --- NEW: Category Detection ---
+    const currentCategory = (document.getElementById("builderCategory")?.value || "").toLowerCase();
+    const isFlow = currentCategory.includes("flow");
  
     builderPoses.forEach((pose, idx) => {
         const idStr = String(pose.id);
@@ -3391,61 +3300,55 @@ function builderRender() {
         const isMacro = idStr.startsWith("MACRO:");
         let asana = null;
     
-        // --- 1. TIME CALCULATION (Using Helper) ---
+        // --- 1. TIME CALCULATION (Using Helper & Override) ---
         if (isMacro) {
             const targetTitle = idStr.replace("MACRO:", "").trim();
             const subCourse = window.courses ? window.courses.find(c => c.title === targetTitle) : null;
             
             if (subCourse && subCourse.poses) {
-                const oneRoundSecs = subCourse.poses.reduce((acc, sp) => {
-                    // Use helper for poses inside the macro
-                    return acc + getEffectiveTime(sp[0], sp[1]);
-                }, 0);
+                const oneRoundSecs = subCourse.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1]), 0);
                 totalSec += (oneRoundSecs * durOrReps); 
             }
         } else {
-            // Use helper for standard pose
-            totalSec += getEffectiveTime(idStr, durOrReps);
-            
-            // Still need the 'asana' object for UI badges/variations
             const normId = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
             asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
+            
+            // IF NOT FLOW: Force library standard timing
+            const libraryStd = (asana && asana.hold_data) ? asana.hold_data.standard : 30;
+            const activeTime = isFlow ? durOrReps : libraryStd;
+    
+            totalSec += getEffectiveTime(idStr, activeTime);
         }
-
-        // --- 2. UI RENDERING ---
+    
+        // --- 2. ROW CREATION & DRAG EVENTS ---
         const tr = document.createElement("tr");
-        tr.draggable = true; // Make the row draggable
+        tr.draggable = true;
         tr.dataset.idx = idx;
+        if (isMacro) tr.className = "builder-macro-row";
+
         tr.ondragstart = (e) => {
             e.dataTransfer.setData("text/plain", idx);
             tr.style.opacity = "0.4";
         };
-        
         tr.ondragend = () => tr.style.opacity = "1";
-        
         tr.ondragover = (e) => {
             e.preventDefault();
-            tr.style.borderTop = "2px solid #007aff"; // Visual indicator
+            tr.style.borderTop = "2px solid #007aff";
         };
-        
-        tr.ondragleave = () => {
-            tr.style.borderTop = "none"; // Clear indicator
-        };
-        
+        tr.ondragleave = () => tr.style.borderTop = "none";
         tr.ondrop = (e) => {
             e.preventDefault();
-            tr.style.borderTop = "none"; // Clear indicator
+            tr.style.borderTop = "none";
             const fromIdx = parseInt(e.dataTransfer.getData("text/plain"));
             const toIdx = idx;
-            
             if (fromIdx !== toIdx) {
                 const item = builderPoses.splice(fromIdx, 1)[0];
                 builderPoses.splice(toIdx, 0, item);
                 builderRender();
             }
         };
-        if (isMacro) tr.className = "builder-macro-row";
     
+        // --- 3. UI RENDERING PREP ---
         const hasSides = asana && (asana.requires_sides || asana.requiresSides);
         const sideBadge = (!isMacro && hasSides) 
             ? `<span style="color:#2e7d32; font-size:0.7rem; font-weight:bold; margin-left:4px;">[Sides ×2]</span>` 
@@ -3464,7 +3367,21 @@ function builderRender() {
                   }).join('')}
                </select>`;
         }
+
+        // BUILD THE DURATION INPUT (Locked if not Flow/Macro)
+        const displayTime = isMacro ? durOrReps : (isFlow ? durOrReps : (asana?.hold_data?.standard || 30));
+        const isLocked = !isFlow && !isMacro;
+
+        const durInputHTML = `
+            <input type="number" class="b-dur" data-idx="${idx}" 
+                value="${displayTime}" 
+                min="1" 
+                ${isLocked ? 'readonly' : ''} 
+                style="width:60px; padding:4px; border:1px solid #ccc; text-align:center; ${isLocked ? 'background:#f0f0f0; color:#888; cursor:not-allowed;' : ''}">
+            ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : (isLocked ? '' : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
+        `;
     
+        // --- 4. INJECT HTML ---
         tr.innerHTML = `
            <td style="padding:8px; text-align:center; color:#888;">${idx + 1}</td>
            <td style="padding:8px;">
@@ -3477,40 +3394,29 @@ function builderRender() {
               </div>
            </td>
            <td style="padding:8px; text-align:center;">
-              <input type="number" class="b-dur" data-idx="${idx}" value="${pose.duration || 1}" min="1" style="width:60px; padding:4px; border:1px solid #ccc; text-align:center;">
-              ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`}
+              ${durInputHTML}
            </td>
            <td style="padding:8px;">
               <input type="text" class="b-note" data-idx="${idx}" value="${(pose.note || '').replace(/"/g, '&quot;')}" placeholder="Notes..." style="width:100%; padding:4px; border:1px solid #ccc;">
            </td>
            <td style="padding:8px; text-align:center; white-space:nowrap;">
-           <button class="tiny b-move-top" 
-           data-idx="${idx}" 
-           title="Move to Top" 
-           ${idx === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>
-       ⤒
-             </button>
-             <button class="tiny b-move-bot" 
-        data-idx="${idx}" 
-        title="Move to Bottom" 
-        ${idx === builderPoses.length - 1 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>
-    ⤓
-</button>
+              <button class="tiny b-move-top" data-idx="${idx}" title="Move to Top" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤒</button>
+              <button class="tiny b-move-bot" data-idx="${idx}" title="Move to Bottom" ${idx === builderPoses.length - 1 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤓</button>
               <button class="tiny b-move-up" data-idx="${idx}">▲</button>
               <button class="tiny b-move-dn" data-idx="${idx}">▼</button>
               <button class="tiny warn b-remove" data-idx="${idx}">✕</button>
-           </td>`; // <--- Corrected backtick and semicolon
+           </td>`;
+           
         tbody.appendChild(tr);
-        // Inside the forEach loop in builderRender, after tbody.appendChild(tr):
+
+        // Flash highlight for newly unshifted row
         if (idx === 0 && builderPoses.length > 1) {
-            tr.style.backgroundColor = "#fff9c4"; // Light yellow highlight
+            tr.style.backgroundColor = "#fff9c4"; 
             setTimeout(() => { tr.style.transition = "background 1s"; tr.style.backgroundColor = ""; }, 100);
         }
-    });
+    }); // <--- END OF THE forEach LOOP
  
-    // --- 3. LISTENERS ---
-    
-    
+    // --- 5. LISTENERS ---
     const qS = (sel) => tbody.querySelectorAll(sel);
     qS('.b-id').forEach(el => el.onchange = (e) => {
         const i = e.target.dataset.idx;
@@ -3545,26 +3451,43 @@ function builderRender() {
         }
         builderRender();
     });
+
     qS('.b-dur').forEach(el => {
         el.onchange = (e) => {
             const idx = e.target.dataset.idx;
             let val = parseInt(e.target.value);
-    
-            // Snap back to 1 if user enters 0, negative, or deletes the number
             if (isNaN(val) || val < 1) {
                 val = 1;
                 e.target.value = 1;
             }
-    
             builderPoses[idx].duration = val;
             builderRender(); 
         };
     });
+
     qS('.b-note').forEach(el => el.oninput = (e) => builderPoses[e.target.dataset.idx].note = e.target.value);
     qS('.b-move-up').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), -1));
     qS('.b-move-dn').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), 1));
     qS('.b-remove').forEach(el => el.onclick = () => removePose(parseInt(el.dataset.idx)));
   
+    qS('.b-move-top').forEach(el => el.onclick = () => {
+        const idx = parseInt(el.dataset.idx);
+        if (idx > 0) {
+            const item = builderPoses.splice(idx, 1)[0];
+            builderPoses.unshift(item);
+            builderRender();
+        }
+    });
+
+    qS('.b-move-bot').forEach(el => el.onclick = () => {
+        const idx = parseInt(el.dataset.idx);
+        if (idx < builderPoses.length - 1) {
+            const item = builderPoses.splice(idx, 1)[0];
+            builderPoses.push(item);
+            builderRender();
+        }
+    });
+
     // --- 6. STATS UPDATER (Builder Modal) ---
     const statsEl = document.getElementById("builderStats");
     if (statsEl) {
@@ -3584,39 +3507,27 @@ function builderRender() {
                     expandedPoseCount += 1;
                 }
             } else {
-                const effective = getEffectiveTime(p.id, durOrReps);
+                // FIXED: Respect the "Flow" logic for accurate totals
+                const normId = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
+                const asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
+                
+                const libraryStd = (asana && asana.hold_data) ? asana.hold_data.standard : 30;
+                const activeTime = isFlow ? durOrReps : libraryStd;
+
+                const effective = getEffectiveTime(p.id, activeTime);
                 finalTotalSecs += effective;
-                // If the time was doubled, it counts as 2 "physical" poses
-                expandedPoseCount += (effective > durOrReps) ? 2 : 1;
+                
+                expandedPoseCount += (effective > activeTime) ? 2 : 1;
             }
         });
 
         const m = Math.floor(finalTotalSecs / 60);
         const s = finalTotalSecs % 60;
-        
-        // This will now say "2 poses · 1m 20s total"
         statsEl.textContent = `${expandedPoseCount} poses · ${m}m ${s}s total (incl. reps & sides)`;
     }
-    qS('.b-move-top').forEach(el => el.onclick = () => {
-        const idx = parseInt(el.dataset.idx);
-        
-        // Only move if it's NOT already the first item
-        if (idx > 0) {
-            const item = builderPoses.splice(idx, 1)[0];
-            builderPoses.unshift(item);
-            builderRender();
-        }
-    });
-    qS('.b-move-bot').forEach(el => el.onclick = () => {
-        const idx = parseInt(el.dataset.idx);
-        if (idx < builderPoses.length - 1) {
-            const item = builderPoses.splice(idx, 1)[0];
-            builderPoses.push(item);
-            builderRender();
-        }
-    });
-    
 }
+
+
 
 
 function movePose(idx, dir) {
@@ -4565,7 +4476,99 @@ function openEditCourse() {
    if (!currentSequence) { alert("Please select a course first."); return; }
    builderOpen("edit", currentSequence);
 }
+function builderOpen(mode, seq) {
+    builderMode = mode;
+    builderPoses = [];
+    builderEditingCourseIndex = -1;
+    let targetId = seq ? (seq.supabaseId || seq.id) : null;
 
+    // Use your $ helper consistently for all elements at the start
+    const catInput = $("builderCategory"); 
+    const titleEl = $("builderTitle");
+    const modeLabel = $("builderModeLabel");
+    const datalist = $("builderCategoryList");
+
+    if (catInput) {
+        // Forces re-render to check for "Flow" on every keystroke
+        catInput.oninput = () => builderRender(); 
+    }
+
+    // Global IDs are short integers (e.g., "170"). User sequences use long UUIDs.
+    if (targetId && String(targetId).length < 30) {
+        targetId = null;
+    }
+    builderEditingSupabaseId = targetId;
+
+    document.body.classList.add("modal-open");
+
+    // Populate Category Datalist
+    if (catInput && datalist) {
+        const allCats = [...new Set(courses.map(c => c.category).filter(Boolean))].sort();
+        datalist.innerHTML = allCats.map(c => `<option value="${c}"></option>`).join("");
+
+        let tempVal = "";
+        catInput.onfocus = () => { tempVal = catInput.value; catInput.value = ""; };
+        catInput.onblur = () => { if (catInput.value === "") catInput.value = tempVal; };
+    }
+
+    if (mode === "new") {
+       if (modeLabel) modeLabel.textContent = "New Sequence";
+       if (titleEl) titleEl.value = "";
+       if (catInput) catInput.value = "";
+    } else {
+       if (!seq) return;
+       if (modeLabel) modeLabel.textContent = "Edit Sequence";
+       if (titleEl) titleEl.value = seq.title || "";
+       if (catInput) catInput.value = seq.category || "";
+       
+       const libraryArray = Object.values(asanaLibrary || {});
+       const rawPoses = (window.currentSequenceOriginalPoses && seq === currentSequence)
+           ? window.currentSequenceOriginalPoses : (seq.poses || []);
+
+       rawPoses.forEach(p => {
+          const id = String(Array.isArray(p[0]) ? p[0][0] : p[0] || "").padStart(3, '0');
+          const asana = libraryArray.find(a => String(a.id) === id);
+          
+          let rawExtras = [p[2], p[3], p[4]].filter(Boolean).join(" | ").trim();
+          let variation = "", extractedLabel = "";
+ 
+          const bracketMatch = rawExtras.match(/\[(.*?)\]/);
+          if (bracketMatch) {
+              extractedLabel = bracketMatch[1].trim(); 
+              rawExtras = rawExtras.replace(bracketMatch[0], "").replace(/^[\s\|]+/, "").trim();
+          } else {
+              extractedLabel = rawExtras; rawExtras = "";
+          }
+ 
+          if (asana?.variations && extractedLabel) {
+              const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
+              for (const vKey of sortedKeys) {
+                  const vData = asana.variations[vKey];
+                  const vTitle = (vData?.title || "").toLowerCase();
+                  if (extractedLabel.toLowerCase() === vTitle || new RegExp(`\\b${vKey}\\b`, 'i').test(extractedLabel)) {
+                      variation = vKey; extractedLabel = ""; break;
+                  }
+              }
+          }
+ 
+          if (extractedLabel && !variation) {
+              rawExtras = (extractedLabel + (rawExtras ? " | " + rawExtras : "")).trim();
+          }
+ 
+          builderPoses.push({
+             id: id,
+             name: asana ? (asana.name || displayName(asana)) : id,
+             duration: Number(p[1]) || 30,
+             variation: variation,
+             note: rawExtras
+          });
+       });
+    }
+ 
+    builderRender();
+    $("editCourseBackdrop").style.display = "flex";
+    setTimeout(() => { if($("builderSearch")) $("builderSearch").focus(); }, 50);
+}
 
 function builderUpdateStats() {
    const statsEl = $("builderStats");
@@ -4604,19 +4607,42 @@ function builderGetCategory() {
 async function builderSave() {
     console.log("DB Target ID:", builderEditingSupabaseId);
     console.log("Current User ID:", window.currentUserId);
-    const title = builderGetTitle();
-    if (!title) { alert("Please enter a title."); return; }
+    async function builderSave() {
+        // ... (Keep title, sequenceText, category extraction)
+        const title = builderGetTitle();
+        if (!title) { alert("Please enter a title."); return; }
+        
+        const sequenceText = builderCompileSequenceText();
+        const category = builderGetCategory();
+        const isFlow = category.toLowerCase().includes("flow"); // Check if it's a flow
+        
+        const libraryArray = Object.values(asanaLibrary || {});
     
-    const sequenceText = builderCompileSequenceText();
-    const category = builderGetCategory();
+        // REVISED CALCULATION: Matches the builder UI logic
+        const totalSec = builderPoses.reduce((acc, p) => {
+            const idStr = String(p.id);
+            const durOrReps = Number(p.duration) || 0;
     
-    // CORRECT TIMING LOGIC: Loop through builder poses and account for sides
-    const libraryArray = Object.values(asanaLibrary || {});
-    const totalSec = builderPoses.reduce((acc, p) => {
-        const dur = Number(p.duration) || 0;
-        const asana = libraryArray.find(a => String(a.id) === String(p.id));
-        return acc + (asana && asana.requires_sides ? dur * 2 : dur);
-    }, 0);
+            if (idStr.startsWith("MACRO:")) {
+                const targetTitle = idStr.replace("MACRO:", "").trim();
+                const sub = (window.courses || []).find(c => c.title === targetTitle);
+                if (sub && sub.poses) {
+                    const oneRound = sub.poses.reduce((accSub, sp) => accSub + getEffectiveTime(sp[0], sp[1]), 0);
+                    return acc + (oneRound * durOrReps);
+                }
+                return acc;
+            } else {
+                const asana = libraryArray.find(a => String(a.id) === String(p.id));
+                const libraryStd = (asana && asana.hold_data) ? asana.hold_data.standard : 30;
+                
+                // Override time if NOT a flow
+                const activeTime = isFlow ? durOrReps : libraryStd;
+                return acc + getEffectiveTime(p.id, activeTime);
+            }
+        }, 0);
+    
+        // ... (Keep the payload and supabase update/insert block)
+    }
 
     try {
         if (!supabase) return;
