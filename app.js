@@ -4512,44 +4512,51 @@ function builderOpen(mode, seq) {
        const rawPoses = (window.currentSequenceOriginalPoses && seq === currentSequence)
            ? window.currentSequenceOriginalPoses : (seq.poses || []);
 
-       rawPoses.forEach(p => {
-          const id = String(Array.isArray(p[0]) ? p[0][0] : p[0] || "").padStart(3, '0');
-          const asana = libraryArray.find(a => String(a.id) === id);
-          
-          let rawExtras = [p[2], p[3], p[4]].filter(Boolean).join(" | ").trim();
-          let variation = "", extractedLabel = "";
- 
-          const bracketMatch = rawExtras.match(/\[(.*?)\]/);
-          if (bracketMatch) {
-              extractedLabel = bracketMatch[1].trim(); 
-              rawExtras = rawExtras.replace(bracketMatch[0], "").replace(/^[\s\|]+/, "").trim();
-          } else {
-              extractedLabel = rawExtras; rawExtras = "";
-          }
- 
-          if (asana?.variations && extractedLabel) {
-              const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
-              for (const vKey of sortedKeys) {
-                  const vData = asana.variations[vKey];
-                  const vTitle = (vData?.title || "").toLowerCase();
-                  if (extractedLabel.toLowerCase() === vTitle || new RegExp(`\\b${vKey}\\b`, 'i').test(extractedLabel)) {
-                      variation = vKey; extractedLabel = ""; break;
-                  }
-              }
-          }
- 
-          if (extractedLabel && !variation) {
-              rawExtras = (extractedLabel + (rawExtras ? " | " + rawExtras : "")).trim();
-          }
- 
-          builderPoses.push({
-             id: id,
-             name: asana ? (asana.name || displayName(asana)) : id,
-             duration: Number(p[1]) || 30,
-             variation: variation,
-             note: rawExtras
-          });
-       });
+           rawPoses.forEach(p => {
+            const id = String(Array.isArray(p[0]) ? p[0][0] : p[0] || "").padStart(3, '0');
+            const asana = libraryArray.find(a => String(a.id) === id);
+            
+            // THE FIX: Do not include p[3] in this join! 
+            // p[3] is the variation key. p[4] already has the brackets.
+            let rawExtras = [p[2], p[4]].filter(Boolean).join(" | ").trim();
+            let variation = p[3] || ""; 
+            let extractedLabel = "";
+   
+            const bracketMatch = rawExtras.match(/\[(.*?)\]/);
+            if (bracketMatch) {
+                extractedLabel = bracketMatch[1].trim(); 
+                rawExtras = rawExtras.replace(bracketMatch[0], "").replace(/^[\s\|]+/, "").trim();
+            } else {
+                extractedLabel = rawExtras; rawExtras = "";
+            }
+   
+            // Legacy fuzzy matching (Kept intact)
+            if (!variation && asana?.variations && extractedLabel) {
+                const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
+                for (const vKey of sortedKeys) {
+                    const vData = asana.variations[vKey];
+                    const vTitle = (vData?.title || "").toLowerCase();
+                    if (extractedLabel.toLowerCase() === vTitle || new RegExp(`\\b${vKey}\\b`, 'i').test(extractedLabel)) {
+                        variation = vKey; extractedLabel = ""; break;
+                    }
+                }
+            } else if (variation && extractedLabel === variation) {
+                // If it already found the variation, clear the label so it doesn't bleed into notes
+                extractedLabel = ""; 
+            }
+   
+            if (extractedLabel && !variation) {
+                rawExtras = (extractedLabel + (rawExtras ? " | " + rawExtras : "")).trim();
+            }
+   
+            builderPoses.push({
+               id: id,
+               name: asana ? (asana.name || displayName(asana)) : id,
+               duration: Number(p[1]) || 30,
+               variation: variation,
+               note: rawExtras // This will now be completely clean
+            });
+        });
     }
  
     builderRender();
@@ -4566,20 +4573,21 @@ function builderUpdateStats() {
 }
 
 function builderCompileSequenceText() {
-    // Strictly map over the builderPoses array to avoid DOM duplication issues
     return builderPoses.map(p => {
         const idStr = String(p.id);
 
         if (idStr.startsWith("MACRO:")) {
-            // Save format: MACRO:Title | Reps | [Link] | Note
-            return `${idStr} | ${p.duration} | [Sequence Link] | ${p.note || ''}`;
+            return `${idStr} | ${p.duration} | [Sequence Link] ${p.note ? p.note : ''}`;
         }
 
-        // Standard Pose save format
-        let line = `${p.id} | ${p.duration}`;
-        if (p.variation) line += ` | [${p.variation}]`;
-        if (p.note) line += ` | ${p.note}`;
-        return line;
+        const id = String(p.id).padStart(3, '0');
+        const dur = p.duration || 30;
+        
+        // Enforces exact 3-column structure: ID | Duration | [Variation] Note
+        const varPart = p.variation ? `[${p.variation}]` : `[]`;
+        const notePart = p.note ? p.note.trim() : "";
+        
+        return `${id} | ${dur} | ${varPart} ${notePart}`.trim();
     }).join("\n");
 }
 
