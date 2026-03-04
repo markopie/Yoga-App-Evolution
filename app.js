@@ -4330,30 +4330,7 @@ if (durationDial) {
         if (typeof updateDialUI === "function") updateDialUI();
         if (currentSequence) applyDurationDial();
     });
-// --- THE MOBILE RESET FIX ---
-const resetText = document.getElementById("dialResetBtn");
-if (resetText) {
-    const performReset = (e) => {
-        e.preventDefault(); // Stop mobile "ghost clicks"
-        const dial = document.getElementById("durationDial");
-        if (!dial) return;
 
-        dial.value = 50;
-        
-        // Call the functions that already exist in your app.js
-        if (typeof updateDialUI === "function") updateDialUI();
-        if (typeof applyDurationDial === "function") applyDurationDial();
-        
-        // Refresh the pose timer if it's currently running
-        if (typeof currentSequence !== "undefined" && currentSequence && typeof setPose === "function") {
-            setPose(currentIndex);
-        }
-        console.log("Dial reset via mobile tap");
-    };
-
-    resetText.addEventListener("click", performReset);
-    resetText.addEventListener("touchend", performReset);
-}
 
 }
 function applyDurationDial() {
@@ -5690,6 +5667,48 @@ function setupAuthListeners() {
         }
     });
 }
+
+// --- NEW AUTONOMOUS RESET LISTENER ---
+// Put this at the very bottom of app.js
+(function() {
+    const attachResetListener = () => {
+        const resetText = document.getElementById("dialResetBtn");
+        if (!resetText) return;
+
+        const performReset = (e) => {
+            // Log for Chrome Console tracking
+            console.log(`[MobileReset] ${e.type} detected`);
+            
+            const dial = document.getElementById("durationDial");
+            if (!dial) return;
+
+            // Stop scrolling/zooming
+            if (e.cancelable) e.preventDefault(); 
+
+            dial.value = 50;
+
+            // Manually trigger 'input' so the existing slider logic hears the change
+            dial.dispatchEvent(new Event('input', { bubbles: true }));
+            dial.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            // Force a UI refresh if the helpers exist
+            if (typeof updateDialUI === "function") updateDialUI();
+            
+            console.log("[MobileReset] Snapped to 50");
+        };
+
+        // Use passive: false to allow e.preventDefault() on mobile
+        resetText.addEventListener("touchend", performReset, { passive: false });
+        resetText.addEventListener("click", performReset);
+    };
+
+    // Run once on load, and again if the DOM changes (in case it's in a modal)
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", attachResetListener);
+    } else {
+        attachResetListener();
+    }
+})();
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupAuthListeners);
