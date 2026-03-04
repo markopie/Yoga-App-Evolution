@@ -153,7 +153,10 @@
               <input type="range" id="durationDial" min="0" max="100" step="1" value="50">
               <div id="durationDialLabels">
                 <span>Shortest</span>
-                <span id="durationDialDefaultMark">Default</span>
+                <span onclick="dialReset()" 
+                style="cursor:pointer; padding: 10px; margin: -10px; display: inline-block;">
+                Default
+                </span>
                 <span>Longest</span>
               </div>
             </div>

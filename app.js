@@ -1469,6 +1469,30 @@ function getExpandedPoses(sequence) {
     running = true;
     if (typeof enableWakeLock === "function") enableWakeLock();
 
+    // --- 🚀 THE AUDIO FIX: Unlock Browser Autoplay on Click ---
+    try {
+        const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
+            ? window.activePlaybackList : (currentSequence.poses || []);
+            
+        if (poses[currentIndex]) {
+            const rawId = Array.isArray(poses[currentIndex][0]) ? poses[currentIndex][0][0] : poses[currentIndex][0];
+            const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(rawId)) : null;
+            
+            if (asana) {
+                // If we are at the very beginning of the pose, announce it!
+                if (remaining === currentPoseSeconds) {
+                    playAsanaAudio(asana, poses[currentIndex][4] || "");
+                } else {
+                    // If resuming mid-pose, play a silent file just to satisfy the browser's strict audio rules
+                    new Audio("data:audio/mp3;base64,//MkxAAQ").play().catch(()=>{});
+                }
+            }
+        }
+    } catch(e) {
+        console.warn("Audio unlock failed", e);
+    }
+    // -----------------------------------------------------------
+
     // --- 1. UI Setup ---
     const overlay = document.getElementById("focusOverlay");
     if (overlay) overlay.style.display = "flex";
@@ -1480,8 +1504,6 @@ function getExpandedPoses(sequence) {
     if (startBtn) startBtn.textContent = "Pause"; // The main screen button becomes 'Pause'
 
     // --- 2. ORIGINAL PAUSE UX ---
-    // Clicking pause on the overlay simply stops the clock and hides the overlay,
-    // returning the user to the main screen. State is preserved automatically!
     const pauseBtn = document.getElementById("focusPauseBtn");
     if (pauseBtn) {
         pauseBtn.onclick = () => {
