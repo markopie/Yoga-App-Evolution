@@ -3553,40 +3553,120 @@ function setupBuilderKeyboardSearch() {
     const resBox = document.getElementById('builderSearchResults');
     let selectedIndex = -1;
 
-    
+    input.addEventListener('keydown', async (e) => {
+        // We only care about the Enter key for these automations
+        if (e.key !== "Enter") return;
 
-    input.addEventListener('keydown', (e) => {
+        const rawVal = input.value.trim();
+        if (!rawVal) return;
 
-        if (getComputedStyle(resBox).display === 'none') return;
+        // --- 1. MULTI-COURSE COMMAND DETECTION (Title ; Category ; IDs) ---
+        if (rawVal.includes(';')) {
+            e.preventDefault();
+            const parts = rawVal.split(';').map(p => p.trim());
+            
+            if (parts.length < 3) {
+                alert("Format error! Use: Title ; Category ; IDs (separated by commas)");
+                return;
+            }
 
-        if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter") {
+            const title = parts[0];
+            const category = parts[1];
+            const idsStr = parts[2];
+            const idArray = idsStr.split(',').map(s => s.trim().padStart(3, '0')).filter(id => id !== "000");
 
+            if (confirm(`Detected New Course Request:\n\nTitle: ${title}\nCategory: ${category}\nPoses: ${idArray.length}\n\nDo you want to save this directly to the database?`)) {
+                try {
+                    // THE FIX: Adding a third empty column to match existing format
+                    const sequenceLines = idArray.map(id => {
+                        const asana = asanaLibrary[id];
+                        const duration = asana?.hold_data?.standard || 30;
+                        
+                        // We add a pipe and empty brackets at the end: "033 | 30 | []"
+                        // This ensures 3 columns exist, but the "Note" is empty.
+                        return `${id} | ${duration} | []`; 
+                    });
+
+                    const payload = {
+                        title: title,
+                        category: category,
+                        sequence_text: sequenceLines.join('\n'),
+                        pose_count: idArray.length,
+                        updated_at: new Date().toISOString(),
+                        user_id: window.currentUserId
+                    };
+
+                    const { error } = await supabase.from('user_sequences').insert([payload]);
+                    if (error) throw error;
+
+                    alert(`✓ "${title}" added to database!`);
+                    input.value = "";
+                    await loadCourses(); 
+                } catch (err) {
+                    alert("Failed to save: " + err.message);
+                }
+            }
+            return; // Exit after processing command
+        }
+
+        // --- 2. BULK ADD TO EXISTING BUILDER (ID, ID, ID) ---
+        if (rawVal.includes(',')) {
+            e.preventDefault();
+            
+            const newPoses = rawVal.split(',')
+                .map(s => s.trim().padStart(3, '0'))
+                .filter(id => id !== "000" && id.length > 0 && asanaLibrary[id])
+                .map(id => {
+                    const asana = asanaLibrary[id];
+                    return {
+                        id: id,
+                        name: displayName(asana),
+                        duration: (asana.hold_data && asana.hold_data.standard) ? asana.hold_data.standard : 30,
+                        note: ""
+                    };
+                });
+
+            if (newPoses.length > 0) {
+                // FIXED: Adding to the BOTTOM to stay consistent with single adds
+                builderPoses = [...builderPoses, ...newPoses];
+                
+                builderRender();
+                input.value = "";
+                if (resBox) resBox.style.display = 'none';
+                console.log(`✅ Bulk added ${newPoses.length} poses to the bottom.`);
+            }
+            return; // Exit after processing bulk add
+        }
+
+        // --- 3. SINGLE SEARCH SELECTION LOGIC ---
+        if (resBox && getComputedStyle(resBox).display !== 'none') {
             const items = resBox.querySelectorAll('.b-search-item');
-            console.log("Items now:", items.length);
-
-            if (!items.length) return;
-
-            if (e.key === "ArrowDown") {
+            if (items.length > 0) {
                 e.preventDefault();
-                selectedIndex = (selectedIndex + 1) % items.length;
-                updateSelectionUI(items);
-            } 
-            else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                selectedIndex = (selectedIndex - 1 + items.length) % items.length;
-                updateSelectionUI(items);
-            } 
-            else if (e.key === "Enter") {
-                e.preventDefault();
-                const target = selectedIndex > -1
-                    ? items[selectedIndex]
-                    : (items.length === 1 ? items[0] : null);
-                if (target) addHit(target);
+                const target = selectedIndex > -1 ? items[selectedIndex] : (items.length === 1 ? items[0] : null);
+                if (target) addHit(target); // addHit now pushes to the bottom per our earlier fix
             }
         }
     });
 
-    // 🔹 ADD THIS BACK
+    // Separated the search selection navigation for cleaner logic
+    input.addEventListener('keydown', (e) => {
+        if (resBox && getComputedStyle(resBox).display !== 'none') {
+            if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                const items = resBox.querySelectorAll('.b-search-item');
+                if (!items.length) return;
+                e.preventDefault();
+
+                if (e.key === "ArrowDown") {
+                    selectedIndex = (selectedIndex + 1) % items.length;
+                } else {
+                    selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+                }
+                updateSelectionUI(items);
+            }
+        }
+    });
+
     function updateSelectionUI(items) {
         items.forEach((item, i) => {
             if (i === selectedIndex) {
@@ -3599,8 +3679,6 @@ function setupBuilderKeyboardSearch() {
             }
         });
     }
-
-    
 }
 
 
@@ -4453,9 +4531,11 @@ function addHit(el) {
     const id = el.getAttribute('data-id');
     const name = el.getAttribute('data-name');
     
-    console.log("Adding pose to top:", name);
+    // Change console log to reflect reality
+    console.log("Adding pose to bottom:", name);
 
-    builderPoses.unshift({ 
+    // THE FIX: Change unshift to push
+    builderPoses.push({ 
         id: id,
         name: name,
         duration: 30,
@@ -4607,43 +4687,39 @@ function builderGetCategory() {
 async function builderSave() {
     console.log("DB Target ID:", builderEditingSupabaseId);
     console.log("Current User ID:", window.currentUserId);
-    async function builderSave() {
-        // ... (Keep title, sequenceText, category extraction)
-        const title = builderGetTitle();
-        if (!title) { alert("Please enter a title."); return; }
-        
-        const sequenceText = builderCompileSequenceText();
-        const category = builderGetCategory();
-        const isFlow = category.toLowerCase().includes("flow"); // Check if it's a flow
-        
-        const libraryArray = Object.values(asanaLibrary || {});
-    
-        // REVISED CALCULATION: Matches the builder UI logic
-        const totalSec = builderPoses.reduce((acc, p) => {
-            const idStr = String(p.id);
-            const durOrReps = Number(p.duration) || 0;
-    
-            if (idStr.startsWith("MACRO:")) {
-                const targetTitle = idStr.replace("MACRO:", "").trim();
-                const sub = (window.courses || []).find(c => c.title === targetTitle);
-                if (sub && sub.poses) {
-                    const oneRound = sub.poses.reduce((accSub, sp) => accSub + getEffectiveTime(sp[0], sp[1]), 0);
-                    return acc + (oneRound * durOrReps);
-                }
-                return acc;
-            } else {
-                const asana = libraryArray.find(a => String(a.id) === String(p.id));
-                const libraryStd = (asana && asana.hold_data) ? asana.hold_data.standard : 30;
-                
-                // Override time if NOT a flow
-                const activeTime = isFlow ? durOrReps : libraryStd;
-                return acc + getEffectiveTime(p.id, activeTime);
-            }
-        }, 0);
-    
-        // ... (Keep the payload and supabase update/insert block)
-    }
 
+    // 1. Extract and Validate Data
+    const title = builderGetTitle();
+    if (!title) { alert("Please enter a title."); return; }
+    
+    const sequenceText = builderCompileSequenceText();
+    const category = builderGetCategory();
+    const isFlow = category.toLowerCase().includes("flow"); 
+    
+    const libraryArray = Object.values(asanaLibrary || {});
+
+    // 2. Calculate Total Time
+    const totalSec = builderPoses.reduce((acc, p) => {
+        const idStr = String(p.id);
+        const durOrReps = Number(p.duration) || 0;
+
+        if (idStr.startsWith("MACRO:")) {
+            const targetTitle = idStr.replace("MACRO:", "").trim();
+            const sub = (window.courses || []).find(c => c.title === targetTitle);
+            if (sub && sub.poses) {
+                const oneRound = sub.poses.reduce((accSub, sp) => accSub + getEffectiveTime(sp[0], sp[1]), 0);
+                return acc + (oneRound * durOrReps);
+            }
+            return acc;
+        } else {
+            const asana = libraryArray.find(a => String(a.id) === String(p.id));
+            const libraryStd = (asana && asana.hold_data) ? asana.hold_data.standard : 30;
+            const activeTime = isFlow ? durOrReps : libraryStd;
+            return acc + getEffectiveTime(p.id, activeTime);
+        }
+    }, 0);
+
+    // 3. Database Operation
     try {
         if (!supabase) return;
         let result;
@@ -4658,12 +4734,14 @@ async function builderSave() {
         };
 
         if (builderEditingSupabaseId) {
+            // Update existing
             result = await supabase.from('user_sequences')
                 .update(payload)
                 .eq('id', builderEditingSupabaseId)
                 .select();
             if (result.error) throw result.error;
         } else {
+            // Insert new
             result = await supabase.from('user_sequences').insert([{
                 ...payload,
                 user_id: window.currentUserId
@@ -4671,22 +4749,19 @@ async function builderSave() {
             if (result.error) throw result.error;
         }
 
-        // REFRESH DATA
+        // 4. UI Refresh
         await loadCourses(); 
         
-        // Update the current selection to the saved one
-        const sel = $("sequenceSelect");
+        const sel = document.getElementById("sequenceSelect");
         if (sel) {
-            // Find the index of the newly saved sequence in the refreshed array
             const newIdx = courses.findIndex(c => c.title === title);
             if (newIdx !== -1) {
                 sel.value = String(newIdx);
-                // Trigger change so the main UI updates with new poses/times
                 sel.dispatchEvent(new Event('change'));
             }
         }
 
-        $("editCourseBackdrop").style.display = "none";
+        document.getElementById("editCourseBackdrop").style.display = "none";
         alert(`"${title}" saved successfully!`);
 
     } catch(e) {
@@ -4750,7 +4825,45 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
     }
  
 
-        input.addEventListener("input", () => {
+    input.addEventListener("input", () => {
+        const rawVal = input.value.trim();
+    
+        // 🚀 BULK ADD DETECTION
+        // If the input contains a comma, we assume the user is bulk-adding IDs
+        if (rawVal.includes(',')) {
+            const idParts = rawVal.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            
+            // Only trigger bulk add if they've finished typing at least one ID
+            // We look for a trailing comma or a multi-ID list
+            const lastChar = rawVal.slice(-1);
+            if (lastChar !== ',') {
+                // Optional: You could wait for 'Enter' for bulk, or just add them as they go.
+                // Let's make it add only when they hit 'Enter' or if they paste a whole list.
+                return; 
+            }
+    
+            // Process all IDs except the very last one (if it's still being typed)
+            const completedIds = idParts;
+            
+            completedIds.forEach(id => {
+                const cleanId = id.padStart(3, '0');
+                const asana = asanaLibrary[cleanId];
+                
+                if (asana) {
+                    builderPoses.push({
+                        id: cleanId,
+                        name: displayName(asana),
+                        duration: (asana.hold_data && asana.hold_data.standard) ? asana.hold_data.standard : 30,
+                        note: ""
+                    });
+                }
+            });
+    
+            builderRender();
+            input.value = ""; // Clear input after bulk adding
+            results.style.display = "none";
+            return;
+        }
        clearTimeout(debounceTimer);
        debounceTimer = setTimeout(() => {
           const rawQ = input.value.trim();
@@ -4814,7 +4927,7 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
        
        const defaultDuration = (asana && asana.hold_data && asana.hold_data.standard) ? asana.hold_data.standard : 30;
        
-       builderPoses.unshift({
+       builderPoses.push({
           id: item.dataset.id,
           name: item.dataset.name,
           englishName: item.dataset.english,
@@ -4840,7 +4953,7 @@ const blankBtn = document.getElementById("builderAddBlank");
 if (blankBtn) {
    blankBtn.addEventListener("click", () => {
       // 1. Add to the top of the array
-      builderPoses.unshift({ 
+      builderPoses.push({ 
           id: "", 
           name: "", 
           englishName: "", 
