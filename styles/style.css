@@ -1073,3 +1073,19 @@ body.modal-open {
     letter-spacing: 0.5px;
 }
 
+#builderSearch {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    line-height: 1.4;
+    transition: height 0.2s ease;
+}
+
+/* Make it look like a search bar when it's just one line */
+#builderSearch:focus {
+    outline: none;
+    border-color: #007aff;
+    box-shadow: 0 0 0 2px rgba(0,122,255,0.2);
+}

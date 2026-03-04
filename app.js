@@ -3544,142 +3544,49 @@ function removePose(idx) {
 
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    setupBuilderKeyboardSearch();
-});
 
-function setupBuilderKeyboardSearch() {
-    const input = document.getElementById('builderSearch');
-    const resBox = document.getElementById('builderSearchResults');
-    let selectedIndex = -1;
 
-    input.addEventListener('keydown', async (e) => {
-        // We only care about the Enter key for these automations
-        if (e.key !== "Enter") return;
+// 1. HELPER FUNCTION: Handles the actual Supabase injection
+async function processSemicolonCommand(commandString) {
+    const parts = commandString.split(';').map(p => p.trim());
+    if (parts.length < 3) return;
 
-        const rawVal = input.value.trim();
-        if (!rawVal) return;
-
-        // --- 1. MULTI-COURSE COMMAND DETECTION (Title ; Category ; IDs) ---
-        if (rawVal.includes(';')) {
-            e.preventDefault();
-            const parts = rawVal.split(';').map(p => p.trim());
-            
-            if (parts.length < 3) {
-                alert("Format error! Use: Title ; Category ; IDs (separated by commas)");
-                return;
-            }
-
-            const title = parts[0];
-            const category = parts[1];
-            const idsStr = parts[2];
-            const idArray = idsStr.split(',').map(s => s.trim().padStart(3, '0')).filter(id => id !== "000");
-
-            if (confirm(`Detected New Course Request:\n\nTitle: ${title}\nCategory: ${category}\nPoses: ${idArray.length}\n\nDo you want to save this directly to the database?`)) {
-                try {
-                    // THE FIX: Adding a third empty column to match existing format
-                    const sequenceLines = idArray.map(id => {
-                        const asana = asanaLibrary[id];
-                        const duration = asana?.hold_data?.standard || 30;
-                        
-                        // We add a pipe and empty brackets at the end: "033 | 30 | []"
-                        // This ensures 3 columns exist, but the "Note" is empty.
-                        return `${id} | ${duration} | []`; 
-                    });
-
-                    const payload = {
-                        title: title,
-                        category: category,
-                        sequence_text: sequenceLines.join('\n'),
-                        pose_count: idArray.length,
-                        updated_at: new Date().toISOString(),
-                        user_id: window.currentUserId
-                    };
-
-                    const { error } = await supabase.from('user_sequences').insert([payload]);
-                    if (error) throw error;
-
-                    alert(`✓ "${title}" added to database!`);
-                    input.value = "";
-                    await loadCourses(); 
-                } catch (err) {
-                    alert("Failed to save: " + err.message);
-                }
-            }
-            return; // Exit after processing command
-        }
-
-        // --- 2. BULK ADD TO EXISTING BUILDER (ID, ID, ID) ---
-        if (rawVal.includes(',')) {
-            e.preventDefault();
-            
-            const newPoses = rawVal.split(',')
-                .map(s => s.trim().padStart(3, '0'))
-                .filter(id => id !== "000" && id.length > 0 && asanaLibrary[id])
-                .map(id => {
-                    const asana = asanaLibrary[id];
-                    return {
-                        id: id,
-                        name: displayName(asana),
-                        duration: (asana.hold_data && asana.hold_data.standard) ? asana.hold_data.standard : 30,
-                        note: ""
-                    };
-                });
-
-            if (newPoses.length > 0) {
-                // FIXED: Adding to the BOTTOM to stay consistent with single adds
-                builderPoses = [...builderPoses, ...newPoses];
-                
-                builderRender();
-                input.value = "";
-                if (resBox) resBox.style.display = 'none';
-                console.log(`✅ Bulk added ${newPoses.length} poses to the bottom.`);
-            }
-            return; // Exit after processing bulk add
-        }
-
-        // --- 3. SINGLE SEARCH SELECTION LOGIC ---
-        if (resBox && getComputedStyle(resBox).display !== 'none') {
-            const items = resBox.querySelectorAll('.b-search-item');
-            if (items.length > 0) {
-                e.preventDefault();
-                const target = selectedIndex > -1 ? items[selectedIndex] : (items.length === 1 ? items[0] : null);
-                if (target) addHit(target); // addHit now pushes to the bottom per our earlier fix
-            }
-        }
+    const [title, category, idsStr] = parts;
+    
+    // Expand ranges (001-005) if any, then split by comma
+    const expandedIds = idsStr.replace(/(\d+)\s*-\s*(\d+)/g, (m, start, end) => {
+        let r = [];
+        for (let i = parseInt(start); i <= parseInt(end); i++) r.push(String(i).padStart(3, '0'));
+        return r.join(',');
     });
 
-    // Separated the search selection navigation for cleaner logic
-    input.addEventListener('keydown', (e) => {
-        if (resBox && getComputedStyle(resBox).display !== 'none') {
-            if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                const items = resBox.querySelectorAll('.b-search-item');
-                if (!items.length) return;
-                e.preventDefault();
+    const idArray = expandedIds.split(',')
+        .map(s => s.trim().padStart(3, '0'))
+        .filter(id => id !== "000" && asanaLibrary[id]);
 
-                if (e.key === "ArrowDown") {
-                    selectedIndex = (selectedIndex + 1) % items.length;
-                } else {
-                    selectedIndex = (selectedIndex - 1 + items.length) % items.length;
-                }
-                updateSelectionUI(items);
-            }
-        }
-    });
+    // Format: ID | Duration | [] (Matches existing DB format with empty notes)
+    const sequenceText = idArray.map(id => {
+        const a = asanaLibrary[id];
+        const duration = a?.hold_data?.standard || 30;
+        return `${id} | ${duration} | []`; 
+    }).join('\n');
 
-    function updateSelectionUI(items) {
-        items.forEach((item, i) => {
-            if (i === selectedIndex) {
-                item.style.backgroundColor = "#007aff";
-                item.style.color = "white";
-                item.scrollIntoView({ block: 'nearest' });
-            } else {
-                item.style.backgroundColor = "white";
-                item.style.color = "black";
-            }
-        });
+    const payload = {
+        title: title,
+        category: category,
+        sequence_text: sequenceText,
+        pose_count: idArray.length,
+        updated_at: new Date().toISOString(),
+        user_id: window.currentUserId
+    };
+
+    const { error } = await supabase.from('user_sequences').insert([payload]);
+    if (error) {
+        console.error(`❌ Error saving ${title}:`, error.message);
+        throw error; // Pass it up to the main try/catch
     }
 }
+
 
 
 
@@ -4918,6 +4825,66 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
        }, 150); // Slightly longer debounce for better performance
     });
  
+    // Handle Enter key for Batch Posing and Direct-to-DB commands
+    input.addEventListener("keydown", async (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            const fullVal = input.value;
+            const trimmedVal = fullVal.trim();
+            if (!trimmedVal) return;
+
+            // --- A. BATCH/SINGLE SEMICOLON COMMANDS ---
+            if (trimmedVal.includes(';')) {
+                e.preventDefault();
+                const lines = fullVal.split('\n').map(l => l.trim()).filter(l => l.includes(';'));
+
+                if (lines.length > 1) {
+                    if (confirm(`Batch Mode: Detected ${lines.length} sequences. Create all now?`)) {
+                        try {
+                            for (const line of lines) {
+                                await processSemicolonCommand(line);
+                            }
+                            alert(`✓ Successfully processed ${lines.length} sequences!`);
+                            input.value = "";
+                            await loadCourses();
+                        } catch (err) {
+                            alert("Batch failed mid-way: " + err.message);
+                        }
+                    }
+                } else {
+                    if (confirm(`Save "${trimmedVal.split(';')[0]}" to database?`)) {
+                        try {
+                            await processSemicolonCommand(trimmedVal);
+                            alert("✓ Sequence added!");
+                            input.value = "";
+                            await loadCourses();
+                        } catch (err) {
+                            alert("Save failed: " + err.message);
+                        }
+                    }
+                }
+                return;
+            }
+
+            // --- B. BULK ADD POSES (If just IDs and commas, no semicolons) ---
+            if (trimmedVal.includes(',') && !trimmedVal.includes(';')) {
+                e.preventDefault();
+                const idParts = trimmedVal.split(',').map(s => s.trim().padStart(3, '0')).filter(id => id !== "000" && asanaLibrary[id]);
+                
+                idParts.forEach(id => {
+                    const asana = asanaLibrary[id];
+                    builderPoses.push({
+                        id: id,
+                        duration: asana?.hold_data?.standard || 30
+                    });
+                });
+
+                builderRender();
+                input.value = "";
+                results.style.display = "none";
+            }
+        }
+    });
+
     // Handle selection
     results.addEventListener("click", e => {
        const item = e.target.closest(".b-search-item");
