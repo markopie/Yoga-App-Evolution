@@ -20,7 +20,7 @@ import {
     LOCAL_SEQ_KEY,
 } from "./src/config/appConfig.js";
 import { supabase } from "./src/services/supabaseClient.js";
-import { getSystemCourses, getGlobalAsanas } from "./src/services/dataAdapter.js";
+import { getFullCourseList, getFullAsanaLibrary } from "./src/services/dataAdapter.js";
 import { loadJSON } from "./src/services/http.js";
 import { $, normaliseText, safeListen } from "./src/utils/dom.js";
 import { parseHoldTimes, buildHoldString, parseSequenceText } from "./src/utils/parsing.js";
@@ -529,46 +529,12 @@ function resolveId(id) {
 
 window.loadCourses = async function() {
     if (!supabase) return;
-
     try {
-        const rawAccumulator = [];
-
-        // 1. System Courses
-        const systemCourses = await getSystemCourses();
-        rawAccumulator.push(...systemCourses);
-
-        // 2. User Sequences
-        const { data: userSeqs } = await supabase.from('user_sequences').select('*');
-        if (userSeqs) {
-            userSeqs.forEach(seq => {
-                const isMine = window.currentUserId && seq.user_id === window.currentUserId;
-                if (!seq.title || !isMine) return;
-
-                const poses = parseSequenceText(seq.sequence_text);
-                if (poses && poses.length > 0) {
-                    rawAccumulator.push({
-                        title: seq.title.trim(),
-                        category: (seq.category || 'My Sequences').trim(),
-                        poses, isUserSequence: true, supabaseId: seq.id
-                    });
-                }
-            });
-        }
-
-        // 3. Deduplicate using Composite Key
-        const finalMap = new Map();
-        rawAccumulator.forEach(item => {
-            const compositeKey = `${item.category.toLowerCase()} | ${item.title.toLowerCase()}`;
-            finalMap.set(compositeKey, item);
-        });
-
-        // 4. Final Sort and Assign
-        const deduplicated = Array.from(finalMap.values()).sort((a, b) => {
-            const catSort = a.category.localeCompare(b.category, undefined, { numeric: true });
-            return catSort !== 0 ? catSort : a.title.localeCompare(b.title, undefined, { numeric: true });
-        });
-
+        const deduplicated = await getFullCourseList(window.currentUserId);
+        
         window.courses = deduplicated;
+        courses = deduplicated;
+        sequences = deduplicated;
         courses = deduplicated;
         sequences = deduplicated;
 
@@ -599,61 +565,8 @@ async function loadAsanaLibrary() {
         console.error("Supabase client not initialized");
         return {};
     }
-
     try {
-        // 1. Load Global Asanas
-        const normalized = await getGlobalAsanas();
-
-        // 2. Load User Asanas and OVERWRITE globals
-try {
-    // IMPORTANT: Ensure your .select('*') or .select('..., hold_json') includes the new field
-    const { data: userAsanasData } = await supabase.from('user_asanas').select('*');
-    
-    if (userAsanasData) {
-        userAsanasData.forEach(userRow => {
-            const key = String(userRow.id).trim().replace(/^0+/, '').padStart(3, '0');
-            
-            if (normalized[key]) {
-                // Use the universal normalizer to update the object
-                normalized[key] = normalizeAsanaRow(userRow, normalized[key]);
-                normalized[key].isCustom = true; 
-            }
-        });
-    }
-} catch (err) { console.error("Error loading user asanas:", err); }
-
-        // 3. Load All Stages (Global + User)
-        const { data: stagesData } = await supabase.from('stages').select('*');
-        const { data: userStagesData } = await supabase.from('user_stages').select('*');
-        
-        let allStagesData = stagesData ? [...stagesData] : [];
-        if (userStagesData) allStagesData = allStagesData.concat(userStagesData);
-
-        allStagesData.forEach((stage) => {
-            let parentIdStr = stage.asana_id ?? (Array.isArray(stage.parent_id) ? stage.parent_id[0] : stage.parent_id) ?? null;
-            if (!parentIdStr) return;
-
-            const numPart = String(parentIdStr).match(/^(\d+)/);
-            if (!numPart) return;
-            const parentKey = numPart[1].replace(/^0+/, '').padStart(3, '0') + String(parentIdStr).replace(/^\d+/, '');
-            
-            if (!normalized[parentKey]) return;
-
-            const stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
-            if (!stageKey) return;
-
-            const holdStr = stage.Hold ?? stage.hold ?? '';
-            
-            // User stages naturally overwrite global stages here because they were concatenated last
-            normalized[parentKey].variations[stageKey] = {
-                id: stage.id ?? '',
-                technique: stage.Full_Technique ?? stage.full_technique ?? '',
-                full_technique: stage.Full_Technique ?? stage.full_technique ?? '',
-                shorthand: stage.Shorthand ?? stage.shorthand ?? '',
-                title: stage.Title ?? stage.title ?? `Stage ${stageKey}`,
-                hold: holdStr,
-                hold_data: parseHoldTimes(holdStr),
-                isCustom: !!stage.user_id 
+        const normalized = await getFullAsanaLibrary(); 
             };
         });
 
