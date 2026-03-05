@@ -42,7 +42,6 @@ window.asanaLibrary = asanaLibrary; // 👈 Add this line
 let plateGroups = {};   // "18" -> ["18","19"] (optional)
 
 // Admin Overrides
-let imageOverrides = {};
 let audioOverrides = {}; 
 let serverAudioFiles = []; // Holds the list of files on server
 let serverImageFiles = [];
@@ -257,18 +256,7 @@ function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
 
     // 3. Override Check
     let overrideSrc = null;
-    if (typeof audioOverrides !== 'undefined') {
-        const norm = (s) => String(s || "").trim();
-        const mainName = (asana.english || asana.name || asana['Yogasana Name'] || "").trim();
-        const variation = (asana.variation || asana['Variation'] || "").trim();
-        const specificKey = variation ? `${mainName} ${variation}` : mainName;
-
-        if (specificKey && audioOverrides[norm(specificKey)]) {
-            overrideSrc = audioOverrides[norm(specificKey)];
-        } else if (idStr && audioOverrides[idStr]) {
-            overrideSrc = audioOverrides[idStr];
         }
-    }
 
     if (overrideSrc) {
 // console.log(`[Audio Debug] Using Override: ${overrideSrc}`);
@@ -535,8 +523,14 @@ window.loadCourses = async function() {
         window.courses = deduplicated;
         courses = deduplicated;
         sequences = deduplicated;
+    } catch (e) {
+        console.error('Load courses failed:', e);
+    }
         courses = deduplicated;
         sequences = deduplicated;
+    } catch (e) {
+        console.error('Load courses failed:', e);
+    }
 
         if (typeof renderSequenceDropdown === "function") renderSequenceDropdown(); 
     } catch (e) {
@@ -646,8 +640,7 @@ function parsePlates(plateStr) {
 
 async function buildImageIndexes() {
     // Now calls loadJSON correctly with MANIFEST_URL
-    const manifest = await loadJSON(MANIFEST_URL, {});
-    
+        
     // Reset global map
     window.asanaToUrls = {}; 
 
@@ -681,12 +674,7 @@ function smartUrlsForPoseId(idField) {
     if (typeof normalizePlate === 'function') id = normalizePlate(id);
 
     // 1. Check Overrides
-    if (typeof imageOverrides !== 'undefined' && imageOverrides[id]) {
-        let ov = imageOverrides[id];
-        if (!ov.startsWith("http")) return [`https://arrowroad.com.au/yoga/images/${ov}`];
-        return [ov];
-    }
-
+    
     // 2. Check Index
     if (window.asanaToUrls && window.asanaToUrls[id]) {
         return window.asanaToUrls[id];
@@ -716,14 +704,7 @@ async function setupHistory() {
     try {
         // FIX: Only fetch history here. Use the history URL.
         // We use a timestamp to prevent caching old data.
-        const res = await fetch("history.json?t=" + Date.now()); 
-        if (res.ok) {
-            window.completionHistory = await res.json();
-// console.log(`History Loaded: ${Object.keys(window.completionHistory).length} sequences`);
-        } else {
-            window.completionHistory = {};
-        }
-    } catch (e) {
+            } catch (e) {
 // console.warn("History not found (starting fresh)");
         window.completionHistory = {};
     }
@@ -1061,8 +1042,7 @@ function showResumePrompt(state) {
    ========================================================================== */
    async function loadManifestAndPopulateLists() {
 // console.log("Fetching manifest from:", MANIFEST_URL); // Debug 1
-    const manifest = await loadJSON(MANIFEST_URL, null);
-
+    
     if (!manifest) {
 // console.warn("❌ Manifest failed to load (404 or Invalid JSON)");
         return;
@@ -3108,10 +3088,7 @@ async function fetchAudioOverrides() {
 
 async function fetchImageOverrides() {
     try {
-        const res = await fetch("image_overrides.json", { cache: "no-store" });
-        if (res.ok) imageOverrides = await res.json();
-    } catch (e) { imageOverrides = {}; }
-}
+        }
 
 /* ==========================================================================
    DATA APPLICATION (APPLY LEGACY OVERRIDES)
