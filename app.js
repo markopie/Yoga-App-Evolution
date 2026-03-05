@@ -3,34 +3,27 @@
    APP CONFIGURATION & CONSTANTS
    ========================================================================== */
 
-// 1. Data Sources (GitHub Raw URLs)
-const BASE_RAW_URL = "https://raw.githubusercontent.com/markopie/Yoga-App-Evolution/main/";
-const COURSES_URL = `${BASE_RAW_URL}courses.json`;
-const MANIFEST_URL = `${BASE_RAW_URL}manifest.json`;
-const ASANA_LIBRARY_URL = `${BASE_RAW_URL}asana_library.json`;
-const LIBRARY_URL = ASANA_LIBRARY_URL;
+import {
+    COURSES_URL,
+    MANIFEST_URL,
+    ASANA_LIBRARY_URL,
+    LIBRARY_URL,
+    DESCRIPTIONS_OVERRIDE_URL,
+    CATEGORY_OVERRIDE_URL,
+    IMAGE_OVERRIDE_URL,
+    AUDIO_OVERRIDE_URL,
+    ID_ALIASES_URL,
+    IMAGES_BASE,
+    AUDIO_BASE,
+    IMAGES_BASE_URL,
+    COMPLETION_LOG_URL,
+    LOCAL_SEQ_KEY,
+} from "./src/config/appConfig.js";
+import { supabase } from "./src/services/supabaseClient.js";
+import { loadJSON } from "./src/services/http.js";
+import { $, normaliseText, safeListen } from "./src/utils/dom.js";
+import { parseHoldTimes, buildHoldString, parseSequenceText } from "./src/utils/parsing.js";
 
-// Overrides
-const DESCRIPTIONS_OVERRIDE_URL = `${BASE_RAW_URL}descriptions_override.json`;
-const CATEGORY_OVERRIDE_URL = `${BASE_RAW_URL}category_overrides.json`;
-const IMAGE_OVERRIDE_URL = `${BASE_RAW_URL}image_overrides.json`;
-const AUDIO_OVERRIDE_URL = `${BASE_RAW_URL}audio_overrides.json`;
-const ID_ALIASES_URL = `${BASE_RAW_URL}id_aliases.json`;
-
-// 2. Paths (Static assets stay on your host)
-// We name these exactly what the functions look for: IMAGES_BASE and AUDIO_BASE
-const IMAGES_BASE = "https://arrowroad.com.au/yoga/images/";
-const AUDIO_BASE = "https://arrowroad.com.au/yoga/audio/";
-const IMAGES_BASE_URL = IMAGES_BASE; // Kept for safety if legacy code uses it
-
-// 4. Other
-const COMPLETION_LOG_URL = "completion_log.php";
-const LOCAL_SEQ_KEY = "yoga_sequences_v1";
-
-// 5. Supabase Configuration
-const SUPABASE_URL = "https://qrcpiyncvfmpmeuyhsha.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyY3BpeW5jdmZtcG1ldXloc2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTA2NDgsImV4cCI6MjA4NzI4NjY0OH0.7sjbfwdT_aYmrJyVFYWpfMNBQpCJAI7Vd5uNEkzD4GI";
-const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 window.db = supabase;
 window.currentUserId = null;
 
@@ -52,21 +45,6 @@ let audioOverrides = {};
 let serverAudioFiles = []; // Holds the list of files on server
 let serverImageFiles = [];
 let idAliases = {};
-// --- GOD MODE / ADMIN CONTROLS ---
-window.adminMode = false;
-
-window.loadAdminMode = function() {
-    window.adminMode = localStorage.getItem(ADMIN_MODE_KEY) === "true";
-    console.log("God Mode is " + (window.adminMode ? "ON 🟢" : "OFF 🔴"));
-};
-
-window.toggleGodMode = function() {
-    window.adminMode = !window.adminMode;
-    localStorage.setItem(ADMIN_MODE_KEY, window.adminMode);
-    alert("God Mode is now " + (window.adminMode ? "ON 🟢" : "OFF 🔴"));
-    loadCourses(); // Instantly refresh the dropdown with community sequences
-};
-
 
 // Playback State
 let activePlaybackList = []; // This will hold the "unpacked" poses (Macros + Reps)
@@ -89,8 +67,6 @@ let wakeLockVisibilityHooked = false;
 
 let draft = []; // each: [idField, seconds, label]
 
-const ADMIN_MODE_KEY = "yogaAdminMode_v1";
-let adminMode = false;
 let descriptionOverrides = {}; // { [asanaNo]: { md: string, updated_at: string } }
 let categoryOverrides = {}; // { [asanaNo]: { category: string, updated_at: string } }
 
@@ -100,38 +76,6 @@ let categoryOverrides = {}; // { [asanaNo]: { category: string, updated_at: stri
 /* ==========================================================================
    DOM & SYSTEM UTILITIES
    ========================================================================== */
-function normaliseText(str){
-return (str || "")
-    .toString()
-    .normalize("NFD")                 // split accents
-    .replace(/[\u0300-\u036f]/g,"")   // remove accents
-    .toLowerCase()
-    .trim();
-}
-function $(id) {
-   return document.getElementById(id);
-}
-
-// Store registered listeners to prevent duplicates
-const registeredListeners = new Map();
-
-function safeListen(id, event, handler) {
-    const el = document.getElementById(id);
-    if (!el) return;
-
-    const key = `${id}:${event}`;
-
-    // Remove previous listener if it exists
-    if (registeredListeners.has(key)) {
-        const oldHandler = registeredListeners.get(key);
-        el.removeEventListener(event, oldHandler);
-    }
-
-    // Add new listener and store reference
-    el.addEventListener(event, handler);
-    registeredListeners.set(key, handler);
-}
-
 // -------- Wake Lock (Prevent screen sleep) --------
 async function enableWakeLock(){
    try {
@@ -581,21 +525,6 @@ function resolveId(id) {
    DATA LOADING & PARSING (FIXED)
    ========================================================================== */
 
-// 1. Generic JSON Loader
-async function loadJSON(url, fallback = null) {
-    try {
-        // ✅ FIX: Use the 'url' passed to the function, not HISTORY_URL
-        const res = await fetch(url);
-        if (!res.ok) {
-// console.warn(`Fetch failed ${res.status} for ${url}`);
-             return fallback;
-        }
-        return await res.json();
-    } catch (e) {
-// console.warn(`Error loading ${url}:`, e);
-        return fallback;
-    }
-}
 window.loadCourses = async function() {
     if (!supabase) return;
 
@@ -622,7 +551,7 @@ window.loadCourses = async function() {
         if (userSeqs) {
             userSeqs.forEach(seq => {
                 const isMine = window.currentUserId && seq.user_id === window.currentUserId;
-                if (!seq.title || (!isMine && !window.adminMode)) return;
+                if (!seq.title || !isMine) return;
 
                 const poses = parseSequenceText(seq.sequence_text);
                 if (poses && poses.length > 0) {
@@ -657,83 +586,6 @@ window.loadCourses = async function() {
         console.error("Load courses failed:", e);
     }
 };
-
-// --- TIME PARSER HELPER ---
-function parseHoldTimes(holdStr) {
-    const result = { standard: 30, short: 15, long: 60 }; // Fallbacks
-    if (!holdStr) return result;
-    
-    const parts = String(holdStr).split('|').map(s => s.trim());
-    parts.forEach(p => {
-        // Match format "Standard: 0:30" or "Standard: 1:00"
-        const match = p.match(/(Standard|Short|Long):\s*(\d+):(\d+)/i);
-        if (match) {
-            const key = match[1].toLowerCase();
-            result[key] = parseInt(match[2], 10) * 60 + parseInt(match[3], 10);
-        } else {
-            // Match format "Standard: 30" (just seconds)
-            const matchSec = p.match(/(Standard|Short|Long):\s*(\d+)/i);
-            if (matchSec) result[matchSec[1].toLowerCase()] = parseInt(matchSec[2], 10);
-        }
-    });
-    return result;
-}
-
-function secsToMSS(secs) {
-    const s = Math.max(0, parseInt(secs, 10) || 0);
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
-
-function buildHoldString(standard, short, long) {
-    return `Standard: ${secsToMSS(standard)} | Short: ${secsToMSS(short)} | Long: ${secsToMSS(long)}`;
-}
-
-// Helper function to parse sequence text into poses array
-// Input format: "074 | 60 |\n215 | 600 | [Pratiloma IVb]\n203 | 300 | [Ujjāyī II (lying)]"
-// Output format: [[id], duration, label, variationKey, note]
-function parseSequenceText(sequenceText) {
-    if (!sequenceText || typeof sequenceText !== 'string') return [];
-
-    const lines = sequenceText.split('\n').map(line => line.trim()).filter(Boolean);
-    const poses = [];
-
-    lines.forEach(line => {
-        const parts = line.split('|').map(p => p.trim());
-        if (parts.length < 2) return;
-
-        const id = parts[0] || '';
-        const duration = parseInt(parts[1], 10) || 0;
-        
-        // FIX: Grab everything from the 3rd part onwards and join with pipes
-        // This ensures [Tadasana] | Prayer is captured as a single string
-        const noteSection = parts.slice(2).join(' | ').trim();
-
-        let variationKey = '';
-        const note = noteSection;
-
-        // Maintain your existing variation extraction logic
-        const variationMatch = noteSection.match(/\[.*?\b([IVX]+[a-z]?)\]/);
-        if (variationMatch) {
-            variationKey = variationMatch[1];
-        }
-
-        const numericPart = id.match(/^(\d+)/);
-        const suffix = id.replace(/^\d+/, '');
-        const normalizedId = numericPart
-            ? numericPart[1].replace(/^0+/, '').padStart(3, '0') + suffix
-            : id;
-
-        poses.push([
-            [normalizedId],
-            duration,
-            '', 
-            variationKey,
-            note
-        ]);
-    });
-
-    return poses;
-}
 
 // 3. Local Sequence Editing (Save/Reset)
 function saveSequencesLocally() {
@@ -881,7 +733,7 @@ function normalizeAsanaRow(row, existingData = {}) {
     // JSON-First Logic: Check if DB sent hold_json, otherwise parse text
     const holdData = (row.hold_json && typeof row.hold_json === 'object') 
         ? row.hold_json 
-        : (typeof parseHoldTimes === 'function' ? parseHoldTimes(rawHoldText) : { standard: 30 });
+        : parseHoldTimes(rawHoldText);
 
     return {
         ...existingData, // Preserve existing fields if overwriting
@@ -1371,7 +1223,6 @@ async function init() {
         
         // 1. Core Config
         if (typeof seedManualCompletionsOnce === "function") seedManualCompletionsOnce();
-        if (typeof loadAdminMode === "function") loadAdminMode();
 
         // 2. Load Overrides + History in Parallel
         await Promise.all([
@@ -1830,7 +1681,7 @@ if (focusCounter) {
         const varHoldStr = varData.hold || varData.Hold || "";
         
         if (varHoldStr) {
-            const varHd = typeof parseHoldTimes === "function" ? parseHoldTimes(varHoldStr) : {};
+            const varHd = parseHoldTimes(varHoldStr);
             if (varHd.standard > 0) {
                 const dial = document.getElementById("durationDial");
                 const val = dial ? Number(dial.value) : 50;
@@ -2644,332 +2495,12 @@ async function showAsanaDetail(asana) {
         });
         d.appendChild(varSection);
     }
-    // --- DELETE EVERYTHING FROM HERE DOWN TO THE END OF THE OLD SUPABASE CALL ---
-
-    
-
     // 7. Bind Audio Button
     const playBtn = document.getElementById('playNameBtn');
     if (playBtn) playBtn.onclick = () => playAsanaAudio(asana, null);
   
-    // 8. Admin Injector
-    if (typeof adminMode !== 'undefined' && adminMode && typeof renderAdminFields === 'function') {
-        renderAdminFields(d, asana);
-    }
 }
 
-
-function renderAdminDetailTools(container, asma, rowVariations) {
-    const adminDetails = document.createElement("details");
-    adminDetails.style.marginTop = "20px";
-    adminDetails.style.borderTop = "1px solid #ccc";
-    adminDetails.style.paddingTop = "10px";
-    adminDetails.open = true; 
-
-    const adminSum = document.createElement("summary");
-    adminSum.textContent = "🔧 Admin / Editing Tools";
-    adminSum.style.cursor = "pointer";
-    adminSum.style.fontWeight = "bold";
-    adminSum.style.marginBottom = "10px";
-    adminDetails.appendChild(adminSum);
-
-    const adminContent = document.createElement("div");
-    adminContent.style.padding = "15px";
-    adminContent.style.background = "#f4f4f4";
-    adminContent.style.borderRadius = "8px";
-
-    // A0. NAME
-    const nameDiv = document.createElement("div");
-    nameDiv.style.marginBottom = "15px";
-    nameDiv.innerHTML = "<div style='font-size:0.85rem; font-weight:bold; margin-bottom:4px;'>🏷️ Pose Name</div>";
-
-    const nameInput = document.createElement("input");
-    nameInput.type = "text";
-    nameInput.value = asma.english || asma.name || "";
-    nameInput.style.cssText = "width:100%; padding:6px; border:1px solid #ccc; font-weight:bold;";
-
-    const saveNameBtn = document.createElement("button");
-    saveNameBtn.textContent = "Rename Pose"; 
-    saveNameBtn.className = "tiny";
-    saveNameBtn.style.marginTop = "5px";
-    
-    saveNameBtn.onclick = async () => {
-        saveNameBtn.textContent = "Saving...";
-        await saveAsanaField(asma.asanaNo, "name", nameInput.value);
-        const header = container.querySelector("h2");
-        if(header) header.childNodes[0].nodeValue = nameInput.value;
-        saveNameBtn.textContent = "✓ Renamed";
-        setTimeout(() => saveNameBtn.textContent = "Rename Pose", 2000);
-    };
-    nameDiv.appendChild(nameInput);
-    nameDiv.appendChild(saveNameBtn);
-    adminContent.appendChild(nameDiv);
-
-    // A. CATEGORY (Dynamic)
-    const catDiv = document.createElement("div");
-    catDiv.style.marginBottom = "15px";
-    catDiv.innerHTML = "<div style='font-size:0.85rem; font-weight:bold; margin-bottom:4px;'>📂 Category</div>";
-    
-    const catSel = document.createElement("select");
-    catSel.className = "tiny";
-    catSel.style.width = "100%";
-    
-    // Create options dynamically
-    const oEmpty = document.createElement("option"); 
-    oEmpty.value = ""; 
-    oEmpty.textContent = "(no category)"; 
-    catSel.appendChild(oEmpty);
-   
-
-
-
-    getUniqueCategories().forEach(c => {
-        const o = document.createElement("option"); 
-        o.value = c; // Keep the actual prefixed value hidden behind the scenes
-        o.textContent = getDisplayCategory(c); // Show the clean name in the dropdown
-        catSel.appendChild(o);
-    });
-    
-    catSel.value = asma.category || "";
-    
-    const saveCatBtn = document.createElement("button");
-    saveCatBtn.textContent = "Save Category"; 
-    saveCatBtn.className = "tiny";
-    saveCatBtn.style.marginTop = "5px";
-    saveCatBtn.onclick = async () => {
-        saveCatBtn.textContent = "Saving...";
-        await saveAsanaField(asma.asanaNo, "category", catSel.value);
-        saveCatBtn.textContent = "✓ Saved";
-        setTimeout(() => saveCatBtn.textContent = "Save Category", 2000);
-        if (typeof applyBrowseFilters === 'function') applyBrowseFilters();
-    };
-    catDiv.appendChild(catSel);
-    catDiv.appendChild(saveCatBtn);
-    adminContent.appendChild(catDiv);
-
-    // A2. SIDES PROPERTY
-    const propDiv = document.createElement("div");
-    propDiv.style.marginBottom = "15px";
-    propDiv.style.padding = "10px";
-    propDiv.style.background = "#fff";
-    propDiv.style.border = "1px solid #ddd";
-    propDiv.style.borderRadius = "4px";
-
-    const sideLabel = document.createElement("label");
-    sideLabel.style.display = "flex";
-    sideLabel.style.alignItems = "center";
-    sideLabel.style.gap = "10px";
-    sideLabel.style.cursor = "pointer";
-    sideLabel.style.fontSize = "0.9rem";
-    sideLabel.style.fontWeight = "bold";
-
-    const sideChk = document.createElement("input");
-    sideChk.type = "checkbox";
-    sideChk.checked = !!asma.requiresSides;
-
-    const sideText = document.createElement("span");
-    sideText.textContent = "Requires Left & Right Sides (Audio)";
-
-    sideChk.onchange = async () => {
-        sideText.textContent = "Saving...";
-        sideText.style.color = "#666";
-        await saveAsanaField(asma.asanaNo, "requiresSides", sideChk.checked);
-        sideText.textContent = "✓ Saved";
-        sideText.style.color = "green";
-        setTimeout(() => {
-            sideText.textContent = "Requires Left & Right Sides (Audio)";
-            sideText.style.color = "black";
-        }, 2000);
-    };
-    sideLabel.appendChild(sideChk);
-    sideLabel.appendChild(sideText);
-    propDiv.appendChild(sideLabel);
-    adminContent.appendChild(propDiv);
-
-    // B. DESCRIPTION
-    const descDiv = document.createElement("div");
-    descDiv.style.borderTop = "1px dashed #ccc";
-    descDiv.style.paddingTop = "15px";
-    descDiv.style.marginBottom = "15px";
-    descDiv.innerHTML = "<div style='font-size:0.85rem; font-weight:bold; margin-bottom:4px;'>📝 Description</div>";
-
-    const descArea = document.createElement("textarea");
-    descArea.style.cssText = "width:100%; height:80px; padding:8px; border:1px solid #ccc; font-family:inherit; font-size:0.9rem;";
-    descArea.value = asma.description || "";
-
-    const saveDescBtn = document.createElement("button");
-    saveDescBtn.textContent = "Save Description";
-    saveDescBtn.className = "tiny";
-    saveDescBtn.style.marginTop = "5px";
-    saveDescBtn.onclick = async () => {
-        saveDescBtn.textContent = "Saving...";
-        await saveAsanaField(asma.asanaNo, "description", descArea.value);
-        saveDescBtn.textContent = "✓ Saved";
-        setTimeout(() => saveDescBtn.textContent = "Save Description", 2000);
-    };
-    descDiv.appendChild(descArea);
-    descDiv.appendChild(saveDescBtn);
-    adminContent.appendChild(descDiv);
-
-    // C. TECHNIQUE
-    const techDiv = document.createElement("div");
-    techDiv.style.borderTop = "1px dashed #ccc";
-    techDiv.style.paddingTop = "15px";
-    techDiv.style.marginBottom = "15px";
-    techDiv.innerHTML = "<div style='font-size:0.85rem; font-weight:bold; margin-bottom:4px;'>🧘 Technique Instructions</div>";
-
-    const techArea = document.createElement("textarea");
-    techArea.style.cssText = "width:100%; height:120px; padding:8px; border:1px solid #ccc; font-family:inherit; font-size:0.9rem;";
-    techArea.value = asma.technique || "";
-
-    const saveTechBtn = document.createElement("button");
-    saveTechBtn.textContent = "Save Technique";
-    saveTechBtn.className = "tiny";
-    saveTechBtn.style.marginTop = "5px";
-    saveTechBtn.onclick = async () => {
-        saveTechBtn.textContent = "Saving...";
-        await saveAsanaField(asma.asanaNo, "technique", techArea.value);
-        saveTechBtn.textContent = "✓ Saved";
-        setTimeout(() => saveTechBtn.textContent = "Save Technique", 2000);
-    };
-    techDiv.appendChild(techArea);
-    techDiv.appendChild(saveTechBtn);
-    adminContent.appendChild(techDiv);
-
-    // D. MEDIA
-    const mediaDiv = document.createElement("div");
-    mediaDiv.style.borderTop = "1px dashed #ccc";
-    mediaDiv.style.paddingTop = "15px";
-    renderMediaManager(mediaDiv, asma, rowVariations);
-    adminContent.appendChild(mediaDiv);
-
-    adminDetails.appendChild(adminContent);
-    container.appendChild(adminDetails);
-}
-
-function renderMediaManager(container, asma, rowVariations) {
-    const audioFiles = window.serverAudioFiles || [];
-    const imageFiles = window.serverImageFiles || [];
-    
-    const mediaDiv = document.createElement("div");
-    mediaDiv.style.marginTop = "8px";
-    mediaDiv.style.fontSize = "0.85rem";
-
-    mediaDiv.innerHTML = `
-          <div style="margin-bottom:12px; background:#fff; padding:5px; border:1px solid #ddd;">
-             <label style="font-size:0.8rem; color:#888;">TARGET FOR EDITING:</label>
-             <select id="mediaTargetKey" class="tiny" style="width:100%; margin-top:2px; font-weight:bold; border:1px solid #ccc;"></select>
-          </div>
-          <div style="display:flex; gap:10px;">
-             <div style="flex:1; padding-right:5px; border-right:1px solid #eee;">
-                <div style="font-weight:bold; margin-bottom:5px;">🎵 AUDIO</div>
-                <div id="currentAudioLabel" style="margin-bottom:8px; font-size:0.8rem; color:#666; min-height:1.2em;"></div>
-                <div style="margin-bottom:8px;">
-                   ${audioFiles.length === 0 ? 
-                     `<button id="retryManifestBtn" class="tiny" style="width:100%; background:#ffecb3;">⚠️ Lists Empty - Retry</button>` : 
-                     `<select id="audioSelectServer" class="tiny" style="width:100%; margin-bottom:2px;"><option value="">Select server file...</option></select>`
-                   }
-                   <button id="linkAudioBtn" class="tiny" style="width:100%; margin-top:4px;">Link Selected</button>
-                </div>
-             </div>
-             <div style="flex:1; padding-left:5px;">
-                <div style="font-weight:bold; margin-bottom:5px;">🖼️ IMAGE</div>
-                <div id="currentImageLabel" style="margin-bottom:8px; font-size:0.8rem; color:#666; min-height:1.2em;"></div>
-                <div style="margin-bottom:8px;">
-                   ${imageFiles.length === 0 ? 
-                     `<div style="font-size:0.7rem; color:red;">No images found</div>` : 
-                     `<select id="imageSelectServer" class="tiny" style="width:100%; margin-bottom:2px;"><option value="">Select server file...</option></select>`
-                   }
-                   <button id="linkImageBtn" class="tiny" style="width:100%; margin-top:4px;">Link Selected</button>
-                </div>
-             </div>
-          </div>
-      `;
-
-    const retryBtn = mediaDiv.querySelector("#retryManifestBtn");
-    if (retryBtn) {
-        retryBtn.onclick = async () => {
-            retryBtn.textContent = "Loading...";
-            if (typeof loadManifestAndPopulateLists === "function") {
-                await loadManifestAndPopulateLists();
-                const parent = container.parentElement; 
-                container.innerHTML = ""; 
-                renderAdminDetailTools(container.parentElement.parentElement, asma, rowVariations); 
-            }
-        };
-    }
-
-    const audioSel = mediaDiv.querySelector("#audioSelectServer");
-    if (audioSel) audioFiles.forEach(f => {
-        const opt = document.createElement("option"); opt.value = f; opt.textContent = f; audioSel.appendChild(opt);
-    });
-
-    const imageSel = mediaDiv.querySelector("#imageSelectServer");
-    if (imageSel) imageFiles.forEach(f => {
-        const opt = document.createElement("option"); opt.value = f; opt.textContent = f; imageSel.appendChild(opt);
-    });
-
-    const targetSel = mediaDiv.querySelector("#mediaTargetKey");
-    const optMain = document.createElement("option");
-    optMain.value = normalizePlate(asma.asanaNo);
-    optMain.textContent = `Global (ID ${asma.asanaNo})`;
-    targetSel.appendChild(optMain);
-
-    if (rowVariations) {
-        rowVariations.forEach((v, idx) => {
-            const vName = (v.english || v['Yogasana Name'] || "").trim();
-            const vVar = (v.variation || v['Variation'] || "").trim();
-            if (vName) {
-                const specificKey = vVar ? `${vName} ${vVar}` : vName;
-                const displayLabel = vVar || `Variation ${idx + 1}`;
-                const opt = document.createElement("option");
-                opt.value = specificKey;
-                opt.textContent = `Specific: ${displayLabel}`;
-                targetSel.appendChild(opt);
-            }
-        });
-    }
-
-    const updateMediaLabels = () => {
-        const key = targetSel.value;
-        const audioLabel = mediaDiv.querySelector("#currentAudioLabel");
-        const imageLabel = mediaDiv.querySelector("#currentImageLabel");
-        
-        if(audioLabel) {
-            const curAudio = (typeof audioOverrides !== 'undefined' && audioOverrides[key]) ? audioOverrides[key] : "(Inherits Global)";
-            audioLabel.innerHTML = `Curr: <b>${curAudio}</b>`;
-        }
-        if(imageLabel) {
-            const curImage = (typeof imageOverrides !== 'undefined' && imageOverrides[key]) ? imageOverrides[key] : "(Default)";
-            imageLabel.innerHTML = `Curr: <b>${curImage}</b>`;
-        }
-    };
-    targetSel.onchange = updateMediaLabels;
-    updateMediaLabels();
-
-    const linkAudioBtn = mediaDiv.querySelector("#linkAudioBtn");
-    if(linkAudioBtn) linkAudioBtn.onclick = async () => {
-        if (!audioSel || !audioSel.value) return alert("Select a file first.");
-        const key = targetSel.value;
-        if (typeof audioOverrides === 'undefined') window.audioOverrides = {};
-        audioOverrides[key] = audioSel.value;
-        await syncDataToGitHub("audio_overrides.json", audioOverrides);
-        updateMediaLabels();
-    };
-
-    const linkImageBtn = mediaDiv.querySelector("#linkImageBtn");
-    if(linkImageBtn) linkImageBtn.onclick = async () => {
-        if (!imageSel || !imageSel.value) return alert("Select a file first.");
-        const key = targetSel.value;
-        if (typeof imageOverrides === 'undefined') window.imageOverrides = {};
-        imageOverrides[key] = imageSel.value;
-        await syncDataToGitHub("image_overrides.json", imageOverrides);
-        updateMediaLabels();
-        showAsanaDetail(asma);
-    };
-
-    container.appendChild(mediaDiv);
-}
 
 /* ==========================================================================
    RENDERERS (COLLAGE & LISTS)
@@ -3467,7 +2998,7 @@ function builderRender() {
         const normId = typeof normalizePlate === "function" ? normalizePlate(builderPoses[i].id) : builderPoses[i].id;
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
         const vHold = asanaMatch?.variations?.[e.target.value]?.hold;
-        if (vHold && typeof parseHoldTimes === "function") { 
+        if (vHold) { 
             const hd = parseHoldTimes(vHold); 
             if(hd.standard) builderPoses[i].duration = hd.standard; 
         }
