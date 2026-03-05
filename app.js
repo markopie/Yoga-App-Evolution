@@ -23,7 +23,7 @@ import { supabase } from "./src/services/supabaseClient.js";
 import { loadJSON } from "./src/services/http.js";
 import { $, normaliseText, safeListen } from "./src/utils/dom.js";
 import { parseHoldTimes, buildHoldString, parseSequenceText } from "./src/utils/parsing.js";
-import { $, normaliseText, safeListen } from "./src/utils/dom.js";
+
 
 window.db = supabase;
 window.currentUserId = null;
