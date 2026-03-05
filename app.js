@@ -515,18 +515,10 @@ window.loadCourses = async function() {
         window.courses = deduplicated;
         courses = deduplicated;
         sequences = deduplicated;
-    } catch (e) {
-        console.error('Load courses failed:', e);
-    }
-        courses = deduplicated;
-        sequences = deduplicated;
-    } catch (e) {
-        console.error('Load courses failed:', e);
-    }
 
         if (typeof renderSequenceDropdown === "function") renderSequenceDropdown(); 
     } catch (e) {
-        console.error("Load courses failed:", e);
+        console.error('Load courses failed:', e);
     }
 };
 
