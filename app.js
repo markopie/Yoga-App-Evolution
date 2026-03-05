@@ -527,15 +527,9 @@ async function loadAsanaLibrary() {
     if (!supabase) {
         console.error("Supabase client not initialized");
         return {};
+    }
     try {
         const normalized = await getFullAsanaLibrary();
-    } catch (err) {
-        console.error('Error loading asana library:', err);
-            };
-        });
-
-
-// console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
         window.asanaLibrary = normalized;
         if (typeof asanaLibrary !== 'undefined') {
             asanaLibrary = normalized;
@@ -5061,3 +5055,4 @@ if (document.readyState === 'loading') {
 // Build Fix: Thu Mar  5 11:52:35 PM UTC 2026
 // Build Fix: Thu Mar  5 11:53:06 PM UTC 2026
 // Structural integrity check: Thu Mar  5 11:53:48 PM UTC 2026
+// Function reconstruction: Thu Mar  5 11:54:42 PM UTC 2026
