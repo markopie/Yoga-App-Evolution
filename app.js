@@ -523,20 +523,6 @@ window.loadCourses = async function() {
 };
 
 // 3. Local Sequence Editing (Save/Reset)
-function saveSequencesLocally() {
-    if (!sequences || !sequences.length) return;
-    if (typeof LOCAL_SEQ_KEY !== 'undefined') {
-        localStorage.setItem(LOCAL_SEQ_KEY, JSON.stringify(sequences));
-    }
-    alert("Changes saved to browser storage!");
-}
- 
-function resetToOriginalJSON() {
-    if(!confirm("Erase custom edits?")) return;
-    if (typeof LOCAL_SEQ_KEY !== 'undefined') localStorage.removeItem(LOCAL_SEQ_KEY);
-    location.reload();
-}
-
 // 4. Load Asana Library
 async function loadAsanaLibrary() {
     if (!supabase) {
@@ -801,7 +787,7 @@ function seedManualCompletionsOnce() {
 
 /* ==========================================================================
    SERVER SYNC (History) - Supabase `sequence_completions`
-   Single source of truth: Supabase. localStorage is an offline fallback.
+   Single source of truth: Supabase.
 
    Unified entry shape: { id?, title, category, ts (ms), local (string), iso (string) }
    window.completionHistory: { [title]: [isoString, ...] } — for legacy display code
@@ -3036,8 +3022,7 @@ async function saveAsanaField(asanaNo, field, value) {
     }
 
     // 2. Save to LocalStorage (Backup)
-    localStorage.setItem("asana_library_backup_v1", JSON.stringify(asanaLibrary));
-
+    
     // 3. Resolve immediately
     return Promise.resolve();
 }
@@ -3541,10 +3526,7 @@ safeListen("resetBtn", "click", () => {
    stopTimer();
 
    // 2. WIPE MEMORY (Fixes the "Resume" popup on refresh)
-   localStorage.removeItem("lastPlayedSequence");
-   localStorage.removeItem("currentPoseIndex");
-   localStorage.removeItem("timeLeft");
-   
+            
    // Optional: Clear internal progress tracking if you use it
    if (typeof clearProgress === "function") clearProgress();
 
