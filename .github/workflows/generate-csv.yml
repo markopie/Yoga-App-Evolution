@@ -1,0 +1,44 @@
+name: Update Asana Library CSV
+
+on:
+  # Runs automatically whenever asana_library.json is modified
+  push:
+    paths:
+      - 'asana_library.json'
+  
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch: 
+
+# Grants the Action permission to push the new CSV to your repo
+permissions:
+  contents: write 
+
+jobs:
+  build-and-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up the Node.js environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Uses a stable LTS version of Node
+
+      # 3. Run your JavaScript file (no npm install needed since you used native modules)
+      - name: Run conversion script
+        run: node convert.js
+
+      # 4. Commit and push the generated CSV file back to the repository
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add asana_library.csv
+          
+          # The '|| exit 0' prevents the action from failing if the CSV hasn't changed at all
+          git commit -m "Auto-generate updated asana_library.csv" || exit 0
+          git push

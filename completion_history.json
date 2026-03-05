@@ -1,0 +1,62 @@
+[
+    {
+        "title": "Course 1: Short Course, Day 1",
+        "ts": 1767135600000,
+        "iso": "2025-12-30T23:00:00Z",
+        "local": "31\/12\/2025, 10:00 am"
+    },
+    {
+        "title": "Course 1: Short Course, Day 2",
+        "ts": 1767220200000,
+        "iso": "2025-12-31T22:30:00Z",
+        "local": "01\/01\/2026, 09:30 am"
+    },
+    {
+        "title": "Course 1: Short Course, Day 3",
+        "ts": 1767308400000,
+        "iso": "2026-01-01T23:00:00Z",
+        "local": "02\/01\/2026, 10:00 am"
+    },
+    {
+        "title": "Course 1: Short Course, Day 1",
+        "ts": 1767477720000,
+        "iso": "2026-01-03T22:02:00Z",
+        "local": "04\/01\/2026, 09:02 am"
+    },
+    {
+        "title": "Course 1: Short Course, Day 2",
+        "ts": 1767566100000,
+        "iso": "2026-01-04T22:35:00Z",
+        "local": "05\/01\/2026, 09:35 am"
+    },
+    {
+        "title": "Course 1: Short Course, Day 3",
+        "ts": 1767652200000,
+        "iso": "2026-01-05T22:30:00.000Z",
+        "local": "06\/01\/2026, 09:30 am"
+    },
+    {
+        "title": "Restorative Sequence",
+        "ts": 1767659055878,
+        "iso": "2026-01-06T00:24:15.878Z",
+        "local": "05\/01\/2026, 05:24 pm"
+    },
+    {
+        "title": "Course 1: Short Course, Day 1",
+        "ts": 1767826056646,
+        "iso": "2026-01-07T22:47:36.646Z",
+        "local": "07\/01\/2026, 03:47 pm"
+    },
+    {
+        "title": "Course 1: Short Course, Day 2",
+        "ts": 1767855291212,
+        "iso": "2026-01-08T06:54:51.212Z",
+        "local": "07\/01\/2026, 11:54 pm"
+    },
+    {
+        "title": "Course 1: Short Course, Day 3",
+        "ts": 1767908799113,
+        "iso": "2026-01-08T21:46:39.113Z",
+        "local": "08\/01\/2026, 02:46 pm"
+    }
+]
