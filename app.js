@@ -238,50 +238,43 @@ function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
     
 // console.log(`[Audio Debug] Playing ID: ${idStr}, Name: ${asana.english || asana.name}`);
 
-    // Helper to play and attach the 'onended' listener
+
+window.playAsanaAudio = function(idStr, onComplete) {
     const playSrc = (src) => {
-        const a = new Audio(src);
-        // CRITICAL: Attach the callback so side audio plays next
+        const a = new Audio();
         if (onComplete) {
             a.onended = onComplete;
         }
         a.play()
             .then(() => { currentAudio = a; })
             .catch(e => {
-// console.warn(`[Audio Debug] Failed: ${src}`, e);
-                // If main audio fails, still trigger callback so flow continues
                 if (onComplete) onComplete();
             });
     };
 
-    // 3. Override Check
-    let overrideSrc = null;
+    // 1. Path Setup
+    let overrideSrc = null; // Overrides purged
 
     if (overrideSrc) {
-// console.log(`[Audio Debug] Using Override: ${overrideSrc}`);
-       const src = overrideSrc.includes("/") ? overrideSrc : (AUDIO_BASE + overrideSrc);
-       playSrc(src);
-       return; 
+        const src = overrideSrc.includes("/") ? overrideSrc : (AUDIO_BASE + overrideSrc);
+        playSrc(src);
+        return; 
     }
  
-    // 4. SMART FALLBACK (Manifest Lookup)
+    // 2. SMART FALLBACK (Manifest Lookup)
     const fileList = window.serverAudioFiles || [];
     
     if (fileList.length > 0 && idStr) {
-        // Look for "001_Name.mp3" OR "001.mp3"
         const match = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
-        
         if (match) {
-// console.log(`[Audio Debug] FOUND MATCH: ${match}`);
             playSrc(AUDIO_BASE + match);
             return;
         }
     }
 
-    // 5. Legacy Fallback (If not in manifest)
-// console.log("[Audio Debug] Falling back to legacy guessing...");
-    
-    // If no ID found at all, skip
+    // 3. Final Fallback
+    if (onComplete) onComplete();
+};
     if (!idStr) { 
         if (onComplete) onComplete(); 
         return; 
