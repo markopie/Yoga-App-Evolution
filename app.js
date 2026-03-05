@@ -256,7 +256,6 @@ function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
 
     // 3. Override Check
     let overrideSrc = null;
-        }
 
     if (overrideSrc) {
 // console.log(`[Audio Debug] Using Override: ${overrideSrc}`);
