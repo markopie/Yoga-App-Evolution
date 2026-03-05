@@ -20,7 +20,7 @@ import {
     LOCAL_SEQ_KEY,
 } from "./src/config/appConfig.js";
 import { supabase } from "./src/services/supabaseClient.js";
-import { fetchCourses, fetchAsanas } from "./src/services/dataAdapter.js";
+import { getSystemCourses, getGlobalAsanas } from "./src/services/dataAdapter.js";
 import { loadJSON } from "./src/services/http.js";
 import { $, normaliseText, safeListen } from "./src/utils/dom.js";
 import { parseHoldTimes, buildHoldString, parseSequenceText } from "./src/utils/parsing.js";
@@ -534,19 +534,8 @@ window.loadCourses = async function() {
         const rawAccumulator = [];
 
         // 1. System Courses
-        const { data: coursesData } = await fetchCourses();
-        if (coursesData) {
-            coursesData.forEach(row => {
-                const poses = parseSequenceText(row.sequence_text || '');
-                if (row.title && poses.length > 0) {
-                    rawAccumulator.push({ 
-                        title: row.title.trim(), 
-                        category: (row.category || '').trim(), 
-                        poses, isUserSequence: false, id: String(row.id)
-                    });
-                }
-            });
-        }
+        const systemCourses = await getSystemCourses();
+        rawAccumulator.push(...systemCourses);
 
         // 2. User Sequences
         const { data: userSeqs } = await supabase.from('user_sequences').select('*');
@@ -613,48 +602,7 @@ async function loadAsanaLibrary() {
 
     try {
         // 1. Load Global Asanas
-        const { data: asanasData, error: asanasError } = await fetchAsanas();
-        const normalized = {};
-
-        if (asanasData) {
-            asanasData.forEach((row) => {
-                const rawId = row.ID ?? row.id ?? '';
-                const paddedId = String(rawId).trim().replace(/^0+/, '') || '';
-                if (!paddedId) return;
-                const key = paddedId.padStart(3, '0');
-
-                // 🌟 ADD THIS: Define holdData BEFORE creating the object 🌟
-                const rawHoldText = String(row.Hold ?? row.hold ?? '');
-                const holdData = (row.hold_json && typeof row.hold_json === 'object') 
-                    ? row.hold_json 
-                    : parseHoldTimes(rawHoldText);
-
-                normalized[key] = {
-                    id: key,
-                    name: row.name ?? '',
-                    iast: row.IAST ?? row.iast ?? '',
-                    english: row.english_name ?? '',
-                    technique: row.Technique ?? row.technique ?? '',
-                    requiresSides: !!(row.Requires_Sides ?? row.requires_sides ?? false),
-                    plates: typeof parsePlates === 'function' ? parsePlates(row.plate_numbers ?? '') : (row.plate_numbers ?? ''),
-                    page2001: String(row.Page_2001 ?? row.page_2001 ?? ''),
-                    page2015: String(row.Page_2015 ?? row.page_2015 ?? ''),
-                    intensity: String(row.Intensity ?? row.intensity ?? ''),
-                    note: row.Note ?? row.note ?? '',
-                    category: row.category ?? '',
-                    description: row.Description ?? row.description ?? '',
-                    
-                    // 🌟 NOW WE USE IT 🌟
-                    hold: rawHoldText,
-                    Hold: rawHoldText,
-                    hold_json: holdData, 
-                    hold_data: holdData, 
-                    
-                    variations: {},
-                    isCustom: false
-                };
-            });
-        }
+        const normalized = await getGlobalAsanas();
 
         // 2. Load User Asanas and OVERWRITE globals
 try {
