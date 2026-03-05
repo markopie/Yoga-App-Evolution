@@ -550,8 +550,6 @@ async function loadAsanaLibrary() {
         } catch (e) {
         console.error("Exception loading asana library:", e);
         return {};
-}
-}
 
 /**
  * Standardizes a database row into a clean Asana object.
@@ -5063,3 +5061,4 @@ if (document.readyState === 'loading') {
 }
 
 // #endregion
+// Last structural fix: Thu Mar  5 11:52:00 PM UTC 2026
