@@ -20,6 +20,7 @@ import {
     LOCAL_SEQ_KEY,
 } from "./src/config/appConfig.js";
 import { supabase } from "./src/services/supabaseClient.js";
+import { fetchCourses, fetchAsanas } from "./src/services/dataAdapter.js";
 import { loadJSON } from "./src/services/http.js";
 import { $, normaliseText, safeListen } from "./src/utils/dom.js";
 import { parseHoldTimes, buildHoldString, parseSequenceText } from "./src/utils/parsing.js";
@@ -533,7 +534,7 @@ window.loadCourses = async function() {
         const rawAccumulator = [];
 
         // 1. System Courses
-        const { data: coursesData } = await supabase.from('courses').select('*');
+        const { data: coursesData } = await fetchCourses();
         if (coursesData) {
             coursesData.forEach(row => {
                 const poses = parseSequenceText(row.sequence_text || '');
@@ -612,7 +613,7 @@ async function loadAsanaLibrary() {
 
     try {
         // 1. Load Global Asanas
-        const { data: asanasData, error: asanasError } = await supabase.from('asanas').select('*');
+        const { data: asanasData, error: asanasError } = await fetchAsanas();
         const normalized = {};
 
         if (asanasData) {
