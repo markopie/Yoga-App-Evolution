@@ -525,29 +525,19 @@ window.loadCourses = async function() {
 // 4. Load Asana Library
 async function loadAsanaLibrary() {
     if (!supabase) {
-        console.error("Supabase client not initialized");
+        console.error('Supabase client not initialized');
         return {};
     }
     try {
         const normalized = await getFullAsanaLibrary();
         window.asanaLibrary = normalized;
-        if (typeof asanaLibrary !== 'undefined') {
-            asanaLibrary = normalized;
-
-        // console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
+        if (typeof asanaLibrary !== 'undefined') asanaLibrary = normalized;
         return normalized;
-
-        } catch (e) {
-        console.error("Exception loading asana library:", e);
+    } catch (err) {
+        console.error('Error loading asana library:', err);
         return {};
-
-/**
- * Standardizes a database row into a clean Asana object.
- * Prioritizes hold_json, fallbacks to parsing the 'hold' string.
- */
-function normalizeAsanaRow(row, existingData = {}) {
-    const rawHoldText = String(row.Hold ?? row.hold ?? '');
-    
+    }
+}
     // JSON-First Logic: Check if DB sent hold_json, otherwise parse text
     const holdData = (row.hold_json && typeof row.hold_json === 'object') 
         ? row.hold_json 
@@ -5056,3 +5046,4 @@ if (document.readyState === 'loading') {
 // Build Fix: Thu Mar  5 11:53:06 PM UTC 2026
 // Structural integrity check: Thu Mar  5 11:53:48 PM UTC 2026
 // Function reconstruction: Thu Mar  5 11:54:42 PM UTC 2026
+// Stable Build: Thu Mar  5 11:55:33 PM UTC 2026
