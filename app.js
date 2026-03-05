@@ -20,6 +20,9 @@ import {
     LOCAL_SEQ_KEY,
 } from "./src/config/appConfig.js";
 import { supabase } from "./src/services/supabaseClient.js";
+import { loadJSON } from "./src/services/http.js";
+import { $, normaliseText, safeListen } from "./src/utils/dom.js";
+import { parseHoldTimes, buildHoldString, parseSequenceText } from "./src/utils/parsing.js";
 import { $, normaliseText, safeListen } from "./src/utils/dom.js";
 
 window.db = supabase;
@@ -523,21 +526,6 @@ function resolveId(id) {
    DATA LOADING & PARSING (FIXED)
    ========================================================================== */
 
-// 1. Generic JSON Loader
-async function loadJSON(url, fallback = null) {
-    try {
-        // ✅ FIX: Use the 'url' passed to the function, not HISTORY_URL
-        const res = await fetch(url);
-        if (!res.ok) {
-// console.warn(`Fetch failed ${res.status} for ${url}`);
-             return fallback;
-        }
-        return await res.json();
-    } catch (e) {
-// console.warn(`Error loading ${url}:`, e);
-        return fallback;
-    }
-}
 window.loadCourses = async function() {
     if (!supabase) return;
 
@@ -599,83 +587,6 @@ window.loadCourses = async function() {
         console.error("Load courses failed:", e);
     }
 };
-
-// --- TIME PARSER HELPER ---
-function parseHoldTimes(holdStr) {
-    const result = { standard: 30, short: 15, long: 60 }; // Fallbacks
-    if (!holdStr) return result;
-    
-    const parts = String(holdStr).split('|').map(s => s.trim());
-    parts.forEach(p => {
-        // Match format "Standard: 0:30" or "Standard: 1:00"
-        const match = p.match(/(Standard|Short|Long):\s*(\d+):(\d+)/i);
-        if (match) {
-            const key = match[1].toLowerCase();
-            result[key] = parseInt(match[2], 10) * 60 + parseInt(match[3], 10);
-        } else {
-            // Match format "Standard: 30" (just seconds)
-            const matchSec = p.match(/(Standard|Short|Long):\s*(\d+)/i);
-            if (matchSec) result[matchSec[1].toLowerCase()] = parseInt(matchSec[2], 10);
-        }
-    });
-    return result;
-}
-
-function secsToMSS(secs) {
-    const s = Math.max(0, parseInt(secs, 10) || 0);
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
-
-function buildHoldString(standard, short, long) {
-    return `Standard: ${secsToMSS(standard)} | Short: ${secsToMSS(short)} | Long: ${secsToMSS(long)}`;
-}
-
-// Helper function to parse sequence text into poses array
-// Input format: "074 | 60 |\n215 | 600 | [Pratiloma IVb]\n203 | 300 | [Ujjāyī II (lying)]"
-// Output format: [[id], duration, label, variationKey, note]
-function parseSequenceText(sequenceText) {
-    if (!sequenceText || typeof sequenceText !== 'string') return [];
-
-    const lines = sequenceText.split('\n').map(line => line.trim()).filter(Boolean);
-    const poses = [];
-
-    lines.forEach(line => {
-        const parts = line.split('|').map(p => p.trim());
-        if (parts.length < 2) return;
-
-        const id = parts[0] || '';
-        const duration = parseInt(parts[1], 10) || 0;
-        
-        // FIX: Grab everything from the 3rd part onwards and join with pipes
-        // This ensures [Tadasana] | Prayer is captured as a single string
-        const noteSection = parts.slice(2).join(' | ').trim();
-
-        let variationKey = '';
-        const note = noteSection;
-
-        // Maintain your existing variation extraction logic
-        const variationMatch = noteSection.match(/\[.*?\b([IVX]+[a-z]?)\]/);
-        if (variationMatch) {
-            variationKey = variationMatch[1];
-        }
-
-        const numericPart = id.match(/^(\d+)/);
-        const suffix = id.replace(/^\d+/, '');
-        const normalizedId = numericPart
-            ? numericPart[1].replace(/^0+/, '').padStart(3, '0') + suffix
-            : id;
-
-        poses.push([
-            [normalizedId],
-            duration,
-            '', 
-            variationKey,
-            note
-        ]);
-    });
-
-    return poses;
-}
 
 // 3. Local Sequence Editing (Save/Reset)
 function saveSequencesLocally() {
@@ -823,7 +734,7 @@ function normalizeAsanaRow(row, existingData = {}) {
     // JSON-First Logic: Check if DB sent hold_json, otherwise parse text
     const holdData = (row.hold_json && typeof row.hold_json === 'object') 
         ? row.hold_json 
-        : (typeof parseHoldTimes === 'function' ? parseHoldTimes(rawHoldText) : { standard: 30 });
+        : parseHoldTimes(rawHoldText);
 
     return {
         ...existingData, // Preserve existing fields if overwriting
@@ -1771,7 +1682,7 @@ if (focusCounter) {
         const varHoldStr = varData.hold || varData.Hold || "";
         
         if (varHoldStr) {
-            const varHd = typeof parseHoldTimes === "function" ? parseHoldTimes(varHoldStr) : {};
+            const varHd = parseHoldTimes(varHoldStr);
             if (varHd.standard > 0) {
                 const dial = document.getElementById("durationDial");
                 const val = dial ? Number(dial.value) : 50;
@@ -3088,7 +2999,7 @@ function builderRender() {
         const normId = typeof normalizePlate === "function" ? normalizePlate(builderPoses[i].id) : builderPoses[i].id;
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
         const vHold = asanaMatch?.variations?.[e.target.value]?.hold;
-        if (vHold && typeof parseHoldTimes === "function") { 
+        if (vHold) { 
             const hd = parseHoldTimes(vHold); 
             if(hd.standard) builderPoses[i].duration = hd.standard; 
         }

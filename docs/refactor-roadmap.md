@@ -9,6 +9,12 @@ This project has moved to Supabase for data and storage concerns. The next refac
   - Supabase client bootstrapping (`src/services/supabaseClient.js`)
   - shared DOM helpers (`src/utils/dom.js`)
 
+
+## Quick wins completed in this phase
+- Extracted parsing helpers from `app.js` into `src/utils/parsing.js` (`parseHoldTimes`, `buildHoldString`, `parseSequenceText`).
+- Extracted generic JSON fetch helper into `src/services/http.js`.
+- Kept `app.js` behavior stable by swapping to imports only (no feature rewrite in this phase).
+
 ## Next phases
 1. **Data adapters**
    - Extract course/asana fetch + transform logic into `src/services/` modules.
