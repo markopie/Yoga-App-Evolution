@@ -519,7 +519,6 @@ window.loadCourses = async function() {
         if (typeof renderSequenceDropdown === "function") renderSequenceDropdown(); 
     } catch (e) {
         console.error('Load courses failed:', e);
-    }
 };
 
 // 3. Local Sequence Editing (Save/Reset)
@@ -528,12 +527,10 @@ async function loadAsanaLibrary() {
     if (!supabase) {
         console.error("Supabase client not initialized");
         return {};
-    }
     try {
         const normalized = await getFullAsanaLibrary();
     } catch (err) {
         console.error('Error loading asana library:', err);
-    } 
             };
         });
 
@@ -542,7 +539,6 @@ async function loadAsanaLibrary() {
         window.asanaLibrary = normalized;
         if (typeof asanaLibrary !== 'undefined') {
             asanaLibrary = normalized;
-        }
 
         // console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
         return normalized;
@@ -5062,3 +5058,4 @@ if (document.readyState === 'loading') {
 
 // #endregion
 // Last structural fix: Thu Mar  5 11:52:00 PM UTC 2026
+// Build Fix: Thu Mar  5 11:52:35 PM UTC 2026
