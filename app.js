@@ -3031,7 +3031,10 @@ function setupAuthListeners() {
         };
     }
 
-    supabase.auth.onAuthStateChange((event, session) => {
+    }
+}
+
+supabase.auth.onAuthStateChange((event, session) => {
         
         if (session && session.user) {
             window.isGuestMode = false;
@@ -3100,3 +3103,4 @@ if (document.readyState === 'loading') {
 // Function reconstruction: Thu Mar  5 11:54:42 PM UTC 2026
 // Stable Build: Thu Mar  5 11:55:33 PM UTC 2026
 // Purge legacy sync: Thu Mar  5 11:56:35 PM UTC 2026
+// Brace alignment: Thu Mar  5 11:59:17 PM UTC 2026
