@@ -560,7 +560,10 @@ async function loadAsanaLibrary() {
         return {};
     }
     try {
-        const normalized = await getFullAsanaLibrary(); 
+        const normalized = await getFullAsanaLibrary();
+    } catch (err) {
+        console.error('Error loading asana library:', err);
+    } 
             };
         });
 
