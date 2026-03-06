@@ -3029,8 +3029,8 @@ function setupAuthListeners() {
         };
     }
 
+
     supabase.auth.onAuthStateChange((event, session) => {
-        
         if (session && session.user) {
             window.isGuestMode = false;
             window.currentUserId = session.user.id;
@@ -3040,48 +3040,36 @@ function setupAuthListeners() {
             showLogin();
         }
     });
+} // Closes setupAuthListeners
 
-// --- NEW AUTONOMOUS RESET LISTENER ---
-// Put this at the very bottom of app.js
+// --- STARTUP & UTILITIES ---
 (function() {
     const attachResetListener = () => {
         const resetText = document.getElementById("dialResetBtn");
         if (!resetText) return;
 
         const performReset = (e) => {
-            // Log for Chrome Console tracking
             console.log(`[MobileReset] ${e.type} detected`);
-            
             const dial = document.getElementById("durationDial");
             if (!dial) return;
-
-            // Stop scrolling/zooming
             if (e.cancelable) e.preventDefault(); 
-
             dial.value = 50;
-
-            // Manually trigger 'input' so the existing slider logic hears the change
             dial.dispatchEvent(new Event('input', { bubbles: true }));
             dial.dispatchEvent(new Event('change', { bubbles: true }));
-            
-            // Force a UI refresh if the helpers exist
             if (typeof updateDialUI === "function") updateDialUI();
-            
             console.log("[MobileReset] Snapped to 50");
         };
 
-        // Use passive: false to allow e.preventDefault() on mobile
         resetText.addEventListener("touchend", performReset, { passive: false });
         resetText.addEventListener("click", performReset);
     };
 
-    // Run once on load, and again if the DOM changes (in case it's in a modal)
-
-    // Final startup check
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', attachResetListener);
     } else {
         attachResetListener();
     }
+})();
 
-}}}}
+// Global Init Trigger
+setupAuthListeners();
