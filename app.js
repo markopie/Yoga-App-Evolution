@@ -774,7 +774,7 @@ function builderRender() {
                 min="1" 
                 ${isLocked ? 'readonly' : ''} 
                 style="width:60px; padding:4px; border:1px solid #ccc; text-align:center; ${isLocked ? 'background:#f0f0f0; color:#888; cursor:not-allowed;' : ''}">
-            ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : (isLocked ? '' : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
+            ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : (isLocked ? "" : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
             `;
     
             // --- 4. INJECT HTML ---
@@ -810,7 +810,7 @@ function builderRender() {
             tr.style.backgroundColor = "#fff9c4"; 
             setTimeout(() => { tr.style.transition = "background 1s"; tr.style.backgroundColor = ""; }, 100);
         }
-    }); // <--- END OF THE forEach LOOP
+// }); // <--- END OF THE forEach LOOP // EXCISED BY ARCHITECT
  
     // --- 5. LISTENERS ---
     const qS = (sel) => tbody.querySelectorAll(sel);
@@ -2222,7 +2222,7 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
              return `<div class="b-search-item" data-id="${a.id}" data-name="${dn.replace(/"/g,'&quot;')}" data-english="${(a.english||"").replace(/"/g,'&quot;')}"`;
                 style="padding:10px 12px; cursor:pointer; border-bottom:1px solid #eee; transition: background 0.2s;">
                 <div style="font-weight:600; font-size:0.95rem; color:#111;">${dn}</div>
-                ${sub ? `<div style="font-size:0.8rem; color:#666; margin-top:2px;">${sub}</div>`; : ""}
+                ${sub ? `<div style="font-size:0.8rem; color:#666; margin-top:2px;">${sub}</div>` : ""}</div>` : ''}</div>`; : ""}
                 <div style="font-size:0.7rem; color:#aaa; margin-top:4px; font-family:monospace;">ID: ${a.id}</div>
 `             </div>`;;
           }).join("");
