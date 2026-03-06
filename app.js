@@ -3079,6 +3079,9 @@ function setupAuthListeners() {
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", attachResetListener);
 
-}
-// --- CLEAN RESET TERMINATION ---
-}}}}
+    } else {
+        attachResetListener();
+    }
+};
+// --- FILE END ---
+}}}
