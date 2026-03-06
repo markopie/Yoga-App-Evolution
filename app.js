@@ -348,13 +348,17 @@ function displayName(asana) {
 }
 
 function escapeHtml2(s) {
-  return String(s ?? "").replace(/[\x26\x3c\x3e\x22\x27]/g, (c) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  } [c]));
+    if (!s) return "";
+    return String(s).replace(/[&<>"']/g, function(m) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[m];
+    });
+}
 }
 
 function renderMarkdownMinimal(md) {
