@@ -2967,7 +2967,18 @@ function showApp() {
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("mainAppContainer").style.display = "";
     if (!window.appInitialized) {
-        init();
+        window.appInitialized = true;
+        // Run startup sequence
+        Promise.all([
+            loadAsanaLibrary(),
+            window.loadCourses()
+        ]).then(() => {
+            console.log("App data initialized successfully");
+            // If you have a render function, call it here:
+            if (typeof renderAsanaLibrary === 'function') renderAsanaLibrary();
+        }).catch(err => {
+            console.error("Startup sequence failed:", err);
+        });
     }
 }
 
@@ -3094,3 +3105,4 @@ if (document.readyState === 'loading') {
 // Overrides structure fix: Fri Mar  6 12:02:30 AM UTC 2026
 // Final structural sync: Fri Mar  6 12:05:14 AM UTC 2026
 // Final structural fix: Fri Mar  6 12:06:59 AM UTC 2026
+// App Startup Logic: Fri Mar  6 12:08:15 AM UTC 2026
