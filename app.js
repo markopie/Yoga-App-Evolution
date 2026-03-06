@@ -3093,4 +3093,9 @@ if (document.readyState === 'loading') {
 }
 }
 }
-}
+
+    } catch (e) {
+        console.error('Final scope catch:', e);
+    }
+});
+// --- END OF FILE ---
