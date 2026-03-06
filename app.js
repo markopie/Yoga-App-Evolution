@@ -3043,3 +3043,9 @@ setupAuthListeners();
 }}
 
 setupAuthListeners();
+
+// --- FINAL APP INITIALIZATION ---
+console.log('Script execution reached the final line.');
+if (typeof setupAuthListeners === 'function') {
+    setupAuthListeners();
+}
