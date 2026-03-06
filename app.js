@@ -3039,3 +3039,7 @@ function setupAuthListeners() {
 
 // Entry Point
 setupAuthListeners();
+
+}}
+
+setupAuthListeners();
