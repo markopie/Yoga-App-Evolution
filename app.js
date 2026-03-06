@@ -1283,7 +1283,6 @@ seqSelect.addEventListener("change", () => {
       updateBtn();
       if (currentSequence) setPose(currentIndex);
    });
-})();
 function updateLastCompletedPill(){
 
     const pill = document.getElementById("lastCompletedPill");
@@ -2343,7 +2342,6 @@ if (blankBtn) {
       }, 50);
    });
 }
- })();
 
 
 safeListen("editCourseBtn", "click", openEditCourse);
@@ -3083,7 +3081,6 @@ function setupAuthListeners() {
     } else {
         attachResetListener();
     }
-})();
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupAuthListeners);
@@ -3109,5 +3106,10 @@ if (document.readyState === 'loading') {
 
     }
 }
-})(); // Global Seal
 // Global Seal: Fri Mar  6 12:09:05 AM UTC 2026
+
+// Final Global Seal
+
+}
+}
+)// Final structural integrity: Fri Mar  6 12:10:10 AM UTC 2026
