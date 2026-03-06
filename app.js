@@ -3076,12 +3076,12 @@ function setupAuthListeners() {
     };
 
     // Run once on load, and again if the DOM changes (in case it's in a modal)
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", attachResetListener);
 
-}
-}
-}
-}
-}
-// --- EOF ---
+    // Final startup check
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachResetListener);
+    } else {
+        attachResetListener();
+    }
+
+}}}}
