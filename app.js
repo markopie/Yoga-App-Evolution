@@ -3101,3 +3101,4 @@ if (document.readyState === 'loading') {
 // Purge legacy sync: Thu Mar  5 11:56:35 PM UTC 2026
 // Brace alignment: Thu Mar  5 11:59:17 PM UTC 2026
 // Cleanup broken override: Fri Mar  6 12:00:06 AM UTC 2026
+// Purge broken logic: Fri Mar  6 12:00:35 AM UTC 2026
