@@ -1065,29 +1065,28 @@ async function saveAsanaField(asanaNo, field, value) {
 
 async function fetchDescriptionOverrides() {
     try {
-        const res = await fetch(DESCRIPTIONS_OVERRIDE_URL, { cache: "no-store" });
+        const res = await fetch(DESCRIPTIONS_OVERRIDE_URL, { cache: 'no-store' });
         if (!res.ok) { descriptionOverrides = {}; return; }
         const data = await res.json();
-        descriptionOverrides = (data && typeof data === "object") ? data : {};
+        descriptionOverrides = (data && typeof data === 'object') ? data : {};
     } catch (e) { descriptionOverrides = {}; }
 }
 
 async function fetchCategoryOverrides() {
     try {
-        const res = await fetch(CATEGORY_OVERRIDE_URL, { cache: "no-store" });
+        const res = await fetch(CATEGORY_OVERRIDE_URL, { cache: 'no-store' });
         if (!res.ok) { categoryOverrides = {}; return; }
         const data = await res.json();
-        categoryOverrides = (data && typeof data === "object") ? data : {};
+        categoryOverrides = (data && typeof data === 'object') ? data : {};
     } catch (e) { categoryOverrides = {}; }
 }
 
 async function fetchAudioOverrides() {
     try {
-        const res = await fetch(AUDIO_OVERRIDE_URL, { cache: "no-store" });
+        const res = await fetch(AUDIO_OVERRIDE_URL, { cache: 'no-store' });
         if (res.ok) audioOverrides = await res.json();
     } catch (e) { audioOverrides = {}; }
 }
-
 /* ==========================================================================
    DATA APPLICATION (APPLY LEGACY OVERRIDES)
    ========================================================================== */
@@ -3102,3 +3101,4 @@ if (document.readyState === 'loading') {
 // Brace alignment: Thu Mar  5 11:59:17 PM UTC 2026
 // Cleanup broken override: Fri Mar  6 12:00:06 AM UTC 2026
 // Purge broken logic: Fri Mar  6 12:00:35 AM UTC 2026
+// Overrides structure fix: Fri Mar  6 12:02:30 AM UTC 2026
