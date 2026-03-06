@@ -359,7 +359,6 @@ function escapeHtml2(s) {
         }[m];
     });
 }
-}
 
 function renderMarkdownMinimal(md) {
    const raw = String(md || "")
