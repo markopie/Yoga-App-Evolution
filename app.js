@@ -3047,5 +3047,3 @@ function setupAuthListeners() {
 if (typeof setupAuthListeners === 'function') {
     setupAuthListeners();
 }
-
-}}}
