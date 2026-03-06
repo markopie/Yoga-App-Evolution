@@ -3029,21 +3029,17 @@ function setupAuthListeners() {
             const dial = document.getElementById("durationDial");
             if (dial) {
                 dial.value = 50;
-                dial.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-        };
-    };
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', attachResetListener);
-    } else {
-        attachResetListener();
-    }
-})();
 
+    supabase.auth.onAuthStateChange((event, session) => {
+        if (session && session.user) {
+            window.currentUserId = session.user.id;
+            showApp();
+        } else if (!window.isGuestMode) {
+            showLogin();
         }
     });
 }
 
-// Initialize the listeners on load
-if (typeof setupAuthListeners === 'function') {
-    setupAuthListeners();
+// Initialize
+setupAuthListeners();
+}}}}}
