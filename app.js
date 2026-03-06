@@ -750,7 +750,7 @@ function builderRender() {
         let varSelectHTML = '';
         const variations = asana ? (asana.variations || {}) : {};
         if (!isMacro && Object.keys(variations).length > 0) {
-            varSelectHTML = ``;
+            varSelectHTML = `
                <select class="b-var" data-idx="${idx}" style="margin-left:8px; padding:2px 4px; border:1px solid #1976d2; border-radius:4px; font-size:0.75rem; background:#e3f2fd; color:#005580; max-width: 160px;">
                   <option value="">Base Pose</option>
                   ${Object.entries(variations).map(([vKey, vData]) => {
@@ -758,21 +758,21 @@ function builderRender() {
                       const sel = (pose.variation === vKey) ? 'selected' : '';
                       return `<option value="${vKey}" ${sel}>${optionTitle}</option>`;
                   }).join('')}
-`               </select>`;
+               </select>`;
         }
 
         // BUILD THE DURATION INPUT (Locked if not Flow/Macro)
         const displayTime = isMacro ? durOrReps : (isFlow ? durOrReps : (asana?.hold_data?.standard || 30));
         const isLocked = !isFlow && !isMacro;
 
-        const durInputHTML = ``;
+            const durInputHTML = `
             <input type="number" class="b-dur" data-idx="${idx}" 
                 value="${displayTime}" 
                 min="1" 
                 ${isLocked ? 'readonly' : ''} 
                 style="width:60px; padding:4px; border:1px solid #ccc; text-align:center; ${isLocked ? 'background:#f0f0f0; color:#888; cursor:not-allowed;' : ''}">
             ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : (isLocked ? '' : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
-        ;
+            `;
     
         // --- 4. INJECT HTML ---
         tr.innerHTML = `
@@ -1139,7 +1139,7 @@ function renderIdFixer(container, brokenId) {
         </select>
         <button id="fixerSaveBtn" class="tiny" style="width:100%; background:${currentAlias ? '#2e7d32' : '#e65100'}; color:white;">
             ${currentAlias ? 'Update Link' : 'Link Pose'}
-        </button>
+    </button>`;
     `;
 
     const searchInput = wrap.querySelector("#fixerSearch");
@@ -1505,14 +1505,14 @@ function renderGlobalHistory() {
          let countColor = "#eee";
          if (item.count > 5) countColor = "#ffe0b2";
          if (item.count > 10) countColor = "#c8e6c9";
-         row.innerHTML = `
+        row.innerHTML = `
             <div style="flex:1;">
                <div style="font-weight:600;">${item.title}</div>
                <div style="font-size:0.8rem; color:#888;">Last: ${item.lastDateStr}</div>
             </div>
             <div style="background:${countColor}; padding:2px 8px; border-radius:10px; font-size:0.8rem; font-weight:bold; margin-left:8px;">
                ${item.count}x
-`            </div>`;
+            </div>`;
          content.appendChild(row);
       });
 
@@ -1584,6 +1584,7 @@ safeListen("resetBtn", "click", () => {
    // Reset Instructions
    if (instructionsEl) instructionsEl.textContent = "";
 });
+} // Closed block from 1271
 // --- DYNAMIC DURATION DIAL LOGIC ---
 function getDialPosition() {
     const dial = $("durationDial");
@@ -2461,6 +2462,7 @@ function encodeToBase64(str) {
     return btoa(unescape(encodeURIComponent(str)));
 }
 
+})(); // Closed block from 2120
 /* ==========================================================================
    FULL ASANA EDITOR (Supabase Upsert)
    ========================================================================== */
@@ -3040,12 +3042,8 @@ function setupAuthListeners() {
 // Entry Point
 setupAuthListeners();
 
-}}
 
+// Entry Point
 setupAuthListeners();
 
-// --- FINAL APP INITIALIZATION ---
 console.log('Script execution reached the final line.');
-if (typeof setupAuthListeners === 'function') {
-    setupAuthListeners();
-}
