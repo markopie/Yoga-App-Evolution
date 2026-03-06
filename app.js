@@ -3016,6 +3016,17 @@ function setupAuthListeners() {
         };
     }
 
+    if (signOutBtn) {
+        signOutBtn.onclick = async () => {
+            if (window.isGuestMode) {
+                window.isGuestMode = false;
+                showLogin();
+            } else {
+                await supabase.auth.signOut();
+            }
+        };
+    }
+
     supabase.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
             window.currentUserId = session.user.id;
@@ -3026,4 +3037,5 @@ function setupAuthListeners() {
     });
 }
 
+// Entry Point
 setupAuthListeners();
