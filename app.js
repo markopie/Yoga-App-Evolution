@@ -751,7 +751,7 @@ function builderRender() {
         const variations = asana ? (asana.variations || {}) : {};
         if (!isMacro && Object.keys(variations).length > 0) {
             varSelectHTML = `
-               <select class="b-var" data-idx="${idx}" style="margin-left:8px; padding:2px 4px; border:1px solid #1976d2; border-radius:4px; font-size:0.75rem; background:#e3f2fd; color:#005580; max-width: 160px;">
+            <select class="b-var" data-idx="${idx}" style="margin-left:8px; padding:2px 4px; border:1px solid #1976d2; border-radius:4px; font-size:0.75rem; background:#e3f2fd; color:#005580; max-width: 160px;">
                   <option value="">Base Pose</option>
                   ${Object.entries(variations).map(([vKey, vData]) => {
                       let optionTitle = vData.title || `Stage ${vKey}`;
@@ -771,10 +771,10 @@ function builderRender() {
                 min="1" 
                 ${isLocked ? 'readonly' : ''} 
                 style="width:60px; padding:4px; border:1px solid #ccc; text-align:center; ${isLocked ? 'background:#f0f0f0; color:#888; cursor:not-allowed;' : ''}">
-            ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : (isLocked ? '' : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
+            ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>`; : (isLocked ? '' : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
             `;
     
-        // --- 4. INJECT HTML ---
+            // --- 4. INJECT HTML ---
         tr.innerHTML = `
            <td style="padding:8px; text-align:center; color:#888;">${idx + 1}</td>
            <td style="padding:8px;">
@@ -798,7 +798,7 @@ function builderRender() {
               <button class="tiny b-move-up" data-idx="${idx}">▲</button>
               <button class="tiny b-move-dn" data-idx="${idx}">▼</button>
               <button class="tiny warn b-remove" data-idx="${idx}">✕</button>
-`           </td>`;
+           </td>`;
            
         tbody.appendChild(tr);
 
@@ -1125,8 +1125,8 @@ function renderIdFixer(container, brokenId) {
     wrap.style.fontSize = "0.85rem";
 
     let statusHTML = currentAlias 
-        ? `<div style="margin-bottom:4px; color:green;">✅ <b>${normBroken}</b> ➝ <b>${currentAlias}</b></div>` 
-        : `<div style="margin-bottom:4px; color:#e65100;">🔧 <b>ID ${normBroken}</b> is unlinked</div>`;
+        ? `<div style="margin-bottom:4px; color:green;">✅ <b>${normBroken}</b> ➝ <b>${currentAlias}</b></div>`; 
+        : `<div style="margin-bottom:4px; color:#e65100;">🔧 <b>ID ${normBroken}</b> is unlinked</div>`;;
 
     wrap.innerHTML = `
         <div class="adv-section-title" style="margin-top:0; color:#333;">Link / Map Pose</div>
@@ -1227,7 +1227,7 @@ seqSelect.addEventListener("change", () => {
     if (!idx) {
         currentSequence = null;
         setStatus("Select a sequence");
-        if($("collageWrap")) $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`;
+        if($("collageWrap")) $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`;;
         return;
     }
 
@@ -1376,7 +1376,7 @@ async function openHistoryModal(defaultTab = "current") {
 
     const listEl = $("historyList");
     if (listEl && currentSequence) {
-        listEl.innerHTML = `<div class="muted" style="padding:8px;">Loading…</div>`;
+        listEl.innerHTML = `<div class="muted" style="padding:8px;">Loading…</div>`;;
 
         // Always pull the freshest data from the unified cache (Supabase-backed)
         const hist = serverHistoryCache || await fetchServerHistory();
@@ -1387,7 +1387,7 @@ async function openHistoryModal(defaultTab = "current") {
         listEl.innerHTML = "";
 
         if (entries.length === 0) {
-            listEl.innerHTML = `<div class="muted" style="padding:8px;">No completion history yet.</div>`;
+            listEl.innerHTML = `<div class="muted" style="padding:8px;">No completion history yet.</div>`;;
         } else {
             // Streak banner
             const streak = calculateStreak(entries.map(e => e.iso));
@@ -1437,7 +1437,7 @@ function renderGlobalHistory() {
 
    const entries = serverHistoryCache || [];
    if (!entries.length) {
-      container.innerHTML = `<div class="msg">No history found for any sequence.</div>`;
+      container.innerHTML = `<div class="msg">No history found for any sequence.</div>`;;
       return;
    }
 
@@ -1460,11 +1460,11 @@ function renderGlobalHistory() {
    // Stats header
    const statsHeader = document.createElement("div");
    statsHeader.style.cssText = "padding:10px 14px; background:#e8f5e9; border-radius:6px; margin-bottom:12px; font-size:0.9rem;";
-   let statsHtml = `<div style="font-weight:bold; font-size:1rem; margin-bottom:4px;">Total sessions: ${totalCompletions}</div>`;
+   let statsHtml = `<div style="font-weight:bold; font-size:1rem; margin-bottom:4px;">Total sessions: ${totalCompletions}</div>`;;
    if (overallStreak > 1) {
-      statsHtml += `<div style="color:#2e7d32; font-weight:bold;">${overallStreak}-day practice streak — keep it up!</div>`;
+      statsHtml += `<div style="color:#2e7d32; font-weight:bold;">${overallStreak}-day practice streak — keep it up!</div>`;;
    } else if (overallStreak === 1) {
-      statsHtml += `<div style="color:#2e7d32;">Practiced today — great work!</div>`;
+      statsHtml += `<div style="color:#2e7d32;">Practiced today — great work!</div>`;;
    }
    statsHeader.innerHTML = statsHtml;
    container.appendChild(statsHeader);
@@ -1512,7 +1512,7 @@ function renderGlobalHistory() {
             </div>
             <div style="background:${countColor}; padding:2px 8px; border-radius:10px; font-size:0.8rem; font-weight:bold; margin-left:8px;">
                ${item.count}x
-            </div>`;
+            </div>`;;
          content.appendChild(row);
       });
 
@@ -2206,7 +2206,7 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
           }).slice(0, 25); // Increased limit slightly
  
           if (!hits.length) { 
-             results.innerHTML = `<div style="padding:10px; color:#999; font-style:italic;">No poses found...</div>`;
+             results.innerHTML = `<div style="padding:10px; color:#999; font-style:italic;">No poses found...</div>`;;
              results.style.display = "block";
              positionResults();
              return; 
@@ -2219,9 +2219,9 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
              return `<div class="b-search-item" data-id="${a.id}" data-name="${dn.replace(/"/g,'&quot;')}" data-english="${(a.english||"").replace(/"/g,'&quot;')}"`;
                 style="padding:10px 12px; cursor:pointer; border-bottom:1px solid #eee; transition: background 0.2s;">
                 <div style="font-weight:600; font-size:0.95rem; color:#111;">${dn}</div>
-                ${sub ? `<div style="font-size:0.8rem; color:#666; margin-top:2px;">${sub}</div>` : ""}
+                ${sub ? `<div style="font-size:0.8rem; color:#666; margin-top:2px;">${sub}</div>`; : ""}
                 <div style="font-size:0.7rem; color:#aaa; margin-top:4px; font-family:monospace;">ID: ${a.id}</div>
-`             </div>`;
+`             </div>`;;
           }).join("");
  
           results.style.display = "block";
@@ -3039,11 +3039,8 @@ function setupAuthListeners() {
     });
 }
 
-// Entry Point
-setupAuthListeners();
 
-
-// Entry Point
-setupAuthListeners();
-
+`; 
+// --- FINAL APP INITIALIZATION ---
 console.log('Script execution reached the final line.');
+setupAuthListeners();
