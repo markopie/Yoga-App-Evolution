@@ -3001,10 +3001,11 @@ function setupAuthListeners() {
                 provider: 'google',
                 options: { redirectTo: window.location.origin + window.location.pathname }
             });
+            if (error) {
                 loginError.textContent = error.message;
-                loginError.style.display = "block";
+                loginError.style.display = 'block';
                 googleBtn.disabled = false;
-                googleBtn.textContent = "Sign in with Google";
+                googleBtn.textContent = 'Sign in with Google';
             }
         };
     }
@@ -3012,35 +3013,18 @@ function setupAuthListeners() {
     if (skipBtn) {
         skipBtn.onclick = () => {
             window.isGuestMode = true;
-            window.currentUserId = null;
             showApp();
-        };
-    }
-
-    if (signOutBtn) {
-        signOutBtn.onclick = async () => {
-            if (window.isGuestMode) {
-                window.isGuestMode = false;
-                showLogin();
-            } else {
-                await supabase.auth.signOut();
-            }
         };
     }
 
     supabase.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
-            window.isGuestMode = false;
             window.currentUserId = session.user.id;
             showApp();
         } else if (!window.isGuestMode) {
-            window.currentUserId = null;
             showLogin();
         }
     });
 }
 
-// Global Initialization
-if (typeof setupAuthListeners === 'function') {
-    setupAuthListeners();
-}
+setupAuthListeners();
