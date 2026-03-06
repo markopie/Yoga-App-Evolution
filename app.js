@@ -810,7 +810,7 @@ function builderRender() {
             tr.style.backgroundColor = "#fff9c4"; 
             setTimeout(() => { tr.style.transition = "background 1s"; tr.style.backgroundColor = ""; }, 100);
         }
-// }); // <--- END OF THE forEach LOOP // EXCISED BY ARCHITECT
+// --- Logic Boundary Restored by Architect ---
  
     // --- 5. LISTENERS ---
     const qS = (sel) => tbody.querySelectorAll(sel);
@@ -925,6 +925,8 @@ function builderRender() {
 
 
 
+
+}
 
 function movePose(idx, dir) {
     if (idx + dir < 0 || idx + dir >= builderPoses.length) return;
@@ -3046,4 +3048,16 @@ function setupAuthListeners() {
 `; 
 // --- FINAL APP INITIALIZATION ---
 console.log('Script execution reached the final line.');
+setupAuthListeners();
+// --- ARCHITECTURAL GLOBAL BRIDGE ---
+window.loadCourses = loadCourses;
+window.builderOpen = builderOpen;
+window.builderSave = builderSave;
+window.openEditCourse = openEditCourse;
+window.addStageToEditor = addStageToEditor;
+window.openAsanaEditor = openAsanaEditor;
+window.syncDataToGitHub = syncDataToGitHub;
+
+// --- INITIALIZATION ---
+console.log("Yoga App Logic Architect: System Online.");
 setupAuthListeners();
