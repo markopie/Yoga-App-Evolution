@@ -1088,10 +1088,6 @@ async function fetchAudioOverrides() {
     } catch (e) { audioOverrides = {}; }
 }
 
-async function fetchImageOverrides() {
-    try {
-        }
-
 /* ==========================================================================
    DATA APPLICATION (APPLY LEGACY OVERRIDES)
    ========================================================================== */
@@ -3104,3 +3100,4 @@ if (document.readyState === 'loading') {
 // Stable Build: Thu Mar  5 11:55:33 PM UTC 2026
 // Purge legacy sync: Thu Mar  5 11:56:35 PM UTC 2026
 // Brace alignment: Thu Mar  5 11:59:17 PM UTC 2026
+// Cleanup broken override: Fri Mar  6 12:00:06 AM UTC 2026
