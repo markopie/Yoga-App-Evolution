@@ -348,7 +348,7 @@ function displayName(asana) {
 }
 
 function escapeHtml2(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+  return String(s ?? "").replace(/[\x26\x3c\x3e\x22\x27]/g, (c) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
