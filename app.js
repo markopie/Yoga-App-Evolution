@@ -750,7 +750,7 @@ function builderRender() {
         let varSelectHTML = '';
         const variations = asana ? (asana.variations || {}) : {};
         if (!isMacro && Object.keys(variations).length > 0) {
-            varSelectHTML = `
+            varSelectHTML = ``;
                <select class="b-var" data-idx="${idx}" style="margin-left:8px; padding:2px 4px; border:1px solid #1976d2; border-radius:4px; font-size:0.75rem; background:#e3f2fd; color:#005580; max-width: 160px;">
                   <option value="">Base Pose</option>
                   ${Object.entries(variations).map(([vKey, vData]) => {
@@ -758,21 +758,21 @@ function builderRender() {
                       const sel = (pose.variation === vKey) ? 'selected' : '';
                       return `<option value="${vKey}" ${sel}>${optionTitle}</option>`;
                   }).join('')}
-               </select>`;
+`               </select>`;
         }
 
         // BUILD THE DURATION INPUT (Locked if not Flow/Macro)
         const displayTime = isMacro ? durOrReps : (isFlow ? durOrReps : (asana?.hold_data?.standard || 30));
         const isLocked = !isFlow && !isMacro;
 
-        const durInputHTML = `
+        const durInputHTML = ``;
             <input type="number" class="b-dur" data-idx="${idx}" 
                 value="${displayTime}" 
                 min="1" 
                 ${isLocked ? 'readonly' : ''} 
                 style="width:60px; padding:4px; border:1px solid #ccc; text-align:center; ${isLocked ? 'background:#f0f0f0; color:#888; cursor:not-allowed;' : ''}">
             ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : (isLocked ? '' : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
-        `;
+        ;
     
         // --- 4. INJECT HTML ---
         tr.innerHTML = `
@@ -798,7 +798,7 @@ function builderRender() {
               <button class="tiny b-move-up" data-idx="${idx}">▲</button>
               <button class="tiny b-move-dn" data-idx="${idx}">▼</button>
               <button class="tiny warn b-remove" data-idx="${idx}">✕</button>
-           </td>`;
+`           </td>`;
            
         tbody.appendChild(tr);
 
@@ -1512,7 +1512,7 @@ function renderGlobalHistory() {
             </div>
             <div style="background:${countColor}; padding:2px 8px; border-radius:10px; font-size:0.8rem; font-weight:bold; margin-left:8px;">
                ${item.count}x
-            </div>`;
+`            </div>`;
          content.appendChild(row);
       });
 
@@ -2215,12 +2215,12 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
              const dn = displayName(a);
              // Highlight what matched (optional improvement)
              const sub = (a.iast && a.iast !== dn) ? a.iast : (a.english && a.english !== dn ? a.english : "");
-             return `<div class="b-search-item" data-id="${a.id}" data-name="${dn.replace(/"/g,'&quot;')}" data-english="${(a.english||"").replace(/"/g,'&quot;')}"
+             return `<div class="b-search-item" data-id="${a.id}" data-name="${dn.replace(/"/g,'&quot;')}" data-english="${(a.english||"").replace(/"/g,'&quot;')}"`;
                 style="padding:10px 12px; cursor:pointer; border-bottom:1px solid #eee; transition: background 0.2s;">
                 <div style="font-weight:600; font-size:0.95rem; color:#111;">${dn}</div>
                 ${sub ? `<div style="font-size:0.8rem; color:#666; margin-top:2px;">${sub}</div>` : ""}
                 <div style="font-size:0.7rem; color:#aaa; margin-top:4px; font-family:monospace;">ID: ${a.id}</div>
-             </div>`;
+`             </div>`;
           }).join("");
  
           results.style.display = "block";
