@@ -1128,8 +1128,8 @@ function renderIdFixer(container, brokenId) {
     wrap.style.fontSize = "0.85rem";
 
     let statusHTML = currentAlias 
-        ? `<div style="margin-bottom:4px; color:green;">✅ <b>${normBroken}</b> ➝ <b>${currentAlias}</b></div>`; 
-        : `<div style="margin-bottom:4px; color:#e65100;">🔧 <b>ID ${normBroken}</b> is unlinked</div>`;;
+        ? `<div style="margin-bottom:4px; color:green;">✅ <b>${normBroken}</b> ➝ <b>${currentAlias}</b></div>` 
+        : `<div style="margin-bottom:4px; color:#e65100;">🔧 <b>ID ${normBroken}</b> is unlinked</div>`;
 
     wrap.innerHTML = `
         <div class="adv-section-title" style="margin-top:0; color:#333;">Link / Map Pose</div>
