@@ -3040,5 +3040,10 @@ function setupAuthListeners() {
     }
 })();
 
-// Global Entry Point
-setupAuthListeners();
+        }
+    });
+}
+
+// Initialize the listeners on load
+if (typeof setupAuthListeners === 'function') {
+    setupAuthListeners();
