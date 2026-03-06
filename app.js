@@ -2997,13 +2997,10 @@ function setupAuthListeners() {
             googleBtn.disabled = true;
             googleBtn.textContent = "Redirecting...";
             const { error } = await supabase.auth.signInWithOAuth({
-                provider: "google",
-
             const { error } = await supabase.auth.signInWithOAuth({
-                provider: "google",
+                provider: 'google',
                 options: { redirectTo: window.location.origin + window.location.pathname }
             });
-            if (error) {
                 loginError.textContent = error.message;
                 loginError.style.display = "block";
                 googleBtn.disabled = false;
