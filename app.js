@@ -774,7 +774,7 @@ function builderRender() {
                 min="1" 
                 ${isLocked ? 'readonly' : ''} 
                 style="width:60px; padding:4px; border:1px solid #ccc; text-align:center; ${isLocked ? 'background:#f0f0f0; color:#888; cursor:not-allowed;' : ''}">
-            ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : (isLocked ? "" : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
+            ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : (isLocked ? "" : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
             `;
     
             // --- 4. INJECT HTML ---
@@ -2123,7 +2123,7 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
     if (typeof builderRender === "function") builderRender();
 });
 
-(function setupBuilderSearch() {
+function setupBuilderSearch() {
     const input = document.getElementById("builderSearch");
     const results = document.getElementById("builderSearchResults");
     if (!input || !results) return;
@@ -2218,16 +2218,15 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
           }
  
           results.innerHTML = hits.map(a => {
-             const dn = displayName(a);
-             // Highlight what matched (optional improvement)
-             const sub = (a.iast && a.iast !== dn) ? a.iast : (a.english && a.english !== dn ? a.english : "");
-             return `<div class="b-search-item" data-id="${a.id}" data-name="${dn.replace(/"/g,'&quot;')}" data-english="${(a.english||"").replace(/"/g,'&quot;')}"`;
-                style="padding:10px 12px; cursor:pointer; border-bottom:1px solid #eee; transition: background 0.2s;">
-                <div style="font-weight:600; font-size:0.95rem; color:#111;">${dn}</div>
-                ${sub ? `<div style="font-size:0.8rem; color:#666; margin-top:2px;">${sub}</div>` : ""}</div>` : ''}</div>`; : ""}
-                <div style="font-size:0.7rem; color:#aaa; margin-top:4px; font-family:monospace;">ID: ${a.id}</div>
-`             </div>`;;
-          }).join("");
+         const dn = displayName(a);
+         const sub = (a.iast && a.iast !== dn) ? a.iast : (a.english && a.english !== dn ? a.english : "");
+         return `<div class="b-search-item" data-id="${a.id}" data-name="${dn.replace(/"/g,'&quot;')}" data-english="${(a.english||"").replace(/"/g,'&quot;')}"
+            style="padding:10px 12px; cursor:pointer; border-bottom:1px solid #eee; transition: background 0.2s;">
+            <div style="font-weight:600; font-size:0.95rem; color:#111;">${dn}</div>
+            ${sub ? `<div style="font-size:0.8rem; color:#666; margin-top:2px;">${sub}</div>` : ""}
+            <div style="font-size:0.7rem; color:#aaa; margin-top:4px; font-family:monospace;">ID: ${a.id}</div>
+         </div>`;
+      }).join("");
  
           results.style.display = "block";
           positionResults();
@@ -2467,7 +2466,8 @@ function encodeToBase64(str) {
     return btoa(unescape(encodeURIComponent(str)));
 }
 
-})(); // Closed block from 2120
+}
+setupBuilderSearch(); // Boundary Sealed by Architect
 /* ==========================================================================
    FULL ASANA EDITOR (Supabase Upsert)
    ========================================================================== */
