@@ -2998,48 +2998,54 @@ function setupAuthListeners() {
             googleBtn.textContent = "Redirecting...";
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: "google",
+
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: "google",
                 options: { redirectTo: window.location.origin + window.location.pathname }
             });
+            if (error) {
+                loginError.textContent = error.message;
+                loginError.style.display = "block";
+                googleBtn.disabled = false;
+                googleBtn.textContent = "Sign in with Google";
+            }
         };
     }
 
     if (skipBtn) {
         skipBtn.onclick = () => {
             window.isGuestMode = true;
+            window.currentUserId = null;
             showApp();
+        };
+    }
+
+    if (signOutBtn) {
+        signOutBtn.onclick = async () => {
+            if (window.isGuestMode) {
+                window.isGuestMode = false;
+                showLogin();
+            } else {
+                await supabase.auth.signOut();
+            }
         };
     }
 
     supabase.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
+            window.isGuestMode = false;
             window.currentUserId = session.user.id;
             showApp();
         } else if (!window.isGuestMode) {
+            window.currentUserId = null;
             showLogin();
         }
     });
 }
 
-// Mobile Reset Utility
-(function() {
-    const attachResetListener = () => {
-        const resetText = document.getElementById("dialResetBtn");
-        if (!resetText) return;
-        resetText.onclick = () => {
-            const dial = document.getElementById("durationDial");
-            if (dial) {
-                dial.value = 50;
-
-    supabase.auth.onAuthStateChange((event, session) => {
-        if (session && session.user) {
-            window.currentUserId = session.user.id;
-            showApp();
-        } else if (!window.isGuestMode) {
-            showLogin();
-        }
-    });
+// Global Initialization
+if (typeof setupAuthListeners === 'function') {
+    setupAuthListeners();
 }
 
-// Initialize
-setupAuthListeners();
-}}}}}
+}}}
