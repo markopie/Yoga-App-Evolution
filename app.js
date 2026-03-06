@@ -3081,6 +3081,5 @@ function setupAuthListeners() {
     } else {
         attachResetListener();
     }
-}; // Close attachResetListener if it was inside a wrapper
-// --- CLEAN FILE END ---
-}}}
+
+}}}}
