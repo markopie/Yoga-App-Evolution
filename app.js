@@ -810,7 +810,7 @@ function builderRender() {
             tr.style.backgroundColor = "#fff9c4"; 
             setTimeout(() => { tr.style.transition = "background 1s"; tr.style.backgroundColor = ""; }, 100);
         }
-// --- Logic Boundary Restored by Architect ---
+}); // <--- END OF THE forEach LOOP (Restored by Architect)
  
     // --- 5. LISTENERS ---
     const qS = (sel) => tbody.querySelectorAll(sel);
