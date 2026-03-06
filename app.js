@@ -3086,21 +3086,11 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupAuthListeners);
 } else {
     setupAuthListeners();
+
+
+// --- STRUCTURAL RECOVERY ---
 }
-
-// #endregion
-// Last structural fix: Thu Mar  5 11:52:00 PM UTC 2026
-// Build Fix: Thu Mar  5 11:52:35 PM UTC 2026
-// Build Fix: Thu Mar  5 11:53:06 PM UTC 2026
-// Structural integrity check: Thu Mar  5 11:53:48 PM UTC 2026
-// Function reconstruction: Thu Mar  5 11:54:42 PM UTC 2026
-// Stable Build: Thu Mar  5 11:55:33 PM UTC 2026
-// Purge legacy sync: Thu Mar  5 11:56:35 PM UTC 2026
-// Brace alignment: Thu Mar  5 11:59:17 PM UTC 2026
-// Cleanup broken override: Fri Mar  6 12:00:06 AM UTC 2026
-// Purge broken logic: Fri Mar  6 12:00:35 AM UTC 2026
-// Overrides structure fix: Fri Mar  6 12:02:30 AM UTC 2026
-// Final structural sync: Fri Mar  6 12:05:14 AM UTC 2026
-// Final structural fix: Fri Mar  6 12:06:59 AM UTC 2026
-// App Startup Logic: Fri Mar  6 12:08:15 AM UTC 2026
-
+}
+}
+}
+}
