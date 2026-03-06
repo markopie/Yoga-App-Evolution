@@ -2985,6 +2985,7 @@ function showLogin() {
     document.getElementById("mainAppContainer").style.display = "none";
 }
 
+
 function setupAuthListeners() {
     const googleBtn = document.getElementById("googleSignInBtn");
     const skipBtn = document.getElementById("skipLoginBtn");
@@ -2994,76 +2995,44 @@ function setupAuthListeners() {
     if (googleBtn) {
         googleBtn.onclick = async () => {
             googleBtn.disabled = true;
-            googleBtn.textContent = "Redirecting…";
-            loginError.style.display = "none";
-            
+            googleBtn.textContent = "Redirecting...";
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: "google",
                 options: { redirectTo: window.location.origin + window.location.pathname }
             });
-            if (error) {
-                loginError.textContent = error.message;
-                loginError.style.display = "block";
-                googleBtn.disabled = false;
-                googleBtn.textContent = "Sign in with Google";
-            }
         };
     }
 
     if (skipBtn) {
         skipBtn.onclick = () => {
             window.isGuestMode = true;
-            window.currentUserId = null;
             showApp();
         };
     }
-
-    if (signOutBtn) {
-        signOutBtn.onclick = async () => {
-            if (window.isGuestMode) {
-                window.isGuestMode = false;
-                showLogin();
-            } else {
-                await supabase.auth.signOut();
-            }
-        };
-    }
-
 
     supabase.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
-            window.isGuestMode = false;
             window.currentUserId = session.user.id;
             showApp();
         } else if (!window.isGuestMode) {
-            window.currentUserId = null;
             showLogin();
         }
     });
-} // Closes setupAuthListeners
+}
 
-// --- STARTUP & UTILITIES ---
+// Mobile Reset Utility
 (function() {
     const attachResetListener = () => {
         const resetText = document.getElementById("dialResetBtn");
         if (!resetText) return;
-
-        const performReset = (e) => {
-            console.log(`[MobileReset] ${e.type} detected`);
+        resetText.onclick = () => {
             const dial = document.getElementById("durationDial");
-            if (!dial) return;
-            if (e.cancelable) e.preventDefault(); 
-            dial.value = 50;
-            dial.dispatchEvent(new Event('input', { bubbles: true }));
-            dial.dispatchEvent(new Event('change', { bubbles: true }));
-            if (typeof updateDialUI === "function") updateDialUI();
-            console.log("[MobileReset] Snapped to 50");
+            if (dial) {
+                dial.value = 50;
+                dial.dispatchEvent(new Event('input', { bubbles: true }));
+            }
         };
-
-        resetText.addEventListener("touchend", performReset, { passive: false });
-        resetText.addEventListener("click", performReset);
     };
-
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', attachResetListener);
     } else {
@@ -3071,5 +3040,5 @@ function setupAuthListeners() {
     }
 })();
 
-// Global Init Trigger
+// Global Entry Point
 setupAuthListeners();
