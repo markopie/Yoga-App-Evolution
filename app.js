@@ -511,18 +511,12 @@ window.loadCourses = async function() {
     if (!supabase) return;
     try {
         const deduplicated = await getFullCourseList(window.currentUserId);
-        
         window.courses = deduplicated;
-        courses = deduplicated;
-        sequences = deduplicated;
-
-        if (typeof renderSequenceDropdown === "function") renderSequenceDropdown(); 
     } catch (e) {
         console.error('Load courses failed:', e);
+    }
 };
 
-// 3. Local Sequence Editing (Save/Reset)
-// 4. Load Asana Library
 async function loadAsanaLibrary() {
     if (!supabase) return {};
     try {
@@ -3026,10 +3020,7 @@ function setupAuthListeners() {
         };
     }
 
-    }
-}
-
-supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
         
         if (session && session.user) {
             window.isGuestMode = false;
