@@ -22,9 +22,10 @@ import {
 import { fetchCourses, loadAsanaLibrary, normalizeAsana, normalizeAsanaRow, normalizePlate, parsePlates, normaliseAsanaId } from "./src/services/dataAdapter.js";
 import { supabase } from "./src/services/supabaseClient.js";
 import { loadJSON } from "./src/services/http.js";
-import { $, normaliseText, safeListen } from "./src/utils/dom.js";
+import { $, normaliseText, safeListen, setStatus, showError, enterBrowseDetailMode, exitBrowseDetailMode } from "./src/utils/dom.js";
 import { parseHoldTimes, buildHoldString } from "./src/utils/parsing.js";
-
+import { prefersIAST, setIASTPref, displayName, escapeHtml2, renderMarkdownMinimal, formatHMS, formatTechniqueText } from "./src/utils/format.js";
+import { parsePlateTokens, plateFromFilename, primaryAsanaFromFilename, filenameFromUrl, mobileVariantUrl, ensureArray, isBrowseMobile } from "./src/utils/helpers.js";
 
 window.db = supabase;
 window.currentUserId = null;
@@ -345,93 +346,6 @@ function getAsanaIndex() {
 // IAST display preference — stored in localStorage
 const IAST_PREF_KEY = "yoga_prefer_iast";
 
-function prefersIAST() {
-   return localStorage.getItem(IAST_PREF_KEY) !== "false";
-}
-
-function setIASTPref(val) {
-   localStorage.setItem(IAST_PREF_KEY, val ? "true" : "false");
-}
-
-function displayName(asana) {
-   if (!asana) return "";
-   if (prefersIAST() && asana.iast) return asana.iast;
-   return asana.english || asana.name || asana.iast || "";
-}
-
-function escapeHtml2(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  } [c]));
-}
-
-function renderMarkdownMinimal(md) {
-   const raw = String(md || "")
-      .replace(/\r\n/g, "\n")
-      .replace(/\r/g, "\n")
-      .trim();
-   if (!raw) return "";
-   
-   const lines = raw.split("\n");
-   let out = "";
-   let inOl = false;
-   let inUl = false;
-
-   const closeLists = () => {
-      if (inOl) { out += "</ol>"; inOl = false; }
-      if (inUl) { out += "</ul>"; inUl = false; }
-   };
-
-   const peekNextNonEmpty = (fromIdx) => {
-      for (let k = fromIdx; k < lines.length; k++) {
-         const t = (lines[k] || "").trim();
-         if (t) return t;
-      }
-      return "";
-   };
-
-   for (let i = 0; i < lines.length; i++) {
-      const trimmed = (lines[i] || "").trim();
-
-      if (!trimmed) {
-         const next = peekNextNonEmpty(i + 1);
-         const nextOl = next.match(/^(\d+)[\.)]\s+/);
-         const nextUl = next.match(/^[-*]\s+/);
-         
-         if ((inOl && nextOl) || (inUl && nextUl)) continue;
-         
-         closeLists();
-         out += "<div style='display:block; height:15px; width:100%;'></div>";
-         continue;
-      }
-
-      const ol = trimmed.match(/^(\d+)[\.)]\s+(.*)$/);
-      const ul = trimmed.match(/^[-*]\s+(.*)$/);
-
-      if (ol) {
-         if (inUl) { out += "</ul>"; inUl = false; }
-         if (!inOl) { out += "<ol style='margin-bottom:10px; padding-left:25px;'>"; inOl = true; }
-         out += "<li style='margin-bottom:8px;'>" + escapeHtml2(ol[2]) + "</li>";
-         continue;
-      }
-
-      if (ul) {
-         if (inOl) { out += "</ol>"; inOl = false; }
-         if (!inUl) { out += "<ul style='margin-bottom:10px; padding-left:25px;'>"; inUl = true; }
-         out += "<li style='margin-bottom:8px;'>" + escapeHtml2(ul[1]) + "</li>";
-         continue;
-      }
-
-      closeLists();
-      out += `<p style="margin: 0 0 12px 0; line-height: 1.6; display: block;">${escapeHtml2(trimmed)}</p>`;
-   }
-   closeLists();
-   return out;
-}
 /**
  * UI Helper: Bridges the old function name to the new smart logic.
  * Required for 'renderPlateSection' to work.
@@ -439,62 +353,10 @@ function renderMarkdownMinimal(md) {
 function urlsForPlateToken(p) {
     return smartUrlsForPoseId(p);
 }
-function formatHMS(totalSeconds) {
-   const s = Math.max(0, Math.floor(totalSeconds || 0));
-   const h = Math.floor(s / 3600);
-   const m = Math.floor((s % 3600) / 60);
-   const r = s % 60;
-   if (h > 0) return `${h}:${String(m).padStart(2,"0")}:${String(r).padStart(2,"0")}`;
-   return `${m}:${String(r).padStart(2,"0")}`;
-}
-
-function formatTechniqueText(text) {
-    // SAFETY CHECK: If text is null, undefined, or an object, return empty string
-    if (!text || typeof text !== 'string') return "";
-    
-    let clean = text.replace(/^"|"$/g, '').trim();
-    return clean.replace(/\.(\s+|$)/g, '.\n\n');
- }
 
 /* ==========================================================================
    ID & PLATE NORMALIZATION
    ========================================================================== */
-
-
-
-function parsePlateTokens(raw) {
-   const s = String(raw || "").trim();
-   if (!s) return [];
-   return s.split(/[\s,]+/).map(x => normalizePlate(x)).filter(Boolean);
-}
-
-function plateFromFilename(name) {
-   const m = name.match(/_Plate([0-9]+(?:\.[0-9]+)?)\./i);
-   if (!m) return null;
-   return normalizePlate(m[1]);
-}
-
-function primaryAsanaFromFilename(name) {
-   const m = name.match(/^([a-zA-Z0-9]+)_/);
-   return m ? m[1] : null;
-}
-
-function filenameFromUrl(url) {
-   return url.split("/").pop();
-}
-
-function mobileVariantUrl(mainUrl) {
-   return mainUrl;
-}
-
-function ensureArray(x) {
-   return Array.isArray(x) ? x : [x];
-}
-
-// UTILITIES
-function isBrowseMobile() {
-   return window.matchMedia("(max-width: 900px)").matches;
-}
 
 function resolveId(id) {
     const norm = normalizePlate(id);
@@ -1020,6 +882,7 @@ async function init() {
         // 3. Load Main Data (Sequential)
         if (statusEl) statusEl.textContent = "Loading library...";
         asanaLibrary = await loadAsanaLibrary();
+        window.asanaLibrary = asanaLibrary;
 
         if (statusEl) statusEl.textContent = "Loading courses...";
         await loadCourses();
@@ -2546,60 +2409,6 @@ async function showAsanaDetail(asana) {
     if (typeof renderBrowseList === "function") {
         renderBrowseList(uniqueFiltered);
     }
-}
-
-function matchesText(asma, q) {
-   if (!q) return true;
-   const haystack = (String(asma.english || "") + " " + String(asma.iast || "") + " " + String(asma.variation || "")).toLowerCase();
-   return haystack.includes(q.toLowerCase());
-}
-
-function parsePlateQuery(q) {
-   const s = String(q || "").trim();
-   if (!s) return [];
-   return parseIndexPlateField(s.replace(/[,\s]+/g, "|"));
-}
-
-function matchesPlate(asma, plateQuery) {
-   if (!plateQuery || !plateQuery.length) return true;
-   const set = new Set(asma.allPlates.map(x => normalizePlate(x)));
-   for (const p of plateQuery) {
-      if (set.has(normalizePlate(p))) return true;
-   }
-   return false;
-}
-
-function matchesAsanaNo(asma, q) {
-   const s = String(q || "").trim();
-   if (!s) return true;
-   return normalizePlate(s) === normalizePlate(asma.asanaNo);
-}
-
-function matchesCategory(asma, cat) {
-   if (!cat) return true;
-   if (cat === "__UNCAT__") return !asma.category;
-   return asma.category === cat;
-}
-
-function setStatus(msg) {
-   const el = $("statusText");
-   if (el) el.textContent = msg;
-}
-
-function showError(where, msg) {
-   console.error(msg);
-   const el = $(where);
-   if (el) el.textContent = msg;
-}
-
-function enterBrowseDetailMode() {
-   const modal = document.querySelector("#browseBackdrop .modal");
-   if (modal) modal.classList.add("detail-mode");
-}
-
-function exitBrowseDetailMode() {
-    const modal = document.querySelector("#browseBackdrop .modal");
-    if (modal) modal.classList.remove("detail-mode");
 }
 
 /* ==========================================================================
