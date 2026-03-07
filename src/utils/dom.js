@@ -26,4 +26,25 @@ function safeListen(id, event, handler) {
   registeredListeners.set(key, handler);
 }
 
-export { normaliseText, $, safeListen };
+function setStatus(msg) {
+   const el = $("statusText");
+   if (el) el.textContent = msg;
+}
+
+function showError(where, msg) {
+   console.error(msg);
+   const el = $(where);
+   if (el) el.textContent = msg;
+}
+
+function enterBrowseDetailMode() {
+   const modal = document.querySelector("#browseBackdrop .modal");
+   if (modal) modal.classList.add("detail-mode");
+}
+
+function exitBrowseDetailMode() {
+    const modal = document.querySelector("#browseBackdrop .modal");
+    if (modal) modal.classList.remove("detail-mode");
+}
+
+export { normaliseText, $, safeListen, setStatus, showError, enterBrowseDetailMode, exitBrowseDetailMode };
