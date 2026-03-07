@@ -1,52 +1,103 @@
 import { supabase } from './supabaseClient.js';
 
-import { parseHoldTimes } from '../utils/parsing.js';
+import { parseHoldTimes, parseSequenceText } from '../utils/parsing.js';
+
+async function fetchCourses(currentUserId = null) {
+    if (!supabase) return [];
+
+    try {
+        const rawAccumulator = [];
+
+        // 1. System Courses
+        const { data: coursesData } = await supabase.from('courses').select('*');
+        if (coursesData) {
+            coursesData.forEach(row => {
+                const poses = parseSequenceText(row.sequence_text || '');
+                if (row.title && poses.length > 0) {
+                    rawAccumulator.push({ 
+                        title: row.title.trim(), 
+                        category: (row.category || '').trim(), 
+                        poses, isUserSequence: false, id: String(row.id)
+                    });
+                }
+            });
+        }
+
+        // 2. User Sequences
+        const { data: userSeqs } = await supabase.from('user_sequences').select('*');
+        if (userSeqs) {
+            userSeqs.forEach(seq => {
+                const isMine = currentUserId && seq.user_id === currentUserId;
+                if (!seq.title || !isMine) return;
+
+                const poses = parseSequenceText(seq.sequence_text);
+                if (poses && poses.length > 0) {
+                    rawAccumulator.push({
+                        title: seq.title.trim(),
+                        category: (seq.category || 'My Sequences').trim(),
+                        poses, isUserSequence: true, supabaseId: seq.id
+                    });
+                }
+            });
+        }
+
+        // 3. Deduplicate using Composite Key
+        const finalMap = new Map();
+        rawAccumulator.forEach(item => {
+            const compositeKey = `${item.category.toLowerCase()} | ${item.title.toLowerCase()}`;
+            finalMap.set(compositeKey, item);
+        });
+
+        // 4. Final Sort and Assign
+        const deduplicated = Array.from(finalMap.values()).sort((a, b) => {
+            const catSort = a.category.localeCompare(b.category, undefined, { numeric: true });
+            return catSort !== 0 ? catSort : a.title.localeCompare(b.title, undefined, { numeric: true });
+        });
+
+        window.courses = deduplicated;
+        return deduplicated;
+    } catch (e) {
+        console.error("Load courses failed:", e);
+        return [];
+    }
+}
 
 async function loadAsanaLibrary() {
+    console.log("🚀 Starting Asana Library Load..."); // Track in console
     if (!supabase) {
         console.error("Supabase client not initialized");
         return {};
     }
 
     try {
-        // 1. Load Global Asanas
         const { data: asanasData, error: asanasError } = await supabase.from('asanas').select('*');
+        if (asanasError) throw asanasError;
+
         const normalized = {};
 
         if (asanasData) {
             asanasData.forEach((row) => {
-                const rawId = row.ID ?? row.id ?? '';
-                const paddedId = String(rawId).trim().replace(/^0+/, '') || '';
-                if (!paddedId) return;
-                const key = paddedId.padStart(3, '0');
+                const rawId = row.id ?? row.ID ?? '';
+                const key = normaliseAsanaId(String(rawId));
+                if (!key) return;
 
-                // 🌟 ADD THIS: Define holdData BEFORE creating the object 🌟
-                const rawHoldText = String(row.Hold ?? row.hold ?? '');
+                const rawHoldText = String(row.hold ?? row.Hold ?? '');
                 const holdData = (row.hold_json && typeof row.hold_json === 'object') 
                     ? row.hold_json 
                     : parseHoldTimes(rawHoldText);
 
                 normalized[key] = {
                     id: key,
-                    name: row.name ?? '',
-                    iast: row.IAST ?? row.iast ?? '',
-                    english: row.english_name ?? '',
-                    technique: row.Technique ?? row.technique ?? '',
-                    requiresSides: !!(row.Requires_Sides ?? row.requires_sides ?? false),
+                    name: row.name ?? `Pose ${key}`, // Safety Fallback
+                    iast: row.iast ?? '',
+                    // 🌟 CRITICAL FIX: Ensure 'english' is never empty
+                    english: row.english_name ?? row.name ?? `Pose ${key}`, 
+                    audio: row.audio_url ?? '',
+                    technique: row.technique ?? row.Technique ?? '',
+                    requiresSides: !!(row.requires_sides ?? row.Requires_Sides ?? false),
                     plates: typeof parsePlates === 'function' ? parsePlates(row.plate_numbers ?? '') : (row.plate_numbers ?? ''),
-                    page2001: String(row.Page_2001 ?? row.page_2001 ?? ''),
-                    page2015: String(row.Page_2015 ?? row.page_2015 ?? ''),
-                    intensity: String(row.Intensity ?? row.intensity ?? ''),
-                    note: row.Note ?? row.note ?? '',
-                    category: row.category ?? '',
-                    description: row.Description ?? row.description ?? '',
-                    
-                    // 🌟 NOW WE USE IT 🌟
                     hold: rawHoldText,
-                    Hold: rawHoldText,
-                    hold_json: holdData, 
-                    hold_data: holdData, 
-                    
+                    hold_json: holdData,
                     variations: {},
                     isCustom: false
                 };
@@ -60,9 +111,8 @@ try {
     
     if (userAsanasData) {
         userAsanasData.forEach(userRow => {
-            const key = String(userRow.id).trim().replace(/^0+/, '').padStart(3, '0');
-            
-            if (normalized[key]) {
+            const key = normaliseAsanaId(String(userRow.id || userRow.ID || ''));
+            if (key) {
                 // Use the universal normalizer to update the object
                 normalized[key] = normalizeAsanaRow(userRow, normalized[key]);
                 normalized[key].isCustom = true; 
@@ -82,9 +132,7 @@ try {
             let parentIdStr = stage.asana_id ?? (Array.isArray(stage.parent_id) ? stage.parent_id[0] : stage.parent_id) ?? null;
             if (!parentIdStr) return;
 
-            const numPart = String(parentIdStr).match(/^(\d+)/);
-            if (!numPart) return;
-            const parentKey = numPart[1].replace(/^0+/, '').padStart(3, '0') + String(parentIdStr).replace(/^\d+/, '');
+            const parentKey = normaliseAsanaId(String(parentIdStr));
             
             if (!normalized[parentKey]) return;
 
@@ -107,20 +155,20 @@ try {
         });
 
 
-// console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
-        window.asanaLibrary = normalized;
-        if (typeof asanaLibrary !== 'undefined') {
-            asanaLibrary = normalized;
-        }
-
-        // console.log(`Asana Library Loaded: ${Object.keys(normalized).length} poses`);
+window.asanaLibrary = normalized;
+        console.log(`✅ Library Synced: ${Object.keys(normalized).length} poses ready.`);
         return normalized;
 
-        } catch (e) {
-        console.error("Exception loading asana library:", e);
+    } catch (e) {
+        console.error("🔥 Exception loading asana library:", e);
+        // Ensure the app doesn't crash completely
+        window.asanaLibrary = window.asanaLibrary || {}; 
         return {};
+    }
 }
-}
+
+// 🌟 ADD THIS: Self-execute so it loads immediately!
+loadAsanaLibrary();
 
 function normalizeAsana(id, asana) {
     if (!asana) return null;
@@ -148,9 +196,11 @@ function normalizeAsanaRow(row, existingData = {}) {
 
     return {
         ...existingData, // Preserve existing fields if overwriting
-        id: existingData.id || String(row.id || row.ID || '').trim().replace(/^0+/, '').padStart(3, '0'),
-        name: row.name ?? row.Name ?? existingData.name,
-        english: row.english_name ?? row.English ?? existingData.english,
+        id: existingData.id || normaliseAsanaId(String(row.id || row.ID || '')),
+        name: row.name ?? '',
+        english: row.english_name ?? '',
+        iast: row.iast ?? '',
+        audio: row.audio_url ?? '',
         category: row.category ?? existingData.category,
         hold: rawHoldText,
         hold_json: holdData, // <--- YOUR NEW DURATION BRAIN
@@ -211,4 +261,4 @@ num = num.padStart(3,"0");   // 1 → 001
 return num + suffix;
 }
 
-export { loadAsanaLibrary, normalizeAsana, normalizeAsanaRow, normalizePlate, parsePlates, normaliseAsanaId };
+export { fetchCourses, loadAsanaLibrary, normalizeAsana, normalizeAsanaRow, normalizePlate, parsePlates, normaliseAsanaId };

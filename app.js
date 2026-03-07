@@ -19,11 +19,11 @@ import {
     COMPLETION_LOG_URL,
     LOCAL_SEQ_KEY,
 } from "./src/config/appConfig.js";
-import { loadAsanaLibrary, normalizeAsana, normalizeAsanaRow, normalizePlate, parsePlates, normaliseAsanaId } from "./src/services/dataAdapter.js";
+import { fetchCourses, loadAsanaLibrary, normalizeAsana, normalizeAsanaRow, normalizePlate, parsePlates, normaliseAsanaId } from "./src/services/dataAdapter.js";
 import { supabase } from "./src/services/supabaseClient.js";
 import { loadJSON } from "./src/services/http.js";
 import { $, normaliseText, safeListen } from "./src/utils/dom.js";
-import { parseHoldTimes, buildHoldString, parseSequenceText } from "./src/utils/parsing.js";
+import { parseHoldTimes, buildHoldString } from "./src/utils/parsing.js";
 
 
 window.db = supabase;
@@ -276,6 +276,12 @@ function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
        playSrc(src);
        return; 
     }
+
+    // 3.5 Use database-provided audio URL if present
+    if (asana.audio) {
+       playSrc(asana.audio);
+       return;
+    }
  
     // 4. SMART FALLBACK (Manifest Lookup)
     const fileList = window.serverAudioFiles || [];
@@ -505,65 +511,12 @@ function resolveId(id) {
    ========================================================================== */
 
 window.loadCourses = async function() {
-    if (!supabase) return;
+    const deduplicated = await fetchCourses(window.currentUserId);
+    window.courses = deduplicated;
+    courses = deduplicated;
+    sequences = deduplicated;
 
-    try {
-        const rawAccumulator = [];
-
-        // 1. System Courses
-        const { data: coursesData } = await supabase.from('courses').select('*');
-        if (coursesData) {
-            coursesData.forEach(row => {
-                const poses = parseSequenceText(row.sequence_text || '');
-                if (row.title && poses.length > 0) {
-                    rawAccumulator.push({ 
-                        title: row.title.trim(), 
-                        category: (row.category || '').trim(), 
-                        poses, isUserSequence: false, id: String(row.id)
-                    });
-                }
-            });
-        }
-
-        // 2. User Sequences
-        const { data: userSeqs } = await supabase.from('user_sequences').select('*');
-        if (userSeqs) {
-            userSeqs.forEach(seq => {
-                const isMine = window.currentUserId && seq.user_id === window.currentUserId;
-                if (!seq.title || !isMine) return;
-
-                const poses = parseSequenceText(seq.sequence_text);
-                if (poses && poses.length > 0) {
-                    rawAccumulator.push({
-                        title: seq.title.trim(),
-                        category: (seq.category || 'My Sequences').trim(),
-                        poses, isUserSequence: true, supabaseId: seq.id
-                    });
-                }
-            });
-        }
-
-        // 3. Deduplicate using Composite Key
-        const finalMap = new Map();
-        rawAccumulator.forEach(item => {
-            const compositeKey = `${item.category.toLowerCase()} | ${item.title.toLowerCase()}`;
-            finalMap.set(compositeKey, item);
-        });
-
-        // 4. Final Sort and Assign
-        const deduplicated = Array.from(finalMap.values()).sort((a, b) => {
-            const catSort = a.category.localeCompare(b.category, undefined, { numeric: true });
-            return catSort !== 0 ? catSort : a.title.localeCompare(b.title, undefined, { numeric: true });
-        });
-
-        window.courses = deduplicated;
-        courses = deduplicated;
-        sequences = deduplicated;
-
-        if (typeof renderSequenceDropdown === "function") renderSequenceDropdown(); 
-    } catch (e) {
-        console.error("Load courses failed:", e);
-    }
+    if (typeof renderSequenceDropdown === "function") renderSequenceDropdown(); 
 };
 
 // 3. Local Sequence Editing (Save/Reset)
@@ -975,10 +928,23 @@ function showResumePrompt(state) {
     `;
     
     // Safety check if sequence still exists
-    const seqName = (sequences && sequences[state.sequenceIdx]) ? sequences[state.sequenceIdx].title : "your previous session";
+    const seq = sequences && sequences[state.sequenceIdx];
+    const seqName = seq ? seq.title : "your previous session";
+    
+    let poseName = `pose ${state.poseIdx + 1}`;
+    if (seq && seq.poses) {
+        const poses = typeof getExpandedPoses === "function" ? getExpandedPoses(seq) : seq.poses;
+        if (poses[state.poseIdx]) {
+            const rawId = Array.isArray(poses[state.poseIdx][0]) ? poses[state.poseIdx][0][0] : poses[state.poseIdx][0];
+            const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(rawId)) : null;
+            if (asana) {
+                poseName = typeof displayName === "function" ? displayName(asana) : (asana.name || poseName);
+            }
+        }
+    }
     
     banner.innerHTML = `
-        <span>Resume <b>${seqName}</b> at pose ${state.poseIdx + 1}?</span>
+        <span>Resume <b>${seqName}</b> at <b>${poseName}</b>?</span>
         <button id="resumeYes" style="background:#4CAF50; color:white; border:none; padding:5px 12px; border-radius:15px; cursor:pointer;">Yes</button>
         <button id="resumeNo" style="background:transparent; color:#ccc; border:none; cursor:pointer;">✕</button>
     `;
@@ -1077,7 +1043,7 @@ async function init() {
         const state = safeGetLocalStorage(RESUME_STATE_KEY, null);
         if (state && state.timestamp) {
             const fourHours = 4 * 60 * 60 * 1000;
-            if (Date.now() - state.timestamp < fourHours) {
+            if (Date.now() - state.timestamp < fourHours && state.poseIdx >= 0) {
                 showResumePrompt(state);
             } else {
                 clearProgress(); 
@@ -2200,6 +2166,12 @@ async function showAsanaDetail(asana) {
 // console.log("Edit button appended:", editBtn);
 // console.log("Edit button onclick property:", editBtn.onclick);
 
+    let rangeText = "";
+    const hj = asana?.hold_json || asana?.hold_data;
+    if (hj && hj.standard) {
+        rangeText = ` • ${hj.standard}s (Range: ${hj.short}s - ${hj.long}s)`;
+    }
+
     // 3. Build the rest of the Info via a single HTML string
     // Use a unique name for this string variable to avoid re-declaration errors
     let detailHTML = `
@@ -2210,8 +2182,9 @@ async function showAsanaDetail(asana) {
           ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;font-style:italic;">${asana.iast}</div>`
           : ''
       }
-      <div class="muted">ID: ${asana.id || asana.asanaNo}</div>
-      <button id="playNameBtn" class="tiny" style="margin-top:10px;">🔊 Play Audio</button>
+      <div class="muted">
+         <span id="poseMetaBrowse"><span class="meta-text-only">ID: ${asana.id || asana.asanaNo}${rangeText}</span><button id="playNameBtn" class="tiny" style="margin-left: 10px;" title="Play Audio">🔊</button></span>
+      </div>
       <hr>
     `;
 
@@ -2301,7 +2274,7 @@ async function showAsanaDetail(asana) {
     }
     // 7. Bind Audio Button
     const playBtn = document.getElementById('playNameBtn');
-    if (playBtn) playBtn.onclick = () => playAsanaAudio(asana, null);
+    if (playBtn) playBtn.onclick = () => playAsanaAudio(asana, null, true);
   
 }
 

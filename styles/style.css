@@ -572,7 +572,7 @@ th {
     .grid { grid-template-columns: 1.4fr 0.6fr; }
     
     /* Hide the "Back" button on desktop since both panes are visible */
-    #browseDetail button.tiny { display: none; } 
+    #browseDetail button.tiny:not(#playNameBtn) { display: none; } 
 }
 
 @media (max-width: 900px) {
@@ -586,7 +586,7 @@ th {
     .modal.detail-mode .browse-right { display: flex; width: 100%; }
     
     /* Show "Back" button on mobile */
-    #browseDetail button.tiny { display: block; } 
+    #browseDetail button.tiny:not(#playNameBtn) { display: block; } 
 }
 
 @media (max-width: 700px) {
