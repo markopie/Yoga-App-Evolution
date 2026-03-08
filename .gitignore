@@ -11,3 +11,9 @@ __pycache__/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Local Backups (Your Data)
+backups/
+
+# VS Code settings
+.vscode/
