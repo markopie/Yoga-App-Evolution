@@ -8,11 +8,6 @@ import {
     MANIFEST_URL,
     ASANA_LIBRARY_URL,
     LIBRARY_URL,
-    DESCRIPTIONS_OVERRIDE_URL,
-    CATEGORY_OVERRIDE_URL,
-    IMAGE_OVERRIDE_URL,
-    AUDIO_OVERRIDE_URL,
-    ID_ALIASES_URL,
     IMAGES_BASE,
     AUDIO_BASE,
     IMAGES_BASE_URL,
@@ -26,6 +21,8 @@ import { $, normaliseText, safeListen, setStatus, showError, enterBrowseDetailMo
 import { parseHoldTimes, buildHoldString } from "./src/utils/parsing.js";
 import { prefersIAST, setIASTPref, displayName, escapeHtml2, renderMarkdownMinimal, formatHMS, formatTechniqueText } from "./src/utils/format.js";
 import { parsePlateTokens, plateFromFilename, primaryAsanaFromFilename, filenameFromUrl, mobileVariantUrl, ensureArray, isBrowseMobile } from "./src/utils/helpers.js";
+import { playFaintGong, playAsanaAudio } from "./src/playback/audio.js";
+import { playbackEngine } from "./src/playback/timer.js";
 
 window.db = supabase;
 window.currentUserId = null;
@@ -40,11 +37,8 @@ window.courses = courses; // 👈 Add this line
 let sequences = [];  // For backwards compatibility during transition
 let asanaLibrary = {};  // JSON object keyed by ID (e.g. "003" -> pose data)
 window.asanaLibrary = asanaLibrary; // 👈 Add this line
-let plateGroups = {};   // "18" -> ["18","19"] (optional)
 
 // Admin Overrides
-let imageOverrides = {};
-let audioOverrides = {}; 
 let serverAudioFiles = []; // Holds the list of files on server
 let serverImageFiles = [];
 let idAliases = {};
@@ -54,10 +48,7 @@ let activePlaybackList = []; // This will hold the "unpacked" poses (Macros + Re
 window.activePlaybackList = activePlaybackList; // 👈 Add this line
 let currentSequence = null;
 let currentIndex = 0;
-let currentAudio = null; // Tracks the currently playing sound
-let timer = null;
-let remaining = 0;
-let running = false;
+
 let currentSide = "right"; // Track which side for requiresSides poses
 let needsSecondSide = false; // Track if we need to play left side after right
 
@@ -70,8 +61,6 @@ let wakeLockVisibilityHooked = false;
 
 let draft = []; // each: [idField, seconds, label]
 
-let descriptionOverrides = {}; // { [asanaNo]: { md: string, updated_at: string } }
-let categoryOverrides = {}; // { [asanaNo]: { category: string, updated_at: string } }
 
 
 // #endregion
@@ -94,7 +83,7 @@ async function enableWakeLock(){
       if (!wakeLockVisibilityHooked) {
          wakeLockVisibilityHooked = true;
          document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible" && running) enableWakeLock();
+            if (document.visibilityState === "visible" && playbackEngine.running) enableWakeLock();
          });
       }
    } catch (e) {
@@ -110,215 +99,6 @@ async function disableWakeLock() {
 }
 
 /* ==========================================================================
-   AUDIO ENGINE
-   ========================================================================== */
-
-// -------- Faint gong (Oscillator) --------
-let currentPoseSeconds = 0; // Used by timer to decide if gong plays
-let audioCtx = null;
-
-function playFaintGong() {
-   try {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      if (!audioCtx) audioCtx = new Ctx();
-      const t0 = audioCtx.currentTime + 0.02;
-
-      // Create Sound Generators
-      const o1 = audioCtx.createOscillator();
-      const o2 = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-
-      // Configure Tones (432Hz + 864Hz harmonic)
-      o1.type = "sine";
-      o2.type = "sine";
-      o1.frequency.setValueAtTime(432, t0);
-      o2.frequency.setValueAtTime(864, t0);
-
-      // Configure Volume Envelope (Fade in/out)
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.07, t0 + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8);
-
-      // Connect & Play
-      o1.connect(g);
-      o2.connect(g);
-      g.connect(audioCtx.destination);
-
-      o1.start(t0);
-      o2.start(t0);
-      o1.stop(t0 + 2.0);
-      o2.stop(t0 + 2.0);
-   } catch (e) {}
-}
-
-// -------- Side Detection Logic --------
-function detectSide(poseLabel) {
-   if (!poseLabel) return null;
-   const label = poseLabel.toLowerCase();
-   if (label.includes("(right)") || label.includes("right side")) return "right";
-   if (label.includes("(left)") || label.includes("left side")) return "left";
-   return null;
-}
-
-function playSideCue(side) {
-   if (!side) return;
-   const ctx = new (window.AudioContext || window.webkitAudioContext)();
-   const oscillator = ctx.createOscillator();
-   const gainNode = ctx.createGain();
-
-   oscillator.connect(gainNode);
-   gainNode.connect(ctx.destination);
-
-   // Different frequencies for left and right
-   oscillator.frequency.value = side === "right" ? 800 : 600;
-   oscillator.type = "sine";
-
-   gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-   gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-
-   oscillator.start(ctx.currentTime);
-   oscillator.stop(ctx.currentTime + 0.3);
-}
-
-/* ==========================================================================
-   AUDIO ENGINE
-   ========================================================================== */
-
-// ... (Keep detectSide and playSideCue helper functions as they are) ...
-
-// -------- Audio File Player (MP3) --------
-
-/**
- * Orchestrates the audio playback sequence.
- * New Logic: Plays Main Name -> THEN plays Side Cue (if needed).
- * @param {boolean} isBrowseContext - If true, skips side cues (for Browse menu).
- */
-function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
-    if (!asana) return;
- 
-    // 1. Reset current audio
-    if (currentAudio) {
-       try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
-       currentAudio = null;
-    }
- 
-    // 2. Define what happens AFTER the main name finishes
-    const onMainAudioEnded = () => {
-        // If we are browsing, or if sides aren't required, stop here.
-        if (isBrowseContext) return;
-        
-        // Play side audio (Right/Left) AFTER main audio
-        if (asana.requiresSides && currentSide) {
-           // Use AUDIO_BASE to ensure we fetch from the server
-           const sideUrl = AUDIO_BASE + `${currentSide}_side.mp3`; 
-           const sideAudio = new Audio(sideUrl);
-           
-           sideAudio.play().catch(e => console.warn(`Failed to play ${currentSide}_side.mp3:`, e));
-           
-           // Track this as current so we can pause it if the user clicks "Stop"
-           currentAudio = sideAudio; 
-        }
-    };
- 
-    // 3. Play Main Audio immediately, then trigger the callback
-    playPoseMainAudio(asana, poseLabel, onMainAudioEnded);
- }
- 
- function playPoseMainAudio(asana, poseLabel = null, onComplete = null) {
-    // 1. Side Detection (Visual/Sound Effect only)
-    if (poseLabel && !asana.requiresSides) {
-       const side = detectSide(poseLabel);
-       if (side) setTimeout(() => playSideCue(side), 100);
-    }
- 
-    // 2. Prepare IDs (THE FIX)
-    // Your library has 'id', but the player was looking for 'asanaNo'.
-    // We now check both.
-    const rawID = asana.asanaNo || asana.id; 
-    const idStr = normalizePlate(rawID);
-    
-// console.log(`[Audio Debug] Playing ID: ${idStr}, Name: ${asana.english || asana.name}`);
-
-    // Helper to play and attach the 'onended' listener
-    const playSrc = (src) => {
-        const a = new Audio(src);
-        // CRITICAL: Attach the callback so side audio plays next
-        if (onComplete) {
-            a.onended = onComplete;
-        }
-        a.play()
-            .then(() => { currentAudio = a; })
-            .catch(e => {
-// console.warn(`[Audio Debug] Failed: ${src}`, e);
-                // If main audio fails, still trigger callback so flow continues
-                if (onComplete) onComplete();
-            });
-    };
-
-    // 3. Override Check
-    let overrideSrc = null;
-    if (typeof audioOverrides !== 'undefined') {
-        const norm = (s) => String(s || "").trim();
-        const mainName = (asana.english || asana.name || asana['Yogasana Name'] || "").trim();
-        const variation = (asana.variation || asana['Variation'] || "").trim();
-        const specificKey = variation ? `${mainName} ${variation}` : mainName;
-
-        if (specificKey && audioOverrides[norm(specificKey)]) {
-            overrideSrc = audioOverrides[norm(specificKey)];
-        } else if (idStr && audioOverrides[idStr]) {
-            overrideSrc = audioOverrides[idStr];
-        }
-    }
-
-    if (overrideSrc) {
-// console.log(`[Audio Debug] Using Override: ${overrideSrc}`);
-       const src = overrideSrc.includes("/") ? overrideSrc : (AUDIO_BASE + overrideSrc);
-       playSrc(src);
-       return; 
-    }
-
-    // 3.5 Use database-provided audio URL if present
-    if (asana.audio) {
-       playSrc(asana.audio);
-       return;
-    }
- 
-    // 4. SMART FALLBACK (Manifest Lookup)
-    const fileList = window.serverAudioFiles || [];
-    
-    if (fileList.length > 0 && idStr) {
-        // Look for "001_Name.mp3" OR "001.mp3"
-        const match = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
-        
-        if (match) {
-// console.log(`[Audio Debug] FOUND MATCH: ${match}`);
-            playSrc(AUDIO_BASE + match);
-            return;
-        }
-    }
-
-    // 5. Legacy Fallback (If not in manifest)
-// console.log("[Audio Debug] Falling back to legacy guessing...");
-    
-    // If no ID found at all, skip
-    if (!idStr) { 
-        if (onComplete) onComplete(); 
-        return; 
-    } 
-
-    const safeName = (asana.english || asana.name || "").replace(/[^a-zA-Z0-9]/g, "");
-    // Try generic formats
-    const candidate = `${AUDIO_BASE}${idStr}_${safeName}.mp3`;
-    
-    const a = new Audio(candidate);
-    if (onComplete) a.onended = onComplete;
-    a.play().catch(() => {
-// console.warn("Legacy guess failed too.");
-        if (onComplete) onComplete();
-    });
-}
-
 // #endregion
 // #region 3. HELPERS & FORMATTING
 /* ==========================================================================
@@ -447,13 +227,6 @@ function smartUrlsForPoseId(idField) {
     
     // Normalize
     if (typeof normalizePlate === 'function') id = normalizePlate(id);
-
-    // 1. Check Overrides
-    if (typeof imageOverrides !== 'undefined' && imageOverrides[id]) {
-        let ov = imageOverrides[id];
-        if (!ov.startsWith("http")) return [`https://arrowroad.com.au/yoga/images/${ov}`];
-        return [ov];
-    }
 
     // 2. Check Index
     if (window.asanaToUrls && window.asanaToUrls[id]) {
@@ -871,11 +644,6 @@ async function init() {
         // 2. Load Overrides + History in Parallel
         await Promise.all([
             typeof loadManifestAndPopulateLists === "function" ? loadManifestAndPopulateLists() : Promise.resolve(),
-            typeof fetchAudioOverrides === "function" ? fetchAudioOverrides() : Promise.resolve(),
-            typeof fetchImageOverrides === "function" ? fetchImageOverrides() : Promise.resolve(),
-            typeof fetchDescriptionOverrides === "function" ? fetchDescriptionOverrides() : Promise.resolve(),
-            typeof fetchCategoryOverrides === "function" ? fetchCategoryOverrides() : Promise.resolve(),
-            typeof fetchIdAliases === "function" ? fetchIdAliases() : Promise.resolve(),
             fetchServerHistory()
         ]);
 
@@ -891,8 +659,6 @@ async function init() {
         await buildImageIndexes();
 
         // 4. Apply Overrides
-        if (typeof applyDescriptionOverrides === "function") applyDescriptionOverrides();
-        if (typeof applyCategoryOverrides === "function") applyCategoryOverrides();
         
         if (typeof setupBrowseUI === "function") setupBrowseUI();
 
@@ -956,40 +722,16 @@ function getExpandedPoses(sequence) {
    TIMER ENGINE (Updated for Centered Focus Mode & Macro Engine)
    ========================================================================== */
 
-   function startTimer() {
-    if (!currentSequence) return;
-    
-    // Main screen toggle: If running, stop.
-    if (running) { stopTimer(); return; }
+   // --- TIMER ENGINE REPLACEMENT ---
+// Aliases for global legacy access (these map to the new engine)
+window.startTimer = () => playbackEngine.start();
+window.stopTimer = () => playbackEngine.stop();
 
-    running = true;
+// Wire up the engine hooks to the UI
+playbackEngine.onStart = () => {
     if (typeof enableWakeLock === "function") enableWakeLock();
 
-    // --- 🚀 THE AUDIO FIX: Unlock Browser Autoplay on Click ---
-    try {
-        const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
-            ? window.activePlaybackList : (currentSequence.poses || []);
-            
-        if (poses[currentIndex]) {
-            const rawId = Array.isArray(poses[currentIndex][0]) ? poses[currentIndex][0][0] : poses[currentIndex][0];
-            const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(rawId)) : null;
-            
-            if (asana) {
-                // If we are at the very beginning of the pose, announce it!
-                if (remaining === currentPoseSeconds) {
-                    playAsanaAudio(asana, poses[currentIndex][4] || "");
-                } else {
-                    // If resuming mid-pose, play a silent file just to satisfy the browser's strict audio rules
-                    new Audio("data:audio/mp3;base64,//MkxAAQ").play().catch(()=>{});
-                }
-            }
-        }
-    } catch(e) {
-        console.warn("Audio unlock failed", e);
-    }
-    // -----------------------------------------------------------
-
-    // --- 1. UI Setup ---
+    // UI Setup
     const overlay = document.getElementById("focusOverlay");
     if (overlay) overlay.style.display = "flex";
     
@@ -997,117 +739,37 @@ function getExpandedPoses(sequence) {
     if (statusEl) statusEl.textContent = "Running";
 
     const startBtn = document.getElementById("startStopBtn");
-    if (startBtn) startBtn.textContent = "Pause"; // The main screen button becomes 'Pause'
+    if (startBtn) startBtn.textContent = "Pause";
 
-    // --- 2. ORIGINAL PAUSE UX ---
+    // Setup pause button
     const pauseBtn = document.getElementById("focusPauseBtn");
     if (pauseBtn) {
-        pauseBtn.onclick = () => {
-            stopTimer(); 
-        };
+        pauseBtn.onclick = () => playbackEngine.stop();
     }
 
-    // --- 3. THE MAIN CLOCK TICK ---
-    timer = setInterval(() => {
-        if (remaining > 0) {
-            remaining--;
-            updateTimerUI();
-        }
-        
-        if (remaining <= 0) {
-            // Clear immediately to prevent double-ticks
-            clearInterval(timer); 
-            timer = null;
-
-            const wasLongHold = currentPoseSeconds >= 60;
-            if (wasLongHold && typeof playFaintGong === "function") playFaintGong();
+    // Audio Unlock Logic
+    try {
+        const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
+            ? window.activePlaybackList : (currentSequence?.poses || []);
             
-            if (wasLongHold) {
-                startTransitionPause();
-            } else {
-                nextPose(); 
-                
-                // Reset running state before auto-triggering the next pose
-                if (running) {
-                    running = false; 
-                    startTimer(); 
+        if (poses[currentIndex]) {
+            const rawId = Array.isArray(poses[currentIndex][0]) ? poses[currentIndex][0][0] : poses[currentIndex][0];
+            const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(rawId)) : null;
+            
+            if (asana) {
+                if (playbackEngine.remaining === playbackEngine.currentPoseSeconds) {
+                    playAsanaAudio(asana, poses[currentIndex][4] || "", false, currentSide);
+                } else {
+                    new Audio("data:audio/mp3;base64,//MkxAAQ").play().catch(()=>{});
                 }
             }
         }
-    }, 1000);
-}
-
-function startTransitionPause() {
-    const overlay = document.getElementById("transitionOverlay");
-    const countdownEl = document.getElementById("transitionCountdown");
-    const nextPoseEl = document.getElementById("transitionNextPose");
-
-    // If no overlay exists, skip the pause and resume
-    if (!overlay) { 
-        nextPose(); 
-        running = false; 
-        startTimer(); 
-        return; 
+    } catch(e) {
+        console.warn("Audio unlock failed", e);
     }
+};
 
-    // Look ahead to the NEXT pose using the active list
-    const poses = (activePlaybackList && activePlaybackList.length > 0) ? activePlaybackList : (currentSequence.poses || []);
-    let previewName = "";
-    const nextIdx = currentIndex + 1;
-    
-    if (nextIdx < poses.length) {
-        const np = poses[nextIdx];
-        const id = Array.isArray(np[0]) ? np[0][0] : np[0];
-        const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
-        previewName = asana ? (typeof displayName === "function" ? displayName(asana) : asana.name) : "";
-    }
-    if (nextPoseEl) nextPoseEl.textContent = previewName ? `Next: ${previewName}` : "";
-
-    let secs = 15;
-    if (countdownEl) countdownEl.textContent = secs;
-    
-    overlay.style.display = "flex";
-    const focusOverlay = document.getElementById("focusOverlay");
-    if (focusOverlay) focusOverlay.style.display = "none";
-
-    // --- TRANSITION CLOCK TICK ---
-    let transitionTimer = setInterval(() => {
-        secs--;
-        if (countdownEl) countdownEl.textContent = secs;
-        if (secs <= 0) {
-            clearInterval(transitionTimer);
-            finishTransition();
-        }
-    }, 1000);
-
-    function finishTransition() {
-        overlay.style.display = "none";
-        if (!running) return;
-        
-        nextPose();
-        // Force the main loop to pick up seamlessly where it left off
-        running = false; 
-        startTimer(); 
-    }
-
-    // Handle Skip Button
-    const skipBtn = document.getElementById("transitionSkipBtn");
-    if (skipBtn) {
-        // Clone to remove old event listeners safely
-        const newSkip = skipBtn.cloneNode(true);
-        skipBtn.parentNode.replaceChild(newSkip, skipBtn);
-        newSkip.onclick = () => {
-            clearInterval(transitionTimer);
-            finishTransition();
-        };
-    }
-}
-
-function stopTimer() {
-    if (timer) clearInterval(timer);
-    timer = null;
-    running = false;
-
+playbackEngine.onStop = () => {
     const focusOverlay = document.getElementById("focusOverlay");
     if (focusOverlay) focusOverlay.style.display = "none";
 
@@ -1123,9 +785,76 @@ function stopTimer() {
     if (statusEl) statusEl.textContent = "Paused";
 
     if (typeof disableWakeLock === "function") disableWakeLock();
-}
+};
 
-function updateTimerUI() {
+playbackEngine.onTick = (remaining, currentPoseSeconds) => {
+    updateTimerUI(remaining, currentPoseSeconds);
+};
+
+playbackEngine.onPoseComplete = (wasLongHold) => {
+    if (wasLongHold && typeof playFaintGong === "function") playFaintGong();
+    
+    if (wasLongHold) {
+        playbackEngine.startTransition(15);
+    } else {
+        nextPose(); 
+        playbackEngine.running = false;
+        playbackEngine.start();
+    }
+};
+
+playbackEngine.onTransitionStart = (secs) => {
+    const overlay = document.getElementById("transitionOverlay");
+    const countdownEl = document.getElementById("transitionCountdown");
+    const nextPoseEl = document.getElementById("transitionNextPose");
+
+    if (!overlay) { 
+        nextPose(); 
+        playbackEngine.running = false;
+        playbackEngine.start(); 
+        return; 
+    }
+
+    const poses = (activePlaybackList && activePlaybackList.length > 0) ? activePlaybackList : (currentSequence?.poses || []);
+    let previewName = "";
+    const nextIdx = currentIndex + 1;
+    
+    if (nextIdx < poses.length) {
+        const np = poses[nextIdx];
+        const id = Array.isArray(np[0]) ? np[0][0] : np[0];
+        const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
+        previewName = asana ? (typeof displayName === "function" ? displayName(asana) : asana.name) : "";
+    }
+    if (nextPoseEl) nextPoseEl.textContent = previewName ? `Next: ${previewName}` : "";
+
+    if (countdownEl) countdownEl.textContent = secs;
+    
+    overlay.style.display = "flex";
+    const focusOverlay = document.getElementById("focusOverlay");
+    if (focusOverlay) focusOverlay.style.display = "none";
+
+    const skipBtn = document.getElementById("transitionSkipBtn");
+    if (skipBtn) {
+        const newSkip = skipBtn.cloneNode(true);
+        skipBtn.parentNode.replaceChild(newSkip, skipBtn);
+        newSkip.onclick = () => playbackEngine.skipTransition();
+    }
+};
+
+playbackEngine.onTransitionTick = (secs) => {
+    const countdownEl = document.getElementById("transitionCountdown");
+    if (countdownEl) countdownEl.textContent = secs;
+};
+
+playbackEngine.onTransitionComplete = () => {
+    const overlay = document.getElementById("transitionOverlay");
+    if (overlay) overlay.style.display = "none";
+    nextPose();
+    playbackEngine.running = false;
+    playbackEngine.start();
+};
+
+function updateTimerUI(remaining, currentPoseSeconds) {
     const timerEl = document.getElementById("poseTimer");
     const focusTimerEl = document.getElementById("focusTimer");
     
@@ -1153,24 +882,17 @@ function updateTimerUI() {
             ? window.activePlaybackList 
             : (currentSequence.poses || []);
         
-        // 1. Calculate TOTAL TIME (The right side of the slash)
-        // This will correctly return 80 seconds (1:20) for a 40s Trikonasana
         const totalSeconds = poses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
+        let secondsLeft = remaining; 
 
-        // 2. Calculate REMAINING TIME (The left side of the slash)
-        let secondsLeft = remaining; // Time left on the CURRENT side of the current pose
-
-        // If we are currently playing Side 1, we must add the duration of Side 2 to the remaining total
         if (typeof needsSecondSide !== "undefined" && needsSecondSide && poses[currentIndex]) {
              secondsLeft += (Number(poses[currentIndex][1]) || 0);
         }
 
-        // Add the effective time of all FUTURE rows
         for (let i = currentIndex + 1; i < poses.length; i++) {
              secondsLeft += getEffectiveTime(poses[i][0], poses[i][1]);
         }
 
-        // 3. Render
         const remDisp = document.getElementById("timeRemainingDisplay");
         const totDisp = document.getElementById("timeTotalDisplay");
         
@@ -1534,16 +1256,14 @@ if (focusCounter) {
             btn.style.marginLeft = "10px";
             btn.onclick = (e) => { 
                 e.stopPropagation(); 
-                playAsanaAudio(asana); 
+                playAsanaAudio(asana, null, false, currentSide); 
             };
             metaContainer.appendChild(btn);
         }
     }
 
     // 10. TIMER & IMAGE LOGIC
-    currentPoseSeconds = parseInt(seconds, 10) || 0;
-    remaining = currentPoseSeconds;
-    updateTimerUI();
+    playbackEngine.setPoseTime(seconds);
 
     const wrap = document.getElementById("collageWrap");
     if (wrap) {
@@ -1576,8 +1296,8 @@ if (focusCounter) {
     }
 
     // 11. AUDIO TRIGGER
-    if (running && asana) {
-         playAsanaAudio(asana, baseOverrideName); 
+    if (playbackEngine.running && asana) {
+         playAsanaAudio(asana, baseOverrideName, false, currentSide); 
     }
 }
 
@@ -1983,7 +1703,7 @@ function startBrowseAsana(asma) {
    if (!plates || !plates.length) return;
 
    stopTimer();
-   running = false;
+   /* running = false */;
    $("startStopBtn").textContent = "Start";
 
    const variationName = asma.variation || "";
@@ -2412,10 +2132,10 @@ async function showAsanaDetail(asana) {
 }
 
 /* ==========================================================================
-   CONSOLIDATED ADMIN / MANAGE UI
+   CONSOLIDATED SEQUENCE BUILDER UI
    ========================================================================== */
 // #endregion
-// #region 8. ADMIN & DATA LAYER
+// #region 8. SEQUENCE BUILDER & DATA LAYER
 
 
 function builderRender() {
@@ -2800,132 +2520,6 @@ async function saveAsanaField(asanaNo, field, value) {
 
 
 
-/* ==========================================================================
-   DATA FETCHING (GET)
-   ========================================================================== */
-
-async function fetchDescriptionOverrides() {
-    try {
-        const res = await fetch(DESCRIPTIONS_OVERRIDE_URL, { cache: "no-store" });
-        if (!res.ok) { descriptionOverrides = {}; return; }
-        const data = await res.json();
-        descriptionOverrides = (data && typeof data === "object") ? data : {};
-    } catch (e) { descriptionOverrides = {}; }
-}
-
-async function fetchCategoryOverrides() {
-    try {
-        const res = await fetch(CATEGORY_OVERRIDE_URL, { cache: "no-store" });
-        if (!res.ok) { categoryOverrides = {}; return; }
-        const data = await res.json();
-        categoryOverrides = (data && typeof data === "object") ? data : {};
-    } catch (e) { categoryOverrides = {}; }
-}
-
-async function fetchAudioOverrides() {
-    try {
-        const data = await loadJSON(AUDIO_OVERRIDE_URL, {});
-        if (data) audioOverrides = data;
-    } catch (e) { audioOverrides = {}; }
-}
-
-async function fetchImageOverrides() {
-    try {
-        const data = await loadJSON(IMAGE_OVERRIDE_URL, {});
-        if (data) imageOverrides = data;
-    } catch (e) { imageOverrides = {}; }
-}
-
-/* ==========================================================================
-   DATA APPLICATION (APPLY LEGACY OVERRIDES)
-   ========================================================================== */
-
-function applyDescriptionOverrides() {
-    Object.keys(asanaLibrary).forEach(id => {
-        const key = normalizePlate(id);
-        const a = asanaLibrary[id];
-        const o = descriptionOverrides && descriptionOverrides[key];
-        if (o && typeof o === "object" && typeof o.md === "string") {
-            a.description = o.md;
-            a.descriptionSource = "override";
-        }
-    });
-}
-
-function applyCategoryOverrides() {
-    Object.keys(asanaLibrary).forEach(id => {
-        const key = normalizePlate(id);
-        const a = asanaLibrary[id];
-        const o = categoryOverrides && categoryOverrides[key];
-        if (o && typeof o === "object" && typeof o.category === "string" && o.category.trim()) {
-            a.category = o.category.trim();
-            a.categorySource = "override";
-        }
-    });
-}
-
-/* ==========================================================================
-   SPECIALTY TOOLS (ID FIXER)
-   ========================================================================== */
-
-function renderIdFixer(container, brokenId) {
-
-    const normBroken = normalizePlate(brokenId);
-    const currentAlias = (typeof idAliases !== 'undefined') ? idAliases[normBroken] : null;
-
-    const wrap = document.createElement("div");
-    wrap.style.marginTop = "10px";
-    wrap.style.paddingTop = "10px";
-    wrap.style.borderTop = "1px dashed #ccc";
-    wrap.style.fontSize = "0.85rem";
-
-    let statusHTML = currentAlias 
-        ? `<div style="margin-bottom:4px; color:green;">✅ <b>${normBroken}</b> ➝ <b>${currentAlias}</b></div>` 
-        : `<div style="margin-bottom:4px; color:#e65100;">🔧 <b>ID ${normBroken}</b> is unlinked</div>`;
-
-    wrap.innerHTML = `
-        <div class="adv-section-title" style="margin-top:0; color:#333;">Link / Map Pose</div>
-        ${statusHTML}
-        <div style="display:flex; gap:5px; margin-top:5px;">
-            <input type="text" id="fixerSearch" placeholder="Search pose..." class="tiny" style="flex:1; min-width:80px;">
-        </div>
-        <select id="fixerSelect" class="tiny" style="width:100%; margin-top:5px; margin-bottom:5px;">
-            <option value="">(Type to search...)</option>
-        </select>
-        <button id="fixerSaveBtn" class="tiny" style="width:100%; background:${currentAlias ? '#2e7d32' : '#e65100'}; color:white;">
-            ${currentAlias ? 'Update Link' : 'Link Pose'}
-        </button>
-    `;
-
-    const searchInput = wrap.querySelector("#fixerSearch");
-    const select = wrap.querySelector("#fixerSelect");
-
-    searchInput.oninput = () => {
-        const q = searchInput.value.toLowerCase();
-        if (q.length < 2) return;
-        const asanaIndex = getAsanaIndex();
-        const matches = asanaIndex.filter(a =>
-            (a.english.toLowerCase().includes(q) || a.asanaNo.includes(q))
-        ).slice(0, 10);
-
-        select.innerHTML = "";
-        matches.forEach(m => {
-            const mainOpt = document.createElement("option");
-            mainOpt.value = normalizePlate(m.asanaNo);
-            mainOpt.textContent = `[${m.asanaNo}] ${m.english}`;
-            select.appendChild(mainOpt);
-        });
-    };
-
-    wrap.querySelector("#fixerSaveBtn").onclick = async () => {
-        const newVal = select.value;
-        if (!newVal) return alert("Select target.");
-        if (confirm(`Map ID ${normBroken} -> ${newVal}?`)) {
-            alert("This requires backend logic for id_aliases.json");
-        }
-    };
-    container.appendChild(wrap);
-}
 // #endregion
 // #region 9. WIRING UP UI ELEMENTS
 /* ==========================================================================
@@ -3291,7 +2885,7 @@ safeListen("prevBtn", "click", () => {
 
 safeListen("startStopBtn", "click", () => {
     if (!currentSequence) return;
-    if (!running) startTimer();
+    if (!playbackEngine.running) startTimer();
     else stopTimer();
 });
 
@@ -3514,16 +3108,16 @@ function applyDurationDial() {
     // 4. Update the Active Timer (Mid-pose scaling)
     if (window.activePlaybackList[currentIndex]) {
         const newPoseSeconds = Number(window.activePlaybackList[currentIndex][1]) || 0;
-        if (currentPoseSeconds > 0) {
-            const ratio = remaining / currentPoseSeconds;
-            remaining = Math.round(newPoseSeconds * ratio);
+        if (playbackEngine.currentPoseSeconds > 0) {
+            const ratio = playbackEngine.remaining / playbackEngine.currentPoseSeconds;
+            playbackEngine.remaining = Math.round(newPoseSeconds * ratio);
         } else {
-            remaining = newPoseSeconds;
+            playbackEngine.remaining = newPoseSeconds;
         }
-        currentPoseSeconds = newPoseSeconds; 
+        playbackEngine.currentPoseSeconds = newPoseSeconds; 
     }
 
-    if (typeof updateTimerUI === "function") updateTimerUI();
+    if (typeof updateTimerUI === "function") updateTimerUI(playbackEngine.remaining, playbackEngine.currentPoseSeconds);
     
     // IMPORTANT: Recalculate the "87 poses • 32m 50s" text
     if (typeof builderRender === "function") builderRender();
@@ -4121,601 +3715,6 @@ safeListen("editCourseSaveBtn", "click", () => {
    }
    builderSave();
 });
-// -------- GITHUB SYNC --------
-/**
- * Pushes any JSON object to a specific file in your GitHub Repository
- * @param {string} fileName - e.g., "asana_library.json"
- * @param {Object} data - The JS object to save
- */
-async function syncDataToGitHub(fileName, data) {
-    const token = getStoredGitHubPAT();
-    if (!token) {
-        showGitHubPatPrompt((newToken) => syncDataToGitHub(fileName, data));
-        return;
-    }
-
-    try {
-        setGitHubButtonLoading(true);
-        const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${fileName}`;
-        
-        // 1. Get the current file's SHA (required by GitHub to update)
-        const getRes = await fetch(url, {
-            headers: { "Authorization": `token ${token}` }
-        });
-        const fileData = await getRes.json();
-        const sha = fileData.sha;
-
-        // 2. Encode and Push
-        const content = encodeToBase64(JSON.stringify(data, null, 2));
-        const putRes = await fetch(url, {
-            method: "PUT",
-            headers: {
-                "Authorization": `token ${token}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                message: `Update ${fileName} via Yoga App`,
-                content: content,
-                sha: sha
-            })
-        });
-
-        if (!putRes.ok) throw new Error(`GitHub Save Failed: ${putRes.status}`);
-
-        showGitHubStatus(`✓ ${fileName} synced to GitHub!`);
-    } catch (error) {
-        console.error(error);
-        showGitHubStatus(`Error syncing ${fileName}: ${error.message}`, true);
-    } finally {
-        setGitHubButtonLoading(false);
-    }
-}
-// -------- GITHUB HELPERS (REQUIRED) --------
-
-const GITHUB_REPO = "markopie/Yoga-App-Evolution"; // Ensure this matches your repo
-const GH_PAT_STORAGE_KEY = "gh_pat";
-
-function getStoredGitHubPAT() {
-    return localStorage.getItem(GH_PAT_STORAGE_KEY) || null;
-}
-
-function storeGitHubPAT(token, remember) {
-    if (remember) {
-        localStorage.setItem(GH_PAT_STORAGE_KEY, token);
-    } else {
-        // If not remembering, we still return it, but you might want to store in session or memory
-        // For simplicity in this app, we usually store it or ask every time.
-        // This simple implementation relies on LocalStorage.
-        localStorage.setItem(GH_PAT_STORAGE_KEY, token); 
-    }
-    return token;
-}
-
-function showGitHubPatPrompt(callback) {
-    // Create simple prompt if custom UI doesn't exist
-    let token = prompt("Please enter your GitHub Personal Access Token (PAT) to save changes:");
-    if (token) {
-        storeGitHubPAT(token, true);
-        if (callback) callback(token);
-    }
-}
-
-function setGitHubButtonLoading(isLoading) {
-    // Optional: Visual feedback if you have a specific button
-    const btn = document.getElementById("syncGitHubBtn");
-    if(btn) btn.disabled = isLoading;
-}
-
-function showGitHubStatus(msg, isError = false) {
-    const el = document.getElementById("statusText");
-    if (el) {
-        el.textContent = msg;
-        el.style.color = isError ? "red" : "green";
-        setTimeout(() => el.style.color = "", 5000);
-    }
-    if (isError) alert(msg);
-}
-
-// Helper to encode string to Base64 (UTF-8 safe)
-function encodeToBase64(str) {
-    return btoa(unescape(encodeURIComponent(str)));
-}
-
-/* ==========================================================================
-   FULL ASANA EDITOR (Supabase Upsert)
-   ========================================================================== */
-
-   window.openAsanaEditor = async function(id) {
-
-    const bd = $("asanaEditorBackdrop");
-
-    if (!bd) {
-        console.error("asanaEditorBackdrop not found!");
-        return alert("Editor HTML missing");
-    }
-    bd.style.display = "flex";
-    // Populate Category Datalist dynamically
-    const dl = $("asanaCategoryList");
-    if (dl) {
-        dl.innerHTML = "";
-        getUniqueCategories().forEach(c => {
-            const opt = document.createElement("option");
-            opt.value = getDisplayCategory(c); // Use the clean display helper
-            dl.appendChild(opt);
-        });
-    }
-
-    // Wipe fields clean
-    $("editAsanaId").value = "";
-    $("editAsanaName").value = "";
-    $("editAsanaIAST").value = "";
-    $("editAsanaEnglish").value = "";
-    $("editAsanaCategory").value = "";
-    if ($("editAsanaHoldStandard")) $("editAsanaHoldStandard").value = "";
-    if ($("editAsanaHoldShort")) $("editAsanaHoldShort").value = "";
-    if ($("editAsanaHoldLong")) $("editAsanaHoldLong").value = "";
-    $("editAsanaPlates").value = "";
-    $("editAsanaPage2001").value = "";
-    $("editAsanaPage2015").value = "";
-    $("editAsanaIntensity").value = "";
-    $("editAsanaNote").value = "";
-    $("editAsanaDescription").value = "";
-    $("editAsanaTechnique").value = "";
-    $("editAsanaRequiresSides").checked = false;
-    $("stagesContainer").innerHTML = "";
-    $("asanaEditorStatus").textContent = "";
-
-    // If ID is provided, we are EDITING
-    if (id) {
-        $("asanaEditorTitle").textContent = `Edit Asana: ${id}`;
-        const a = asanaLibrary[id] || {};
-
-        $("editAsanaId").value = a.id || a.asanaNo || id;
-        $("editAsanaName").value = a.name || "";
-        $("editAsanaIAST").value = a.iast || a.IAST || "";
-        $("editAsanaEnglish").value = a.english || a.english_name || "";
-        $("editAsanaCategory").value = a.category || "";
-
-     
-    
-
-        // We check a.Hold (Supabase) and a.hold (Local/Legacy)
-        const holdData = parseHoldTimes(a.Hold || a.hold || "");
-        if ($("editAsanaHoldStandard")) $("editAsanaHoldStandard").value = holdData.standard;
-        if ($("editAsanaHoldShort")) $("editAsanaHoldShort").value = holdData.short;
-        if ($("editAsanaHoldLong")) $("editAsanaHoldLong").value = holdData.long;
-        let pStr = "";
-        if (a.plates && (a.plates.final || a.plates.intermediate)) {
-            if (a.plates.final && a.plates.final.length) pStr += `Final: ${a.plates.final.join(", ")}`;
-            if (a.plates.intermediate && a.plates.intermediate.length) {
-                if (pStr) pStr += " ";
-                pStr += `Intermediate: ${a.plates.intermediate.join(", ")}`;
-            }
-        } else {
-            pStr = a.plate_numbers || "";
-        }
-        $("editAsanaPlates").value = pStr;
-
-        $("editAsanaPage2001").value = a.page2001 || a.Page_2001 || "";
-        $("editAsanaPage2015").value = a.page2015 || a.Page_2015 || "";
-        $("editAsanaIntensity").value = a.intensity || a.Intensity || "";
-        $("editAsanaNote").value = a.note || a.Note || "";
-        $("editAsanaDescription").value = a.description || a.Description || "";
-        $("editAsanaTechnique").value = a.technique || a.Technique || "";
-        $("editAsanaRequiresSides").checked = !!(a.requiresSides || a.Requires_Sides);
-
-        if (a.variations) {
-            Object.entries(a.variations).forEach(([sKey, sData]) => {
-                addStageToEditor(sKey, sData);
-            });
-        }
-
-        try {
-            const paddedId = String(id).padStart(3, '0');
-            const { data: userStages } = await supabase.from('user_stages').select('*').eq('asana_id', paddedId);
-            if (userStages && userStages.length > 0) {
-                userStages.forEach((stage) => {
-                    const stageKey = stage.stage_name || '';
-                    if (!$("stagesContainer").querySelector(`input.stage-key[value="${stageKey}"]`)) {
-                        addStageToEditor(stageKey, {
-                            id: stage.id,
-                            stage_name: stageKey,
-                            title: stage.title || '',
-                            shorthand: stage.shorthand || '',
-                            full_technique: stage.full_technique || '',
-                            hold: stage.hold || ''
-                        });
-                    }
-                });
-            }
-        } catch (e) {
-// console.warn("Could not load user stages for editor:", e.message);
-        }
-    } else {
-        // We are ADDING NEW
-        $("asanaEditorTitle").textContent = "Add New Asana";
-        $("editAsanaId").value = getNextAsanaId(); // Auto-calculate next ID
-    }
-
-    // Snapshot initial field values for change detection
-    window._asanaEditorSnapshot = null;
-    window._asanaEditorOriginalStageCount = $("stagesContainer").querySelectorAll(".stage-row").length;
-    window._asanaEditorOriginalStageData = null;
-    requestAnimationFrame(() => {
-        window._asanaEditorSnapshot = {
-            name: $("editAsanaName").value,
-            iast: $("editAsanaIAST").value,
-            english_name: $("editAsanaEnglish").value,
-            technique: $("editAsanaTechnique").value,
-            plate_numbers: $("editAsanaPlates").value,
-            requires_sides: $("editAsanaRequiresSides").checked,
-            page_2001: $("editAsanaPage2001").value,
-            page_2015: $("editAsanaPage2015").value,
-            intensity: $("editAsanaIntensity").value,
-            note: $("editAsanaNote").value,
-            category: $("editAsanaCategory").value,
-            description: $("editAsanaDescription").value,
-            holdStd: $("editAsanaHoldStandard")?.value,
-            holdShort: $("editAsanaHoldShort")?.value,
-            holdLong: $("editAsanaHoldLong")?.value,
-            stageCount: $("stagesContainer").querySelectorAll(".stage-row").length
-        };
-        window._asanaEditorOriginalStageData = Array.from($("stagesContainer").querySelectorAll(".stage-row")).map(div => ({
-            key: div.querySelector(".stage-key")?.value || "",
-            prefix: div.querySelector(".stage-prefix")?.value || "",
-            suffix: div.querySelector(".stage-suffix")?.value || "",
-            short: div.querySelector(".stage-short")?.value || "",
-            tech: div.querySelector(".stage-tech")?.value || "",
-            holdStandard: div.querySelector(".stage-hold-standard")?.value || "",
-            holdShort: div.querySelector(".stage-hold-short")?.value || "",
-            holdLong: div.querySelector(".stage-hold-long")?.value || ""
-        }));
-    });
-
-};
-
-async function getNextRomanNumeral() {
-    // Expanded up to 20 variations
-    const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X",
-                   "XI","XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX"];
-    
-    const asanaId = $("editAsanaId").value.trim().padStart(3, '0');
-    const inDom = Array.from($("stagesContainer").querySelectorAll(".stage-key")).map(el => el.value.trim().toUpperCase());
-    const taken = new Set(inDom);
-
-    if (supabase && asanaId) {
-        try {
-            // THE FIX: Use .eq('asana_id', asanaId) instead of .contains('parent_id')
-            const [{ data: s1 }, { data: s2 }] = await Promise.all([
-                supabase.from('stages').select('"Stage_Name", stage_name').eq('asana_id', asanaId),
-                supabase.from('user_stages').select('"Stage_Name", stage_name').eq('asana_id', asanaId)
-            ]);
-            
-            // Safely check both Title Case and lowercase column names
-            (s1 || []).forEach(r => {
-                const name = r.Stage_Name || r.stage_name;
-                if (name) taken.add(String(name).toUpperCase());
-            });
-            (s2 || []).forEach(r => {
-                const name = r.Stage_Name || r.stage_name;
-                if (name) taken.add(String(name).toUpperCase());
-            });
-        } catch (e) {
-// console.warn("Could not query stage names for Roman numeral calc:", e.message);
-        }
-    }
-
-    for (const r of ROMAN) {
-        if (!taken.has(r)) return r;
-    }
-    return String(taken.size + 1); // Fallback to numbers if they exceed 20
-}
-
-function getVariationSuffixes() {
-    const suffixes = new Set();
-    const asanaId = $("editAsanaId").value.trim().padStart(3, '0');
-    const asana = asanaLibrary[asanaId];
-    if (asana && asana.variations) {
-        Object.values(asana.variations).forEach(vData => {
-            const title = typeof vData === 'object' ? (vData.title || vData.Title || "") : "";
-            const suffix = title.replace(/^(Modified|Stage)\s+[IVXLCDM]+\s*/i, "").trim();
-            if (suffix) suffixes.add(suffix);
-        });
-    }
-    Array.from($("stagesContainer").querySelectorAll(".stage-row")).forEach(row => {
-        const suf = row.querySelector(".stage-suffix");
-        if (suf && suf.value.trim()) suffixes.add(suf.value.trim());
-    });
-    return Array.from(suffixes).sort();
-}
-
-window.addStageToEditor = async function(stageKey = "", stageData = {}) {
-    const container = $("stagesContainer");
-
-    const autoKey = stageKey || await getNextRomanNumeral();
-    const existingTitle = typeof stageData === 'object' ? (stageData.title || stageData.Title || "") : "";
-    const prefixMatch = existingTitle.match(/^(Modified|Stage)\s+/i);
-    const prefix = prefixMatch ? prefixMatch[1] : "Modified";
-    const suffix = existingTitle.replace(/^(Modified|Stage)\s+[IVXLCDM]+\s*/i, "").trim();
-    const existingShorthand = typeof stageData === 'object' ? (stageData.shorthand || stageData.Shorthand || "") : "";
-    const existingTech = typeof stageData === 'object' ? (stageData.full_technique || stageData.Full_Technique || stageData.technique || "") : (stageData || "");
-    const existingDbId = typeof stageData === 'object' ? (stageData.id || stageData.db_id || "") : "";
-
-    const existingHoldStr = typeof stageData === 'object' ? (stageData.hold || stageData.Hold || "") : "";
-    const parsedHold = parseHoldTimes(existingHoldStr);
-    const holdStd  = existingHoldStr ? parsedHold.standard : 30;
-    const holdShort = existingHoldStr ? parsedHold.short    : 15;
-    const holdLong  = existingHoldStr ? parsedHold.long     : 60;
-
-    const suffixes = getVariationSuffixes();
-    const datalistId = `stageSuffixList_${Date.now()}`;
-
-    const div = document.createElement("div");
-    div.className = "stage-row";
-    div.dataset.dbId = existingDbId;
-    div.style.cssText = "border:1px solid #ddd; padding:10px; border-radius:6px; background:#fff; display:grid; gap:8px;";
-
-    div.innerHTML = `
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-           <div style="min-width:60px;">
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Key</label>
-               <input type="text" class="stage-key" value="${autoKey}" readonly style="width:60px; padding:6px; font-weight:bold; background:#f5f5f5; text-align:center; border:1px solid #ccc; border-radius:4px;">
-           </div>
-           <div style="min-width:110px;">
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Prefix</label>
-               <select class="stage-prefix" style="padding:6px; border:1px solid #ccc; border-radius:4px; background:#fff; min-height:unset;">
-                   <option value="Modified" ${prefix === "Modified" ? "selected" : ""}>Modified</option>
-                   <option value="Stage" ${prefix === "Stage" ? "selected" : ""}>Stage</option>
-               </select>
-           </div>
-           <div style="flex:2; min-width:140px;">
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Description / Suffix</label>
-               <input type="text" class="stage-suffix" list="${datalistId}" value="${suffix}" placeholder="e.g. (on a bolster)" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
-               <datalist id="${datalistId}">${suffixes.map(s => `<option value="${s}">`).join("")}</datalist>
-           </div>
-           <div style="min-width:100px;">
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Shorthand</label>
-               <input type="text" class="stage-short" value="${existingShorthand}" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
-           </div>
-           <div style="display:flex; align-items:flex-end; padding-bottom:2px;">
-               <button type="button" class="tiny warn remove-stage-btn">✕ Remove</button>
-           </div>
-        </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-           <div>
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Short Hold (s)</label>
-               <input type="number" class="stage-hold-short" min="0" value="${holdShort}" style="width:70px; padding:6px; border:1px solid #ccc; border-radius:4px;">
-           </div>
-           <div>
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Standard Hold (s)</label>
-               <input type="number" class="stage-hold-standard" min="0" value="${holdStd}" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">
-           </div>
-           <div>
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Long Hold (s)</label>
-               <input type="number" class="stage-hold-long" min="0" value="${holdLong}" style="width:70px; padding:6px; border:1px solid #ccc; border-radius:4px;">
-           </div>
-        </div>
-        <div>
-           <label class="muted" style="font-size:0.75rem;">Technique</label>
-           <textarea class="stage-tech" style="height:60px; padding:6px; width:100%; font-family:inherit; border:1px solid #ccc; border-radius:4px;">${existingTech}</textarea>
-        </div>
-    `;
-
-    div.querySelector(".remove-stage-btn").onclick = () => div.remove();
-    container.appendChild(div);
-};
-
-// Apply UI Interactivity on DOM Load
-document.addEventListener("DOMContentLoaded", () => {
-    if ($("asanaEditorCloseBtn")) $("asanaEditorCloseBtn").onclick = () => $("asanaEditorBackdrop").style.display = "none";
-    if ($("addStageBtn")) $("addStageBtn").onclick = () => addStageToEditor();
-
-    if ($("asanaEditorSaveBtn")) {
-        $("asanaEditorSaveBtn").onclick = async () => {
-            const rawId = $("editAsanaId").value.trim();
-            if (!rawId) return alert("ID is required.");
-            const id = rawId.padStart(3, '0');
-
-            const snap = window._asanaEditorSnapshot;
-            if (snap) {
-                const currentStageCount = $("stagesContainer").querySelectorAll(".stage-row").length;
-                const current = {
-                    name: $("editAsanaName").value,
-                    iast: $("editAsanaIAST").value,
-                    english_name: $("editAsanaEnglish").value,
-                    technique: $("editAsanaTechnique").value,
-                    plate_numbers: $("editAsanaPlates").value,
-                    requires_sides: $("editAsanaRequiresSides").checked,
-                    page_2001: $("editAsanaPage2001").value,
-                    page_2015: $("editAsanaPage2015").value,
-                    intensity: $("editAsanaIntensity").value,
-                    note: $("editAsanaNote").value,
-                    category: $("editAsanaCategory").value,
-                    description: $("editAsanaDescription").value,
-                    holdStd: $("editAsanaHoldStandard")?.value,
-                    holdShort: $("editAsanaHoldShort")?.value,
-                    holdLong: $("editAsanaHoldLong")?.value,
-                    stageCount: currentStageCount
-                };
-                
-                const stageCountChanged = currentStageCount !== (window._asanaEditorOriginalStageCount ?? snap.stageCount);
-                const currentStageData = Array.from($("stagesContainer").querySelectorAll(".stage-row")).map(div => ({
-                    key: div.querySelector(".stage-key")?.value || "",
-                    short: div.querySelector(".stage-short")?.value || "",
-                    tech: div.querySelector(".stage-tech")?.value || "",
-                    holdStandard: div.querySelector(".stage-hold-standard")?.value || "",
-                    holdShort: div.querySelector(".stage-hold-short")?.value || "",
-                    holdLong: div.querySelector(".stage-hold-long")?.value || ""
-                }));
-                const originalStageData = window._asanaEditorOriginalStageData || [];
-                const stageDataChanged = JSON.stringify(currentStageData) !== JSON.stringify(originalStageData);
-                const fieldsUnchanged = Object.keys(snap).every(k => snap[k] === current[k]);
-
-                if (!stageCountChanged && !stageDataChanged && fieldsUnchanged) {
-                    $("asanaEditorStatus").textContent = "No changes made.";
-                    $("asanaEditorStatus").style.color = "#888";
-                    setTimeout(() => { $("asanaEditorStatus").textContent = ""; }, 2500);
-                    return;
-                }
-            }
-
-            const btn = $("asanaEditorSaveBtn");
-            btn.disabled = true;
-            btn.textContent = "Saving...";
-            
-            let userId = null;
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                userId = user?.id;
-            } catch (e) { console.warn("User ID fetch failed:", e.message); }
-
-            const asanaHoldStr = buildHoldString(
-                parseInt($("editAsanaHoldStandard")?.value || "30", 10),
-                parseInt($("editAsanaHoldShort")?.value || "15", 10),
-                parseInt($("editAsanaHoldLong")?.value || "60", 10)
-            );
-
-            const asanaData = {
-                id: id,
-                user_id: userId,
-                name: $("editAsanaName").value.trim(),
-                iast: $("editAsanaIAST").value.trim(),
-                english_name: $("editAsanaEnglish").value.trim(),
-                technique: $("editAsanaTechnique").value.trim(),
-                plate_numbers: $("editAsanaPlates").value.trim(),
-                requires_sides: $("editAsanaRequiresSides").checked,
-                page_2001: $("editAsanaPage2001").value.trim() || null,
-                page_2015: $("editAsanaPage2015").value.trim() || null,
-                intensity: $("editAsanaIntensity").value.trim() || null,
-                note: $("editAsanaNote").value.trim(),
-                category: formatCategoryName($("editAsanaCategory").value.trim()),
-                description: $("editAsanaDescription").value.trim(),
-                hold: asanaHoldStr
-            };
-
-            try {
-                // Save Main Asana
-                if (supabase && userId) {
-                    const { error: asanaErr } = await supabase
-                        .from('user_asanas')
-                        .upsert(asanaData, { onConflict: 'id' });
-                    if (asanaErr) throw new Error(asanaErr.message);
-
-                    // Process Variations
-                    const stageDivs = $("stagesContainer").querySelectorAll(".stage-row");
-                    const localVariations = {};
-
-                    for (const div of stageDivs) {
-                        const key = div.querySelector(".stage-key").value.trim();
-                        if (!key) continue;
-                        
-                        const pfx = div.querySelector(".stage-prefix")?.value.trim() || "Modified";
-                        const sfx = div.querySelector(".stage-suffix")?.value.trim() || "";
-                        const holdStr = buildHoldString(
-                            parseInt(div.querySelector(".stage-hold-standard")?.value || "30", 10),
-                            parseInt(div.querySelector(".stage-hold-short")?.value || "15", 10),
-                            parseInt(div.querySelector(".stage-hold-long")?.value || "60", 10)
-                        );
-                        const dbId = div.dataset.dbId || "";
-
-                        const payload = {
-                            user_id: userId,
-                            asana_id: id,
-                            stage_name: key,
-                            title: sfx ? `${pfx} ${key} ${sfx}` : `${pfx} ${key}`,
-                            full_technique: div.querySelector(".stage-tech")?.value.trim() || null,
-                            shorthand: div.querySelector(".stage-short")?.value.trim() || null,
-                            hold: holdStr
-                        };
-
-                        if (dbId && dbId.includes('-')) {
-                            await supabase.from('user_stages').update(payload).eq('id', dbId);
-                        } else {
-                            const { data: newRow } = await supabase.from('user_stages').insert(payload).select().single();
-                            if (newRow) div.dataset.dbId = newRow.id;
-                        }
-
-                        localVariations[key] = {
-                            title: payload.title,
-                            shorthand: payload.shorthand,
-                            full_technique: payload.full_technique,
-                            hold: holdStr,
-                            hold_data: parseHoldTimes(holdStr),
-                            isCustom: true
-                        };
-                    }
-
-                    // Update local memory
-                    asanaLibrary[id] = {
-                        ...asanaLibrary[id],
-                        ...asanaData,
-                        english: asanaData.english_name,
-                        hold_data: parseHoldTimes(asanaData.hold),
-                        variations: { ...asanaLibrary[id].variations, ...localVariations },
-                        isCustom: true
-                    };
-
-                    $("asanaEditorStatus").textContent = "✓ Saved Successfully!";
-                    setTimeout(() => {
-                        $("asanaEditorBackdrop").style.display = "none";
-                        btn.disabled = false;
-                        btn.textContent = "Save Asana";
-                        if (window.showAsanaDetail) showAsanaDetail(asanaLibrary[id]);
-                    }, 1000);
-                }
-            } catch (e) {
-                console.error(e);
-                alert("Error saving: " + e.message);
-                btn.disabled = false;
-                btn.textContent = "Save Asana";
-            }
-        };
-    }
-});
-
-// --- DYNAMIC HELPERS ---
-function getNextAsanaId() {
-    if (typeof asanaLibrary === 'undefined') return "001";
-    let next = 1;
-    while (asanaLibrary[String(next).padStart(3, '0')]) {
-        next++;
-    }
-    return String(next).padStart(3, '0');
-}
-
-function getUniqueCategories() {
-    const cats = new Set();
-    if (typeof asanaLibrary !== 'undefined') {
-        Object.values(asanaLibrary).forEach(a => {
-            if (a.category) cats.add(a.category.trim());
-        });
-    }
-    return Array.from(cats).sort();
-}
-function getDisplayCategory(cat) {
-    if (!cat) return "";
-    return cat.replace(/^\d+_/, '').replace(/_/g, ' ');
-}
-
-function formatCategoryName(inputCat) {
-    if (!inputCat) return "";
-    const cleanInput = inputCat.trim().replace(/\s+/g, '_');
-    const existingCats = getUniqueCategories();
-    
-    if (existingCats.includes(inputCat)) return inputCat;
-    
-    const match = existingCats.find(c => c.replace(/^\d+_/, '').toLowerCase() === cleanInput.toLowerCase());
-    if (match) return match; 
-    
-    let maxPrefix = 0;
-    existingCats.forEach(c => {
-        const m = c.match(/^(\d+)_/);
-        if (m && parseInt(m[1], 10) > maxPrefix) maxPrefix = parseInt(m[1], 10);
-    });
-    
-    const nextPrefix = String(maxPrefix + 1).padStart(2, '0');
-    return `${nextPrefix}_${cleanInput}`;
-}
 
 
 // 4. APP STARTUP (Auth-Gated)
@@ -4779,14 +3778,25 @@ function setupAuthListeners() {
     }
 
     supabase.auth.onAuthStateChange((event, session) => {
-        
+        const emailDisplay = document.getElementById("userEmailDisplay");
         if (session && session.user) {
             window.isGuestMode = false;
             window.currentUserId = session.user.id;
+            if (emailDisplay && session.user.email) {
+                emailDisplay.textContent = session.user.email;
+                emailDisplay.style.display = "inline";
+            }
             showApp();
         } else if (!window.isGuestMode) {
             window.currentUserId = null;
+            if (emailDisplay) emailDisplay.style.display = "none";
             showLogin();
+        } else {
+            // Guest mode
+            if (emailDisplay) {
+                emailDisplay.textContent = "Guest User";
+                emailDisplay.style.display = "inline";
+            }
         }
     });
 }
@@ -4840,3 +3850,5 @@ if (document.readyState === 'loading') {
 }
 
 // #endregion
+
+

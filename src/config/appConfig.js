@@ -5,12 +5,6 @@ const MANIFEST_URL = `${BASE_RAW_URL}manifest.json`;
 const ASANA_LIBRARY_URL = `${BASE_RAW_URL}asana_library.json`;
 const LIBRARY_URL = ASANA_LIBRARY_URL;
 
-const DESCRIPTIONS_OVERRIDE_URL = `${BASE_RAW_URL}descriptions_override.json`;
-const CATEGORY_OVERRIDE_URL = `${BASE_RAW_URL}category_overrides.json`;
-const IMAGE_OVERRIDE_URL = `${BASE_RAW_URL}image_overrides.json`;
-const AUDIO_OVERRIDE_URL = `${BASE_RAW_URL}audio_overrides.json`;
-const ID_ALIASES_URL = `${BASE_RAW_URL}id_aliases.json`;
-
 // Current production deployment serves media from an external host.
 const IMAGES_BASE = "https://arrowroad.com.au/yoga/images/";
 const AUDIO_BASE = "https://arrowroad.com.au/yoga/audio/";
@@ -25,11 +19,6 @@ export {
   MANIFEST_URL,
   ASANA_LIBRARY_URL,
   LIBRARY_URL,
-  DESCRIPTIONS_OVERRIDE_URL,
-  CATEGORY_OVERRIDE_URL,
-  IMAGE_OVERRIDE_URL,
-  AUDIO_OVERRIDE_URL,
-  ID_ALIASES_URL,
   IMAGES_BASE,
   AUDIO_BASE,
   IMAGES_BASE_URL,

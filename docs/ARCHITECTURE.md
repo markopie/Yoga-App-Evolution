@@ -1,5 +1,9 @@
 # Application Architecture
 
+## Database Schema (Row Level Security)
+- **Global Tables** (`asanas`, `courses`, `stages`): Public Read-Only.
+- **User Tables** (`user_asanas`, `user_stages`, `user_sequences`, `sequence_completions`): Private; access restricted to `auth.uid() = user_id`.
+
 ## Data Flow
 - **Supabase**: The source of truth for 7 tables (`asanas`, `user_asanas`, `stages`, `user_stages`, `courses`, `user_sequences`, `sequence_completions`).
 - **dataAdapter.js**: Acts as the adapter pattern, fetching data from Supabase and normalizing it into the standard JSON objects the front-end app expects. It explicitly maps database columns like `english_name` and `audio_url` to UI-friendly properties like `english` and `audio`.
@@ -23,3 +27,6 @@
 ## UI State & Resume Logic
 - The `showResumePrompt` correctly accesses the active sequence via the `title` property (i.e. `sequences[state.sequenceIdx].title`), which aligns with the database's `title` column.
 - To prevent unnecessary prompts for users who simply opened a sequence without starting it, the resume logic requires `state.poseIdx > 0` before triggering the banner.
+
+## Scripts & Tooling
+- **Utilities**: Located in `/scripts/`, providing Python-based management for backups and data prototyping. (See `docs/DEVELOPMENT.md` for usage).
