@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
     "python.defaultInterpreterPath": "C:\\Projects\\Yoga-App-Evolution\\.venv\\Scripts\\python.exe",
     "python.terminal.activateEnvInSelectedTerminal": true,
     "python.analysis.extraPaths": [
@@ -6,3 +7,12 @@
     ],
     "python.languageServer": "Default"
 }
+=======
+    "python.defaultInterpreterPath": ".venv\\Scripts\\python.exe",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.terminal.shellIntegration.enabled": true,
+    "python.languageServer": "Default",
+    "terminal.integrated.defaultProfile.windows": "Windows PowerShell"
+}
+>>>>>>> main

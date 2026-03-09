@@ -1,0 +1,19 @@
+from google.cloud import quota_manager_v1
+
+def check_imagen_quota(project_id):
+    client = quota_manager_v1.QuotaManagerClient()
+    # The resource path for the specific Imagen model quota
+    parent = f"projects/{project_id}/locations/us-central1"
+    
+    print(f"📊 Querying Quotas for {project_id}...")
+    try:
+        # This lists all quotas; we filter for the 'online_prediction' used by Imagen
+        quotas = client.list_quota_infos(parent=parent)
+        for quota in quotas:
+            if "online_prediction_requests_per_base_model" in quota.name:
+                print(f"✅ Quota Name: {quota.quota_id}")
+                print(f"📈 Current Limit: {quota.container_info.metric_value} RPM")
+    except Exception as e:
+        print(f"❌ Could not fetch quota: {e}")
+
+check_imagen_quota("gen-lang-client-0495696648")

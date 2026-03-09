@@ -2,8 +2,12 @@ supabase
 python-dotenv
 pandas
 requests
+<<<<<<< HEAD
 google-cloud-aiplatform
 google-cloud-service-usage
 google-cloud-quota-manager
 pyperclip
 pillow
+=======
+# Add any other specific libraries you've installed here
+>>>>>>> main
