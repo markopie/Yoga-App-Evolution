@@ -1,0 +1,5 @@
+supabase
+python-dotenv
+pandas
+requests
+# Add any other specific libraries you've installed here

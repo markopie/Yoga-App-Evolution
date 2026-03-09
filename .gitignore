@@ -1,0 +1,20 @@
+node_modules/
+
+# Python Virtual Environment
+.venv/
+__pycache__/
+*.py[cod]
+
+# Secret Keys (NEVER PUSH THESE)
+.env
+google-credentials.json
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Local Backups (Your Data)
+backups/
+
+# VS Code settings
+.vscode/
+
