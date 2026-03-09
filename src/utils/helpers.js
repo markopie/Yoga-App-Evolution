@@ -32,3 +32,18 @@ export function ensureArray(x) {
 export function isBrowseMobile() {
    return window.matchMedia("(max-width: 900px)").matches;
 }
+
+export function smartUrlsForPoseId(idField) {
+    if (!idField) return [];
+    let id = Array.isArray(idField) ? idField[0] : idField;
+    
+    // Normalize
+    if (typeof normalizePlate === 'function') id = normalizePlate(id);
+
+    // 2. Check Index
+    if (window.asanaToUrls && window.asanaToUrls[id]) {
+        return window.asanaToUrls[id];
+    }
+    
+    return [];
+}

@@ -1,0 +1,9 @@
+supabase
+python-dotenv
+pandas
+requests
+google-cloud-aiplatform
+google-cloud-service-usage
+google-cloud-quota-manager
+pyperclip
+pillow

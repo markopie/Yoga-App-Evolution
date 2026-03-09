@@ -26,6 +26,10 @@ This project has moved to Supabase for data and storage concerns. The next refac
 
 3. **UI rendering split**
    - Move modal, list, history, and builder rendering into `src/ui/` files.
+     - **Completed:** Extracted Browse UI logic into `src/ui/browse.js`.
+     - **Completed:** Extracted Sequence Builder logic into `src/ui/builder.js`.
+     - **Completed:** Extracted History Modal logic into `src/ui/historyModal.js`.
+     - **Completed:** Extracted Event Wiring into `src/ui/wiring.js`.
    - Keep `app.js` as an orchestration entrypoint only.
 
 4. **Legacy cleanup pass**
@@ -39,3 +43,10 @@ This project has moved to Supabase for data and storage concerns. The next refac
 - `src/playback/*`
 - `src/ui/*`
 - `src/utils/*`
+
+
+## Documentation & Formatting Phase
+- [x] Standardize structural hierarchy with scholarly headers in app.js.
+- [x] Remove informal console.logs and debug comments.
+- [x] Add JSDoc to major app.js functions.
+- [x] Format app.js with Prettier applying best practices.
