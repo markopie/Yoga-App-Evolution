@@ -11,3 +11,9 @@ __pycache__/
 # OS Files
 .DS_Store
 Thumbs.db
+
+assets/
+backups/
+
+google-credentials.json
+temp_history.txt
