@@ -1,13 +1,16 @@
 import { $, showError, safeListen, normaliseText, setStatus } from '../utils/dom.js';
 import { prefersIAST, setIASTPref } from '../utils/format.js';
 import { supabase } from '../services/supabaseClient.js';
+import { normalizePlate } from '../services/dataAdapter.js';
 import { playbackEngine } from '../playback/timer.js';
 import { openHistoryModal, switchHistoryTab, renderGlobalHistory } from './historyModal.js';
-import { builderRender, movePose, removePose, processSemicolonCommand, openLinkSequenceModal } from './builder.js';
+import { builderRender, builderSave, openEditCourse, builderOpen, addPoseToBuilder, processSemicolonCommand } from './builder.js';
+import { formatHMS, displayName } from '../utils/format.js';
 
 // Setup some window aliases since we're breaking up a monolithic file
 const getActivePlaybackList = () => window.activePlaybackList;
 const getCurrentSequence = () => window.currentSequence;
+const getAsanaIndex = () => Object.values(window.asanaLibrary || {}).filter(Boolean);
 // #region 9. WIRING UP UI ELEMENTS
 /* ==========================================================================
    EVENT LISTENERS & INITIALIZATION
@@ -56,20 +59,20 @@ seqSelect.addEventListener("change", () => {
     if (typeof stopTimer === "function") stopTimer(); 
     
     const setStatus = (text) => {
-        const el = document.getElementById("statusText") || document.getElementById("status");
+        const el = document.getElementById("statusText") || document.getElementById("status"); 
         if (el) el.textContent = text;
     };
 
     if (!idx) {
         window.currentSequence = null;
         setStatus("Select a sequence");
-        if($("collageWrap")) $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`;
+        if($("collageWrap")) $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`; 
         return;
     }
 
     // --- 1. SET CURRENT SEQUENCE ---
     // (Checks both 'courses' and 'sequences' arrays to be safe)
-    const rawSequence = (typeof courses !== "undefined" ? courses : sequences)[parseInt(idx, 10)];
+    const rawSequence = window.courses[parseInt(idx, 10)];
     window.currentSequence = rawSequence; 
 
     // --- 2. GENERATE EXPANDED LIST (MACROS) ---
@@ -83,11 +86,11 @@ seqSelect.addEventListener("change", () => {
     if (typeof applyDurationDial === 'function') applyDurationDial();
     if (typeof updateDialUI === 'function') updateDialUI();
 
-    if (typeof updateTotalAndLastUI === 'function') updateTotalAndLastUI();
+    if (typeof window.updateTotalAndLastUI === 'function') window.updateTotalAndLastUI();
 
     try {
-        window.currentIndex = 0; // Ensure we start at the beginning
-        setPose(0);
+        window.currentIndex = 0; // Ensure we start at the beginning 
+        window.setPose(0);
         setStatus("Ready to Start"); 
         const btn = document.getElementById("startStopBtn");
         if (btn) btn.textContent = "Start";
@@ -111,24 +114,9 @@ seqSelect.addEventListener("change", () => {
    btn.addEventListener("click", () => {
       setIASTPref(!prefersIAST());
       updateBtn();
-      if (getCurrentSequence()) setPose(window.currentIndex);
+      if (getCurrentSequence()) window.setPose(window.currentIndex);
    });
 })();
-function updateLastCompletedPill(){
-
-    const pill = document.getElementById("lastCompletedPill");
-    if(!pill) return;
-  
-    const seq = window.currentSequence && window.currentSequence.title ? window.currentSequence.title : null;
-    const last = getLastCompletionForSequence(seq);
-  
-    if(last){
-      pill.textContent =
-        "Last: " + new Date(last).toLocaleString();
-    }else{
-      pill.textContent = "History";
-    }
-  }
 
 // 2. History Interactions (Clickable Pill)
 const lastPill = $("lastCompletedPill");
@@ -145,24 +133,24 @@ if (lastPill) {
 
 // 2. Playback Controls
 safeListen("nextBtn", "click", () => {
-    stopTimer();
-    nextPose();
+    window.stopTimer();
+    window.nextPose();
 });
 
 safeListen("prevBtn", "click", () => {
-    stopTimer();
-    prevPose();
+    window.stopTimer();
+    window.prevPose();
 });
 
 safeListen("startStopBtn", "click", () => {
     if (!getCurrentSequence()) return;
-    if (!playbackEngine.running) startTimer();
-    else stopTimer();
+    if (!playbackEngine.running) window.startTimer();
+    else window.stopTimer();
 });
 
 safeListen("resetBtn", "click", () => {
    // 1. Stop the clock
-   stopTimer();
+   window.stopTimer();
 
    // 2. WIPE MEMORY (Fixes the "Resume" popup on refresh)
    localStorage.removeItem("lastPlayedSequence");
@@ -170,7 +158,7 @@ safeListen("resetBtn", "click", () => {
    localStorage.removeItem("timeLeft");
    
    // Optional: Clear internal progress tracking if you use it
-   if (typeof clearProgress === "function") clearProgress();
+   if (typeof window.clearProgress === "function") window.clearProgress();
 
    // 3. RESET DROPDOWN (Fixes the ID: sequenceSelect)
    const dropdown = $("sequenceSelect");
@@ -249,7 +237,7 @@ window.dialReset = function() {
     
     // Optional: If you want it to refresh the current pose timer immediately
     if (typeof getCurrentSequence() !== "undefined" && getCurrentSequence()) {
-        if (typeof setPose === "function") setPose(window.currentIndex);
+        if (typeof window.setPose === "function") window.setPose(window.currentIndex);
     }
     
     console.log("Dial reset via touch");
@@ -282,7 +270,7 @@ function updateDialUI() {
         const total = window.currentSequenceOriginalPoses.reduce((s, p) => {
             const origDur = Number(p[1]) || 0;
             const id = Array.isArray(p[0]) ? p[0][0] : p[0];
-            const asana = findAsanaByIdOrPlate ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
+            const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(normalizePlate(id)) : null;
             const { short, defaultDur, long } = resolveDialAnchors(origDur, asana);
             const dur = interpolateDuration(pos, short, defaultDur, long);
             return s + (asana && asana.requiresSides ? dur * 2 : dur);
@@ -329,7 +317,7 @@ function applyDurationDial() {
     const val = Number(dial.value); // 0 to 100
 
     // 1. Expand a fresh list from the raw sequence
-    const baseList = typeof getExpandedPoses === "function" ? getExpandedPoses(getCurrentSequence()) : getCurrentSequence().poses;
+    const baseList = typeof window.getExpandedPoses === "function" ? window.getExpandedPoses(getCurrentSequence()) : getCurrentSequence().poses;
 
     // 2. Apply the dynamic database scale
     window.activePlaybackList = baseList.map(p => {
@@ -388,7 +376,7 @@ function applyDurationDial() {
         playbackEngine.currentPoseSeconds = newPoseSeconds; 
     }
 
-    if (typeof updateTimerUI === "function") updateTimerUI(playbackEngine.remaining, playbackEngine.currentPoseSeconds);
+    if (typeof window.updateTimerUI === "function") window.updateTimerUI(playbackEngine.remaining, playbackEngine.currentPoseSeconds);
     
     // IMPORTANT: Recalculate the "87 poses • 32m 50s" text
     if (typeof builderRender === "function") builderRender();
@@ -419,7 +407,7 @@ safeListen("completeBtn", "click", async () => {
         const now = new Date();
 
         // Call the helper from Region 5 with category support
-        const success = await appendServerHistory(title, now, category);
+        const success = await window.appendServerHistory(title, now, category);
 
         if (success) {
 // console.log("✅ Server sync success");
@@ -439,270 +427,6 @@ safeListen("completeBtn", "click", async () => {
         btn.textContent = originalText;
     }
 });
-
-// -------- COURSE EDITING & EXPORT --------
-let editingCourseData = null;
-let editingCourseIndex = null;
-
-// ============================================================
-// SEQUENCE BUILDER
-// ============================================================
-
-let builderPoses = [];  // [{ id, name, duration, note, supabaseRowId? }]
-let builderMode = "edit"; // "edit" | "new"
-let builderEditingCourseIndex = -1;
-let builderEditingSupabaseId = null;
-
-function addHit(el) {
-    const id = el.getAttribute('data-id');
-    const name = el.getAttribute('data-name');
-    
-    // Change console log to reflect reality
-    console.log("Adding pose to bottom:", name);
-
-    // THE FIX: Change unshift to push
-    builderPoses.push({ 
-        id: id,
-        name: name,
-        duration: 30,
-        note: ''
-    });
-
-    const input = document.getElementById('builderSearch');
-    const resBox = document.getElementById('builderSearchResults');
-    
-    if (input) input.value = '';
-    if (resBox) resBox.style.display = 'none';
-    
-    builderRender();
-    if (input) input.focus();
-}
-
-function openEditCourse() {
-   if (!getCurrentSequence()) { alert("Please select a course first."); return; }
-   builderOpen("edit", getCurrentSequence());
-}
-function builderOpen(mode, seq) {
-    builderMode = mode;
-    builderPoses = [];
-    builderEditingCourseIndex = -1;
-    let targetId = seq ? (seq.supabaseId || seq.id) : null;
-
-    // Use your $ helper consistently for all elements at the start
-    const catInput = $("builderCategory"); 
-    const titleEl = $("builderTitle");
-    const modeLabel = $("builderModeLabel");
-    const datalist = $("builderCategoryList");
-
-    if (catInput) {
-        // Forces re-render to check for "Flow" on every keystroke
-        catInput.oninput = () => builderRender(); 
-    }
-
-    // Global IDs are short integers (e.g., "170"). User sequences use long UUIDs.
-    if (targetId && String(targetId).length < 30) {
-        targetId = null;
-    }
-    builderEditingSupabaseId = targetId;
-
-    document.body.classList.add("modal-open");
-
-    // Populate Category Datalist
-    if (catInput && datalist) {
-        const allCats = [...new Set(courses.map(c => c.category).filter(Boolean))].sort();
-        datalist.innerHTML = allCats.map(c => `<option value="${c}"></option>`).join("");
-
-        let tempVal = "";
-        catInput.onfocus = () => { tempVal = catInput.value; catInput.value = ""; };
-        catInput.onblur = () => { if (catInput.value === "") catInput.value = tempVal; };
-    }
-
-    if (mode === "new") {
-       if (modeLabel) modeLabel.textContent = "New Sequence";
-       if (titleEl) titleEl.value = "";
-       if (catInput) catInput.value = "";
-    } else {
-       if (!seq) return;
-       if (modeLabel) modeLabel.textContent = "Edit Sequence";
-       if (titleEl) titleEl.value = seq.title || "";
-       if (catInput) catInput.value = seq.category || "";
-       
-       const libraryArray = Object.values(asanaLibrary || {});
-       const rawPoses = (window.currentSequenceOriginalPoses && seq === getCurrentSequence())
-           ? window.currentSequenceOriginalPoses : (seq.poses || []);
-
-           rawPoses.forEach(p => {
-            const id = String(Array.isArray(p[0]) ? p[0][0] : p[0] || "").padStart(3, '0');
-            const asana = libraryArray.find(a => String(a.id) === id);
-            
-            // THE FIX: Do not include p[3] in this join! 
-            // p[3] is the variation key. p[4] already has the brackets.
-            let rawExtras = [p[2], p[4]].filter(Boolean).join(" | ").trim();
-            let variation = p[3] || ""; 
-            let extractedLabel = "";
-   
-            const bracketMatch = rawExtras.match(/\[(.*?)\]/);
-            if (bracketMatch) {
-                extractedLabel = bracketMatch[1].trim(); 
-                rawExtras = rawExtras.replace(bracketMatch[0], "").replace(/^[\s\|]+/, "").trim();
-            } else {
-                extractedLabel = rawExtras; rawExtras = "";
-            }
-   
-            // Legacy fuzzy matching (Kept intact)
-            if (!variation && asana?.variations && extractedLabel) {
-                const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
-                for (const vKey of sortedKeys) {
-                    const vData = asana.variations[vKey];
-                    const vTitle = (vData?.title || "").toLowerCase();
-                    if (extractedLabel.toLowerCase() === vTitle || new RegExp(`\\b${vKey}\\b`, 'i').test(extractedLabel)) {
-                        variation = vKey; extractedLabel = ""; break;
-                    }
-                }
-            } else if (variation && extractedLabel === variation) {
-                // If it already found the variation, clear the label so it doesn't bleed into notes
-                extractedLabel = ""; 
-            }
-   
-            if (extractedLabel && !variation) {
-                rawExtras = (extractedLabel + (rawExtras ? " | " + rawExtras : "")).trim();
-            }
-   
-            builderPoses.push({
-               id: id,
-               name: asana ? (asana.name || displayName(asana)) : id,
-               duration: Number(p[1]) || 30,
-               variation: variation,
-               note: rawExtras // This will now be completely clean
-            });
-        });
-    }
- 
-    builderRender();
-    $("editCourseBackdrop").style.display = "flex";
-    setTimeout(() => { if($("builderSearch")) $("builderSearch").focus(); }, 50);
-}
-
-function builderUpdateStats() {
-   const statsEl = $("builderStats");
-   if (!statsEl) return;
-   if (!builderPoses.length) { statsEl.textContent = ""; return; }
-   const total = builderPoses.reduce((s, p) => s + (p.duration || 0), 0);
-   statsEl.textContent = `${builderPoses.length} poses · ${formatHMS(total)} estimated`;
-}
-
-function builderCompileSequenceText() {
-    return builderPoses.map(p => {
-        const idStr = String(p.id);
-
-        if (idStr.startsWith("MACRO:")) {
-            return `${idStr} | ${p.duration} | [Sequence Link] ${p.note ? p.note : ''}`;
-        }
-
-        const id = String(p.id).padStart(3, '0');
-        const dur = p.duration || 30;
-        
-        // Enforces exact 3-column structure: ID | Duration | [Variation] Note
-        const varPart = p.variation ? `[${p.variation}]` : `[]`;
-        const notePart = p.note ? p.note.trim() : "";
-        
-        return `${id} | ${dur} | ${varPart} ${notePart}`.trim();
-    }).join("\n");
-}
-
-function builderGetTitle() {
-   return ($("builderTitle")?.value || "").trim();
-}
-
-function builderGetCategory() {
-   return ($("builderCategory")?.value || "").trim();
-}
-
-async function builderSave() {
-    console.log("DB Target ID:", builderEditingSupabaseId);
-    console.log("Current User ID:", window.currentUserId);
-
-    // 1. Extract and Validate Data
-    const title = builderGetTitle();
-    if (!title) { alert("Please enter a title."); return; }
-    
-    const sequenceText = builderCompileSequenceText();
-    const category = builderGetCategory();
-    const isFlow = category.toLowerCase().includes("flow"); 
-    
-    const libraryArray = Object.values(asanaLibrary || {});
-
-    // 2. Calculate Total Time
-    const totalSec = builderPoses.reduce((acc, p) => {
-        const idStr = String(p.id);
-        const durOrReps = Number(p.duration) || 0;
-
-        if (idStr.startsWith("MACRO:")) {
-            const targetTitle = idStr.replace("MACRO:", "").trim();
-            const sub = (window.courses || []).find(c => c.title === targetTitle);
-            if (sub && sub.poses) {
-                const oneRound = sub.poses.reduce((accSub, sp) => accSub + getEffectiveTime(sp[0], sp[1]), 0);
-                return acc + (oneRound * durOrReps);
-            }
-            return acc;
-        } else {
-            const asana = libraryArray.find(a => String(a.id) === String(p.id));
-            const libraryStd = (asana && asana.hold_data) ? asana.hold_data.standard : 30;
-            const activeTime = isFlow ? durOrReps : libraryStd;
-            return acc + getEffectiveTime(p.id, activeTime);
-        }
-    }, 0);
-
-    // 3. Database Operation
-    try {
-        if (!supabase) return;
-        let result;
-
-        const payload = {
-            title, 
-            category, 
-            sequence_text: sequenceText,
-            pose_count: builderPoses.length, 
-            total_seconds: totalSec,
-            updated_at: new Date().toISOString()
-        };
-
-        if (builderEditingSupabaseId) {
-            // Update existing
-            result = await supabase.from('user_sequences')
-                .update(payload)
-                .eq('id', builderEditingSupabaseId)
-                .select();
-            if (result.error) throw result.error;
-        } else {
-            // Insert new
-            result = await supabase.from('user_sequences').insert([{
-                ...payload,
-                user_id: window.currentUserId
-            }]).select();
-            if (result.error) throw result.error;
-        }
-
-        // 4. UI Refresh
-        await loadCourses(); 
-        
-        const sel = document.getElementById("sequenceSelect");
-        if (sel) {
-            const newIdx = courses.findIndex(c => c.title === title);
-            if (newIdx !== -1) {
-                sel.value = String(newIdx);
-                sel.dispatchEvent(new Event('change'));
-            }
-        }
-
-        document.getElementById("editCourseBackdrop").style.display = "none";
-        alert(`"${title}" saved successfully!`);
-
-    } catch(e) {
-        console.error("❌ Save failed:", e);
-        alert("Failed to save: " + (e.message || "Unknown error"));
-    }
-}
 
 // Open the Modal and populate the searchable datalist
 document.getElementById("btnOpenLinkModal")?.addEventListener("click", () => {
@@ -726,7 +450,7 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
     if (!targetTitle) return alert("Please select a sequence.");
 
     // Add as a Macro row to the builderPoses array
-    builderPoses.unshift({
+    addPoseToBuilder({
         id: `MACRO:${targetTitle}`,
         name: `<span class="macro-title-badge">LINK</span> ${targetTitle}`,
         duration: reps, // We store reps in the duration column
@@ -781,10 +505,10 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
             
             completedIds.forEach(id => {
                 const cleanId = id.padStart(3, '0');
-                const asana = asanaLibrary[cleanId];
+                const asana = window.asanaLibrary[cleanId];
                 
                 if (asana) {
-                    builderPoses.push({
+                    addPoseToBuilder({
                         id: cleanId,
                         name: displayName(asana),
                         duration: (asana.hold_data && asana.hold_data.standard) ? asana.hold_data.standard : 30,
@@ -895,13 +619,14 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
             // --- B. BULK ADD POSES (If just IDs and commas, no semicolons) ---
             if (trimmedVal.includes(',') && !trimmedVal.includes(';')) {
                 e.preventDefault();
-                const idParts = trimmedVal.split(',').map(s => s.trim().padStart(3, '0')).filter(id => id !== "000" && asanaLibrary[id]);
+                const idParts = trimmedVal.split(',').map(s => s.trim().padStart(3, '0')).filter(id => id !== "000" && window.asanaLibrary[id]);
                 
                 idParts.forEach(id => {
-                    const asana = asanaLibrary[id];
-                    builderPoses.push({
+                    const asana = window.asanaLibrary[id];
+                    addPoseToBuilder({
                         id: id,
-                        duration: asana?.hold_data?.standard || 30
+                        duration: asana?.hold_data?.standard || 30,
+                        name: displayName(asana)
                     });
                 });
 
@@ -921,13 +646,13 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
        
        const defaultDuration = (asana && asana.hold_data && asana.hold_data.standard) ? asana.hold_data.standard : 30;
        
-       builderPoses.push({
+       addPoseToBuilder({
           id: item.dataset.id,
           name: item.dataset.name,
           englishName: item.dataset.english,
           duration: defaultDuration,
           note: ""
-       });
+       }); 
        
        builderRender();
        input.value = "";
@@ -946,8 +671,7 @@ document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
 const blankBtn = document.getElementById("builderAddBlank");
 if (blankBtn) {
    blankBtn.addEventListener("click", () => {
-      // 1. Add to the top of the array
-      builderPoses.push({ 
+      addPoseToBuilder({ 
           id: "", 
           name: "", 
           englishName: "", 
@@ -955,9 +679,6 @@ if (blankBtn) {
           variation: "", 
           note: "" 
       });
-      
-      // 2. THIS IS THE MISSING PIECE: Force the UI to update
-      builderRender(); 
       
       // 3. Optional: Auto-focus the ID input of the new top row
       setTimeout(() => {
@@ -981,7 +702,7 @@ safeListen("editCourseCancelBtn", "click", () => {
 });
 safeListen("editCourseSaveBtn", "click", () => {
    if (!asanaLibrary || Object.keys(asanaLibrary).length === 0) {
-      alert("Library is still loading. Please wait.");
+      alert("Library is still loading. Please wait."); 
       return;
    }
    builderSave();
