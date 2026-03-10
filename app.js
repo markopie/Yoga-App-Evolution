@@ -410,14 +410,32 @@ async function buildImageIndexes() {
 }
 
 // Helper: Find URLs for a Pose
-function smartUrlsForPoseId(idField) {
+function smartUrlsForPoseId(idField, variationKey = null) {
     if (!idField) return [];
     let id = Array.isArray(idField) ? idField[0] : idField;
     
     // Normalize
     if (typeof normalizePlate === 'function') id = normalizePlate(id);
 
-    // 1. Check Index
+    // 1. Check Database Image URL first
+    if (window.asanaLibrary && window.asanaLibrary[id]) {
+        const asana = window.asanaLibrary[id];
+        
+        // A. Check for specific variation image
+        if (variationKey && asana.variations && asana.variations[variationKey]) {
+            const varData = asana.variations[variationKey];
+            if (varData && varData.image_url) {
+                return [varData.image_url];
+            }
+        }
+        
+        // B. Check for main asana image
+        if (asana.image_url) {
+            return [asana.image_url];
+        }
+    }
+
+    // 2. Fallback to Legacy Index (manifest.json)
     if (window.asanaToUrls && window.asanaToUrls[id]) {
         return window.asanaToUrls[id];
     }
@@ -1445,7 +1463,7 @@ if (focusCounter) {
     const wrap = document.getElementById("collageWrap");
     if (wrap) {
         wrap.innerHTML = "";
-        const urls = smartUrlsForPoseId(lookupId);
+        const urls = smartUrlsForPoseId(lookupId, storedVarKey);
         if (urls.length > 0) {
             wrap.appendChild(renderCollage(urls));
         } else {
@@ -1464,7 +1482,7 @@ if (focusCounter) {
     
     if (overlayImageWrap) {
         overlayImageWrap.innerHTML = ""; 
-        const focusUrls = smartUrlsForPoseId(lookupId);
+        const focusUrls = smartUrlsForPoseId(lookupId, storedVarKey);
         if (focusUrls.length > 0) {
             const img = document.createElement("img");
             img.src = focusUrls[0]; 
@@ -3415,6 +3433,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 parseInt($("editAsanaHoldLong")?.value || "60", 10)
             );
 
+            const baseAsana = asanaLibrary[id] || {};
+
             const asanaData = {
                 id: id,
                 user_id: userId,
@@ -3430,6 +3450,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 note: $("editAsanaNote").value.trim(),
                 category: formatCategoryName($("editAsanaCategory").value.trim()),
                 description: $("editAsanaDescription").value.trim(),
+                image_url: baseAsana.image_url || null,
                 hold: asanaHoldStr
             };
 
@@ -3458,6 +3479,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         );
                         const dbId = div.dataset.dbId || "";
 
+                        const baseVariation = (baseAsana.variations && baseAsana.variations[key]) ? baseAsana.variations[key] : {};
+
                         const payload = {
                             user_id: userId,
                             asana_id: id,
@@ -3465,6 +3488,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             title: sfx ? `${pfx} ${key} ${sfx}` : `${pfx} ${key}`,
                             full_technique: div.querySelector(".stage-tech")?.value.trim() || null,
                             shorthand: div.querySelector(".stage-short")?.value.trim() || null,
+                            image_url: baseVariation.image_url || null,
                             hold: holdStr
                         };
 
