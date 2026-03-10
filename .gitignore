@@ -25,7 +25,7 @@ temp_history.txt
 =======
 # Local Backups (Your Data)
 backups/
-
+archive/
 # VS Code settings
 .vscode/
 
