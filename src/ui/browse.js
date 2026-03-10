@@ -351,9 +351,7 @@ async function showAsanaDetail(asana) {
             } else if (val && typeof val === 'object') {
                 techText = val.full_technique || val.Full_Technique || val.technique || '';
                 shortText = val.shorthand || val.Shorthand || '';
-                const actualTitle = val.Title || val.title || val.Stage_Title || val.stage_title;
-                if (actualTitle && String(actualTitle).trim() !== '') titleText = String(actualTitle).trim();
-            }
+                
 
             const wrapper = document.createElement('div');
             wrapper.className = isCustom ? 'user-variation-block' : 'variation-block';

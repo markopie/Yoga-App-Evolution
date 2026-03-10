@@ -22,7 +22,7 @@ import { $, normaliseText, safeListen, setStatus, showError, enterBrowseDetailMo
 import { parseHoldTimes, buildHoldString } from "./src/utils/parsing.js";
 import { prefersIAST, setIASTPref, displayName, escapeHtml2, renderMarkdownMinimal, formatHMS, formatTechniqueText } from "./src/utils/format.js";
 import { playbackEngine } from "./src/playback/timer.js";
-import { parsePlateTokens, plateFromFilename, primaryAsanaFromFilename, filenameFromUrl, mobileVariantUrl, ensureArray, isBrowseMobile } from "./src/utils/helpers.js";
+import { parsePlateTokens, plateFromFilename, primaryAsanaFromFilename, filenameFromUrl, mobileVariantUrl, ensureArray, isBrowseMobile, smartUrlsForPoseId } from "./src/utils/helpers.js";
 
 window.db = supabase;
 window.currentUserId = null;
@@ -410,38 +410,7 @@ async function buildImageIndexes() {
 }
 
 // Helper: Find URLs for a Pose
-function smartUrlsForPoseId(idField, variationKey = null) {
-    if (!idField) return [];
-    let id = Array.isArray(idField) ? idField[0] : idField;
-    
-    // Normalize
-    if (typeof normalizePlate === 'function') id = normalizePlate(id);
-
-    // 1. Check Database Image URL first
-    if (window.asanaLibrary && window.asanaLibrary[id]) {
-        const asana = window.asanaLibrary[id];
-        
-        // A. Check for specific variation image
-        if (variationKey && asana.variations && asana.variations[variationKey]) {
-            const varData = asana.variations[variationKey];
-            if (varData && varData.image_url) {
-                return [varData.image_url];
-            }
-        }
-        
-        // B. Check for main asana image
-        if (asana.image_url) {
-            return [asana.image_url];
-        }
-    }
-
-    // 2. Fallback to Legacy Index (manifest.json)
-    if (window.asanaToUrls && window.asanaToUrls[id]) {
-        return window.asanaToUrls[id];
-    }
-    
-    return [];
-}
+// Removed: smartUrlsForPoseId moved to src/utils/helpers.js
 
 // Helper: Find Data
 function findAsanaByIdOrPlate(id) {
@@ -1302,6 +1271,7 @@ if (focusCounter) {
   // --- VARIATION TECHNIQUE & SHORTHAND ---
   let displayShorthand = "";
   let displayTechnique = asana ? (asana.technique || asana.Technique || "") : "";
+  let matchedVariationKey = storedVarKey; // Default to legacy
 
   // Helper to strip accents for safe comparison (e.g. Ujjāyī -> ujjayi)
   const normalizeText = (str) => (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -1325,8 +1295,27 @@ if (focusCounter) {
               const varTech = (typeof vData === 'object') ? (vData.Full_Technique || vData.technique) : vData;
               if (varTech) displayTechnique = varTech;
               if (typeof vData === 'object') displayShorthand = vData.shorthand || vData.Shorthand || "";
-              if (resolvedTitle) variationTitle = resolvedTitle;
+              
+              // Display Title cleaning
+              const idNum = parseInt(asana.id || asana.asanaNo || "0", 10);
+              // Pranayama range is 214-222 in Light on Yoga
+              const isPranayama = idNum >= 214 && idNum <= 230;
 
+              if (resolvedTitle) {
+                  if (isPranayama) {
+                      variationTitle = resolvedTitle;
+                  } else {
+                      const bracketMatch = resolvedTitle.match(/\((.*?)\)/);
+                      if (bracketMatch) {
+                          let innerText = bracketMatch[1].trim();
+                          variationTitle = innerText.charAt(0).toUpperCase() + innerText.slice(1);
+                      } else {
+                          variationTitle = resolvedTitle.replace(/^Modified\s+[IVX]+\s*-?\s*/i, '').trim();
+                      }
+                  }
+              }
+
+              matchedVariationKey = vKey;
               foundVariation = true;
               break;
           }
@@ -1337,15 +1326,43 @@ if (focusCounter) {
           const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
           for (const vKey of sortedKeys) {
               const normKey = vKey.toLowerCase();
-              const endsWithRegex = new RegExp(`\\b${normKey}$`, 'i');
+              const vData = asana.variations[vKey];
+              const resolvedTitle = typeof vData === 'object' ? (vData.title || vData.Title || "") : "";
+              const normTitle = normalizeText(resolvedTitle);
+              
+              // Test if the DB key or Title has the user's input as a standalone word at the end or in brackets
+              const safeVarTitle = normVarTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const matchRegex = new RegExp(`\\b${safeVarTitle}\\b`, 'i');
 
-              if (endsWithRegex.test(normVarTitle)) {
-                  const vData = asana.variations[vKey];
-                  const resolvedTitle = typeof vData === 'object' ? (vData.title || vData.Title || "") : "";
+              if (matchRegex.test(normKey) || matchRegex.test(normTitle)) {
                   const varTech = (typeof vData === 'object') ? (vData.Full_Technique || vData.technique) : vData;
                   if (varTech) displayTechnique = varTech;
                   if (typeof vData === 'object') displayShorthand = vData.shorthand || vData.Shorthand || "";
-                  if (resolvedTitle) variationTitle = resolvedTitle;
+                  
+                  // Display Title cleaning
+                  const idNum = parseInt(asana.id || asana.asanaNo || "0", 10);
+                  // Pranayama range is 214-222 in Light on Yoga
+                  const isPranayama = idNum >= 214 && idNum <= 230;
+
+                  if (resolvedTitle) {
+                      if (isPranayama) {
+                          variationTitle = resolvedTitle;
+                      } else {
+                          // Try to extract text inside parentheses first (e.g., "Modified I (On a chair)" -> "On a chair")
+                          const bracketMatch = resolvedTitle.match(/\((.*?)\)/);
+                          if (bracketMatch) {
+                              // Ensure first letter is capitalized nicely
+                              let innerText = bracketMatch[1].trim();
+                              variationTitle = innerText.charAt(0).toUpperCase() + innerText.slice(1);
+                          } else {
+                              // Otherwise just strip "Modified X" 
+                              variationTitle = resolvedTitle.replace(/^Modified\s+[IVX]+\s*-?\s*/i, '').trim();
+                          }
+                      }
+                  }
+                  
+                  matchedVariationKey = vKey;
+                  foundVariation = true;
                   break;
               }
           }
@@ -1354,6 +1371,7 @@ if (focusCounter) {
   // Legacy fallback if the old index 3 was used
   else if (asana && currentPose[3] && asana.variations && asana.variations[currentPose[3]]) {
       const v = asana.variations[currentPose[3]];
+      matchedVariationKey = currentPose[3];
       if (typeof v === "string") {
           displayTechnique = v;
       } else {
@@ -1367,18 +1385,21 @@ if (focusCounter) {
   // 4. HEADER UI
   const nameEl = document.getElementById("poseName");
   if (nameEl) {
-      let finalTitle = baseOverrideName || (asana ? displayName(asana) : "Pose");
+      // Jobbsian Minimalist UI: Primary text is English Name only
+      let finalTitle = baseOverrideName || (asana ? (asana.english_name || asana.english || asana.name) : "Pose");
 
-      // Append Variation nicely
+      // Append Variation text elegantly (e.g., "On a wall")
       if (variationTitle) {
-          finalTitle += ` <span style="font-weight:normal; color:#666; font-size:0.85em;">— ${variationTitle}</span>`;
+          finalTitle += ` <span style="font-weight:300; opacity:0.7; font-size:0.85em;">— ${variationTitle}</span>`;
       }
-      // Append Sides
+
+      // Append Sides elegantly
       if (asana && asana.requiresSides) {
-          finalTitle += (currentSide === "right" ? " (Right)" : " (Left)");
+          const sideMarker = currentSide === "right" ? "R" : "L";
+          finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.8em; vertical-align: middle;">• ${sideMarker}</span>`;
       }
       
-      nameEl.innerHTML = finalTitle; // Use innerHTML to parse the appended span
+      nameEl.innerHTML = finalTitle; 
   }
 
   // 5. SHORTHAND UI
@@ -1463,7 +1484,7 @@ if (focusCounter) {
     const wrap = document.getElementById("collageWrap");
     if (wrap) {
         wrap.innerHTML = "";
-        const urls = smartUrlsForPoseId(lookupId, storedVarKey);
+        const urls = smartUrlsForPoseId(lookupId, matchedVariationKey);
         if (urls.length > 0) {
             wrap.appendChild(renderCollage(urls));
         } else {
@@ -1482,7 +1503,7 @@ if (focusCounter) {
     
     if (overlayImageWrap) {
         overlayImageWrap.innerHTML = ""; 
-        const focusUrls = smartUrlsForPoseId(lookupId, storedVarKey);
+        const focusUrls = smartUrlsForPoseId(lookupId, matchedVariationKey);
         if (focusUrls.length > 0) {
             const img = document.createElement("img");
             img.src = focusUrls[0]; 
@@ -2019,8 +2040,8 @@ async function showAsanaDetail(asana) {
             } else if (val && typeof val === 'object') {
                 techText = val.full_technique || val.Full_Technique || val.technique || '';
                 shortText = val.shorthand || val.Shorthand || '';
-                const actualTitle = val.Title || val.title || val.Stage_Title || val.stage_title;
-                if (actualTitle && String(actualTitle).trim() !== '') titleText = String(actualTitle).trim();
+                // Per user request, simplified to only use the 'title' field.
+                if (val.title && String(val.title).trim()) titleText = String(val.title).trim();
             }
 
             const wrapper = document.createElement('div');
@@ -3079,6 +3100,359 @@ safeListen("completeBtn", "click", async () => {
 let editingCourseData = null;
 let editingCourseIndex = null;
 
+// ============================================================
+// SEQUENCE BUILDER
+// ============================================================
+
+let builderPoses = [];  // [{ id, name, duration, note, supabaseRowId? }]
+let builderMode = "edit"; // "edit" | "new"
+let builderEditingCourseIndex = -1;
+let builderEditingSupabaseId = null;
+
+function openEditCourse() {
+   if (!currentSequence) { alert("Please select a course first."); return; }
+   builderOpen("edit", currentSequence);
+}
+
+function builderOpen(mode, seq) {
+    builderMode = mode;
+    builderPoses = [];
+    builderEditingCourseIndex = -1;
+    let targetId = seq ? (seq.supabaseId || seq.id) : null;
+
+    const catInput = $("builderCategory"); 
+    const titleEl = $("builderTitle");
+    const modeLabel = $("builderModeLabel");
+    const datalist = $("builderCategoryList");
+
+    if (catInput) {
+        catInput.oninput = () => builderRender(); 
+    }
+
+    if (targetId && String(targetId).length < 30) {
+        targetId = null;
+    }
+    builderEditingSupabaseId = targetId;
+
+    document.body.classList.add("modal-open");
+
+    if (catInput && datalist) {
+        const allCats = [...new Set(courses.map(c => c.category).filter(Boolean))].sort();
+        datalist.innerHTML = allCats.map(c => `<option value="${c}"></option>`).join("");
+
+        let tempVal = "";
+        catInput.onfocus = () => { tempVal = catInput.value; catInput.value = ""; };
+        catInput.onblur = () => { if (catInput.value === "") catInput.value = tempVal; };
+    }
+
+    if (mode === "new") {
+       if (modeLabel) modeLabel.textContent = "New Sequence";
+       if (titleEl) titleEl.value = "";
+       if (catInput) catInput.value = "";
+    } else {
+       if (!seq) return;
+       if (modeLabel) modeLabel.textContent = "Edit Sequence";
+       if (titleEl) titleEl.value = seq.title || "";
+       if (catInput) catInput.value = seq.category || "";
+       
+       const libraryArray = Object.values(asanaLibrary || {});
+       const rawPoses = (window.currentSequenceOriginalPoses && seq === currentSequence)
+           ? window.currentSequenceOriginalPoses : (seq.poses || []);
+
+           rawPoses.forEach(p => {
+            const id = String(Array.isArray(p[0]) ? p[0][0] : p[0] || "").padStart(3, '0');
+            const asana = libraryArray.find(a => String(a.id) === id);
+            
+            let rawExtras = [p[2], p[4]].filter(Boolean).join(" | ").trim();
+            let variation = p[3] || ""; 
+            let extractedLabel = "";
+   
+            const bracketMatch = rawExtras.match(/\[(.*?)\]/);
+            if (bracketMatch) {
+                extractedLabel = bracketMatch[1].trim(); 
+                rawExtras = rawExtras.replace(bracketMatch[0], "").replace(/^[\s\|]+/, "").trim();
+            } else {
+                extractedLabel = rawExtras; rawExtras = "";
+            }
+   
+            if (!variation && asana?.variations && extractedLabel) {
+                const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
+                for (const vKey of sortedKeys) {
+                    const vData = asana.variations[vKey];
+                    const vTitle = (vData?.title || "").toLowerCase();
+                    if (extractedLabel.toLowerCase() === vTitle || new RegExp(`\\b${vKey}\\b`, 'i').test(extractedLabel)) {
+                        variation = vKey; extractedLabel = ""; break;
+                    }
+                }
+            } else if (variation && extractedLabel === variation) {
+                extractedLabel = ""; 
+            }
+   
+            if (extractedLabel && !variation) {
+                rawExtras = (extractedLabel + (rawExtras ? " | " + rawExtras : "")).trim();
+            }
+   
+            builderPoses.push({
+               id: id,
+               name: asana ? (asana.name || displayName(asana)) : id,
+               duration: Number(p[1]) || 30,
+               variation: variation,
+               note: rawExtras
+            });
+        });
+    }
+ 
+    builderRender();
+    $("editCourseBackdrop").style.display = "flex";
+    setTimeout(() => { if($("builderSearch")) $("builderSearch").focus(); }, 50);
+}
+
+function builderRender() {
+    const tbody = document.getElementById("builderTableBody");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+    const emptyMsg = document.getElementById("builderEmptyMsg");
+    if (emptyMsg) emptyMsg.style.display = builderPoses.length ? "none" : "block";
+ 
+    const libraryArray = Object.values(window.asanaLibrary || {});
+    const currentCategory = (document.getElementById("builderCategory")?.value || "").toLowerCase();
+    const isFlow = currentCategory.includes("flow");
+ 
+    builderPoses.forEach((pose, idx) => {
+        const idStr = String(pose.id);
+        const durOrReps = Number(pose.duration) || 0;
+        const isMacro = idStr.startsWith("MACRO:");
+        let asana = null;
+    
+        if (!isMacro) {
+            const normId = normalizePlate(idStr);
+            asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
+        }
+    
+        const tr = document.createElement("tr");
+        tr.draggable = true;
+        tr.dataset.idx = idx;
+        if (isMacro) tr.className = "builder-macro-row";
+
+        tr.ondragstart = (e) => { e.dataTransfer.setData("text/plain", idx); tr.style.opacity = "0.4"; };
+        tr.ondragend = () => tr.style.opacity = "1";
+        tr.ondragover = (e) => { e.preventDefault(); tr.style.borderTop = "2px solid #007aff"; };
+        tr.ondragleave = () => tr.style.borderTop = "none";
+        tr.ondrop = (e) => {
+            e.preventDefault();
+            tr.style.borderTop = "none";
+            const fromIdx = parseInt(e.dataTransfer.getData("text/plain"));
+            const toIdx = idx;
+            if (fromIdx !== toIdx) {
+                const item = builderPoses.splice(fromIdx, 1)[0];
+                builderPoses.splice(toIdx, 0, item);
+                builderRender();
+            }
+        };
+    
+        const hasSides = asana && (asana.requires_sides || asana.requiresSides);
+        const sideBadge = (!isMacro && hasSides) ? `<span style="color:#2e7d32; font-size:0.7rem; font-weight:bold; margin-left:4px;">[Sides ×2]</span>` : '';
+    
+        let varSelectHTML = '';
+        const variations = asana ? (asana.variations || {}) : {};
+        if (!isMacro && Object.keys(variations).length > 0) {
+            varSelectHTML = `
+               <select class="b-var" data-idx="${idx}" style="margin-left:8px; padding:2px 4px; border:1px solid #1976d2; border-radius:4px; font-size:0.75rem; background:#e3f2fd; color:#005580; max-width: 160px;">
+                  <option value="">Base Pose</option>
+                  ${Object.entries(variations).map(([vKey, vData]) => {
+                      let optionTitle = vData.title || `Stage ${vKey}`;
+                      const sel = (pose.variation === vKey) ? 'selected' : '';
+                      return `<option value="${vKey}" ${sel}>${optionTitle}</option>`;
+                  }).join('')}
+               </select>`;
+        }
+
+        const displayTime = isMacro ? durOrReps : (isFlow ? durOrReps : (asana?.hold_data?.standard || 30));
+        const isLocked = !isFlow && !isMacro;
+
+        const durInputHTML = `
+            <input type="number" class="b-dur" data-idx="${idx}" value="${displayTime}" min="1" ${isLocked ? 'readonly' : ''} style="width:60px; padding:4px; border:1px solid #ccc; text-align:center; ${isLocked ? 'background:#f0f0f0; color:#888; cursor:not-allowed;' : ''}">
+            ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : (isLocked ? '' : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
+        `;
+    
+        tr.innerHTML = `
+           <td style="padding:8px; text-align:center; color:#888;">${idx + 1}</td>
+           <td style="padding:8px;">
+              <div style="font-weight:bold; margin-bottom:4px; line-height: 1.2;">${pose.name || 'Unknown'} ${sideBadge}</div>
+              <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; font-size:0.75rem; color:#666;">
+                 ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" ${isMacro ? 'readonly' : ''} style="width:${isMacro ? 'auto' : '50px'}; padding:2px; border:1px solid #ccc; border-radius:4px; ${isMacro ? 'background:#f0f0f0;' : ''}">
+                 ${varSelectHTML}
+              </div>
+           </td>
+           <td style="padding:8px; text-align:center;">${durInputHTML}</td>
+           <td style="padding:8px;"><input type="text" class="b-note" data-idx="${idx}" value="${(pose.note || '').replace(/"/g, '&quot;')}" placeholder="Notes..." style="width:100%; padding:4px; border:1px solid #ccc;"></td>
+           <td style="padding:8px; text-align:center; white-space:nowrap;">
+              <button class="tiny b-move-up" data-idx="${idx}">▲</button>
+              <button class="tiny b-move-dn" data-idx="${idx}">▼</button>
+              <button class="tiny warn b-remove" data-idx="${idx}">✕</button>
+           </td>`;
+           
+        tbody.appendChild(tr);
+    });
+ 
+    const qS = (sel) => tbody.querySelectorAll(sel);
+    qS('.b-id').forEach(el => el.onchange = (e) => {
+        const i = e.target.dataset.idx;
+        let val = e.target.value.trim();
+        if(!val.startsWith("MACRO:")) val = val.padStart(3, '0');
+        builderPoses[i].id = val;
+        const normId = normalizePlate(val);
+        const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
+        if (asanaMatch) {
+            builderPoses[i].name = asanaMatch.name;
+            if (asanaMatch.hold_data?.standard) builderPoses[i].duration = asanaMatch.hold_data.standard;
+        }
+        builderRender();
+    });
+
+    qS('.b-std-time').forEach(el => el.onclick = () => {
+        const i = el.dataset.idx;
+        const normId = normalizePlate(builderPoses[i].id);
+        const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
+        if (asanaMatch?.hold_data?.standard) { builderPoses[i].duration = asanaMatch.hold_data.standard; builderRender(); }
+    });
+
+    qS('.b-var').forEach(el => el.onchange = (e) => {
+        const i = e.target.dataset.idx;
+        builderPoses[i].variation = e.target.value;
+        const normId = normalizePlate(builderPoses[i].id);
+        const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
+        const vHold = asanaMatch?.variations?.[e.target.value]?.hold;
+        if (vHold) { 
+            const hd = parseHoldTimes(vHold); 
+            if(hd.standard) builderPoses[i].duration = hd.standard; 
+        }
+        builderRender();
+    });
+
+    qS('.b-dur').forEach(el => {
+        el.onchange = (e) => {
+            const idx = e.target.dataset.idx;
+            let val = parseInt(e.target.value);
+            if (isNaN(val) || val < 1) { val = 1; e.target.value = 1; }
+            builderPoses[idx].duration = val;
+            builderRender(); 
+        };
+    });
+
+    qS('.b-note').forEach(el => el.oninput = (e) => builderPoses[e.target.dataset.idx].note = e.target.value);
+    qS('.b-move-up').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), -1));
+    qS('.b-move-dn').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), 1));
+    qS('.b-remove').forEach(el => el.onclick = () => removePose(parseInt(el.dataset.idx)));
+  
+    const statsEl = document.getElementById("builderStats");
+    if (statsEl) {
+        let finalTotalSecs = 0;
+        let expandedPoseCount = 0;
+
+        builderPoses.forEach(p => {
+            const idStr = String(p.id);
+            const durOrReps = Number(p.duration) || 0;
+
+            if (idStr.startsWith("MACRO:")) {
+                const targetTitle = idStr.replace("MACRO:", "").trim();
+                const sub = (window.courses || []).find(c => c.title === targetTitle);
+                if (sub && sub.poses) {
+                    const oneRound = sub.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1]), 0);
+                    finalTotalSecs += (oneRound * durOrReps);
+                    expandedPoseCount += 1;
+                }
+            } else {
+                const normId = normalizePlate(idStr);
+                const asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
+                const libraryStd = (asana && asana.hold_data) ? asana.hold_data.standard : 30;
+                const activeTime = isFlow ? durOrReps : libraryStd;
+                const effective = getEffectiveTime(p.id, activeTime);
+                finalTotalSecs += effective;
+                expandedPoseCount += (effective > activeTime) ? 2 : 1;
+            }
+        });
+
+        statsEl.textContent = `${expandedPoseCount} poses · ${formatHMS(finalTotalSecs)} total (incl. reps & sides)`;
+    }
+}
+
+function movePose(idx, dir) {
+    if (idx + dir < 0 || idx + dir >= builderPoses.length) return;
+    const temp = builderPoses[idx];
+    builderPoses[idx] = builderPoses[idx + dir];
+    builderPoses[idx + dir] = temp;
+    builderRender();
+}
+
+function removePose(idx) {
+    builderPoses.splice(idx, 1);
+    builderRender();
+}
+
+async function builderSave() {
+    const title = ($("builderTitle")?.value || "").trim();
+    if (!title) { alert("Please enter a title."); return; }
+    
+    const sequenceText = builderPoses.map(p => {
+        const idStr = String(p.id);
+        if (idStr.startsWith("MACRO:")) {
+            return `${idStr} | ${p.duration} | [Sequence Link] ${p.note ? p.note : ''}`;
+        }
+        const id = String(p.id).padStart(3, '0');
+        const dur = p.duration || 30;
+        const varPart = p.variation ? `[${p.variation}]` : `[]`;
+        const notePart = p.note ? p.note.trim() : "";
+        return `${id} | ${dur} | ${varPart} ${notePart}`.trim();
+    }).join("\n");
+
+    const category = ($("builderCategory")?.value || "").trim();
+    const isFlow = category.toLowerCase().includes("flow"); 
+    const libraryArray = Object.values(asanaLibrary || {});
+
+    const totalSec = builderPoses.reduce((acc, p) => {
+        const idStr = String(p.id);
+        const durOrReps = Number(p.duration) || 0;
+        if (idStr.startsWith("MACRO:")) {
+            const targetTitle = idStr.replace("MACRO:", "").trim();
+            const sub = (window.courses || []).find(c => c.title === targetTitle);
+            if (sub && sub.poses) {
+                const oneRound = sub.poses.reduce((accSub, sp) => accSub + getEffectiveTime(sp[0], sp[1]), 0);
+                return acc + (oneRound * durOrReps);
+            }
+            return acc;
+        } else {
+            const asana = libraryArray.find(a => String(a.id) === String(p.id));
+            const libraryStd = (asana && asana.hold_data) ? asana.hold_data.standard : 30;
+            const activeTime = isFlow ? durOrReps : libraryStd;
+            return acc + getEffectiveTime(p.id, activeTime);
+        }
+    }, 0);
+
+    try {
+        if (!supabase) return;
+        const payload = { title, category, sequence_text: sequenceText, pose_count: builderPoses.length, total_seconds: totalSec, updated_at: new Date().toISOString() };
+        const { error } = builderEditingSupabaseId 
+            ? await supabase.from('user_sequences').update(payload).eq('id', builderEditingSupabaseId)
+            : await supabase.from('user_sequences').insert([{ ...payload, user_id: window.currentUserId }]);
+        if (error) throw error;
+
+        await loadCourses(); 
+        const sel = document.getElementById("sequenceSelect");
+        if (sel) {
+            const newIdx = courses.findIndex(c => c.title === title);
+            if (newIdx !== -1) { sel.value = String(newIdx); sel.dispatchEvent(new Event('change')); }
+        }
+        $("editCourseBackdrop").style.display = "none";
+        document.body.classList.remove("modal-open");
+        alert(`"${title}" saved successfully!`);
+    } catch(e) {
+        console.error("❌ Save failed:", e);
+        alert("Failed to save: " + (e.message || "Unknown error"));
+    }
+}
+
 /* ==========================================================================
    FULL ASANA EDITOR (Supabase Upsert)
    ========================================================================== */
@@ -3643,14 +4017,25 @@ function setupAuthListeners() {
     }
 
     supabase.auth.onAuthStateChange((event, session) => {
-        
+        const emailDisplay = document.getElementById("userEmailDisplay");
         if (session && session.user) {
             window.isGuestMode = false;
             window.currentUserId = session.user.id;
+            if (emailDisplay && session.user.email) {
+                emailDisplay.textContent = session.user.email;
+                emailDisplay.style.display = "inline";
+            }
             showApp();
         } else if (!window.isGuestMode) {
             window.currentUserId = null;
+            if (emailDisplay) emailDisplay.style.display = "none";
             showLogin();
+        } else {
+            // Guest mode
+            if (emailDisplay) {
+                emailDisplay.textContent = "Guest User";
+                emailDisplay.style.display = "inline";
+            }
         }
     });
 }
@@ -3696,6 +4081,23 @@ function setupAuthListeners() {
         attachResetListener();
     }
 })();
+
+safeListen("editCourseCloseBtn", "click", () => { 
+    $("editCourseBackdrop").style.display = "none"; 
+    document.body.classList.remove("modal-open");
+});
+
+safeListen("editCourseCancelBtn", "click", () => { 
+    $("editCourseBackdrop").style.display = "none"; 
+    document.body.classList.remove("modal-open");
+});
+safeListen("editCourseSaveBtn", "click", () => {
+   if (!asanaLibrary || Object.keys(asanaLibrary).length === 0) {
+      alert("Library is still loading. Please wait.");
+      return;
+   }
+   builderSave();
+});
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupAuthListeners);

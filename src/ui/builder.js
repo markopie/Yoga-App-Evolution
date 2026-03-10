@@ -1,18 +1,17 @@
-import { $, showError } from "../utils/dom.js";
+import { $, safeListen } from "../utils/dom.js";
 import { parseHoldTimes, parseSequenceText, buildHoldString } from "../utils/parsing.js";
 import { normalizePlate } from "../services/dataAdapter.js";
 import { supabase } from "../services/supabaseClient.js";
+import { formatHMS, displayName } from "../utils/format.js";
 
 const getEffectiveTime = (id, time) => window.getEffectiveTime ? window.getEffectiveTime(id, time) : time;
-const getBuilderPoses = () => window.builderPoses || [];
-// #region 8. SEQUENCE BUILDER & DATA LAYER
-
+const getAsanaIndex = () => {
+    return Object.values(window.asanaLibrary || {}).filter(Boolean);
+};
 
 function builderRender() {
     const tbody = document.getElementById("builderTableBody");
     if (!tbody) return;
-
-    const builderPoses = getBuilderPoses();
 
     tbody.innerHTML = "";
     const emptyMsg = document.getElementById("builderEmptyMsg");
@@ -262,7 +261,6 @@ function builderRender() {
 
 
 function movePose(idx, dir) {
-    const builderPoses = getBuilderPoses();
     if (idx + dir < 0 || idx + dir >= builderPoses.length) return;
     const temp = builderPoses[idx];
     builderPoses[idx] = builderPoses[idx + dir];
@@ -271,7 +269,6 @@ function movePose(idx, dir) {
 }
 
 function removePose(idx) {
-    const builderPoses = getBuilderPoses();
     builderPoses.splice(idx, 1);
     builderRender();
 
@@ -340,7 +337,6 @@ if (actionRow) {
 function openLinkSequenceModal() {
     // We can use a simple prompt for now, but a searchable dropdown is better.
     // Let's create a tiny temporary overlay or use a prompt with a datalist hint.
-    const courses = window.courses || [];
     const allTitles = courses.map(c => c.title).filter(Boolean);
     const targetTitle = prompt(`Enter Sequence Title to link:\nAvailable: ${allTitles.join(", ")}`);
     
@@ -357,7 +353,7 @@ function openLinkSequenceModal() {
     if (reps === null) return;
 
     // Add as a Macro row to builderPoses
-    const builderPoses = getBuilderPoses();
+    
     builderPoses.unshift({ // Changed from .push()
     id: `MACRO:${exists.title}`,
     name: `[Sequence] ${exists.title}`,
@@ -368,34 +364,564 @@ function openLinkSequenceModal() {
 
     builderRender(); // Refresh the table
 }
-/* ==========================================================================
-   DATA SAVING (CORE)
-   ========================================================================== */
 
-/**
- * Updates a specific field in the main Asana Library LOCALLY.
- */
-async function saveAsanaField(asanaNo, field, value) {
-    const id = normalizePlate(asanaNo);
-    const asanaLibrary = window.asanaLibrary || {};
-    // 1. Update Local State
-    if (asanaLibrary[id]) {
-        asanaLibrary[id][field] = value;
-    } else {
-        console.error("Asana ID not found:", id);
-        return;
-    }
 
-    // 2. Save to LocalStorage (Backup)
-    localStorage.setItem("asana_library_backup_v1", JSON.stringify(asanaLibrary));
+// ============================================================
+// SEQUENCE BUILDER
+// ============================================================
 
-    // 3. Resolve immediately
-    return Promise.resolve();
+let builderPoses = [];  // [{ id, name, duration, note, supabaseRowId? }]
+let builderMode = "edit"; // "edit" | "new"
+let builderEditingCourseIndex = -1;
+let builderEditingSupabaseId = null;
+
+function addHit(el) {
+    const id = el.getAttribute('data-id');
+    const name = el.getAttribute('data-name');
+    
+    // Change console log to reflect reality
+    console.log("Adding pose to bottom:", name);
+
+    // THE FIX: Change unshift to push
+    builderPoses.push({ 
+        id: id,
+        name: name,
+        duration: 30,
+        note: ''
+    });
+
+    const input = document.getElementById('builderSearch');
+    const resBox = document.getElementById('builderSearchResults');
+    
+    if (input) input.value = '';
+    if (resBox) resBox.style.display = 'none';
+    
+    builderRender();
+    if (input) input.focus();
 }
 
+function openEditCourse() {
+   if (!currentSequence) { alert("Please select a course first."); return; }
+   builderOpen("edit", currentSequence);
+}
+function builderOpen(mode, seq) {
+    builderMode = mode;
+    builderPoses = [];
+    builderEditingCourseIndex = -1;
+    let targetId = seq ? (seq.supabaseId || seq.id) : null;
+
+    // Use your $ helper consistently for all elements at the start
+    const catInput = $("builderCategory"); 
+    const titleEl = $("builderTitle");
+    const modeLabel = $("builderModeLabel");
+    const datalist = $("builderCategoryList");
+
+    if (catInput) {
+        // Forces re-render to check for "Flow" on every keystroke
+        catInput.oninput = () => builderRender(); 
+    }
+
+    // Global IDs are short integers (e.g., "170"). User sequences use long UUIDs.
+    if (targetId && String(targetId).length < 30) {
+        targetId = null;
+    }
+    builderEditingSupabaseId = targetId;
+
+    document.body.classList.add("modal-open");
+
+    // Populate Category Datalist
+    if (catInput && datalist) {
+        const allCats = [...new Set(courses.map(c => c.category).filter(Boolean))].sort();
+        datalist.innerHTML = allCats.map(c => `<option value="${c}"></option>`).join("");
+
+        let tempVal = "";
+        catInput.onfocus = () => { tempVal = catInput.value; catInput.value = ""; };
+        catInput.onblur = () => { if (catInput.value === "") catInput.value = tempVal; };
+    }
+
+    if (mode === "new") {
+       if (modeLabel) modeLabel.textContent = "New Sequence";
+       if (titleEl) titleEl.value = "";
+       if (catInput) catInput.value = "";
+    } else {
+       if (!seq) return;
+       if (modeLabel) modeLabel.textContent = "Edit Sequence";
+       if (titleEl) titleEl.value = seq.title || "";
+       if (catInput) catInput.value = seq.category || "";
+       
+       const libraryArray = Object.values(asanaLibrary || {});
+       const rawPoses = (window.currentSequenceOriginalPoses && seq === currentSequence)
+           ? window.currentSequenceOriginalPoses : (seq.poses || []);
+
+           rawPoses.forEach(p => {
+            const id = String(Array.isArray(p[0]) ? p[0][0] : p[0] || "").padStart(3, '0');
+            const asana = libraryArray.find(a => String(a.id) === id);
+            
+            // THE FIX: Do not include p[3] in this join! 
+            // p[3] is the variation key. p[4] already has the brackets.
+            let rawExtras = [p[2], p[4]].filter(Boolean).join(" | ").trim();
+            let variation = p[3] || ""; 
+            let extractedLabel = "";
+   
+            const bracketMatch = rawExtras.match(/\[(.*?)\]/);
+            if (bracketMatch) {
+                extractedLabel = bracketMatch[1].trim(); 
+                rawExtras = rawExtras.replace(bracketMatch[0], "").replace(/^[\s\|]+/, "").trim();
+            } else {
+                extractedLabel = rawExtras; rawExtras = "";
+            }
+   
+            // Legacy fuzzy matching (Kept intact)
+            if (!variation && asana?.variations && extractedLabel) {
+                const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
+                for (const vKey of sortedKeys) {
+                    const vData = asana.variations[vKey];
+                    const vTitle = (vData?.title || "").toLowerCase();
+                    if (extractedLabel.toLowerCase() === vTitle || new RegExp(`\\b${vKey}\\b`, 'i').test(extractedLabel)) {
+                        variation = vKey; extractedLabel = ""; break;
+                    }
+                }
+            } else if (variation && extractedLabel === variation) {
+                // If it already found the variation, clear the label so it doesn't bleed into notes
+                extractedLabel = ""; 
+            }
+   
+            if (extractedLabel && !variation) {
+                rawExtras = (extractedLabel + (rawExtras ? " | " + rawExtras : "")).trim();
+            }
+   
+            builderPoses.push({
+               id: id,
+               name: asana ? (asana.name || displayName(asana)) : id,
+               duration: Number(p[1]) || 30,
+               variation: variation,
+               note: rawExtras // This will now be completely clean
+            });
+        });
+    }
+ 
+    builderRender();
+    $("editCourseBackdrop").style.display = "flex";
+    setTimeout(() => { if($("builderSearch")) $("builderSearch").focus(); }, 50);
+}
+
+function builderUpdateStats() {
+   const statsEl = $("builderStats");
+   if (!statsEl) return;
+   if (!builderPoses.length) { statsEl.textContent = ""; return; }
+   const total = builderPoses.reduce((s, p) => s + (p.duration || 0), 0);
+   statsEl.textContent = `${builderPoses.length} poses · ${formatHMS(total)} estimated`;
+}
+
+function builderCompileSequenceText() {
+    return builderPoses.map(p => {
+        const idStr = String(p.id);
+
+        if (idStr.startsWith("MACRO:")) {
+            return `${idStr} | ${p.duration} | [Sequence Link] ${p.note ? p.note : ''}`;
+        }
+
+        const id = String(p.id).padStart(3, '0');
+        const dur = p.duration || 30;
+        
+        // Enforces exact 3-column structure: ID | Duration | [Variation] Note
+        const varPart = p.variation ? `[${p.variation}]` : `[]`;
+        const notePart = p.note ? p.note.trim() : "";
+        
+        return `${id} | ${dur} | ${varPart} ${notePart}`.trim();
+    }).join("\n");
+}
+
+function builderGetTitle() {
+   return ($("builderTitle")?.value || "").trim();
+}
+
+function builderGetCategory() {
+   return ($("builderCategory")?.value || "").trim();
+}
+
+async function builderSave() {
+    console.log("DB Target ID:", builderEditingSupabaseId);
+    console.log("Current User ID:", window.currentUserId);
+
+    // 1. Extract and Validate Data
+    const title = builderGetTitle();
+    if (!title) { alert("Please enter a title."); return; }
+    
+    const sequenceText = builderCompileSequenceText();
+    const category = builderGetCategory();
+    const isFlow = category.toLowerCase().includes("flow"); 
+    
+    const libraryArray = Object.values(asanaLibrary || {});
+
+    // 2. Calculate Total Time
+    const totalSec = builderPoses.reduce((acc, p) => {
+        const idStr = String(p.id);
+        const durOrReps = Number(p.duration) || 0;
+
+        if (idStr.startsWith("MACRO:")) {
+            const targetTitle = idStr.replace("MACRO:", "").trim();
+            const sub = (window.courses || []).find(c => c.title === targetTitle);
+            if (sub && sub.poses) {
+                const oneRound = sub.poses.reduce((accSub, sp) => accSub + getEffectiveTime(sp[0], sp[1]), 0);
+                return acc + (oneRound * durOrReps);
+            }
+            return acc;
+        } else {
+            const asana = libraryArray.find(a => String(a.id) === String(p.id));
+            const libraryStd = (asana && asana.hold_data) ? asana.hold_data.standard : 30;
+            const activeTime = isFlow ? durOrReps : libraryStd;
+            return acc + getEffectiveTime(p.id, activeTime);
+        }
+    }, 0);
+
+    // 3. Database Operation
+    try {
+        if (!supabase) return;
+        let result;
+
+        const payload = {
+            title, 
+            category, 
+            sequence_text: sequenceText,
+            pose_count: builderPoses.length, 
+            total_seconds: totalSec,
+            updated_at: new Date().toISOString()
+        };
+
+        if (builderEditingSupabaseId) {
+            // Update existing
+            result = await supabase.from('user_sequences')
+                .update(payload)
+                .eq('id', builderEditingSupabaseId)
+                .select();
+            if (result.error) throw result.error;
+        } else {
+            // Insert new
+            result = await supabase.from('user_sequences').insert([{
+                ...payload,
+                user_id: window.currentUserId
+            }]).select();
+            if (result.error) throw result.error;
+        }
+
+        // 4. UI Refresh
+        await loadCourses(); 
+        
+        const sel = document.getElementById("sequenceSelect");
+        if (sel) {
+            const newIdx = courses.findIndex(c => c.title === title);
+            if (newIdx !== -1) {
+                sel.value = String(newIdx);
+                sel.dispatchEvent(new Event('change'));
+            }
+        }
+
+        document.getElementById("editCourseBackdrop").style.display = "none";
+        alert(`"${title}" saved successfully!`);
+
+    } catch(e) {
+        console.error("❌ Save failed:", e);
+        alert("Failed to save: " + (e.message || "Unknown error"));
+    }
+}
+
+// Open the Modal and populate the searchable datalist
+document.getElementById("btnOpenLinkModal")?.addEventListener("click", () => {
+    const datalist = document.getElementById("linkSequenceList");
+    if (datalist && window.courses) {
+        // Grab all unique sequence titles
+        const allTitles = [...new Set(window.courses.map(c => c.title).filter(Boolean))].sort();
+        datalist.innerHTML = allTitles.map(t => `<option value="${t}"></option>`).join("");
+    }
+    
+    document.getElementById("linkSequenceInput").value = "";
+    document.getElementById("linkSequenceReps").value = "1";
+    document.getElementById("linkSequenceOverlay").style.display = "flex";
+});
+
+// Confirm and Add to Builder
+document.getElementById("btnConfirmLink")?.addEventListener("click", () => {
+    const targetTitle = document.getElementById("linkSequenceInput").value.trim();
+    const reps = parseInt(document.getElementById("linkSequenceReps").value, 10) || 1;
+    
+    if (!targetTitle) return alert("Please select a sequence.");
+
+    // Add as a Macro row to the builderPoses array
+    builderPoses.unshift({
+        id: `MACRO:${targetTitle}`,
+        name: `<span class="macro-title-badge">LINK</span> ${targetTitle}`,
+        duration: reps, // We store reps in the duration column
+        variation: "",
+        note: `Repeats: ${reps}x`,
+        isMacro: true // Flag it so we can style it in the table render
+    });
+
+    document.getElementById("linkSequenceOverlay").style.display = "none";
+    
+    // Call your function that redraws the table (e.g., builderRender)
+    if (typeof builderRender === "function") builderRender();
+});
+
+(function setupBuilderSearch() {
+    const input = document.getElementById("builderSearch");
+    const results = document.getElementById("builderSearchResults");
+    if (!input || !results) return;
+ 
+    let debounceTimer;
+ 
+    // NEW HELPER: Strips all accents/diacritics and converts to lowercase
+    const normalize = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+ 
+    function positionResults() {
+       const rect = input.getBoundingClientRect();
+       results.style.top = (rect.bottom + window.scrollY) + "px";
+       results.style.left = rect.left + "px";
+       results.style.width = Math.max(rect.width, 280) + "px";
+    }
+ 
+
+    input.addEventListener("input", () => {
+        const rawVal = input.value.trim();
+    
+        // 🚀 BULK ADD DETECTION
+        // If the input contains a comma, we assume the user is bulk-adding IDs
+        if (rawVal.includes(',')) {
+            const idParts = rawVal.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            
+            // Only trigger bulk add if they've finished typing at least one ID
+            // We look for a trailing comma or a multi-ID list
+            const lastChar = rawVal.slice(-1);
+            if (lastChar !== ',') {
+                // Optional: You could wait for 'Enter' for bulk, or just add them as they go.
+                // Let's make it add only when they hit 'Enter' or if they paste a whole list.
+                return; 
+            }
+    
+            // Process all IDs except the very last one (if it's still being typed)
+            const completedIds = idParts;
+            
+            completedIds.forEach(id => {
+                const cleanId = id.padStart(3, '0');
+                const asana = asanaLibrary[cleanId];
+                
+                if (asana) {
+                    builderPoses.push({
+                        id: cleanId,
+                        name: displayName(asana),
+                        duration: (asana.hold_data && asana.hold_data.standard) ? asana.hold_data.standard : 30,
+                        note: ""
+                    });
+                }
+            });
+    
+            builderRender();
+            input.value = ""; // Clear input after bulk adding
+            results.style.display = "none";
+            return;
+        }
+       clearTimeout(debounceTimer);
+       debounceTimer = setTimeout(() => {
+          const rawQ = input.value.trim();
+          const q = normalize(rawQ);
+          
+          // 1. Minimum character check
+          if (q.length < 1) { results.style.display = "none"; return; }
+ 
+          // 2. Smart ID Padding: If user types "1", we also look for "001"
+          let paddedQ = "";
+          if (/^\d+$/.test(q)) {
+             paddedQ = q.padStart(3, '0');
+          }
+ 
+          const library = getAsanaIndex();
+          const hits = library.filter(a => {
+             // Flatten all searchable fields
+             const name = normalize(a.name);
+             const eng = normalize(a.english);
+             const iast = normalize(a.iast);
+             const aid = String(a.id || "").toLowerCase();
+ 
+             // Match against normalized query OR padded ID
+             return name.includes(q) || 
+                    eng.includes(q) || 
+                    iast.includes(q) || 
+                    aid === q || 
+                    (paddedQ && aid === paddedQ);
+          }).slice(0, 25); // Increased limit slightly
+ 
+          if (!hits.length) { 
+             results.innerHTML = `<div style="padding:10px; color:#999; font-style:italic;">No poses found...</div>`;
+             results.style.display = "block";
+             positionResults();
+             return; 
+          }
+ 
+          results.innerHTML = hits.map(a => {
+             const dn = displayName(a);
+             // Highlight what matched (optional improvement)
+             const sub = (a.iast && a.iast !== dn) ? a.iast : (a.english && a.english !== dn ? a.english : "");
+             return `<div class="b-search-item" data-id="${a.id}" data-name="${dn.replace(/"/g,'&quot;')}" data-english="${(a.english||"").replace(/"/g,'&quot;')}"
+                style="padding:10px 12px; cursor:pointer; border-bottom:1px solid #eee; transition: background 0.2s;">
+                <div style="font-weight:600; font-size:0.95rem; color:#111;">${dn}</div>
+                ${sub ? `<div style="font-size:0.8rem; color:#666; margin-top:2px;">${sub}</div>` : ""}
+                <div style="font-size:0.7rem; color:#aaa; margin-top:4px; font-family:monospace;">ID: ${a.id}</div>
+             </div>`;
+          }).join("");
+ 
+          results.style.display = "block";
+          positionResults();
+       }, 150); // Slightly longer debounce for better performance
+    });
+ 
+    // Handle Enter key for Batch Posing and Direct-to-DB commands
+    input.addEventListener("keydown", async (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            const fullVal = input.value;
+            const trimmedVal = fullVal.trim();
+            if (!trimmedVal) return;
+
+            // --- A. BATCH/SINGLE SEMICOLON COMMANDS ---
+            if (trimmedVal.includes(';')) {
+                e.preventDefault();
+                const lines = fullVal.split('\n').map(l => l.trim()).filter(l => l.includes(';'));
+
+                if (lines.length > 1) {
+                    if (confirm(`Batch Mode: Detected ${lines.length} sequences. Create all now?`)) {
+                        try {
+                            for (const line of lines) {
+                                await processSemicolonCommand(line);
+                            }
+                            alert(`✓ Successfully processed ${lines.length} sequences!`);
+                            input.value = "";
+                            await loadCourses();
+                        } catch (err) {
+                            alert("Batch failed mid-way: " + err.message);
+                        }
+                    }
+                } else {
+                    if (confirm(`Save "${trimmedVal.split(';')[0]}" to database?`)) {
+                        try {
+                            await processSemicolonCommand(trimmedVal);
+                            alert("✓ Sequence added!");
+                            input.value = "";
+                            await loadCourses();
+                        } catch (err) {
+                            alert("Save failed: " + err.message);
+                        }
+                    }
+                }
+                return;
+            }
+
+            // --- B. BULK ADD POSES (If just IDs and commas, no semicolons) ---
+            if (trimmedVal.includes(',') && !trimmedVal.includes(';')) {
+                e.preventDefault();
+                const idParts = trimmedVal.split(',').map(s => s.trim().padStart(3, '0')).filter(id => id !== "000" && asanaLibrary[id]);
+                
+                idParts.forEach(id => {
+                    const asana = asanaLibrary[id];
+                    builderPoses.push({
+                        id: id,
+                        duration: asana?.hold_data?.standard || 30
+                    });
+                });
+
+                builderRender();
+                input.value = "";
+                results.style.display = "none";
+            }
+        }
+    });
+
+    // Handle selection
+    results.addEventListener("click", e => {
+       const item = e.target.closest(".b-search-item");
+       if (!item) return;
+       const library = getAsanaIndex();
+       const asana = library.find(a => String(a.id) === String(item.dataset.id));
+       
+       const defaultDuration = (asana && asana.hold_data && asana.hold_data.standard) ? asana.hold_data.standard : 30;
+       
+       builderPoses.push({
+          id: item.dataset.id,
+          name: item.dataset.name,
+          englishName: item.dataset.english,
+          duration: defaultDuration,
+          note: ""
+       });
+       
+       builderRender();
+       input.value = "";
+       results.style.display = "none";
+       input.focus();
+    });
+ 
+    // Close on outside click
+    document.addEventListener("click", e => {
+       if (!input.contains(e.target) && !results.contains(e.target)) {
+          results.style.display = "none";
+       }
+    });
+ 
+    // Blank row helper
+const blankBtn = document.getElementById("builderAddBlank");
+if (blankBtn) {
+   blankBtn.addEventListener("click", () => {
+      // 1. Add to the top of the array
+      builderPoses.push({ 
+          id: "", 
+          name: "", 
+          englishName: "", 
+          duration: 30, 
+          variation: "", 
+          note: "" 
+      });
+      
+      // 2. THIS IS THE MISSING PIECE: Force the UI to update
+      builderRender(); 
+      
+      // 3. Optional: Auto-focus the ID input of the new top row
+      setTimeout(() => {
+          const firstIdInput = document.querySelector('.b-id');
+          if (firstIdInput) firstIdInput.focus();
+      }, 50);
+   });
+}
+ })();
 
 
-// #endregion
+safeListen("editCourseBtn", "click", openEditCourse);
+safeListen("editCourseCloseBtn", "click", () => { 
+    $("editCourseBackdrop").style.display = "none"; 
+    document.body.classList.remove("modal-open"); // UNLOCK SCROLL
+});
+
+safeListen("editCourseCancelBtn", "click", () => { 
+    $("editCourseBackdrop").style.display = "none"; 
+    document.body.classList.remove("modal-open"); // UNLOCK SCROLL
+});
+safeListen("editCourseSaveBtn", "click", () => {
+   if (!asanaLibrary || Object.keys(asanaLibrary).length === 0) {
+      alert("Library is still loading. Please wait.");
+      return;
+   }
+   builderSave();
+});
 
 
-export { builderRender, movePose, removePose, processSemicolonCommand, openLinkSequenceModal };
+export {
+    builderRender,
+    movePose,
+    removePose,
+    processSemicolonCommand,
+    openLinkSequenceModal,
+    addHit,
+    openEditCourse,
+    builderOpen,
+    builderUpdateStats,
+    builderCompileSequenceText,
+    builderGetTitle,
+    builderGetCategory,
+    builderSave
+};

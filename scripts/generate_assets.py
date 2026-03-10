@@ -1,124 +1,107 @@
-import pandas as pd
-import json, os, time, re, textwrap
+import os, json, time, re, textwrap, unicodedata
+from PIL import Image, ImageDraw, ImageFont
+from workbench import supabase
 import vertexai
 from vertexai.preview.vision_models import ImageGenerationModel
-from dotenv import load_dotenv
-from PIL import Image, ImageDraw, ImageFont
 
-# 1. ABSOLUTE PATH SETUP
-PROGRESS_FILE = r"C:\Projects\Yoga-App-Evolution\data\production_progress.json"
-CSV_PATH = r"C:\Projects\Yoga-App-Evolution\data\Master_Oracle_Deck.csv"
+# --- CONFIG ---
+PROGRESS_FILE_ASANAS = r"C:\Projects\Yoga-App-Evolution\data\production_progress_asanas.json"
 ASSET_DIR = r"C:\Projects\Yoga-App-Evolution\assets\yoga_cards"
-FONT_DIR = r"C:\Projects\Yoga-App-Evolution\fonts"
+FONT_DEV = r"C:\Projects\Yoga-App-Evolution\fonts\NotoSansDevanagari-Regular.ttf"
+FONT_IAST = r"C:\Projects\Yoga-App-Evolution\fonts\NotoSerif-Regular.ttf"
 
-FONT_DEVANAGARI = os.path.join(FONT_DIR, "NotoSansDevanagari-Regular.ttf")
-FONT_IAST = os.path.join(FONT_DIR, "NotoSerif-Regular.ttf")
-
-load_dotenv()
-PROJECT_ID = "gen-lang-client-0495696648" 
-LOCATION = "us-central1"
-vertexai.init(project=PROJECT_ID, location=LOCATION)
+vertexai.init(project="gen-lang-client-0495696648", location="us-central1")
 model = ImageGenerationModel.from_pretrained("imagen-4.0-generate-001")
 
-def load_progress():
-    if os.path.exists(PROGRESS_FILE):
-        with open(PROGRESS_FILE, "r") as f:
-            try: return json.load(f).get("last_offset", 0)
-            except: return 0
-    return 0
+def slugify(text):
+    if not text: return ""
+    text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
+    text = text.lower().strip()
+    return re.sub(r'[^a-z0-9]+', '_', text).strip('_')
 
-def save_progress(offset):
-    with open(PROGRESS_FILE, "w") as f:
-        json.dump({"last_offset": offset}, f)
-
-def clean_and_split(text, is_devanagari=False):
-    if is_devanagari:
-        text = re.sub(r'परिवर्तित\s+[IVX\d]+|परिवर्तित', '', text).strip()
-    else:
-        text = re.sub(r'Modified\s+[IVX\d]+|Modified', '', text).strip()
-    parts = re.split(r'(\(.*\))', text)
-    base = parts[0].strip()
-    variation = parts[1].strip() if len(parts) > 1 else ""
-    return base, variation
-
-def draw_balanced_text(draw, base, variation, font_path, start_size, y_pos, img_w):
+def draw_asana_text(draw, devanagari, iast, img_w, img_h):
     margin = img_w * 0.12
     max_w = img_w - (margin * 2)
-    size = start_size
-    if len(base) > 28: size -= 10 # Scale down for long Sanskrit
+
+    # 1. DEVANAGARI (Pure Root)
+    dev_size = 90
+    if len(devanagari) > 12: dev_size = 70 # Scale down for long Sanskrit roots
+    f_dev = ImageFont.truetype(FONT_DEV, dev_size)
+    curr_y = img_h * 0.14
     
-    font = ImageFont.truetype(font_path, size)
-    avg_char_w = font.getlength('x') if base else 10
-    max_chars = max(1, int(max_w / avg_char_w))
-    lines = textwrap.wrap(base, width=max_chars)
+    # Wrap Devanagari if needed (rare, but handles compound roots)
+    dev_lines = textwrap.wrap(devanagari, width=15)
+    for line in dev_lines:
+        w = draw.textbbox((0, 0), line, font=f_dev)[2]
+        draw.text(((img_w - w) / 2, curr_y), line, font=f_dev, fill="#333333")
+        curr_y += (dev_size * 1.1)
     
-    current_y = y_pos
+    # 2. IAST (Phonetic Name with Smart Wrap)
+    curr_y += 30 # Spacer
+    iast_size = 48
+    if len(iast) > 25: iast_size = 38 # First stage shrink
+    if len(iast) > 40: iast_size = 32 # Deep shrink for Trianga...
+    
+    f_iast = ImageFont.truetype(FONT_IAST, iast_size)
+    
+    # Calculate wrapping based on font size
+    # Approx 1.8 chars per unit of width for Serif fonts
+    wrap_width = int(max_w / (iast_size * 0.5)) 
+    lines = textwrap.wrap(iast, width=wrap_width)
+    
     for line in lines:
-        w = draw.textbbox((0, 0), line, font=font)[2]
-        draw.text(((img_w - w) / 2, current_y), line, font=font, fill="#333333")
-        current_y += (size * 1.1)
+        w = draw.textbbox((0, 0), line, font=f_iast)[2]
+        draw.text(((img_w - w) / 2, curr_y), line, font=f_iast, fill="#333333")
+        curr_y += (iast_size * 1.2)
 
-    if variation:
-        v_font = ImageFont.truetype(font_path, int(size * 0.75))
-        w = draw.textbbox((0, 0), variation, font=v_font)[2]
-        draw.text(((img_w - w) / 2, current_y + 8), variation, font=v_font, fill="#333333")
-        current_y += (size * 0.8)
-    return current_y
-
-def run_production_factory(limit=5):
-    df = pd.read_csv(CSV_PATH, encoding='utf-8-sig')
-    offset = load_progress()
-    end_point = min(offset + limit, len(df))
+def run_asana_production(limit=5):
+    res = supabase.table("asanas") \
+        .select("id, iast, devanagari, symbol_prompt, oracle_lore") \
+        .eq("is_curated", True) \
+        .order("id") \
+        .execute()
     
-    print(f"🏭 Factory Resuming at: {offset}")
+    records = res.data
+    offset = 0
+    if os.path.exists(PROGRESS_FILE_ASANAS):
+        with open(PROGRESS_FILE_ASANAS, "r") as f:
+            offset = json.load(f).get("last_offset", 0)
 
-    for i in range(offset, end_point):
-        row = df.iloc[i]
-        temp_path = f"temp_{row['filename']}"
-        final_path = os.path.join(ASSET_DIR, row['filename'])
+    print(f"🚀 Master Asana Pass: {len(records)} records. Resuming from {offset}...")
 
-        # THE "NO-NUMBERS" DESCRIPTIVE PROMPT
+    for i in range(offset, min(offset + limit, len(records))):
+        row = records[i]
+        
+        a_id = str(row['id']).zfill(3)
+        name_slug = slugify(row['iast'])
+        filename = f"{a_id}_master_{name_slug}.png"
+        
         prompt = f"""
-        A very small, compact architectural yoga sigil. 
-        Positioned at the very bottom edge of a plain light cream canvas.
-        The entire upper area of the canvas is completely blank and untouched.
-        Design: {row['symbol_prompt']}. 
-        Essence: {row['lore']}.
-        
-        RULES: Solid dark charcoal ink. No humans.
+        A compact architectural yoga sigil restricted to the BOTTOM THIRD of a plain light cream canvas.
+        Design: {row['symbol_prompt']}. Essence: {row['oracle_lore']}.
+        SPATIAL RULES: Top 65% must be EMPTY. Charcoal ink. No humans.
         """
-        
-        # AGGRESSIVE NEGATIVE PROMPT (Banning all numbers and text concepts)
-        neg_prompt = "text, labels, numbers, digits, percentages, %, 65, #F9F9F7, hex code, letters, tall, vertical stretching, full-page, borders, boxes"
+        neg_prompt = "tall, stretching, full-page, text, labels, numbers, hex, borders, humans"
 
         try:
-            response = model.generate_images(
-                prompt=prompt, 
-                negative_prompt=neg_prompt,
-                number_of_images=1, 
-                aspect_ratio="3:4"
-            )
-            response[0].save(location=temp_path)
+            images = model.generate_images(prompt=prompt, negative_prompt=neg_prompt, number_of_images=1, aspect_ratio="3:4")
+            temp = f"temp_{filename}"
+            images[0].save(location=temp)
 
-            img = Image.open(temp_path)
+            img = Image.open(temp)
             draw = ImageDraw.Draw(img)
+            draw_asana_text(draw, row['devanagari'], row['iast'], img.width, img.height)
+
+            img.save(os.path.join(ASSET_DIR, filename))
+            os.remove(temp)
             
-            b_dev, v_dev = clean_and_split(row['devanagari'], True)
-            b_iast, v_iast = clean_and_split(row['iast_full'])
-
-            # Render Typography 
-            next_y = draw_balanced_text(draw, b_dev, v_dev, FONT_DEVANAGARI, 82, img.height * 0.14, img.width)
-            draw_balanced_text(draw, b_iast, v_iast, FONT_IAST, 48, next_y + 25, img.width)
-
-            img.save(final_path)
-            os.remove(temp_path)
-            save_progress(i + 1)
-            print(f"✅ Card {i+1} Corrected: {row['filename']}")
+            with open(PROGRESS_FILE_ASANAS, "w") as f: json.dump({"last_offset": i + 1}, f)
+            print(f"✅ {filename}")
             time.sleep(12)
 
         except Exception as e:
-            print(f"❌ Error at index {i}: {e}")
-            break
+            print(f"❌ Error at ID {row['id']}: {e}"); break
 
 if __name__ == "__main__":
-    run_production_factory(limit=5)
+    # Start with 5 to verify the 'Trianga' wrapping looks good
+    run_asana_production(limit=300)

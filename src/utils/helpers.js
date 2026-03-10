@@ -44,8 +44,13 @@ export function smartUrlsForPoseId(idField, variationKey = null) {
     if (window.asanaLibrary && window.asanaLibrary[id]) {
         const asana = window.asanaLibrary[id];
         
-        // A. Check for specific variation image
-        if (variationKey && asana.variations && asana.variations[variationKey]) {
+        const idNum = parseInt(id, 10);
+        // Pranayama range is 214-222 (and Savasana 200) in Light on Yoga.
+        // The old code assumed 31-131, which overlapped with standing/seated poses!
+        const isPranayama = idNum >= 214 && idNum <= 230;
+
+        // A. Check for specific variation image (Skip if Pranayama)
+        if (!isPranayama && variationKey && asana.variations && asana.variations[variationKey]) {
             const varData = asana.variations[variationKey];
             if (varData && varData.image_url) {
                 return [varData.image_url];

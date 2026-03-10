@@ -1,0 +1,56 @@
+import os, io
+from PIL import Image
+from workbench import supabase
+
+# --- CONFIG ---
+LOCAL_FOLDER = r"C:\Projects\Yoga-App-Evolution\assets\yoga_cards"
+BUCKET_NAME = "yoga-cards"
+
+def convert_and_sync():
+    files = [f for f in os.listdir(LOCAL_FOLDER) if f.endswith(".png")]
+    print(f"🚀 Found {len(files)} PNGs. Starting WebP Conversion & Sync...")
+
+    for filename in files:
+        file_path = os.path.join(LOCAL_FOLDER, filename)
+        
+        webp_cloud_name = filename.replace(".png", ".webp")
+        
+        try:
+            img = Image.open(file_path)
+            buffer = io.BytesIO()
+            img.save(buffer, format="WEBP", quality=80, method=6) 
+            
+            # --- THE FIX ---
+            # .getvalue() extracts the actual data from the BytesIO container
+            file_data = buffer.getvalue() 
+
+            # Upload to Supabase Storage
+            supabase.storage.from_(BUCKET_NAME).upload(
+                path=webp_cloud_name, 
+                file=file_data, # Passing the raw bytes now
+                file_options={"content-type": "image/webp", "upsert": "true"}
+            )
+
+            public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(webp_cloud_name)
+
+            # Smart Route to Tables
+            parts = filename.split('_')
+            
+            if "master" in filename:
+                asana_id = int(parts[0])
+                supabase.table("asanas").update({"image_url": public_url}).eq("id", asana_id).execute()
+                print(f"✅ ASANA {asana_id} -> WebP Uploaded & Linked")
+            
+            elif len(parts) >= 2 and parts[1].isdigit():
+                stage_id = int(parts[1])
+                supabase.table("stages").update({"image_url": public_url}).eq("id", stage_id).execute()
+                print(f"✅ STAGE {stage_id} -> WebP Uploaded & Linked")
+            
+            else:
+                print(f"⚠️ Skipping {filename}: Filename pattern not recognized.")
+
+        except Exception as e:
+            print(f"❌ Error processing {filename}: {e}")
+
+if __name__ == "__main__":
+    convert_and_sync()
