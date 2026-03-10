@@ -40,6 +40,7 @@ export class PlaybackEngine {
             if (this.remaining <= 0) {
                 clearInterval(this.timer);
                 this.timer = null;
+                this.running = false;
 
                 const wasLongHold = this.currentPoseSeconds >= 60;
                 this.onPoseComplete(wasLongHold);
