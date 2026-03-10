@@ -93,6 +93,7 @@ async function loadAsanaLibrary() {
                     // 🌟 CRITICAL FIX: Ensure 'english' is never empty
                     english: row.english_name ?? row.name ?? `Pose ${key}`, 
                     audio: row.audio_url ?? '',
+                    image_url: row.image_url ?? '',
                     technique: row.technique ?? row.Technique ?? '',
                     requiresSides: !!(row.requires_sides ?? row.Requires_Sides ?? false),
                     plates: typeof parsePlates === 'function' ? parsePlates(row.plate_numbers ?? '') : (row.plate_numbers ?? ''),
@@ -150,6 +151,7 @@ try {
                 title: stage.Title ?? stage.title ?? `Stage ${stageKey}`,
                 hold: holdStr,
                 hold_data: parseHoldTimes(holdStr),
+                image_url: stage.image_url ?? '',
                 isCustom: !!stage.user_id 
             };
         });
@@ -201,6 +203,7 @@ function normalizeAsanaRow(row, existingData = {}) {
         english: row.english_name ?? '',
         iast: row.iast ?? '',
         audio: row.audio_url ?? '',
+        image_url: row.image_url ?? existingData.image_url ?? '',
         category: row.category ?? existingData.category,
         hold: rawHoldText,
         hold_json: holdData, // <--- YOUR NEW DURATION BRAIN

@@ -1,0 +1,62 @@
+import os, io, re
+from PIL import Image
+from workbench import supabase
+
+# --- CONFIG ---
+LOCAL_FOLDER = r"C:\Projects\Yoga-App-Evolution\assets\yoga_cards"
+BUCKET_NAME = "yoga-cards"
+
+def final_sync():
+    files = [f for f in os.listdir(LOCAL_FOLDER) if f.endswith(".png")]
+    print(f"🚀 Final Sync: {len(files)} files to process...")
+
+    for filename in files:
+        file_path = os.path.join(LOCAL_FOLDER, filename)
+        webp_cloud_name = filename.replace(".png", ".webp")
+        
+        try:
+            # 1. Convert to WebP
+            img = Image.open(file_path)
+            buffer = io.BytesIO()
+            img.save(buffer, format="WEBP", quality=80)
+            file_data = buffer.getvalue()
+
+            # 2. Upload to Storage
+            supabase.storage.from_(BUCKET_NAME).upload(
+                path=webp_cloud_name, 
+                file=file_data,
+                file_options={"content-type": "image/webp", "upsert": "true"}
+            )
+
+            # 3. Construct Public URL
+            public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(webp_cloud_name)
+
+            # 4. Routing Logic
+            parts = filename.split('_')
+            
+            if "master" in filename:
+                # ASANAS TABLE: ID is the first part (e.g., '172a' or '012')
+                target_id = parts[0] 
+                res = supabase.table("asanas").update({"image_url": public_url}).eq("id", target_id).execute()
+                if res.data:
+                    print(f"✅ ASANAS: ID {target_id} updated.")
+                else:
+                    print(f"⚠️ ASANAS: ID {target_id} not found in table.")
+            
+            else:
+                # STAGES TABLE: ID is the second part (e.g., '016')
+                try:
+                    target_id = parts[1]
+                    res = supabase.table("stages").update({"image_url": public_url}).eq("id", target_id).execute()
+                    if res.data:
+                        print(f"✅ STAGES: ID {target_id} updated.")
+                    else:
+                        print(f"⚠️ STAGES: ID {target_id} not found in table.")
+                except IndexError:
+                    print(f"❌ Naming error on {filename}")
+
+        except Exception as e:
+            print(f"❌ Error on {filename}: {e}")
+
+if __name__ == "__main__":
+    final_sync()

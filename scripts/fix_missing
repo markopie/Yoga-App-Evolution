@@ -1,0 +1,12 @@
+import re
+from workbench import supabase
+
+# Manual fix for the 172a case
+filename = "172a_master_urdhva_dhanurasana_ii.webp" # The cloud name
+public_url = supabase.storage.from_("yoga-cards").get_public_url(filename)
+
+# Extract only the numbers: '172a' -> 172
+clean_id = int(re.search(r'\d+', "172a").group())
+
+res = supabase.table("asanas").update({"image_url": public_url}).eq("id", clean_id).execute()
+print(f"✅ Manually Linked {filename} to Asana ID {clean_id}")

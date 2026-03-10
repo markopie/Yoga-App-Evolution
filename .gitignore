@@ -7,26 +7,16 @@ __pycache__/
 
 # Secret Keys (NEVER PUSH THESE)
 .env
-<<<<<<< HEAD
-
-=======
 google-credentials.json
->>>>>>> main
 # OS Files
 .DS_Store
 Thumbs.db
 
-<<<<<<< HEAD
+# Local Backups (Your Data)
 assets/
 backups/
-
-google-credentials.json
+archive/
 temp_history.txt
-=======
-# Local Backups (Your Data)
-backups/
 
 # VS Code settings
 .vscode/
-
->>>>>>> main
