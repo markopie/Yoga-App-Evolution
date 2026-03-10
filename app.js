@@ -23,6 +23,7 @@ import { parseHoldTimes, buildHoldString } from "./src/utils/parsing.js";
 import { prefersIAST, setIASTPref, displayName, escapeHtml2, renderMarkdownMinimal, formatHMS, formatTechniqueText } from "./src/utils/format.js";
 import { playbackEngine } from "./src/playback/timer.js";
 import { parsePlateTokens, plateFromFilename, primaryAsanaFromFilename, filenameFromUrl, mobileVariantUrl, ensureArray, isBrowseMobile, smartUrlsForPoseId } from "./src/utils/helpers.js";
+import "./src/ui/wiring.js"; // 👈 Core UI Wiring & Listeners
 
 window.db = supabase;
 window.currentUserId = null;
@@ -409,6 +410,9 @@ async function buildImageIndexes() {
     }
 }
 
+window.nextPose = nextPose;
+window.prevPose = prevPose;
+
 // Helper: Find URLs for a Pose
 // Removed: smartUrlsForPoseId moved to src/utils/helpers.js
 
@@ -657,6 +661,12 @@ async function deleteAllCompletionsForTitle(title) {
    }
 }
 
+window.deleteCompletionById = deleteCompletionById;
+window.deleteAllCompletionsForTitle = deleteAllCompletionsForTitle;
+window.calculateStreak = calculateStreak;
+window.appendServerHistory = appendServerHistory;
+window.clearProgress = clearProgress;
+
 // Calculate consecutive day streak from a sorted array of ISO date strings (newest first)
 function calculateStreak(isoStrings) {
    if (!isoStrings || !isoStrings.length) return 0;
@@ -728,6 +738,9 @@ function clearProgress() {
         console.error("Failed to clear progress", e);
     }
 }
+
+// Export for Wiring
+window.saveCurrentProgress = saveCurrentProgress;
 
 function showResumePrompt(state) {
     const banner = document.createElement("div");
@@ -860,6 +873,11 @@ async function init() {
         if ($("statusText")) $("statusText").textContent = "Error loading app data";
     }
 }
+
+// Export for Wiring
+window.findAsanaByIdOrPlate = findAsanaByIdOrPlate;
+window.getExpandedPoses = getExpandedPoses;
+window.init = init;
 
 function getExpandedPoses(sequence) {
     let expanded = [];
@@ -1077,6 +1095,9 @@ function updateTimerUI(remaining, currentPoseSeconds) {
         }
     }
 }
+
+// Export for Wiring
+window.updateTimerUI = updateTimerUI;
 
 function calculateTotalSequenceTime(seq) {
     if (!seq || !seq.poses) return 0;
@@ -1516,6 +1537,9 @@ if (focusCounter) {
          playAsanaAudio(asana, baseOverrideName); 
     }
 }
+
+// Export for Wiring
+window.setPose = setPose;
 
 /* ==========================================================================
    UI HELPERS (Notes & Stats)
@@ -2453,6 +2477,8 @@ function renderIdFixer(container, brokenId) {
    EVENT LISTENERS & INITIALIZATION
    ========================================================================== */
 
+// All duplicate wiring, listeners, and auth logic has been removed from this file 
+// and delegated to ./src/ui/wiring.js which is imported at the top.
 
 // 1. Sequence Dropdown Selection
 const seqSelect = $("sequenceSelect");
@@ -2465,6 +2491,7 @@ if (seqSelect) {
     if (advancedSection && advancedSection.textContent.includes("Advanced")) {
         advancedSection.style.display = "none";
     }
+// -- Only Core Initialization Below -- 
 
     // B. Create the "Edit" and "New" buttons
     if (!document.getElementById("quickEditBtn")) {
