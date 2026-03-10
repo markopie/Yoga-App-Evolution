@@ -32,7 +32,6 @@ export function ensureArray(x) {
 export function isBrowseMobile() {
    return window.matchMedia("(max-width: 900px)").matches;
 }
-<<<<<<< HEAD
 
 export function smartUrlsForPoseId(idField) {
     if (!idField) return [];
@@ -48,5 +47,3 @@ export function smartUrlsForPoseId(idField) {
     
     return [];
 }
-=======
->>>>>>> main

@@ -1,0 +1,63 @@
+import pandas as pd
+import time
+import vertexai
+from vertexai.generative_models import GenerativeModel
+from dotenv import load_dotenv
+
+# 1. SETUP WITH CORRECT VERSION
+load_dotenv()
+PROJECT_ID = "gen-lang-client-0495696648"
+LOCATION = "us-central1"
+vertexai.init(project=PROJECT_ID, location=LOCATION)
+
+# Updated to a specific stable version to avoid 404
+model = GenerativeModel("gemini-1.5-flash-002")
+
+CSV_PATH = r"C:\Projects\Yoga-App-Evolution\data\Master_Oracle_Deck.csv"
+df = pd.read_csv(CSV_PATH, encoding='utf-8-sig')
+
+def get_correct_devanagari(iast_text):
+    prompt = f"""
+    Act as a Sanskrit Scholar and Yoga expert.
+    Convert this Yoga IAST name to correct Devanagari: {iast_text}
+    
+    Rules:
+    1. Provide ONLY the Devanagari script.
+    2. Translate parentheticals like '(On a chair)' to Hindi, e.g., (कुर्सी पर).
+    3. Ignore 'Modified I/II/III'—just provide the pose name.
+    
+    Example Input: 'Ardha Halāsana Modified II (On a chair)'
+    Example Output: अर्ध हलासन (कुर्सी पर)
+    """
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print(f"❌ API Error: {e}")
+        return None
+
+# 2. RUN REPAIR LOOP
+print("🚀 Starting Sanskrit Repair for flagged rows...")
+
+# We target the specific indices from your audit or generic flags
+for index, row in df.iterrows():
+    # Targeted Logic: If it has 'Modified' or matches known audit error indices
+    if "Modified" in str(row['iast_full']) or "Modified" in str(row['devanagari']):
+        print(f"🔄 Correcting Row {index}: {row['iast_full']}")
+        
+        corrected_dev = get_correct_devanagari(row['iast_full'])
+        
+        if corrected_dev:
+            df.at[index, 'devanagari'] = corrected_dev
+            print(f"✅ Fixed: {corrected_dev}")
+            
+            # Save every 5 rows to prevent data loss if it crashes
+            if index % 5 == 0:
+                df.to_csv(CSV_PATH, index=False, encoding='utf-8-sig')
+        
+        # RPM Safety (15 requests per minute for trial tier)
+        time.sleep(4)
+
+# 3. FINAL SAVE
+df.to_csv(CSV_PATH, index=False, encoding='utf-8-sig')
+print("🏁 Final Audit-Fix Complete. CSV is now the Source of Truth.")
