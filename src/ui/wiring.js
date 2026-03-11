@@ -24,6 +24,7 @@ if (seqSelect) {
             window.currentSequence = null;
             if($("statusText")) $("statusText").textContent = "Select a sequence";
             if($("collageWrap")) $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`; 
+            if (typeof window.updateActiveCategoryTitle === 'function') window.updateActiveCategoryTitle();
             return;
         }
 
@@ -39,6 +40,7 @@ if (seqSelect) {
         if (typeof window.applyDurationDial === 'function') window.applyDurationDial();
         if (typeof window.updateDialUI === 'function') window.updateDialUI();
         if (typeof window.updateTotalAndLastUI === 'function') window.updateTotalAndLastUI();
+        if (typeof window.updateActiveCategoryTitle === 'function') window.updateActiveCategoryTitle();
 
         try {
             window.currentIndex = 0; 
@@ -197,11 +199,25 @@ function setupAuthListeners() {
     }
 
     if (skipBtn) {
-        skipBtn.onclick = () => { window.isGuestMode = true; window.currentUserId = null; showApp(); };
+        skipBtn.onclick = () => { 
+            window.isGuestMode = true; 
+            window.currentUserId = null; 
+            const emailSpan = document.getElementById('userEmailDisplay');
+            if (emailSpan) {
+                emailSpan.textContent = 'Guest';
+                emailSpan.style.display = 'inline';
+            }
+            showApp(); 
+        };
     }
 
     if (signOutBtn) {
         signOutBtn.onclick = async () => {
+            const emailSpan = document.getElementById('userEmailDisplay');
+            if (emailSpan) {
+                emailSpan.textContent = '';
+                emailSpan.style.display = 'none';
+            }
             if (window.isGuestMode) { window.isGuestMode = false; showLogin(); }
             else await supabase.auth.signOut();
         };
@@ -210,6 +226,11 @@ function setupAuthListeners() {
     supabase.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
             window.currentUserId = session.user.id;
+            const emailSpan = document.getElementById('userEmailDisplay');
+            if (emailSpan) {
+                emailSpan.textContent = session.user.email;
+                emailSpan.style.display = 'inline';
+            }
             showApp();
         } else if (!window.isGuestMode) {
             showLogin();

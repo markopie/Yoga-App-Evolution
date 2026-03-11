@@ -177,12 +177,61 @@ export function renderCategoryFilter() {
     });
 
     filterEl.value = currentVal || "ALL";
-    filterEl.onchange = () => renderCourseUI();
+    filterEl.onchange = () => {
+        const sel = document.getElementById("sequenceSelect");
+        if (sel) {
+            sel.value = ""; // Clear sequence if user changes category
+            sel.dispatchEvent(new Event("change"));
+        }
+        renderCourseUI();
+    };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COURSE SELECTOR (SEQUENCE DROPDOWN)
 // ─────────────────────────────────────────────────────────────────────────────
+
+export function updateActiveCategoryTitle() {
+    const sel      = document.getElementById("sequenceSelect");
+    const filterEl = document.getElementById("categoryFilter");
+    const activeTitleEl = document.getElementById("activeCategoryTitle");
+    if (!activeTitleEl) return;
+
+    let displayCat = null;
+    let didChangeFilter = false;
+    
+    // If a sequence is actively selected, it dictates the category.
+    if (sel && sel.value && window.courses && window.courses[sel.value]) {
+        const courseCat = window.courses[sel.value].category || "Uncategorized";
+        
+        // Auto-update the category dropdown to match the selected sequence 
+        // if user found it via "All Collections"
+        if (filterEl && filterEl.value === "ALL") {
+            filterEl.value = courseCat;
+            didChangeFilter = true;
+        }
+
+        const parts = courseCat.split(">");
+        displayCat = parts[0].trim();
+    } 
+    // Otherwise, if no sequence is selected but a filter IS applied
+    else if (filterEl && filterEl.value !== "ALL" && filterEl.value) {
+        const parts = filterEl.value.split(">");
+        displayCat = parts[0].trim();
+    }
+
+    if (displayCat) {
+        activeTitleEl.textContent = displayCat;
+        activeTitleEl.style.display = "block";
+    } else {
+        activeTitleEl.style.display = "none";
+    }
+
+    // Rebuild sequence options properly if we forcefully changed the category dropdown above
+    if (didChangeFilter && typeof renderCourseUI === "function") {
+        renderCourseUI();
+    }
+}
 
 /**
  * Rebuilds the sequence <select> filtered by the current category selection.
@@ -240,4 +289,4 @@ window.renderSequenceDropdown = renderSequenceDropdown;
 window.renderCourseUI         = renderCourseUI;
 window.renderCategoryFilter   = renderCategoryFilter;
 window.renderCollage          = renderCollage;
-window.renderPlateSection     = renderPlateSection;
+window.updateActiveCategoryTitle = updateActiveCategoryTitle;

@@ -100,6 +100,8 @@ async function loadAsanaLibrary() {
                     hold: rawHoldText,
                     hold_json: holdData,
                     yoga_the_iyengar_way_id: row.yoga_the_iyengar_way_id ?? '',
+                    recovery_pose_id: row.recovery_pose_id ?? null,
+                    preparatory_pose_id: row.preparatory_pose_id ?? null,
                     variations: {},
                     isCustom: false
                 };
@@ -154,6 +156,8 @@ try {
                 hold_data: parseHoldTimes(holdStr),
                 image_url: stage.image_url ?? '',
                 audio: stage.audio_url ?? stage.Audio_URL ?? '',
+                recovery_pose_id: stage.recovery_pose_id ?? null,
+                preparatory_pose_id: stage.preparatory_pose_id ?? null,
                 isCustom: !!stage.user_id 
             };
         });
@@ -210,6 +214,8 @@ function normalizeAsanaRow(row, existingData = {}) {
         hold: rawHoldText,
         hold_json: holdData, // <--- YOUR NEW DURATION BRAIN
         yoga_the_iyengar_way_id: row.yoga_the_iyengar_way_id ?? existingData.yoga_the_iyengar_way_id ?? '',
+        recovery_pose_id: row.recovery_pose_id ?? existingData.recovery_pose_id ?? null,
+        preparatory_pose_id: row.preparatory_pose_id ?? existingData.preparatory_pose_id ?? null,
         standard_seconds: holdData.standard || 30, // Shortcut for the Slider
         isCustom: !!row.is_custom || false
     };

@@ -509,7 +509,98 @@ function getExpandedPoses(sequence) {
         }
     }
 
-    return finalExpanded;
+    // 3. Inject Preparatory & Recovery Poses dynamically
+    let withInjected = [];
+    finalExpanded.forEach(p => {
+        const idStr = String(p[0] || "");
+        if (idStr.startsWith("MACRO") || idStr.startsWith("LOOP_") || idStr === "GROUP_END") {
+            withInjected.push(p);
+            return;
+        }
+
+        const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(idStr)) : null;
+
+        let currKey = null;
+        let keyMatch = [p[2], p[3], p[4]].filter(Boolean).join(" ").trim().match(/\[(.*?)\]/);
+        if (keyMatch) {
+            currKey = keyMatch[1].trim();
+        } else if (p[3]) {
+            currKey = String(p[3]).trim();
+        }
+
+        let prepIds = [];
+        let recovIds = [];
+
+        if (asana) {
+            let prep = asana.preparatory_pose_id;
+            let recov = asana.recovery_pose_id;
+
+            // Variation overrides
+            if (currKey && asana.variations) {
+                const cleanNk = currKey.toLowerCase();
+                for (const [vk, vd] of Object.entries(asana.variations)) {
+                    const vtitle = (vd.title || vd.Title || "").toLowerCase().trim();
+                    if (vk.toLowerCase() === cleanNk || vtitle.includes(cleanNk)) {
+                        if (vd.preparatory_pose_id) prep = vd.preparatory_pose_id;
+                        if (vd.recovery_pose_id) recov = vd.recovery_pose_id;
+                        break;
+                    }
+                }
+            }
+
+            if (prep && prep !== "NULL" && prep !== "null") prepIds.push(prep);
+            if (recov && recov !== "NULL" && recov !== "null") recovIds.push(recov);
+        }
+
+        const createInjectedPose = (rawId, label) => {
+            const cleanRawId = String(rawId).trim().replace(/\|/g, "").replace(/\s+/g, "");
+            const parsed = cleanRawId.match(/^(\d+)(.*)$/);
+            if (!parsed) return null;
+
+            const numId = parsed[1].padStart(3, "0");
+            let varSuffix = parsed[2] ? parsed[2].toUpperCase() : "";
+            if (varSuffix === "NULL") varSuffix = "";
+
+            const targetAsana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(numId) : null;
+            let duration = 30; // default fallback
+            let displayNameStr = "Action";
+
+            if (targetAsana) {
+                duration = targetAsana.standard_seconds || 30;
+                displayNameStr = (typeof displayName === "function" ? displayName(targetAsana) : (targetAsana.english || targetAsana.name)) || "Action";
+
+                // Variation specific hold
+                if (varSuffix && targetAsana.variations) {
+                    for (const [vk, vd] of Object.entries(targetAsana.variations)) {
+                        if (vk.toUpperCase() === varSuffix && vd.hold_data && vd.hold_data.standard) {
+                            duration = vd.hold_data.standard;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // [ID, duration, Override Name, Variation, Note, OriginalIdx, MetaLabel]
+            return [numId, duration, null, varSuffix || null, `* ${label} (Auto-Injected) *`, p[5] || null, label];
+        };
+
+        // 1. Inject Prep Poses First
+        prepIds.forEach(prepId => {
+            const prepP = createInjectedPose(prepId, "Preparatory Action");
+            if (prepP) withInjected.push(prepP);
+        });
+
+        // 2. The Main Target Pose
+        withInjected.push(p);
+
+        // 3. Inject Recovery Poses Last
+        recovIds.forEach(recovId => {
+            const recovP = createInjectedPose(recovId, "Recovery Action");
+            if (recovP) withInjected.push(recovP);
+        });
+    });
+
+    return withInjected;
 }
 /* ==========================================================================
    TIMER ENGINE (Updated for Centered Focus Mode & Macro Engine)
@@ -546,7 +637,7 @@ playbackEngine.onStart = () => {
             
             if (asana) {
                 if (playbackEngine.remaining === playbackEngine.currentPoseSeconds) {
-                    if (typeof playAsanaAudio === "function") playAsanaAudio(asana, poses[currentIndex][4] || "", false, globalState.currentSide);
+                    if (typeof playAsanaAudio === "function") playAsanaAudio(asana, poses[currentIndex][4] || "", false, window.getCurrentSide ? window.getCurrentSide() : null, window.currentVariationKey || null);
                 } else {
                     new Audio("data:audio/mp3;base64,//MkxAAQ").play().catch(()=>{});
                 }
@@ -596,6 +687,7 @@ playbackEngine.onTransitionStart = (secs) => {
     const overlay = document.getElementById("transitionOverlay");
     const countdownEl = document.getElementById("transitionCountdown");
     const nextPoseEl = document.getElementById("transitionNextPose");
+    const msgEl = document.querySelector("#transitionOverlay .transition-msg");
 
     if (!overlay) { 
         nextPose(); 
@@ -605,15 +697,98 @@ playbackEngine.onTransitionStart = (secs) => {
 
     const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) ? window.activePlaybackList : (currentSequence?.poses || []);
     let previewName = "";
-    const nextIdx = currentIndex + 1;
+    let mainMsg = "Release from the pose and prepare";
     
-    if (nextIdx < poses.length) {
-        const np = poses[nextIdx];
-        const id = Array.isArray(np[0]) ? np[0][0] : np[0];
-        const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
-        previewName = asana ? (typeof displayName === "function" ? displayName(asana) : asana.name) : "";
+    // Formatting helper for prep/rec IDs like "020II"
+    const formatTransitionPose = (rawId) => {
+        if (!rawId) return "";
+        const cleanId = String(rawId).trim().replace(/\|/g, "").replace(/\s+/g, "");
+        const parsed = cleanId.match(/^(\d+)(.*)$/);
+        if (!parsed) return cleanId;
+        
+        const num = parsed[1].padStart(3, "0");
+        const varSuffix = parsed[2] ? parsed[2].toUpperCase() : "";
+        
+        const asanaObj = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(num) : null;
+        let baseName = asanaObj ? (typeof displayName === "function" ? displayName(asanaObj) : (asanaObj.english || asanaObj.name)) : `Pose ${num}`;
+        
+        if (varSuffix && varSuffix !== "NULL") {
+            return `${baseName} (Stage ${varSuffix})`;
+        }
+        return baseName;
+    };
+
+    // Are we merely transitioning to the second side of the CURRENT pose?
+    if (typeof needsSecondSide !== "undefined" && needsSecondSide) {
+        mainMsg = "Release from the pose and prepare for the other side";
+        if (nextPoseEl) nextPoseEl.textContent = "Next: the other side";
+    } else {
+        const nextIdx = currentIndex + 1;
+        
+        if (nextIdx >= poses.length) {
+            mainMsg = "Well done, your practice is complete";
+            if (nextPoseEl) nextPoseEl.textContent = "";
+        } else {
+            const np = poses[nextIdx];
+            const id = Array.isArray(np[0]) ? np[0][0] : np[0];
+            const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(id)) : null;
+            
+            previewName = asana ? (typeof displayName === "function" ? displayName(asana) : (asana.english || asana.name)) : "";
+            
+            // Check for Recovery and Preparatory Poses
+            let transitionTarget = null;
+            
+            // 1. Current pose recovery?
+            const currentP = poses[currentIndex];
+            const currId = Array.isArray(currentP[0]) ? currentP[0][0] : currentP[0];
+            const currAsana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(currId)) : null;
+            const currKey = window.currentVariationKey;
+            
+            if (currAsana) {
+                let recovery = currAsana.recovery_pose_id;
+                if (currKey && currAsana.variations && currAsana.variations[currKey] && currAsana.variations[currKey].recovery_pose_id) {
+                    recovery = currAsana.variations[currKey].recovery_pose_id;
+                }
+                if (recovery && recovery !== "NULL" && recovery !== "null") {
+                    transitionTarget = `Recovery: ${formatTransitionPose(recovery)}`;
+                }
+            }
+            
+            // 2. Next pose preparatory? (If no recovery pose dictates the transition)
+            if (!transitionTarget && asana) {
+                let prep = asana.preparatory_pose_id;
+                
+                // Attempt to see if next pose has a variation set that overrides the prep pose...
+                let nextKeyMatch = [np[2], np[3], np[4]].filter(Boolean).join(" ").trim().match(/\[(.*?)\]/);
+                let nextKey = nextKeyMatch ? nextKeyMatch[1].trim() : (np[3] || "");
+                
+                if (nextKey && asana.variations) {
+                    const cleanNk = nextKey.toLowerCase().trim();
+                    for (const [vk, vd] of Object.entries(asana.variations)) {
+                        const vtitle = (vd.title || vd.Title || "").toLowerCase().trim();
+                        if (vk.toLowerCase() === cleanNk || vtitle.includes(cleanNk)) {
+                            if (vd.preparatory_pose_id) prep = vd.preparatory_pose_id;
+                            break;
+                        }
+                    }
+                }
+                
+                if (prep && prep !== "NULL" && prep !== "null") {
+                    transitionTarget = `Preparation: ${formatTransitionPose(prep)}`;
+                }
+            }
+            
+            if (transitionTarget) {
+                mainMsg = `Release from the pose and prepare for ${transitionTarget}`;
+                if (nextPoseEl) nextPoseEl.textContent = `Next: ${previewName}`;
+            } else {
+                mainMsg = `Release from the pose and prepare for ${previewName}`;
+                if (nextPoseEl) nextPoseEl.textContent = `Next: ${previewName}`;
+            }
+        }
     }
-    if (nextPoseEl) nextPoseEl.textContent = previewName ? `Next: ${previewName}` : "";
+    
+    if (msgEl) msgEl.textContent = mainMsg;
 
     if (countdownEl) countdownEl.textContent = secs;
     
@@ -1004,6 +1179,17 @@ if (focusCounter) {
 
   // 4. HEADER UI
   const nameEl = document.getElementById("poseName");
+  const labelEl = document.getElementById("poseLabel");
+  
+  if (labelEl) {
+      if (currentPose[6]) {
+          labelEl.textContent = currentPose[6];
+          labelEl.style.display = "flex";
+      } else {
+          labelEl.style.display = "none";
+      }
+  }
+
   if (nameEl) {
       // Jobbsian Minimalist UI: Primary text is English Name only
       let finalTitle = baseOverrideName || (asana ? (asana.english_name || asana.english || asana.name) : "Pose");
@@ -1117,9 +1303,19 @@ if (focusCounter) {
 
     // --- SYNC OVERLAY CONTENT ---
     const overlayName = document.getElementById("focusPoseName");
+    const overlayLabel = document.getElementById("focusPoseLabel");
     const overlayImageWrap = document.getElementById("focusImageWrap");
     
     if (overlayName && nameEl) overlayName.innerHTML = nameEl.innerHTML; // Sync Name + Variation Span
+    
+    if (overlayLabel) {
+        if (currentPose[6]) {
+            overlayLabel.textContent = currentPose[6];
+            overlayLabel.style.display = "inline-block"; // or flex depending on your centering
+        } else {
+            overlayLabel.style.display = "none";
+        }
+    }
     
     if (overlayImageWrap) {
         overlayImageWrap.innerHTML = ""; 
@@ -1132,8 +1328,9 @@ if (focusCounter) {
     }
 
     // 11. AUDIO TRIGGER
+    window.currentVariationKey = matchedVariationKey;
     if (playbackEngine.running && asana) {
-         playAsanaAudio(asana, baseOverrideName, false, globalState.currentSide, matchedVariationKey); 
+         playAsanaAudio(asana, baseOverrideName, false, getCurrentSide(), matchedVariationKey); 
     }
 }
 
