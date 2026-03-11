@@ -1045,17 +1045,23 @@ body.modal-open {
     cursor: pointer;
 }
 
-/* --- SEQUENCE BUILDER MACRO ROWS --- */
+/* --- SEQUENCE BUILDER MACRO & LOOP ROWS --- */
 /* Highlights the table row representing a linked sequence */
 .builder-macro-row {
     background-color: #e3f2fd !important; /* Soft blue background */
     border-left: 4px solid #1976d2 !important; /* Bold blue left indicator */
 }
 
+/* Identifies the bounds of a repetition group */
+.builder-loop-row {
+    background-color: #fdfae3 !important; /* Soft yellow background */
+    border-left: 4px solid #fbc02d !important; /* Bold yellow left indicator */
+}
+
 /* Make the text slightly different to indicate it's a sub-routine */
-.builder-macro-row td {
+.builder-macro-row td, .builder-loop-row td {
     font-style: italic;
-    color: #0d47a1;
+    color: #333;
 }
 
 /* A neat little badge for the title */

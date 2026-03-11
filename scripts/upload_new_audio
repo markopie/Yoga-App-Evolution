@@ -1,0 +1,69 @@
+import os
+import re
+from workbench import supabase
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# --- CONFIGURATION ---
+SOURCE_FOLDER = "yoga_stage_audio" 
+BUCKET_NAME = "audio-assets"
+
+# CAST to string to avoid the URL object AttributeError
+PROJECT_ID = str(supabase.supabase_url).split("//")[1].split(".")[0]
+
+def upload_and_sync():
+    if not os.path.exists(SOURCE_FOLDER):
+        print(f"🛑 Error: Folder {SOURCE_FOLDER} not found.")
+        return
+
+    files = [f for f in os.listdir(SOURCE_FOLDER) if f.endswith('.mp3')]
+    print(f"📦 Found {len(files)} audio files to process.")
+
+    for filename in files:
+        file_path = os.path.join(SOURCE_FOLDER, filename)
+        dest_path = filename
+        
+        # Construct the Public URL
+        public_url = f"https://{PROJECT_ID}.supabase.co/storage/v1/object/public/{BUCKET_NAME}/{dest_path}"
+
+        try:
+            # 1. Upload to Storage
+            with open(file_path, 'rb') as f:
+                supabase.storage.from_(BUCKET_NAME).upload(
+                    path=dest_path,
+                    file=f,
+                    file_options={"content-type": "audio/mpeg", "upsert": "true"}
+                )
+            print(f"✅ Uploaded: {filename}")
+
+            # 2. Database Sync Logic
+            parts = filename.split('_')
+            
+            if len(parts) >= 3:
+                # Variation Pattern: asanaID_stageID_title.mp3
+                stage_id = int(parts[1])
+                supabase.table("stages").update({"audio_url": public_url}).eq("id", stage_id).execute()
+                print(f"🔗 Linked Stage ID {stage_id}")
+            else:
+                # Base Asana Pattern: asanaID_title.mp3
+                asana_id = int(parts[0])
+                supabase.table("asanas").update({"audio_url": public_url}).eq("id", asana_id).execute()
+                print(f"🔗 Linked Asana ID {asana_id}")
+
+        except Exception as e:
+            # Handle the 'already exists' error gracefully
+            if "already exists" in str(e).lower():
+                 print(f"⏭️ File exists in storage, syncing link for {filename}...")
+                 parts = filename.split('_')
+                 if len(parts) >= 3:
+                     supabase.table("stages").update({"audio_url": public_url}).eq("id", int(parts[1])).execute()
+                 else:
+                     supabase.table("asanas").update({"audio_url": public_url}).eq("id", int(parts[0])).execute()
+            else:
+                print(f"❌ Error processing {filename}: {e}")
+
+    print(f"\n✨ Sync Complete.")
+
+if __name__ == "__main__":
+    upload_and_sync()

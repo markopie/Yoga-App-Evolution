@@ -89,8 +89,9 @@ export function playSideCue(side) {
  * Orchestrates the audio playback sequence.
  * New Logic: Plays Main Name -> THEN plays Side Cue (if needed).
  * @param {boolean} isBrowseContext - If true, skips side cues (for Browse menu).
+ * @param {string} variationKey - Key for the current variation/stage.
  */
-export function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false, currentSide = null) {
+export function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false, currentSide = null, variationKey = null) {
     if (!asana) return;
  
     // 1. Reset current audio
@@ -118,68 +119,96 @@ export function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false,
     };
  
     // 3. Play Main Audio immediately, then trigger the callback
-    playPoseMainAudio(asana, poseLabel, onMainAudioEnded);
+    playPoseMainAudio(asana, poseLabel, onMainAudioEnded, variationKey);
 }
  
-export function playPoseMainAudio(asana, poseLabel = null, onComplete = null) {
-    // 1. Side Detection (Visual/Sound Effect only)
+export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, variationKey = null) {
+    // 1. Side Detection (Sound FX only if applicable)
     if (poseLabel && !asana.requiresSides) {
        const side = detectSide(poseLabel);
        if (side) setTimeout(() => playSideCue(side), 100);
     }
  
-    // 2. Prepare IDs
-    const rawID = asana.asanaNo || asana.id; 
-    const idStr = normalizePlate(rawID);
-    
-    // Helper to play and attach the 'onended' listener
-    const playSrc = (src) => {
+    /**
+     * Helper to play an audio source and call the next function in the chain.
+     */
+    const playSrcInQueue = (src, nextStep) => {
+        if (!src) {
+            if (nextStep) nextStep();
+            return;
+        }
+
         const a = new Audio(src);
-        // CRITICAL: Attach the callback so side audio plays next
-        if (onComplete) {
+        
+        // If there's a next step, trigger it when this segment ends.
+        // Otherwise, trigger the final onComplete callback.
+        if (nextStep) {
+            a.onended = nextStep;
+        } else if (onComplete) {
             a.onended = onComplete;
         }
+
         a.play()
             .then(() => { currentAudio = a; })
             .catch(e => {
-                // If main audio fails, still trigger callback so flow continues
-                if (onComplete) onComplete();
+                console.warn(`Audio play failed: ${src}`, e);
+                if (nextStep) nextStep();
+                else if (onComplete) onComplete();
             });
     };
 
-    // 3. Use database-provided audio URL if present
-    if (asana.audio) {
-       playSrc(asana.audio);
-       return;
-    }
- 
-    // 4. SMART FALLBACK (Manifest Lookup)
-    const fileList = window.serverAudioFiles || [];
-    
-    if (fileList.length > 0 && idStr) {
-        // Look for "001_Name.mp3" OR "001.mp3"
-        const match = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
-        
-        if (match) {
-            playSrc(AUDIO_BASE + match);
-            return;
+    const varAudio = (variationKey && asana.variations && asana.variations[variationKey]?.audio) 
+        ? asana.variations[variationKey].audio : null;
+
+    // STEP 3: PLAY VARIATION AUDIO
+    const step3_Variation = () => {
+        if (varAudio) {
+            playSrcInQueue(varAudio, onComplete);
+        } else if (onComplete) {
+            onComplete();
         }
-    }
+    };
 
-    // 5. Legacy Fallback
-    if (!idStr) { 
-        if (onComplete) onComplete(); 
-        return; 
-    } 
+    // STEP 2: PLAY BRIDGE AUDIO ("With variation")
+    const step2_Bridge = () => {
+        if (varAudio) {
+            // bridge_stage.mp3 is expected in the AUDIO_BASE directory
+            playSrcInQueue(AUDIO_BASE + "bridge_stage.mp3", step3_Variation);
+        } else {
+            // No variation audio to play, skip to end/complete
+            if (onComplete) onComplete();
+        }
+    };
 
-    const safeName = (asana.english || asana.name || "").replace(/[^a-zA-Z0-9]/g, "");
-    const candidate = `${AUDIO_BASE}${idStr}_${safeName}.mp3`;
-    
-    const a = new Audio(candidate);
-    if (onComplete) a.onended = onComplete;
-    a.play().catch(() => {
-        if (onComplete) onComplete();
-    });
+    // STEP 1: PLAY MAIN ASANA AUDIO
+    const step1_Main = () => {
+        let mainSrc = asana.audio;
+
+        // Fallback Logic if no explicit .audio URL
+        if (!mainSrc) {
+            const rawID = asana.asanaNo || asana.id; 
+            const idStr = normalizePlate(rawID);
+            const fileList = window.serverAudioFiles || [];
+            
+            const match = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
+            if (match) {
+                mainSrc = AUDIO_BASE + match;
+            } else if (idStr) {
+                const safeName = (asana.english || asana.name || "").replace(/[^a-zA-Z0-9]/g, "");
+                mainSrc = `${AUDIO_BASE}${idStr}_${safeName}.mp3`;
+            }
+        }
+
+        if (mainSrc) {
+            playSrcInQueue(mainSrc, step2_Bridge);
+        } else {
+            // If even main fails, try to jump to bridge/variation
+            step2_Bridge();
+        }
+    };
+
+    // START THE QUEUE
+    step1_Main();
 }
 
 // Make globally accessible since UI elements might trigger them from HTML attributes or global bindings

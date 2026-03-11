@@ -99,6 +99,7 @@ async function loadAsanaLibrary() {
                     plates: typeof parsePlates === 'function' ? parsePlates(row.plate_numbers ?? '') : (row.plate_numbers ?? ''),
                     hold: rawHoldText,
                     hold_json: holdData,
+                    yoga_the_iyengar_way_id: row.yoga_the_iyengar_way_id ?? '',
                     variations: {},
                     isCustom: false
                 };
@@ -152,6 +153,7 @@ try {
                 hold: holdStr,
                 hold_data: parseHoldTimes(holdStr),
                 image_url: stage.image_url ?? '',
+                audio: stage.audio_url ?? stage.Audio_URL ?? '',
                 isCustom: !!stage.user_id 
             };
         });
@@ -207,6 +209,7 @@ function normalizeAsanaRow(row, existingData = {}) {
         category: row.category ?? existingData.category,
         hold: rawHoldText,
         hold_json: holdData, // <--- YOUR NEW DURATION BRAIN
+        yoga_the_iyengar_way_id: row.yoga_the_iyengar_way_id ?? existingData.yoga_the_iyengar_way_id ?? '',
         standard_seconds: holdData.standard || 30, // Shortcut for the Slider
         isCustom: !!row.is_custom || false
     };

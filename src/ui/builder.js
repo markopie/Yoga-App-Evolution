@@ -34,6 +34,8 @@ function builderRender() {
         const idStr = String(pose.id);
         const durOrReps = Number(pose.duration) || 0;
         const isMacro = idStr.startsWith("MACRO:");
+        const isLoopStart = idStr === "LOOP_START";
+        const isLoopEnd = idStr === "LOOP_END";
         let asana = null;
     
         // --- 1. TIME CALCULATION (Using Helper & Override) ---
@@ -45,7 +47,7 @@ function builderRender() {
                 const oneRoundSecs = subCourse.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1]), 0);
                 totalSec += (oneRoundSecs * durOrReps); 
             }
-        } else {
+        } else if (!isLoopStart && !isLoopEnd) {
             const normId = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
             asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
             
@@ -61,6 +63,7 @@ function builderRender() {
         tr.draggable = true;
         tr.dataset.idx = idx;
         if (isMacro) tr.className = "builder-macro-row";
+        if (isLoopStart || isLoopEnd) tr.className = "builder-loop-row";
 
         tr.ondragstart = (e) => {
             e.dataTransfer.setData("text/plain", idx);
@@ -105,27 +108,38 @@ function builderRender() {
         }
 
         // BUILD THE DURATION INPUT (Locked if not Flow/Macro)
-        const displayTime = isMacro ? durOrReps : (isFlow ? durOrReps : (asana?.hold_data?.standard || 30));
-        const isLocked = !isFlow && !isMacro;
+        // BUILD THE DURATION INPUT (Locked if not Flow/Macro/Loop)
+        const displayTime = (isMacro || isLoopStart) ? durOrReps : (isFlow ? durOrReps : (asana?.hold_data?.standard || 30));
+        const isLocked = !isFlow && !isMacro && !isLoopStart;
 
-        const durInputHTML = `
-            <input type="number" class="b-dur" data-idx="${idx}" 
-                value="${displayTime}" 
-                min="1" 
-                ${isLocked ? 'readonly' : ''} 
-                style="width:60px; padding:4px; border:1px solid #ccc; text-align:center; ${isLocked ? 'background:#f0f0f0; color:#888; cursor:not-allowed;' : ''}">
-            ${isMacro ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : (isLocked ? '' : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
-        `;
+        let durInputHTML = ``;
+        if (isLoopEnd) {
+             durInputHTML = `<span style="color:#aaa;">-</span>`;
+        } else {
+             durInputHTML = `
+                <input type="number" class="b-dur" data-idx="${idx}" 
+                    value="${displayTime}" 
+                    min="1" 
+                    ${isLocked ? 'readonly' : ''} 
+                    style="width:60px; padding:4px; border:1px solid #ccc; text-align:center; ${isLocked ? 'background:#f0f0f0; color:#888; cursor:not-allowed;' : ''}">
+                ${(isMacro || isLoopStart) ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : (isLocked ? '' : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
+            `;
+        }
     
+        const isSpecial = isMacro || isLoopStart || isLoopEnd;
+
         // --- 4. INJECT HTML ---
         tr.innerHTML = `
-           <td style="padding:8px; text-align:center; color:#888;">${idx + 1}</td>
+           <td style="padding:8px; text-align:center; color:#888;">
+              <input type="checkbox" class="b-row-select" data-idx="${idx}" style="margin-bottom: 4px;" ${isSpecial ? 'disabled' : ''}><br>
+              ${idx + 1}
+           </td>
            <td style="padding:8px;">
               <div style="font-weight:bold; margin-bottom:4px; line-height: 1.2;">
                  ${pose.name || 'Unknown'} ${sideBadge}
               </div>
               <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; font-size:0.75rem; color:#666;">
-                 ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" ${isMacro ? 'readonly' : ''} style="width:${isMacro ? 'auto' : '50px'}; padding:2px; border:1px solid #ccc; border-radius:4px; ${isMacro ? 'background:#f0f0f0;' : ''}">
+                 ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" ${isSpecial ? 'readonly' : ''} style="width:${isSpecial ? 'auto' : '50px'}; padding:2px; border:1px solid #ccc; border-radius:4px; ${isSpecial ? 'background:#f0f0f0;' : ''}">
                  ${varSelectHTML}
               </div>
            </td>
@@ -227,35 +241,12 @@ function builderRender() {
     // --- 6. STATS UPDATER (Builder Modal) ---
     const statsEl = document.getElementById("builderStats");
     if (statsEl) {
-        let finalTotalSecs = 0;
-        let expandedPoseCount = 0;
-
-        builderPoses.forEach(p => {
-            const idStr = String(p.id);
-            const durOrReps = Number(p.duration) || 0;
-
-            if (idStr.startsWith("MACRO:")) {
-                const targetTitle = idStr.replace("MACRO:", "").trim();
-                const sub = (window.courses || []).find(c => c.title === targetTitle);
-                if (sub && sub.poses) {
-                    const oneRound = sub.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1]), 0);
-                    finalTotalSecs += (oneRound * durOrReps);
-                    expandedPoseCount += 1;
-                }
-            } else {
-                // FIXED: Respect the "Flow" logic for accurate totals
-                const normId = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
-                const asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
-                
-                const libraryStd = (asana && asana.hold_data) ? asana.hold_data.standard : 30;
-                const activeTime = isFlow ? durOrReps : libraryStd;
-
-                const effective = getEffectiveTime(p.id, activeTime);
-                finalTotalSecs += effective;
-                
-                expandedPoseCount += (effective > activeTime) ? 2 : 1;
-            }
-        });
+        // Efficiently calculate expanded totals
+        const tempSeq = { poses: builderPoses.map(p => [p.id, p.duration, p.variation || "", p.variation || "", p.note || ""]) };
+        const expanded = (typeof window.getExpandedPoses === "function") ? window.getExpandedPoses(tempSeq) : builderPoses;
+        
+        const finalTotalSecs = expanded.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
+        const expandedPoseCount = expanded.length;
 
         const m = Math.floor(finalTotalSecs / 60);
         const s = finalTotalSecs % 60;
@@ -282,7 +273,7 @@ function removePose(idx) {
 
 
 
-async function processSemicolonCommand(commandString) {
+async function processSemicolonCommand(commandString, useMehta = false) {
     const parts = commandString.split(';').map(p => p.trim());
     if (parts.length < 3) return;
 
@@ -291,26 +282,50 @@ async function processSemicolonCommand(commandString) {
     // Expand ranges (001-005) if any, then split by comma
     const expandedIds = idsStr.replace(/(\d+)\s*-\s*(\d+)/g, (m, start, end) => {
         let r = [];
-        for (let i = parseInt(start); i <= parseInt(end); i++) r.push(String(i).padStart(3, '0'));
+        for (let i = parseInt(start); i <= parseInt(end); i++) {
+            if (useMehta) {
+               r.push(String(i));
+            } else {
+               r.push(String(i).padStart(3, '0'));
+            }
+        }
         return r.join(',');
     });
 
-    const idArray = expandedIds.split(',')
-        .map(s => s.trim().padStart(3, '0'))
-        .filter(id => id !== "000" && window.asanaLibrary[id]);
+    const parsedArray = expandedIds.split(',').map(s => s.trim()).filter(id => id.length > 0 && id !== "000");
+    const validAsanas = [];
+    
+    parsedArray.forEach(id => {
+       if (!useMehta) {
+           const cleanId = id.padStart(3, '0');
+           if (window.asanaLibrary[cleanId]) {
+               validAsanas.push({ id: cleanId, asana: window.asanaLibrary[cleanId] });
+           }
+       } else {
+           const asanaArr = Object.values(window.asanaLibrary);
+           const asana = asanaArr.find(a => {
+               if (!a.yoga_the_iyengar_way_id) return false;
+               if (a.yoga_the_iyengar_way_id === id) return true;
+               const pList = a.yoga_the_iyengar_way_id.split(',').map(s=>s.trim());
+               return pList.some(p => p === id || p.replace(/\s*\|\s*/g, '') === id);
+           });
+           if (asana) {
+               validAsanas.push({ id: asana.id, asana: asana });
+           }
+       }
+    });
 
     // Format: ID | Duration | [] (Matches existing DB format with empty notes)
-    const sequenceText = idArray.map(id => {
-        const a = window.asanaLibrary[id];
-        const duration = a?.hold_data?.standard || 30;
-        return `${id} | ${duration} | []`; 
+    const sequenceText = validAsanas.map(item => {
+        const duration = item.asana?.hold_data?.standard || 30;
+        return `${item.id} | ${duration} | []`; 
     }).join('\n');
 
     const payload = {
         title: title,
         category: category,
         sequence_text: sequenceText,
-        pose_count: idArray.length,
+        pose_count: validAsanas.length,
         updated_at: new Date().toISOString(),
         user_id: window.currentUserId
     };
@@ -326,17 +341,7 @@ async function processSemicolonCommand(commandString) {
 
 
 
-// --- 1. THE LINK SEQUENCE BUTTON ---
-const actionRow = document.querySelector('.builder-action-row'); // Adjust selector to your specific container
-if (actionRow) {
-    const linkBtn = document.createElement("button");
-    linkBtn.innerHTML = "🔗 Link Sequence";
-    linkBtn.className = "secondary"; // Use your existing secondary button style
-    linkBtn.style.marginLeft = "8px";
-    
-    linkBtn.onclick = () => openLinkSequenceModal();
-    actionRow.appendChild(linkBtn);
-}
+// Removed dynamic button creation as it's now explicitly in index.html
 
 function openLinkSequenceModal() {
     // We can use a simple prompt for now, but a searchable dropdown is better.
@@ -377,6 +382,7 @@ function openEditCourse() {
 function builderOpen(mode, seq) {
     builderMode = mode;
     builderEditingCourseIndex = -1;
+    builderPoses = []; // CRITICAL: Clear previous state
     let targetId = seq ? (seq.supabaseId || seq.id) : null;
 
     // Use your $ helper consistently for all elements at the start
@@ -397,6 +403,9 @@ function builderOpen(mode, seq) {
     builderEditingSupabaseId = targetId;
 
     document.body.classList.add("modal-open");
+
+    // SETUP SEARCH LISTENER
+    setupBuilderSearch();
 
     // Populate Category Datalist
     if (catInput && datalist) {
@@ -421,52 +430,81 @@ function builderOpen(mode, seq) {
        const libraryArray = Object.values(window.asanaLibrary || {});
        const rawPoses = (window.currentSequenceOriginalPoses && seq === window.currentSequence)
            ? window.currentSequenceOriginalPoses : (seq.poses || []);
-
            rawPoses.forEach(p => {
-            const id = String(Array.isArray(p[0]) ? p[0][0] : p[0] || "").padStart(3, '0');
-            const asana = libraryArray.find(a => String(a.id) === id);
-            
-            // THE FIX: Do not include p[3] in this join! 
-            // p[3] is the variation key. p[4] already has the brackets.
-            let rawExtras = [p[2], p[4]].filter(Boolean).join(" | ").trim();
-            let variation = p[3] || ""; 
-            let extractedLabel = "";
-   
-            const bracketMatch = rawExtras.match(/\[(.*?)\]/);
-            if (bracketMatch) {
-                extractedLabel = bracketMatch[1].trim(); 
-                rawExtras = rawExtras.replace(bracketMatch[0], "").replace(/^[\s\|]+/, "").trim();
-            } else {
-                extractedLabel = rawExtras; rawExtras = "";
-            }
-   
-            // Legacy fuzzy matching (Kept intact)
-            if (!variation && asana?.variations && extractedLabel) {
-                const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
-                for (const vKey of sortedKeys) {
-                    const vData = asana.variations[vKey];
-                    const vTitle = (vData?.title || "").toLowerCase();
-                    if (extractedLabel.toLowerCase() === vTitle || new RegExp(`\\b${vKey}\\b`, 'i').test(extractedLabel)) {
-                        variation = vKey; extractedLabel = ""; break;
-                    }
-                }
-            } else if (variation && extractedLabel === variation) {
-                // If it already found the variation, clear the label so it doesn't bleed into notes
-                extractedLabel = ""; 
-            }
-   
-            if (extractedLabel && !variation) {
-                rawExtras = (extractedLabel + (rawExtras ? " | " + rawExtras : "")).trim();
-            }
-   
-            builderPoses.push({
-               id: id,
-               name: asana ? (asana.name || displayName(asana)) : id,
-               duration: Number(p[1]) || 30,
-               variation: variation,
-               note: rawExtras // This will now be completely clean
-            });
-        });
+             const rawId = Array.isArray(p[0]) ? p[0][0] : p[0] || "";
+             const idStr = String(rawId);
+             
+             if (idStr === "LOOP_START") {
+                builderPoses.push({
+                    id: "LOOP_START",
+                    name: `🔁 Loop Starts Here (${p[1]} Rounds)`,
+                    duration: Number(p[1]) || 2,
+                    variation: "",
+                    note: ""
+                });
+                return;
+             }
+             if (idStr === "LOOP_END") {
+                builderPoses.push({
+                    id: "LOOP_END",
+                    name: "🔁 Loop Ends Here",
+                    duration: 0,
+                    variation: "",
+                    note: ""
+                });
+                return;
+             }
+             if (idStr.startsWith("MACRO:")) {
+                builderPoses.push({
+                    id: idStr,
+                    name: `[Sequence] ${idStr.replace("MACRO:", "").trim()}`,
+                    duration: Number(p[1]) || 1,
+                    variation: "",
+                    note: p[4] || "" // p[4] is the note for macros
+                });
+                return;
+             }
+
+             const id = idStr.padStart(3, '0');
+             const asana = libraryArray.find(a => String(a.id) === id);
+             
+             let rawExtras = [p[2], p[4]].filter(Boolean).join(" | ").trim();
+             let variation = p[3] || ""; 
+             let extractedLabel = "";
+    
+             const bracketMatch = rawExtras.match(/\[(.*?)\]/);
+             if (bracketMatch) {
+                 extractedLabel = bracketMatch[1].trim(); 
+                 rawExtras = rawExtras.replace(bracketMatch[0], "").replace(/^[\s\|]+/, "").trim();
+             } else {
+                 extractedLabel = rawExtras; rawExtras = "";
+             }
+    
+             if (!variation && asana?.variations && extractedLabel) {
+                 const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
+                 for (const vKey of sortedKeys) {
+                     const vData = asana.variations[vKey];
+                     const vTitle = (vData?.title || "").toLowerCase();
+                     if (extractedLabel.toLowerCase() === vTitle || new RegExp(`\\b${vKey}\\b`, 'i').test(extractedLabel)) {
+                         variation = vKey; extractedLabel = ""; break;
+                     }
+                 }
+             } else if (variation && extractedLabel === variation) {
+                 extractedLabel = ""; 
+             }
+    
+             if (extractedLabel && !variation) {
+                 rawExtras = (extractedLabel + (rawExtras ? " | " + rawExtras : "")).trim();
+             }
+    
+             builderPoses.push({
+                id: id,
+                name: asana ? (asana.name || displayName(asana)) : id,
+                duration: Number(p[1]) || 30,
+                variation: variation,
+                note: rawExtras
+             });
+         });
     }
  
     builderRender();
@@ -489,6 +527,10 @@ function builderCompileSequenceText() {
         if (idStr.startsWith("MACRO:")) {
             return `${idStr} | ${p.duration} | [Sequence Link] ${p.note ? p.note : ''}`;
         }
+        
+        if (idStr.startsWith("LOOP_")) {
+            return `${idStr} | ${p.duration} | [Repetition] ${p.note ? p.note : ''}`;
+        }
 
         const id = String(p.id).padStart(3, '0');
         const dur = p.duration || 30;
@@ -498,7 +540,7 @@ function builderCompileSequenceText() {
         const notePart = p.note ? p.note.trim() : "";
         
         return `${id} | ${dur} | ${varPart} ${notePart}`.trim();
-    }).join("\n");
+    }).filter(s => s.trim().length > 0).join("\n");
 }
 
 function builderGetTitle() {
@@ -521,32 +563,18 @@ async function builderSave() {
     const category = builderGetCategory();
     const isFlow = category.toLowerCase().includes("flow"); 
     
-    const libraryArray = Object.values(window.asanaLibrary || {});
-
-    // 2. Calculate Total Time
-    const totalSec = builderPoses.reduce((acc, p) => {
-        const idStr = String(p.id);
-        const durOrReps = Number(p.duration) || 0;
-
-        if (idStr.startsWith("MACRO:")) {
-            const targetTitle = idStr.replace("MACRO:", "").trim(); 
-            const sub = (window.courses || []).find(c => c.title === targetTitle);
-            if (sub && sub.poses) {
-                const oneRound = sub.poses.reduce((accSub, sp) => accSub + getEffectiveTime(sp[0], sp[1]), 0);
-                return acc + (oneRound * durOrReps);
-            }
-            return acc;
-        } else {
-            const asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(p.id));
-            const libraryStd = (asana && asana.hold_data) ? asana.hold_data.standard : 30;
-            const activeTime = isFlow ? durOrReps : libraryStd;
-            return acc + getEffectiveTime(p.id, activeTime);
-        }
-    }, 0);
+    // 2. Calculate Total Time (Expanded)
+    const tempSeq = { poses: builderPoses.map(p => [p.id, p.duration, p.variation || "", p.variation || "", p.note || ""]) };
+    const expanded = (typeof window.getExpandedPoses === "function") ? window.getExpandedPoses(tempSeq) : builderPoses;
+    const totalSec = expanded.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
 
     // 3. Database Operation
     try {
         if (!supabase) return;
+        if (!window.currentUserId) {
+            alert("You must be signed in to save sequences.");
+            return;
+        }
         let result;
 
         const payload = {
@@ -558,13 +586,34 @@ async function builderSave() {
             updated_at: new Date().toISOString()
         };
 
-        if (builderEditingSupabaseId) {
+        console.log("🚀 SAVING TO SUPABASE (user_sequences):", payload);
+
+        let targetId = builderEditingSupabaseId;
+
+        // PREVENTION: If we don't have an ID (New Sequence mode), check if one exists with same Name + Cat
+        if (!targetId) {
+            const { data: existing, error: checkError } = await supabase
+                .from('user_sequences')
+                .select('id')
+                .eq('user_id', window.currentUserId)
+                .eq('title', title)
+                .eq('category', category)
+                .maybeSingle();
+            
+            if (existing) {
+                console.log("Found existing sequence with same name/cat, updating instead of inserting:", existing.id);
+                targetId = existing.id;
+            }
+        }
+
+        if (targetId) {
             // Update existing
             result = await supabase.from('user_sequences')
                 .update(payload)
-                .eq('id', builderEditingSupabaseId)
+                .eq('id', targetId)
                 .select();
             if (result.error) throw result.error;
+            console.log("✅ SUPABASE UPDATE SUCCESS:", result.data);
         } else {
             // Insert new
             result = await supabase.from('user_sequences').insert([{
@@ -572,6 +621,7 @@ async function builderSave() {
                 user_id: window.currentUserId
             }]).select();
             if (result.error) throw result.error;
+            console.log("✅ SUPABASE INSERT SUCCESS:", result.data);
         }
 
         // 4. UI Refresh
@@ -600,6 +650,197 @@ function addPoseToBuilder(poseData) {
     builderRender();
 }
 
+function createRepeatGroup() {
+    console.log("createRepeatGroup UI flow started");
+    const checkboxes = document.querySelectorAll('.b-row-select:checked');
+    if (checkboxes.length === 0) {
+        alert("Please select at least one pose using the checkboxes.");
+        return;
+    }
+
+    const idxs = Array.from(checkboxes).map(c => parseInt(c.dataset.idx)).sort((a,b) => a - b);
+    const startIdx = idxs[0];
+    const endIdx = idxs[idxs.length - 1]; 
+    
+    // Safety check for existing macros/loops
+    for (let i = startIdx; i <= endIdx; i++) {
+        const idStr = String(builderPoses[i].id);
+        if (idStr.startsWith('MACRO:') || idStr.startsWith('LOOP_')) {
+            alert("Cannot create a repeat group that intersects with Macros or other loops.");
+            return;
+        }
+    }
+
+    // Show the custom modal
+    const overlay = document.getElementById("repetitionModalOverlay");
+    const input = document.getElementById("repetitionInput");
+    const confirmBtn = document.getElementById("btnConfirmRepetition");
+
+    overlay.style.display = "flex";
+    input.focus();
+    input.select();
+
+    // Remove any old listener to prevent multiple bindings
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.onclick = () => {
+        const reps = parseInt(input.value, 10);
+        if (isNaN(reps) || reps < 2) {
+            alert("Please enter a number of 2 or more.");
+            return;
+        }
+
+        console.log(`Injecting Loop: ${reps} rounds for range ${startIdx}-${endIdx}`);
+        
+        // Close modal
+        overlay.style.display = "none";
+
+        // Insert Loop End first (so indices don't shift for Loop Start)
+        builderPoses.splice(endIdx + 1, 0, {
+            id: "LOOP_END",
+            name: "🔁 Loop Ends Here",
+            duration: 0,
+            variation: "",
+            note: ""
+        });
+        
+        // Insert Loop Start
+        builderPoses.splice(startIdx, 0, {
+            id: "LOOP_START",
+            name: `🔁 Loop Starts Here (${reps} Rounds)`,
+            duration: reps,
+            variation: "",
+            note: ""
+        });
+        
+        checkboxes.forEach(c => c.checked = false);
+        builderRender();
+        
+        setTimeout(() => alert(`Successfully created a repetition group of ${endIdx - startIdx + 1} poses!`), 100);
+    };
+}
+
+function setupBuilderSearch() {
+    const searchInput = $("builderSearch");
+    const resultsBox = $("builderSearchResults");
+    if (!searchInput || !resultsBox) return;
+
+    // Reset previous state
+    resultsBox.style.display = "none";
+    
+    searchInput.onkeydown = (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            const val = searchInput.value.trim();
+            if (val.includes(';')) {
+                e.preventDefault();
+                processSemicolonCommand(val);
+                searchInput.value = "";
+            } else if (val.length >= 1) {
+                const source = $("builderIdSource")?.value || "loy";
+                const library = getAsanaIndex();
+                
+                // Try perfect ID match based on source
+                let perfectMatch = null;
+                if (source === "mehta") {
+                    perfectMatch = library.find(a => String(a.yoga_the_iyengar_way_id || "").padStart(3, '0') === val.padStart(3, '0'));
+                } else {
+                    perfectMatch = library.find(a => String(a.id).padStart(3, '0') === val.padStart(3, '0'));
+                }
+
+                if (perfectMatch) {
+                    e.preventDefault();
+                    addPoseToBuilder({
+                        id: perfectMatch.id, // Always use LOY ID as the primary key for the sequence
+                        name: perfectMatch.name || perfectMatch.english,
+                        duration: perfectMatch.hold_data?.standard || 30,
+                        variation: "",
+                        note: ""
+                    });
+                    searchInput.value = "";
+                    resultsBox.style.display = "none";
+                }
+            }
+        }
+    };
+
+    searchInput.oninput = (e) => {
+        const query = e.target.value.trim().toLowerCase();
+        if (query.length < 1 || query.includes(';')) {
+            resultsBox.style.display = "none";
+            return;
+        }
+
+        const source = $("builderIdSource")?.value || "loy";
+        const library = getAsanaIndex();
+        
+        const matches = library.filter(asma => {
+            let idMatch = false;
+            if (source === "mehta") {
+                idMatch = String(asma.yoga_the_iyengar_way_id || "").toLowerCase().includes(query);
+            } else {
+                idMatch = String(asma.id || asana.asanaNo || "").toLowerCase().includes(query);
+            }
+            
+            const engMatch = (asma.english || "").toLowerCase().includes(query);
+            const iastMatch = (asma.iast || "").toLowerCase().includes(query);
+            const plateMatch = (asma.plates || "").toString().toLowerCase().includes(query);
+            return idMatch || engMatch || iastMatch || plateMatch;
+        });
+
+        if (matches.length > 0) {
+            resultsBox.innerHTML = matches.slice(0, 15).map(asma => {
+                const displayId = (source === "mehta") ? (asma.yoga_the_iyengar_way_id || "N/A") : asma.id;
+                const badgeColor = (source === "mehta") ? "#673ab7" : "#007aff"; // Purple for Mehta, Blue for LOY
+                
+                return `
+                    <div class="search-result-item" data-id="${asma.id}" style="padding:10px; cursor:pointer; border-bottom:1px solid #eee; display:flex; gap:10px; align-items:center;">
+                        <div style="background:${badgeColor}; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:0.8rem;">${displayId}</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:600;">${asma.english || asma.name}</div>
+                            <div style="font-size:0.75rem; color:#666; font-style:italic;">${asma.iast || ""}</div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+            
+            resultsBox.style.display = "block";
+            
+            // Positioning relative to the textarea
+            const rect = searchInput.getBoundingClientRect();
+            resultsBox.style.width = `${rect.width}px`;
+            resultsBox.style.top = `${rect.bottom + 4}px`; 
+            resultsBox.style.left = `${rect.left}px`;
+            
+            resultsBox.querySelectorAll('.search-result-item').forEach(item => {
+                item.onclick = () => {
+                    const id = item.dataset.id;
+                    const asana = library.find(a => String(a.id) === id);
+                    if (asana) {
+                        addPoseToBuilder({
+                            id: asana.id,
+                            name: asana.name || asana.english,
+                            duration: asana.hold_data?.standard || 30,
+                            variation: "",
+                            note: ""
+                        });
+                        searchInput.value = "";
+                        resultsBox.style.display = "none";
+                        searchInput.focus();
+                    }
+                };
+            });
+        } else {
+            resultsBox.style.display = "none";
+        }
+    };
+
+    // Close on blur
+    searchInput.onblur = () => {
+        setTimeout(() => { resultsBox.style.display = "none"; }, 250);
+    };
+}
+
 export {
     builderRender,
     movePose,
@@ -609,5 +850,6 @@ export {
     openEditCourse,
     builderOpen,
     builderSave,
-    addPoseToBuilder
+    addPoseToBuilder,
+    createRepeatGroup
 };

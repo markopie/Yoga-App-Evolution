@@ -1,0 +1,43 @@
+import os
+import re
+from workbench import supabase
+
+from dotenv import load_dotenv
+# Ensure 'supabase' is initialized
+
+load_dotenv()
+
+# --- CONFIGURATION ---
+SOURCE_FOLDER = "yoga_stage_audio"
+PROJECT_ID = "qrcpiyncvfmpmeuyhsha" # Find this in your Supabase URL
+BUCKET_NAME = "audio-assets"
+FOLDER_NAME = ""
+
+def sync_urls_to_database():
+    files = [f for f in os.listdir(SOURCE_FOLDER) if f.endswith('.mp3')]
+    print(f"🔗 Syncing {len(files)} file URLs to the 'stages' table...")
+
+    for filename in files:
+        # Extract the stage_id using regex: looks for numbers between underscores
+        # Example: 012_3_CatchingtheElbows.mp3 -> captures '3'
+        match = re.search(r'^\d+_(\d+)_', filename)
+        
+        if match:
+            stage_id = match.group(1)
+            # Construct the public URL
+            public_url = f"https://{PROJECT_ID}.supabase.co/storage/v1/object/public/{BUCKET_NAME}/{FOLDER_NAME}/{filename}"
+
+            try:
+                # Update the specific stage record
+                # We update the 'audio_url' field in the 'stages' table
+                supabase.table("stages").update({"audio_url": public_url}).eq("id", stage_id).execute()
+                print(f"✅ Synced ID {stage_id}: {filename}")
+            except Exception as e:
+                print(f"❌ Failed to sync ID {stage_id}: {e}")
+        else:
+            print(f"⚠️ Could not parse ID from filename: {filename}")
+
+    print("\n✨ Database sync complete.")
+
+if __name__ == "__main__":
+    sync_urls_to_database()
