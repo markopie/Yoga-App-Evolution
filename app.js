@@ -9,9 +9,7 @@ import {
     ASANA_LIBRARY_URL,
     LIBRARY_URL,
     ID_ALIASES_URL,
-    IMAGES_BASE,
     AUDIO_BASE,
-    IMAGES_BASE_URL,
     COMPLETION_LOG_URL,
     LOCAL_SEQ_KEY,
 } from "./src/config/appConfig.js";
@@ -23,7 +21,24 @@ import { parseHoldTimes, buildHoldString } from "./src/utils/parsing.js";
 import { prefersIAST, setIASTPref, displayName, escapeHtml2, renderMarkdownMinimal, formatHMS, formatTechniqueText } from "./src/utils/format.js";
 import { playbackEngine } from "./src/playback/timer.js";
 import { parsePlateTokens, plateFromFilename, primaryAsanaFromFilename, filenameFromUrl, mobileVariantUrl, ensureArray, isBrowseMobile, smartUrlsForPoseId } from "./src/utils/helpers.js";
+import { findAsanaByIdOrPlate } from "./src/services/dataAdapter.js?v=7";
 import "./src/ui/wiring.js"; // 👈 Core UI Wiring & Listeners
+
+// UI Renderers
+import { 
+    updatePoseNote, 
+    updatePoseAsanaDescription, 
+    updatePoseDescription, 
+    loadUserPersonalNote, 
+    descriptionForPose 
+} from "./src/ui/renderers.js?v=7";
+
+// Make them global so old UI buttons and other files can call them if needed
+window.updatePoseNote = updatePoseNote;
+window.updatePoseAsanaDescription = updatePoseAsanaDescription;
+window.updatePoseDescription = updatePoseDescription;
+window.loadUserPersonalNote = loadUserPersonalNote;
+window.descriptionForPose = descriptionForPose;
 
 window.db = supabase;
 window.currentUserId = null;
@@ -32,35 +47,24 @@ window.currentUserId = null;
    GLOBAL STATE VARIABLES
    ========================================================================== */
 
-// Data storage
-let courses = [];
-window.courses = courses; // 👈 Add this line
-let sequences = [];  // For backwards compatibility during transition
-let asanaLibrary = {};  // JSON object keyed by ID (e.g. "003" -> pose data)
-window.asanaLibrary = asanaLibrary; // 👈 Add this line
-let plateGroups = {};   // "18" -> ["18","19"] (optional)
+import { 
+    globalState, setCourses, setSequences, setAsanaLibrary, setPlateGroups, setServerAudioFiles, 
+    setIdAliases, setActivePlaybackList, setCurrentSequence, setCurrentIndex, 
+    setCurrentSide, setNeedsSecondSide, getCurrentSequence
+} from "./src/store/state.js?v=7";
 
-let serverAudioFiles = []; // Holds the list of files on server
-let serverImageFiles = [];
-let idAliases = {};
+// Expose robust proxies on window so ANY lingering bare reads in app.js seamlessly hit globalState without ReferenceErrors
+['courses', 'sequences', 'asanaLibrary', 'activePlaybackList', 'currentSequence', 'currentIndex', 'currentSide', 'needsSecondSide'].forEach(prop => {
+    Object.defineProperty(window, prop, {
+        get: () => globalState[prop],
+        set: (v) => { globalState[prop] = v; },
+        configurable: true
+    });
+});
 
-// Playback State
-let activePlaybackList = []; // This will hold the "unpacked" poses (Macros + Reps)
-window.activePlaybackList = activePlaybackList; // 👈 Add this line
-let currentSequence = null;
-let currentIndex = 0;
-let currentAudio = null; // Tracks the currently playing sound
-let currentSide = "right"; // Track which side for requiresSides poses
-let needsSecondSide = false; // Track if we need to play left side after right
-
-// Image Mapping State
-let asanaToUrls = {};          // Strict ID Map: "218" -> ["images/218_dhyana.jpg"]
-
-// -------- Wake Lock (prevent screen sleep while running, if supported) --------
 let wakeLock = null;
 let wakeLockVisibilityHooked = false;
-
-let draft = []; // each: [idField, seconds, label]
+let draft = [];
 
 
 
@@ -103,191 +107,7 @@ async function disableWakeLock() {
    AUDIO ENGINE
    ========================================================================== */
 
-// -------- Faint gong (Oscillator) --------
-// Used by timer to decide if gong plays
-let audioCtx = null;
-
-function playFaintGong() {
-   try {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      if (!audioCtx) audioCtx = new Ctx();
-      const t0 = audioCtx.currentTime + 0.02;
-
-      // Create Sound Generators
-      const o1 = audioCtx.createOscillator();
-      const o2 = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-
-      // Configure Tones (432Hz + 864Hz harmonic)
-      o1.type = "sine";
-      o2.type = "sine";
-      o1.frequency.setValueAtTime(432, t0);
-      o2.frequency.setValueAtTime(864, t0);
-
-      // Configure Volume Envelope (Fade in/out)
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.07, t0 + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8);
-
-      // Connect & Play
-      o1.connect(g);
-      o2.connect(g);
-      g.connect(audioCtx.destination);
-
-      o1.start(t0);
-      o2.start(t0);
-      o1.stop(t0 + 2.0);
-      o2.stop(t0 + 2.0);
-   } catch (e) {}
-}
-
-// -------- Side Detection Logic --------
-function detectSide(poseLabel) {
-   if (!poseLabel) return null;
-   const label = poseLabel.toLowerCase();
-   if (label.includes("(right)") || label.includes("right side")) return "right";
-   if (label.includes("(left)") || label.includes("left side")) return "left";
-   return null;
-}
-
-function playSideCue(side) {
-   if (!side) return;
-   const ctx = new (window.AudioContext || window.webkitAudioContext)();
-   const oscillator = ctx.createOscillator();
-   const gainNode = ctx.createGain();
-
-   oscillator.connect(gainNode);
-   gainNode.connect(ctx.destination);
-
-   // Different frequencies for left and right
-   oscillator.frequency.value = side === "right" ? 800 : 600;
-   oscillator.type = "sine";
-
-   gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-   gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-
-   oscillator.start(ctx.currentTime);
-   oscillator.stop(ctx.currentTime + 0.3);
-}
-
-/* ==========================================================================
-   AUDIO ENGINE
-   ========================================================================== */
-
-// ... (Keep detectSide and playSideCue helper functions as they are) ...
-
-// -------- Audio File Player (MP3) --------
-
-/**
- * Orchestrates the audio playback sequence.
- * New Logic: Plays Main Name -> THEN plays Side Cue (if needed).
- * @param {boolean} isBrowseContext - If true, skips side cues (for Browse menu).
- */
-function playAsanaAudio(asana, poseLabel = null, isBrowseContext = false) {
-    if (!asana) return;
- 
-    // 1. Reset current audio
-    if (currentAudio) {
-       try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
-       currentAudio = null;
-    }
- 
-    // 2. Define what happens AFTER the main name finishes
-    const onMainAudioEnded = () => {
-        // If we are browsing, or if sides aren't required, stop here.
-        if (isBrowseContext) return;
-        
-        // Play side audio (Right/Left) AFTER main audio
-        if (asana.requiresSides && currentSide) {
-           // Use AUDIO_BASE to ensure we fetch from the server
-           const sideUrl = AUDIO_BASE + `${currentSide}_side.mp3`; 
-           const sideAudio = new Audio(sideUrl);
-           
-           sideAudio.play().catch(e => console.warn(`Failed to play ${currentSide}_side.mp3:`, e));
-           
-           // Track this as current so we can pause it if the user clicks "Stop"
-           currentAudio = sideAudio; 
-        }
-    };
- 
-    // 3. Play Main Audio immediately, then trigger the callback
-    playPoseMainAudio(asana, poseLabel, onMainAudioEnded);
- }
- 
- function playPoseMainAudio(asana, poseLabel = null, onComplete = null) {
-    // 1. Side Detection (Visual/Sound Effect only)
-    if (poseLabel && !asana.requiresSides) {
-       const side = detectSide(poseLabel);
-       if (side) setTimeout(() => playSideCue(side), 100);
-    }
- 
-    // 2. Prepare IDs (THE FIX)
-    // Your library has 'id', but the player was looking for 'asanaNo'.
-    // We now check both.
-    const rawID = asana.asanaNo || asana.id; 
-    const idStr = normalizePlate(rawID);
-    
-// console.log(`[Audio Debug] Playing ID: ${idStr}, Name: ${asana.english || asana.name}`);
-
-    // Helper to play and attach the 'onended' listener
-    const playSrc = (src) => {
-        const a = new Audio(src);
-        // CRITICAL: Attach the callback so side audio plays next
-        if (onComplete) {
-            a.onended = onComplete;
-        }
-        a.play()
-            .then(() => { currentAudio = a; })
-            .catch(e => {
-// console.warn(`[Audio Debug] Failed: ${src}`, e);
-                // If main audio fails, still trigger callback so flow continues
-                if (onComplete) onComplete();
-            });
-    };
-
-    
-
-    // 3.5 Use database-provided audio URL if present
-    if (asana.audio) {
-       playSrc(asana.audio);
-       return;
-    }
- 
-    // 4. SMART FALLBACK (Manifest Lookup)
-    const fileList = window.serverAudioFiles || [];
-    
-    if (fileList.length > 0 && idStr) {
-        // Look for "001_Name.mp3" OR "001.mp3"
-        const match = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
-        
-        if (match) {
-// console.log(`[Audio Debug] FOUND MATCH: ${match}`);
-            playSrc(AUDIO_BASE + match);
-            return;
-        }
-    }
-
-    // 5. Legacy Fallback (If not in manifest)
-// console.log("[Audio Debug] Falling back to legacy guessing...");
-    
-    // If no ID found at all, skip
-    if (!idStr) { 
-        if (onComplete) onComplete(); 
-        return; 
-    } 
-
-    const safeName = (asana.english || asana.name || "").replace(/[^a-zA-Z0-9]/g, "");
-    // Try generic formats
-    const candidate = `${AUDIO_BASE}${idStr}_${safeName}.mp3`;
-    
-    const a = new Audio(candidate);
-    if (onComplete) a.onended = onComplete;
-    a.play().catch(() => {
-// console.warn("Legacy guess failed too.");
-        if (onComplete) onComplete();
-    });
-}
+import { getCurrentAudio, setCurrentAudio, playFaintGong, detectSide, playSideCue, playAsanaAudio, playPoseMainAudio } from "./src/playback/audioEngine.js?v=7";
 
 // #endregion
 // #region 3. HELPERS & FORMATTING
@@ -345,8 +165,8 @@ function resolveId(id) {
 window.loadCourses = async function() {
     const deduplicated = await fetchCourses(window.currentUserId);
     window.courses = deduplicated;
-    courses = deduplicated;
-    sequences = deduplicated;
+    setCourses(deduplicated);
+    setSequences(deduplicated);
 
     if (typeof renderSequenceDropdown === "function") renderSequenceDropdown(); 
 };
@@ -378,37 +198,7 @@ function resetToOriginalJSON() {
 // Helper function to parse plates string like "Final: 1, 2" or "Intermediate: 3"
 
 
-/* ==========================================================================
-   IMAGE INDEXING
-   ========================================================================== */
 
-async function buildImageIndexes() {
-    // Now calls loadJSON correctly with MANIFEST_URL
-    const manifest = await loadJSON(MANIFEST_URL, {});
-    
-    // Reset global map
-    window.asanaToUrls = {}; 
-
-    if (manifest && Array.isArray(manifest.images)) {
-        manifest.images.forEach(filename => {
-            // Extract ID (e.g. "082" from "082_Pose.jpg")
-            const parts = filename.split('_');
-            const rawID = parts[0];
-            
-            // Normalize
-            const cleanId = (typeof normalizePlate === 'function') ? normalizePlate(rawID) : rawID;
-            
-            // Build URL
-            const url = `https://arrowroad.com.au/yoga/images/${filename}`;
-
-            if (!window.asanaToUrls[cleanId]) window.asanaToUrls[cleanId] = [];
-            window.asanaToUrls[cleanId].push(url);
-        });
-// console.log(`✓ Image Indexing complete: ${manifest.images.length} files`);
-    } else {
-// console.warn("Manifest images not found or invalid format");
-    }
-}
 
 window.nextPose = nextPose;
 window.prevPose = prevPose;
@@ -416,21 +206,7 @@ window.prevPose = prevPose;
 // Helper: Find URLs for a Pose
 // Removed: smartUrlsForPoseId moved to src/utils/helpers.js
 
-// Helper: Find Data
-function findAsanaByIdOrPlate(id) {
-    if (!id) return null;
-    const lib = window.asanaLibrary || {};
-    const asanaArray = Object.values(lib);
-    
-    // Clean the incoming ID (remove leading zeros and whitespace)
-    const cleanSearchId = String(id).trim().replace(/^0+/, '');
 
-    // Search by comparing "Cleaned" IDs
-    return asanaArray.find(a => {
-        const cleanLibId = String(a.id || a.asanaNo || '').trim().replace(/^0+/, '');
-        return cleanLibId === cleanSearchId;
-    }) || null;
-}
 
 // History Loader (Clean version)
 async function setupHistory() {
@@ -482,237 +258,14 @@ async function setupHistory() {
 
 window.getEffectiveTime = getEffectiveTime; // Make it global
 
-const COMPLETION_KEY = "yogaCompletionLog_v2";
+import { 
+    safeGetLocalStorage, safeSetLocalStorage, loadCompletionLog, saveCompletionLog, 
+    addCompletion, lastCompletionFor, seedManualCompletionsOnce, fetchServerHistory, 
+    appendServerHistory, deleteCompletionById, deleteAllCompletionsForTitle, 
+    calculateStreak, toggleHistoryPanel 
+} from "./src/services/historyService.js?v=2";
 
-function safeGetLocalStorage(key, defaultValue = null) {
-   try {
-      const item = localStorage.getItem(key);
-      if (!item) return defaultValue;
-      return JSON.parse(item);
-   } catch (e) {
-      console.error(`Corrupted localStorage for key: ${key}`, e);
-      localStorage.removeItem(key);
-      return defaultValue;
-   }
-}
-
-function safeSetLocalStorage(key, value) {
-   try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return true;
-   } catch (e) {
-      console.error(`Failed to save to localStorage: ${key}`, e);
-      return false;
-   }
-}
-
-function loadCompletionLog() {
-   return safeGetLocalStorage(COMPLETION_KEY, []);
-}
-
-function saveCompletionLog(log) {
-   safeSetLocalStorage(COMPLETION_KEY, log);
-}
-
-function addCompletion(title, whenDate, category = null) {
-   const log = loadCompletionLog();
-   const localStr = whenDate.toLocaleString("en-AU", {
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit"
-   });
-   log.push({ title, category, ts: whenDate.getTime(), local: localStr });
-   saveCompletionLog(log);
-}
-
-function lastCompletionFor(title) {
-   const log = loadCompletionLog().filter(x => x && x.title === title && typeof x.ts === "number");
-   if (!log.length) return null;
-   return log.sort((a, b) => b.ts - a.ts)[0];
-}
-
-function seedManualCompletionsOnce() {
-   const log = loadCompletionLog();
-   const have = new Set(log.filter(x => x?.title).map(x => x.title + "::" + x.ts));
-   const seeds = [
-      { title: "Course 1: Short Course, Day 1", d: new Date(2025, 11, 31, 10, 0, 0) },
-      { title: "Course 1: Short Course, Day 2", d: new Date(2026, 0, 1, 9, 30, 0) },
-      { title: "Course 1: Short Course, Day 3", d: new Date(2026, 0, 2, 10, 0, 0) }
-   ];
-   let changed = false;
-   seeds.forEach(s => {
-      const key = s.title + "::" + s.d.getTime();
-      if (!have.has(key)) {
-         log.push({
-            title: s.title, ts: s.d.getTime(),
-            local: s.d.toLocaleString("en-AU", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
-         });
-         changed = true;
-      }
-   });
-   if (changed) saveCompletionLog(log);
-}
-
-/* ==========================================================================
-   SERVER SYNC (History) - Supabase `sequence_completions`
-   Single source of truth: Supabase. localStorage is an offline fallback.
-
-   Unified entry shape: { id?, title, category, ts (ms), local (string), iso (string) }
-   window.completionHistory: { [title]: [isoString, ...] } — for legacy display code
-   ========================================================================== */
-
-let serverHistoryCache = null; // array of unified entries, newest first
-
-// Build window.completionHistory (legacy format) from the unified cache
-function _rebuildLegacyHistory(entries) {
-   const hist = {};
-   entries.forEach(e => {
-      if (!e.title) return;
-      if (!hist[e.title]) hist[e.title] = [];
-      hist[e.title].push(e.iso || new Date(e.ts).toISOString());
-   });
-   window.completionHistory = hist;
-}
-async function fetchServerHistory() {
-    try {
-       if (!supabase) {
-          serverHistoryCache = loadCompletionLog();
-          _rebuildLegacyHistory(serverHistoryCache);
-          return serverHistoryCache;
-       }
- 
-       // FIX: Query the actual completions table, not the Asanas table!
-       const { data, error } = await supabase
-          .from('sequence_completions')
-          .select('id, title, category, completed_at');
- 
-       if (error) throw error;
- 
-       serverHistoryCache = data.map(r => ({
-          id: r.id,
-          title: r.title,
-          category: r.category || '',
-          ts: new Date(r.completed_at).getTime(),
-          local: new Date(r.completed_at).toLocaleString("en-AU", {
-             year: "numeric", month: "2-digit", day: "2-digit",
-             hour: "2-digit", minute: "2-digit"
-          }),
-          iso: r.completed_at
-       }));
- 
-       _rebuildLegacyHistory(serverHistoryCache);
-       return serverHistoryCache;
- 
-    } catch (e) {
-       console.error("Failed to fetch server history:", e);
-       serverHistoryCache = loadCompletionLog();
-       _rebuildLegacyHistory(serverHistoryCache);
-       return serverHistoryCache;
-    }
- }
-
-async function appendServerHistory(title, whenDate, category = null) {
-   addCompletion(title, whenDate, category);
-
-   if (!supabase) return false;
-
-   try {
-      const { error } = await supabase
-         .from('sequence_completions')
-         .insert([{ title, category, completed_at: whenDate.toISOString() }]);
-
-      if (error) throw error;
-      await fetchServerHistory();
-      return true;
-   } catch (e) {
-      console.error("Failed to append to server history:", e);
-      return false;
-   }
-}
-
-async function deleteCompletionById(id) {
-   if (!supabase || !id) return false;
-   try {
-      const { error } = await supabase
-         .from('sequence_completions')
-         .delete()
-         .eq('id', id);
-      if (error) throw error;
-      await fetchServerHistory();
-      return true;
-   } catch (e) {
-      console.error("Failed to delete completion:", e);
-      return false;
-   }
-}
-
-async function deleteAllCompletionsForTitle(title) {
-   if (!supabase || !title) return false;
-   try {
-      const { error } = await supabase
-         .from('sequence_completions')
-         .delete()
-         .eq('title', title);
-      if (error) throw error;
-      await fetchServerHistory();
-      return true;
-   } catch (e) {
-      console.error("Failed to delete completions for title:", e);
-      return false;
-   }
-}
-
-window.deleteCompletionById = deleteCompletionById;
-window.deleteAllCompletionsForTitle = deleteAllCompletionsForTitle;
-window.calculateStreak = calculateStreak;
-window.appendServerHistory = appendServerHistory;
 window.clearProgress = clearProgress;
-
-// Calculate consecutive day streak from a sorted array of ISO date strings (newest first)
-function calculateStreak(isoStrings) {
-   if (!isoStrings || !isoStrings.length) return 0;
-   const days = [...new Set(
-      isoStrings.map(s => new Date(s).toLocaleDateString("en-AU"))
-   )].map(d => {
-      const [dd, mm, yyyy] = d.split('/');
-      return new Date(yyyy, mm - 1, dd).getTime();
-   }).sort((a, b) => b - a);
-
-   const MS_PER_DAY = 86400000;
-   const today = new Date(); today.setHours(0,0,0,0);
-   const todayMs = today.getTime();
-   const yesterdayMs = todayMs - MS_PER_DAY;
-
-   if (days[0] !== todayMs && days[0] !== yesterdayMs) return 0;
-
-   let streak = 1;
-   for (let i = 1; i < days.length; i++) {
-      if (days[i - 1] - days[i] === MS_PER_DAY) {
-         streak++;
-      } else {
-         break;
-      }
-   }
-   return streak;
-}
-
-async function toggleHistoryPanel() {
-   const panel = $("historyPanel");
-   if (!panel) return;
-   const isOpen = panel.style.display !== "none";
-   if (isOpen) { panel.style.display = "none"; return; }
-   panel.style.display = "block";
-   panel.textContent = "Loading…";
-   const hist = await fetchServerHistory();
-   if (!hist.length) { panel.textContent = "No completions recorded yet."; return; }
-   const sorted = [...hist].sort((a, b) => b.ts - a.ts);
-   panel.innerHTML = sorted.map(e =>
-      `<div style="padding:10px;border-bottom:1px solid #f0f0f0;">
-         <div style="font-weight:600;color:#1a1a1a;margin-bottom:4px;">${e.title}</div>
-         <div style="font-size:0.85rem;color:#666;">${e.category || ''}</div>
-         <div style="font-size:0.8rem;color:#999;margin-top:2px;">${e.local}</div>
-       </div>`
-   ).join("");
-}
 
 /* ==========================================================================
    RESUME STATE & PROGRESS
@@ -817,9 +370,8 @@ function showResumePrompt(state) {
 
     // Robust check for lowercase OR uppercase keys
     window.serverAudioFiles = manifest.audio || manifest.Audio || [];
-    window.serverImageFiles = manifest.images || manifest.Images || [];
 
-// console.log(`Manifest loaded: ${window.serverAudioFiles.length} audio, ${window.serverImageFiles.length} images`);
+// console.log(`Manifest loaded: ${window.serverAudioFiles.length} audio files`);
 }
 async function init() {
 // console.log("init() has started executing!");
@@ -845,8 +397,7 @@ async function init() {
         if (statusEl) statusEl.textContent = "Loading courses...";
         await loadCourses();
 
-        if (statusEl) statusEl.textContent = "Processing images...";
-        await buildImageIndexes();
+
 
                 
         if (typeof setupBrowseUI === "function") setupBrowseUI();
@@ -947,7 +498,7 @@ playbackEngine.onStart = () => {
             
             if (asana) {
                 if (playbackEngine.remaining === playbackEngine.currentPoseSeconds) {
-                    if (typeof playAsanaAudio === "function") playAsanaAudio(asana, poses[currentIndex][4] || "");
+                    if (typeof playAsanaAudio === "function") playAsanaAudio(asana, poses[currentIndex][4] || "", false, globalState.currentSide);
                 } else {
                     new Audio("data:audio/mp3;base64,//MkxAAQ").play().catch(()=>{});
                 }
@@ -1115,16 +666,16 @@ function nextPose() {
 
     // 2. Scenario: Two-Sided Pose
     if (needsSecondSide) {
-        currentSide = "left";
-        needsSecondSide = false; 
+        setCurrentSide("left");
+        setNeedsSecondSide(false); 
         setPose(currentIndex, true); // Stays on same index, just swaps side
         return true;
     }
 
     // 3. Scenario: Advance to next index in the 87-item list
     if (currentIndex < poses.length - 1) {
-        currentSide = "right";
-        needsSecondSide = false;
+        setCurrentSide("right");
+        setNeedsSecondSide(false);
         setPose(currentIndex + 1);
         return true;
     } else {
@@ -1141,9 +692,9 @@ function prevPose() {
                   ? window.activePlaybackList 
                   : (currentSequence.poses || []);
 
-    if (currentSide === "left") {
-        currentSide = "right";
-        needsSecondSide = true; 
+    if (getCurrentSide() === "left") {
+        setCurrentSide("right");
+        setNeedsSecondSide(true); 
         setPose(currentIndex, true);
         return;
     }
@@ -1157,8 +708,8 @@ function prevPose() {
         const asana = findAsanaByIdOrPlate(normalizePlate(id));
 
         if (asana && asana.requiresSides) {
-            currentSide = "left";
-            needsSecondSide = false;
+            setCurrentSide("left");
+            setNeedsSecondSide(false);
             setPose(newIndex, true); 
         } else {
             setPose(newIndex);
@@ -1182,13 +733,13 @@ function prevPose() {
     if (idx < 0 || idx >= poses.length) return;
 
     // 1. SAVE PROGRESS (update currentIndex first so the correct pose index is saved)
-    currentIndex = idx;
+    setCurrentIndex(idx);
     if (typeof saveCurrentProgress === "function") saveCurrentProgress();
 
     // Reset side tracking when moving to a new pose
     if (!keepSamePose) {
-        currentSide = "right";
-        needsSecondSide = false;
+        setCurrentSide("right");
+        setNeedsSecondSide(false);
     }
 
 // 2. DATA EXTRACTION
@@ -1250,7 +801,7 @@ if (focusCounter) {
 
     // Sides Check
     if (asana && (asana.requiresSides || asana.requires_sides) && !keepSamePose) {
-        needsSecondSide = true;
+        setNeedsSecondSide(true);
     }
 
     // --- NEW: THE DIAL ENFORCER ---
@@ -1268,7 +819,7 @@ if (focusCounter) {
 
     // Sides Check
     if (asana && (asana.requiresSides || asana.requires_sides) && !keepSamePose) {
-        needsSecondSide = true;
+        setNeedsSecondSide(true);
     }
 
     // --- NEW: VARIATION & NOTE EXTRACTION ---
@@ -1491,7 +1042,7 @@ if (focusCounter) {
             btn.style.marginLeft = "10px";
             btn.onclick = (e) => { 
                 e.stopPropagation(); 
-                playAsanaAudio(asana); 
+                playAsanaAudio(asana, null, true); 
             };
             metaContainer.appendChild(btn);
         }
@@ -1534,7 +1085,7 @@ if (focusCounter) {
 
     // 11. AUDIO TRIGGER
     if (playbackEngine.running && asana) {
-         playAsanaAudio(asana, baseOverrideName); 
+         playAsanaAudio(asana, baseOverrideName, false, globalState.currentSide); 
     }
 }
 
@@ -1545,54 +1096,7 @@ window.setPose = setPose;
    UI HELPERS (Notes & Stats)
    ========================================================================== */
 
-function updatePoseNote(note) {
-   const details = $("poseNoteDetails");
-   const body = $("poseNoteBody");
-   if (!details || !body) return;
 
-   const text = (note ?? "").toString().trim();
-   if (!text) {
-      details.style.display = "none";
-      details.open = false;
-      body.innerHTML = "";
-      return;
-   }
-
-   details.style.display = "block";
-   details.open = true;
-   body.innerHTML = renderMarkdownMinimal(text);
-}
-
-function updatePoseAsanaDescription(asana) {
-   const details = $("poseAsanaDescDetails");
-   const body = $("poseAsanaDescBody");
-   if (!details || !body) return;
-
-   const text = (asana?.description || asana?.Description || "").toString().trim();
-   if (!text) {
-      details.style.display = "none";
-      details.open = false;
-      body.innerHTML = "";
-      return;
-   }
-
-   details.style.display = "block";
-   details.open = false;
-   body.innerHTML = renderMarkdownMinimal(text);
-}
-
-function updatePoseDescription(idField, label) { 
-   const body = $("poseDescBody");
-   if (!body) return;
-   const asana = findAsanaByIdOrPlate(idField);
-   const md = descriptionForPose(asana, label);
-
-   if (md) {
-      body.innerHTML = renderMarkdownMinimal(md);
-   } else {
-      body.innerHTML = '<div class="msg">No notes</div>';
-   }
-}
 function updateTotalAndLastUI() {
     // 1. EXPLORER FIX: Look at the activePlaybackList to include the injected standing poses
     const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
@@ -1644,71 +1148,6 @@ function updateTotalAndLastUI() {
            lastEl.textContent = "Last: –";
         }
     }
-}
- function loadUserPersonalNote(idField) {
-    const container = document.getElementById("poseDescBody");
-    if (!container) return;
-    container.innerHTML = ""; 
-
-    const rawId = Array.isArray(idField) ? idField[0] : idField;
-    // This key is already unique (e.g., "user_note_001")
-    const storageKey = `user_note_${normalizePlate(rawId)}`; 
-    const savedNote = localStorage.getItem(storageKey) || "";
-
-    const wrapper = document.createElement("div");
-    
-    const area = document.createElement("textarea");
-    
-    // --- FIX: Add ID and Name attributes here ---
-    area.id = storageKey;    // Helps browser identify the field
-    area.name = storageKey;  // Helps browser identify the field
-    // --------------------------------------------
-
-    area.style.width = "100%";
-    area.style.height = "80px";
-    area.style.padding = "8px";
-    area.style.border = "1px solid #ccc";
-    area.style.borderRadius = "4px";
-    area.style.fontFamily = "inherit";
-    area.placeholder = "Add your personal notes for this pose here (e.g. 'Use block under knee')...";
-    area.value = savedNote;
-
-    const status = document.createElement("div");
-    status.style.fontSize = "0.75rem";
-    status.style.marginTop = "4px";
-    status.style.color = "#888";
-    status.textContent = "Changes save automatically.";
-
-    let timeout;
-    area.oninput = () => {
-        status.textContent = "Saving...";
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-            localStorage.setItem(storageKey, area.value);
-            status.textContent = "✓ Saved to this device";
-            status.style.color = "green";
-            setTimeout(() => { status.style.color = "#888"; }, 2000);
-        }, 800); 
-    };
-
-    wrapper.appendChild(area);
-    wrapper.appendChild(status);
-    container.appendChild(wrapper);
-}
-function descriptionForPose(asana, fullLabel) {
-   if (!asana) return "";
-   
-   // Extract Stage from Label (e.g., "Ujjayi IIb" -> "IIb")
-   const stageMatch = (fullLabel || "").match(/\s([IVXLCDM]+[a-b]?)$/i);
-   if (stageMatch) {
-       let stageKey = stageMatch[1].toUpperCase(); 
-       stageKey = stageKey.replace(/([A-B])$/, (m) => m.toLowerCase()); 
-
-       if (asana[stageKey]) {
-           return asana[stageKey].trim();
-       }
-   }
-   return (asana.Description || asana.Technique || "").trim();
 }
 
 // #endregion
@@ -1949,12 +1388,12 @@ function startBrowseAsana(asma) {
    const variationName = asma.variation || "";
    const fullName = variationName ? `${asma.english} (${variationName})` : asma.english;
 
-   currentSequence = {
+   setCurrentSequence({
       title: `Browse: ${fullName}`,
       category: "Browse",
       poses: [[plates, 60, fullName]]
-   };
-   currentIndex = 0;
+   });
+   setCurrentIndex(0);
    setPose(0);
    closeBrowse();
 }
@@ -2503,7 +1942,7 @@ if (seqSelect) {
         editBtn.style.cssText = "margin-left: 8px; padding: 4px 10px; font-size: 1.1rem; vertical-align: middle;";
         seqSelect.parentNode.insertBefore(editBtn, seqSelect.nextSibling);
         editBtn.onclick = () => {
-            if (!currentSequence) return alert("Select a sequence first.");
+            if (!getCurrentSequence()) return alert("Select a sequence first.");
             openEditCourse();
         };
 
@@ -2528,7 +1967,7 @@ seqSelect.addEventListener("change", () => {
     };
 
     if (!idx) {
-        currentSequence = null;
+        setCurrentSequence(null);
         setStatus("Select a sequence");
         if($("collageWrap")) $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`;
         return;
@@ -2537,20 +1976,20 @@ seqSelect.addEventListener("change", () => {
     // --- 1. SET CURRENT SEQUENCE ---
     // (Checks both 'courses' and 'sequences' arrays to be safe)
     const rawSequence = (typeof courses !== "undefined" ? courses : sequences)[parseInt(idx, 10)];
-    currentSequence = rawSequence; 
+    setCurrentSequence(rawSequence); 
     
     // 👈 EXPOSE TO CONSOLE
-    window.currentSequence = currentSequence; 
+    window.currentSequence = getCurrentSequence(); 
 
     // --- 2. GENERATE EXPANDED LIST (MACROS) ---
     if (typeof getExpandedPoses === "function") {
-        activePlaybackList = getExpandedPoses(currentSequence);
+        setActivePlaybackList(getExpandedPoses(getCurrentSequence()));
     } else {
-        activePlaybackList = currentSequence.poses ? [...currentSequence.poses] : [];
+        setActivePlaybackList(getCurrentSequence() && getCurrentSequence().poses ? [...getCurrentSequence().poses] : []);
     }
     
     // 👈 EXPOSE TO CONSOLE
-    window.activePlaybackList = activePlaybackList; 
+    window.activePlaybackList = getActivePlaybackList(); 
 
     // --- 3. APPLY SLIDER & UI ---
     if (typeof applyDurationDial === 'function') applyDurationDial();
@@ -2860,8 +2299,8 @@ safeListen("resetBtn", "click", () => {
    if (dropdown) dropdown.value = ""; 
 
    // 4. NULLIFY DATA
-   currentSequence = null;
-   currentIndex = 0;
+   setCurrentSequence(null);
+   setCurrentIndex(0);
 
    // 5. RESET UI VISUALS (Matched to your specific HTML IDs)
    const titleEl = $("poseName");

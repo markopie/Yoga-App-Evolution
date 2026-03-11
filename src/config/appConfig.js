@@ -7,9 +7,7 @@ const LIBRARY_URL = ASANA_LIBRARY_URL;
 const ID_ALIASES_URL = `${BASE_RAW_URL}id_aliases.json`;
 
 // Current production deployment serves media from an external host.
-const IMAGES_BASE = "https://arrowroad.com.au/yoga/images/";
-const AUDIO_BASE = "https://arrowroad.com.au/yoga/audio/";
-const IMAGES_BASE_URL = IMAGES_BASE;
+const AUDIO_BASE = "https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/public/audio-assets/";
 
 const COMPLETION_LOG_URL = "completion_log.php";
 const LOCAL_SEQ_KEY = "yoga_sequences_v1";
@@ -21,9 +19,7 @@ export {
   ASANA_LIBRARY_URL,
   LIBRARY_URL,
   ID_ALIASES_URL,
-  IMAGES_BASE,
   AUDIO_BASE,
-  IMAGES_BASE_URL,
   COMPLETION_LOG_URL,
   LOCAL_SEQ_KEY,
 };

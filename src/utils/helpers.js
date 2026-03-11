@@ -62,11 +62,6 @@ export function smartUrlsForPoseId(idField, variationKey = null) {
             return [asana.image_url];
         }
     }
-
-    // 2. Fallback to Legacy Index (manifest.json)
-    if (window.asanaToUrls && window.asanaToUrls[id]) {
-        return window.asanaToUrls[id];
-    }
     
     return [];
 }

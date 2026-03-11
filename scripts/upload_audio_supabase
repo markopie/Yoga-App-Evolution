@@ -1,0 +1,53 @@
+import os
+from workbench import supabase
+
+# --- CONFIG ---
+AUDIO_FOLDER = r"C:\Users\marku\Downloads\audio" 
+BUCKET_NAME = "audio-assets"
+
+def sync_audio_to_supabase():
+    files = [f for f in os.listdir(AUDIO_FOLDER) if f.endswith(".mp3")]
+    print(f"🎙️ Found {len(files)} audio files. Starting sync...")
+
+    for filename in files:
+        file_path = os.path.join(AUDIO_FOLDER, filename)
+        
+        # URL-safe filename: 001_Samsthiti.mp3 -> 001_samsthiti.mp3
+        clean_name = filename.lower().replace(" ", "_")
+
+        try:
+            # 1. Upload to Storage
+            with open(file_path, 'rb') as f:
+                supabase.storage.from_(BUCKET_NAME).upload(
+                    path=clean_name,
+                    file=f,
+                    file_options={"content-type": "audio/mpeg", "upsert": "true"}
+                )
+
+            # 2. Get Public URL
+            public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(clean_name)
+
+            # 3. ID Parsing
+            # Logic: split by underscore, take the first part
+            # e.g., '172a_UrdhvaDhanurasanaII.mp3' -> '172a'
+            id_part = filename.split('_')[0]
+
+            # 4. Attempt Update - Priority: Asanas -> Stages
+            # We try the asanas table first
+            res_asana = supabase.table("asanas").update({"audio_url": public_url}).eq("id", id_part).execute()
+            
+            if res_asana.data:
+                print(f"✅ ASANAS: Linked ID {id_part} ({filename})")
+            else:
+                # If not in asanas, try the stages table
+                res_stage = supabase.table("stages").update({"audio_url": public_url}).eq("id", id_part).execute()
+                if res_stage.data:
+                    print(f"✅ STAGES: Linked ID {id_part} ({filename})")
+                else:
+                    print(f"⚠️ ID {id_part} not found in any table for {filename}")
+
+        except Exception as e:
+            print(f"❌ Error processing {filename}: {e}")
+
+if __name__ == "__main__":
+    sync_audio_to_supabase()

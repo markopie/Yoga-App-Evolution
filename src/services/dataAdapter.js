@@ -264,4 +264,19 @@ num = num.padStart(3,"0");   // 1 → 001
 return num + suffix;
 }
 
-export { fetchCourses, loadAsanaLibrary, normalizeAsana, normalizeAsanaRow, normalizePlate, parsePlates, normaliseAsanaId };
+function findAsanaByIdOrPlate(id) {
+    if (!id) return null;
+    const lib = window.asanaLibrary || {};
+    const asanaArray = Object.values(lib);
+    
+    // Clean the incoming ID (remove leading zeros and whitespace)
+    const cleanSearchId = String(id).trim().replace(/^0+/, '');
+
+    // Search by comparing "Cleaned" IDs
+    return asanaArray.find(a => {
+        const cleanLibId = String(a.id || a.asanaNo || '').trim().replace(/^0+/, '');
+        return cleanLibId === cleanSearchId;
+    }) || null;
+}
+
+export { fetchCourses, loadAsanaLibrary, normalizeAsana, normalizeAsanaRow, normalizePlate, parsePlates, normaliseAsanaId, findAsanaByIdOrPlate };
