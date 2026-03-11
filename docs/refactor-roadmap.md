@@ -20,6 +20,14 @@ This project has moved to Supabase for data and storage concerns. The next refac
 - **Completed Component/View Architecture:** Extracted specific views (Browse, Focus, Builder) and fully wired the external Playback Engine to `app.js` to eliminate legacy global timer states.
 - **Completed Final Legacy cleanup pass:** Removed remaining dead comments, stale JSON override logic, unneeded config URLs, and lingering stale DOM element references (e.g. GitHub PAT Modals).
 
+## Phase 2: Major Extraction (March 2026)
+- **Completed Asana Editor extraction:** Extracted the full Asana Editor (add/edit pose via Supabase upsert) into `src/ui/asanaEditor.js`. Removed ~500 lines from `app.js`.
+- **Completed Duration Dial extraction:** Extracted all dial logic (updateDialUI, applyDurationDial, dialReset, event wiring) into `src/ui/durationDial.js`. Removed ~200 lines from `app.js`.
+- **Completed Course UI extraction:** Extracted `renderCollage`, `renderPlateSection`, `renderCategoryFilter`, `renderCourseUI`, `renderSequenceDropdown` into `src/ui/courseUI.js`. Removed ~200 lines from `app.js`.
+- **Removed duplicate Browse/Filter block:** Purged ~700 lines of duplicate implementation from `app.js` that was already handled by `src/ui/browse.js`.
+- **Removed duplicate wiring:** Removed dupicate sequence dropdown, IAST toggle, nextBtn/prevBtn/startStopBtn, and historyLink listeners from `app.js` (all handled by `src/ui/wiring.js`).
+- **Net result:** `app.js` reduced from ~3,300 lines to **~1,640 lines** (50% reduction).
+
 ## Target architecture
 - `app.js` (entrypoint orchestration)
 - `src/config/*`
@@ -39,3 +47,11 @@ This project has moved to Supabase for data and storage concerns. The next refac
 - [x] Fix remaining global state errors like `running is not defined`.
 - [x] Add automated unit tests for `src/utils/parsing.js`.
 - [x] Ensure parsing functions gracefully handle missing or malformed inputs.
+
+## Next Targets (Remaining in app.js)
+- [ ] Extract `setPose()` and related pose rendering logic into `src/ui/posePlayer.js`
+- [ ] Extract `getExpandedPoses()` / macro engine into `src/services/sequenceEngine.js`
+- [ ] Move `openHistoryModal` wiring (lastPill, histBackdrop) into `src/ui/historyModal.js`
+- [ ] Extract `renderGlobalHistory` / `switchHistoryTab` window bindings into `historyModal.js`
+- [ ] Extract `updateTotalAndLastUI`, `calculateTotalSequenceTime` into their own utils
+- [ ] Clean up remaining `console.log` debug statements

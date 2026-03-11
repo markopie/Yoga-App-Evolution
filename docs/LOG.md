@@ -29,3 +29,37 @@ Successfully queried all 7 Supabase tables. Identified explicit schema keys. Fou
 - *Authentication*: In the extracted `fetchCourses` function in `dataAdapter.js`, it relies on receiving `window.currentUserId`. I assumed the UI initializes `currentUserId` before `init()` executes or passes `null` gracefully, which matches existing behavior.
 - *Sequence Text Parsing*: The Python script output showed `courses.sequence_text` formatted identically to local test sequences (e.g., `176 | 600 | [Sirsasana (10 min)]\n`). Therefore, I assumed `parseSequenceText` (which relies on `\n` splitting and `|` chunking) is perfectly aligned with the DB's storage format and requires no further modification.
 - *Sequence Title Map*: The `courses` and `user_sequences` tables strictly use a `title` column, and the UI's resume sequence prompt references `.title`. This matches perfectly, so no naming alignment was needed there.
+
+---
+
+## Phase 2 Refactoring Session (2026-03-11)
+
+### What was done
+Continued modularisation of `app.js`, which started this session at **~3,300 lines** and ended at **~1,640 lines** — a 50% reduction.
+
+#### New modules created
+| File | Contents Extracted |
+|------|-------------------|
+| `src/ui/asanaEditor.js` | Full Asana Editor (add/edit asana via Supabase upsert), `addStageToEditor`, `getNextRomanNumeral`, `getVariationSuffixes`, `getNextAsanaId`, `getUniqueCategories`, `formatCategoryName` |
+| `src/ui/durationDial.js` | Duration Dial logic: `updateDialUI`, `applyDurationDial`, `dialReset`, `resolveDialAnchors`, `interpolateDuration`, all event wiring |
+| `src/ui/courseUI.js` | `renderCollage`, `renderPlateSection`, `renderCategoryFilter`, `renderCourseUI`, `renderSequenceDropdown` |
+
+#### Duplicate code removed from `app.js`
+- ~700 lines of Browse/Filter/Course UI (already in `src/ui/browse.js` and `src/ui/courseUI.js`)
+- ~500 lines of Asana Editor (now in `src/ui/asanaEditor.js`)
+- ~200 lines of Duration Dial (now in `src/ui/durationDial.js`)
+- ~90 lines of duplicate wiring (sequence dropdown, IAST toggle, `nextBtn`/`prevBtn`/`startStopBtn`, `historyLink`)
+
+### Verification
+Confirmed via browser check that:
+- App loads without JS errors
+- 196 sequences correctly populated
+- Resume prompt functions correctly
+- All extracted modules expose themselves on `window` for legacy compatibility
+
+### Remaining in app.js (next targets)
+- `setPose()` — the main pose rendering orchestrator (~350 lines)
+- `getExpandedPoses()` — macro/loop expansion engine
+- `openHistoryModal` wiring (lastPill, histBackdrop, tab switching)
+- `updateTotalAndLastUI`, `calculateTotalSequenceTime`
+- `getEffectiveTime`, `saveCurrentProgress`, `showResumePrompt`
