@@ -344,14 +344,15 @@ async function showAsanaDetail(asana) {
             let shortText = '';
             let holdText = val.hold || '';
             let titleText = `Stage ${key}`;
-            let isCustom = !!val.isCustom; // This is the flag we added to loadAsanaLibrary
+            let isCustom = !!val.isCustom;
 
             if (typeof val === 'string') {
                 techText = val;
             } else if (val && typeof val === 'object') {
                 techText = val.full_technique || val.Full_Technique || val.technique || '';
                 shortText = val.shorthand || val.Shorthand || '';
-                
+                titleText = val.title || val.Title || titleText;
+            }
 
             const wrapper = document.createElement('div');
             wrapper.className = isCustom ? 'user-variation-block' : 'variation-block';
@@ -365,7 +366,6 @@ async function showAsanaDetail(asana) {
             
             if (shortText) html += `<div style="color:${isCustom ? '#1565c0' : '#2e7d32'}; font-weight:bold; margin-bottom:8px; font-family:monospace; font-size:1rem;">${shortText}</div>`;
             
-            // Add the Hold time if it exists
             if (holdText) html += `<div style="color:${isCustom ? '#0d47a1' : '#666'}; margin-bottom:8px; font-weight:600; font-size:0.95rem;">Hold: ${holdText}</div>`;
 
             if (techText) {
@@ -380,6 +380,7 @@ async function showAsanaDetail(asana) {
         });
         d.appendChild(varSection);
     }
+
     // 7. Bind Audio Button
     const playBtn = document.getElementById('playNameBtn');
     if (playBtn) playBtn.onclick = () => playAsanaAudio(asana, null, true);
@@ -460,3 +461,14 @@ function applyBrowseFilters() {
 
 
 export { setupBrowseUI, openBrowse, closeBrowse, renderBrowseList, startBrowseAsana, showAsanaDetail, applyBrowseFilters };
+
+// Expose on window so app.js can call setupBrowseUI() via typeof guard,
+// and so inline HTML onclick="openBrowse()" references work.
+window.setupBrowseUI   = setupBrowseUI;
+window.openBrowse      = openBrowse;
+window.closeBrowse     = closeBrowse;
+window.showAsanaDetail = showAsanaDetail;
+window.applyBrowseFilters = applyBrowseFilters;
+window.renderBrowseList   = renderBrowseList;
+window.startBrowseAsana   = startBrowseAsana;
+
