@@ -8,7 +8,7 @@ async function fetchCourses(currentUserId = null) {
     try {
         const rawAccumulator = [];
 
-        // 1. System Courses
+        // 1. System & User Sequences (Now all unified in `courses` table after migration)
         const { data: coursesData } = await supabase.from('courses').select('*');
         if (coursesData) {
             coursesData.forEach(row => {
@@ -17,25 +17,9 @@ async function fetchCourses(currentUserId = null) {
                     rawAccumulator.push({ 
                         title: row.title.trim(), 
                         category: (row.category || '').trim(), 
-                        poses, isUserSequence: false, id: String(row.id)
-                    });
-                }
-            });
-        }
-
-        // 2. User Sequences
-        const { data: userSeqs } = await supabase.from('user_sequences').select('*');
-        if (userSeqs) {
-            userSeqs.forEach(seq => {
-                const isMine = currentUserId && seq.user_id === currentUserId;
-                if (!seq.title || !isMine) return;
-
-                const poses = parseSequenceText(seq.sequence_text);
-                if (poses && poses.length > 0) {
-                    rawAccumulator.push({
-                        title: seq.title.trim(),
-                        category: (seq.category || 'My Sequences').trim(),
-                        poses, isUserSequence: true, supabaseId: seq.id
+                        poses, 
+                        isUserSequence: row.category === 'My Sequences', // Can use category naming logic if needed
+                        id: String(row.id)
                     });
                 }
             });
@@ -108,29 +92,10 @@ async function loadAsanaLibrary() {
             });
         }
 
-        // 2. Load User Asanas and OVERWRITE globals
-try {
-    // IMPORTANT: Ensure your .select('*') or .select('..., hold_json') includes the new field
-    const { data: userAsanasData } = await supabase.from('user_asanas').select('*');
-    
-    if (userAsanasData) {
-        userAsanasData.forEach(userRow => {
-            const key = normaliseAsanaId(String(userRow.id || userRow.ID || ''));
-            if (key) {
-                // Use the universal normalizer to update the object
-                normalized[key] = normalizeAsanaRow(userRow, normalized[key]);
-                normalized[key].isCustom = true; 
-            }
-        });
-    }
-} catch (err) { console.error("Error loading user asanas:", err); }
-
-        // 3. Load All Stages (Global + User)
+        // 2. Load Stages (Base table replaces both former globals and custom user stages)
         const { data: stagesData } = await supabase.from('stages').select('*');
-        const { data: userStagesData } = await supabase.from('user_stages').select('*');
         
         let allStagesData = stagesData ? [...stagesData] : [];
-        if (userStagesData) allStagesData = allStagesData.concat(userStagesData);
 
         allStagesData.forEach((stage) => {
             let parentIdStr = stage.asana_id ?? (Array.isArray(stage.parent_id) ? stage.parent_id[0] : stage.parent_id) ?? null;

@@ -123,21 +123,46 @@ export async function fetchServerHistory() {
     }
 }
 
-export async function appendServerHistory(title, whenDate, category = null) {
+export async function appendServerHistory(title, whenDate, category = null, durationSeconds = null) {
    addCompletion(title, whenDate, category);
 
    if (!supabase) return false;
 
    try {
-      const { error } = await supabase
+      const payload = { title, category, completed_at: whenDate.toISOString() };
+      if (durationSeconds !== null && !isNaN(durationSeconds)) {
+          payload.duration_seconds = durationSeconds;
+      }
+
+      const { data, error } = await supabase
          .from('sequence_completions')
-         .insert([{ title, category, completed_at: whenDate.toISOString() }]);
+         .insert([payload])
+         .select();
 
       if (error) throw error;
       await fetchServerHistory();
+      
+      if (data && data.length > 0) {
+          return data[0].id;
+      }
       return true;
    } catch (e) {
       console.error("Failed to append to server history:", e);
+      return false;
+   }
+}
+
+export async function updateCompletionRating(id, rating) {
+   if (!supabase || !id) return false;
+   try {
+      const { error } = await supabase
+         .from('sequence_completions')
+         .update({ rating: rating })
+         .eq('id', id);
+      if (error) throw error;
+      return true;
+   } catch (e) {
+      console.error("Failed to update rating:", e);
       return false;
    }
 }
@@ -230,6 +255,7 @@ window.calculateStreak = calculateStreak;
 window.appendServerHistory = appendServerHistory;
 window.seedManualCompletionsOnce = seedManualCompletionsOnce;
 window.fetchServerHistory = fetchServerHistory;
+window.updateCompletionRating = updateCompletionRating;
 
 // To allow UI components access
 export { COMPLETION_KEY };

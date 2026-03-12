@@ -69,15 +69,8 @@ async function getNextRomanNumeral() {
 
     if (supabase && asanaId) {
         try {
-            const [{ data: s1 }, { data: s2 }] = await Promise.all([
-                supabase.from("stages").select('"Stage_Name", stage_name').eq("asana_id", asanaId),
-                supabase.from("user_stages").select('"Stage_Name", stage_name').eq("asana_id", asanaId)
-            ]);
+            const { data: s1 } = await supabase.from("stages").select('"Stage_Name", stage_name').eq("asana_id", asanaId);
             (s1 || []).forEach(r => {
-                const name = r.Stage_Name || r.stage_name;
-                if (name) taken.add(String(name).toUpperCase());
-            });
-            (s2 || []).forEach(r => {
                 const name = r.Stage_Name || r.stage_name;
                 if (name) taken.add(String(name).toUpperCase());
             });
@@ -279,15 +272,15 @@ window.openAsanaEditor = async function (id) {
             });
         }
 
-        // Load user_stages from DB
+        // Load stages from DB
         try {
             const paddedId = String(id).padStart(3, "0");
-            const { data: userStages } = await supabase
-                .from("user_stages")
+            const { data: stages } = await supabase
+                .from("stages")
                 .select("*")
                 .eq("asana_id", paddedId);
-            if (userStages && userStages.length > 0) {
-                userStages.forEach(stage => {
+            if (stages && stages.length > 0) {
+                stages.forEach(stage => {
                     const stageKey = stage.stage_name || "";
                     if (!$("stagesContainer").querySelector(`input.stage-key[value="${stageKey}"]`)) {
                         window.addStageToEditor(stageKey, {
@@ -432,7 +425,6 @@ function wireEditorSave() {
 
         const asanaData = {
             id,
-            user_id:       userId,
             name:          $("editAsanaName").value.trim(),
             iast:          $("editAsanaIAST").value.trim(),
             english_name:  $("editAsanaEnglish").value.trim(),
@@ -452,7 +444,7 @@ function wireEditorSave() {
         try {
             if (supabase && userId) {
                 const { error: asanaErr } = await supabase
-                    .from("user_asanas")
+                    .from("asanas")
                     .upsert(asanaData, { onConflict: "id" });
                 if (asanaErr) throw new Error(asanaErr.message);
 
@@ -475,7 +467,6 @@ function wireEditorSave() {
                     const baseVariation = (baseAsana.variations && baseAsana.variations[key]) ? baseAsana.variations[key] : {};
 
                     const payload = {
-                        user_id:        userId,
                         asana_id:       id,
                         stage_name:     key,
                         title:          sfx ? `${pfx} ${key} ${sfx}` : `${pfx} ${key}`,
@@ -486,9 +477,9 @@ function wireEditorSave() {
                     };
 
                     if (dbId && dbId.includes("-")) {
-                        await supabase.from("user_stages").update(payload).eq("id", dbId);
+                        await supabase.from("stages").update(payload).eq("id", dbId);
                     } else {
-                        const { data: newRow } = await supabase.from("user_stages").insert(payload).select().single();
+                        const { data: newRow } = await supabase.from("stages").insert(payload).select().single();
                         if (newRow) div.dataset.dbId = newRow.id;
                     }
 

@@ -5,6 +5,7 @@ export class PlaybackEngine {
         this.running = false;
         this.remaining = 0;
         this.currentPoseSeconds = 0;
+        this.totalFocusSeconds = 0;
         
         // Hooks
         this.onStart = () => {};
@@ -34,6 +35,7 @@ export class PlaybackEngine {
         this.timer = setInterval(() => {
             if (this.remaining > 0) {
                 this.remaining--;
+                this.totalFocusSeconds++;
                 this.onTick(this.remaining, this.currentPoseSeconds);
             }
             
@@ -63,6 +65,7 @@ export class PlaybackEngine {
         
         this.transitionTimer = setInterval(() => {
             transitionSecs--;
+            this.totalFocusSeconds++;
             this.onTransitionTick(transitionSecs);
             
             if (transitionSecs <= 0) {

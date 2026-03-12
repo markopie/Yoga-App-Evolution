@@ -285,6 +285,7 @@ function saveCurrentProgress() {
         sequenceIdx: $("sequenceSelect")?.value || "",
         poseIdx: currentIndex,
         sequenceTitle: currentSequence.title,
+        focusDuration: playbackEngine.totalFocusSeconds || 0,
         timestamp: Date.now()
     };
     safeSetLocalStorage(RESUME_STATE_KEY, state);
@@ -344,6 +345,7 @@ function showResumePrompt(state) {
             setTimeout(() => {
                 // Double check that we actually switched sequences before setting pose
                 if (currentSequence) {
+                    if (state.focusDuration) playbackEngine.totalFocusSeconds = state.focusDuration;
                     setPose(state.poseIdx);
                 }
                 banner.remove();
@@ -683,6 +685,36 @@ playbackEngine.onPoseComplete = (wasLongHold) => {
     }
 };
 
+function triggerSequenceEnd() {
+    stopTimer();
+    
+    const transOverlay = document.getElementById("transitionOverlay");
+    if (transOverlay) transOverlay.style.display = "none";
+    const focusOverlay = document.getElementById("focusOverlay");
+    if (focusOverlay) focusOverlay.style.display = "none";
+
+    const ratingOverlay = document.getElementById("ratingOverlay");
+    if (ratingOverlay && ratingOverlay.style.display !== "flex") {
+        ratingOverlay.style.display = "flex";
+        
+        const title = currentSequence.title || "Unknown Sequence";
+        const category = currentSequence.category || null;
+        
+        ratingOverlay.dataset.sessionId = "";
+        
+        if (typeof appendServerHistory === "function") {
+            const finalDuration = playbackEngine.totalFocusSeconds || 0;
+            // appendServerHistory allows us to pass focusDuration if implemented in historyService
+            // The user requested to pass 'duration_seconds', so let's pass it.
+            appendServerHistory(title, new Date(), category, finalDuration).then(resultId => {
+                if (resultId && resultId !== true && typeof resultId !== "boolean") {
+                    ratingOverlay.dataset.sessionId = resultId;
+                }
+            }).catch(console.error);
+        }
+    }
+}
+
 playbackEngine.onTransitionStart = (secs) => {
     const overlay = document.getElementById("transitionOverlay");
     const countdownEl = document.getElementById("transitionCountdown");
@@ -726,8 +758,8 @@ playbackEngine.onTransitionStart = (secs) => {
         const nextIdx = currentIndex + 1;
         
         if (nextIdx >= poses.length) {
-            mainMsg = "Well done, your practice is complete";
-            if (nextPoseEl) nextPoseEl.textContent = "";
+            triggerSequenceEnd();
+            return;
         } else {
             const np = poses[nextIdx];
             const id = Array.isArray(np[0]) ? np[0][0] : np[0];
@@ -903,9 +935,7 @@ function nextPose() {
         return true;
     } else {
         // End of Sequence
-        stopTimer();
-        const compBtn = document.getElementById("completeBtn");
-        if (compBtn) compBtn.style.display = "inline-block";
+        triggerSequenceEnd();
         return false;
     }
 }
@@ -1758,6 +1788,7 @@ safeListen("resetBtn", "click", () => {
    // 4. NULLIFY DATA
    setCurrentSequence(null);
    setCurrentIndex(0);
+   playbackEngine.totalFocusSeconds = 0;
 
    // 5. RESET UI VISUALS (Matched to your specific HTML IDs)
    const titleEl = $("poseName");
@@ -1830,6 +1861,37 @@ safeListen("completeBtn", "click", async () => {
         btn.textContent = originalText;
     }
 });
+
+// Post-Practice Rating Wiring
+const setupRatingButtons = () => {
+    document.querySelectorAll(".rating-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+            const ratingOverlay = document.getElementById("ratingOverlay");
+            const sessionId = ratingOverlay.dataset.sessionId;
+            const rating = parseInt(btn.dataset.rating, 10);
+            
+            if (sessionId && typeof updateCompletionRating === "function") {
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = `<span style="font-size:1.5rem; margin-top:20px; font-weight:bold;">Saving...</span>`;
+                
+                await updateCompletionRating(sessionId, rating);
+                
+                btn.innerHTML = originalHtml;
+            }
+            
+            ratingOverlay.style.display = "none";
+            // Return to dashboard
+            const resetBtn = document.getElementById("resetBtn");
+            if (resetBtn) resetBtn.click();
+        });
+    });
+};
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupRatingButtons);
+} else {
+    setupRatingButtons();
+}
 
 // --------------------------------------------------------------------------
 // End of Region 9. Sections moved to modular files in src/ui/

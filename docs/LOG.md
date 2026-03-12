@@ -62,4 +62,21 @@ Confirmed via browser check that:
 - `getExpandedPoses()` — macro/loop expansion engine
 - `openHistoryModal` wiring (lastPill, histBackdrop, tab switching)
 - `updateTotalAndLastUI`, `calculateTotalSequenceTime`
-- `getEffectiveTime`, `saveCurrentProgress`, `showResumePrompt`
+- `getEffectiveTime`, `saveCurrentProgress`, `showResumePrompt`
+
+---
+
+## Database Hardening & Migrations (2026-03-12)
+
+### What was done
+Unified the entire data architecture by migrating all custom user-defined entries natively into the global structure tables. This completely obsoleted three user-specific tables, dramatically simplifying data hydration, upsert complexity on the client, and load speeds.
+
+#### Key SQL Migrations
+1. **`user_sequences` → `courses`**: Applied `UNIQUE(title, category)` constraint to `courses` and seamlessly UPSERTED 35 user-defined macros/sequences into the primary logic loop. Dropped reliance on checking IDs manually prior to inserts.
+2. **`user_asanas` → `asanas`**: Applied explicit `UNIQUE(id)` index to the primary `asanas` table. Successfully migrated all custom pose rows into global lookup pool without collision.
+3. **`user_stages` → `stages`**: Cleaned legacy duplicates mathematically, then applied mathematical `UNIQUE(asana_id, stage_name)` constraint. Migrated user variations explicitly to `stages`.
+
+#### Code Refactoring (`app.js` module architecture)
+- **`src/services/dataAdapter.js`**: Stripped the dual-loading sequences and `try/catch` user-defined overrides. Fetches now operate flawlessly off the single core tables directly (fetching just `courses`, `asanas`, and `stages`).
+- **`src/ui/builder.js`**: Swapped save logic to hit `courses` using the single command `.upsert([payload], { onConflict: 'title, category' })`, removing lines of verification logic checking `user_id` collisions.
+- **`src/ui/asanaEditor.js`**: Retargeted save logic and DOM hydration directly onto `asanas` and `stages`, stripping the requirement of applying active `user_id` mapping when defining universal custom variations.

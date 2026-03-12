@@ -325,12 +325,10 @@ async function processSemicolonCommand(commandString, useMehta = false) {
         title: title,
         category: category,
         sequence_text: sequenceText,
-        pose_count: validAsanas.length,
-        updated_at: new Date().toISOString(),
-        user_id: window.currentUserId
+        last_edited: new Date().toISOString()
     };
 
-    const { error } = await supabase.from('user_sequences').insert([payload]);
+    const { error } = await supabase.from('courses').upsert([payload], { onConflict: 'title, category' });
     if (error) {
         console.error(`❌ Error saving ${title}:`, error.message);
         throw error; // Pass it up to the main try/catch
@@ -581,48 +579,18 @@ async function builderSave() {
             title, 
             category, 
             sequence_text: sequenceText,
-            pose_count: builderPoses.length, 
-            total_seconds: totalSec,
-            updated_at: new Date().toISOString()
+            last_edited: new Date().toISOString()
         };
 
-        console.log("🚀 SAVING TO SUPABASE (user_sequences):", payload);
+        console.log("🚀 SAVING TO SUPABASE (courses):", payload);
 
-        let targetId = builderEditingSupabaseId;
+        // Thanks to the unique composite index (title, category) on courses, we can safely and cleanly upsert:
+        const { data, error: upsertError } = await supabase.from('courses')
+            .upsert([payload], { onConflict: 'title, category' })
+            .select();
 
-        // PREVENTION: If we don't have an ID (New Sequence mode), check if one exists with same Name + Cat
-        if (!targetId) {
-            const { data: existing, error: checkError } = await supabase
-                .from('user_sequences')
-                .select('id')
-                .eq('user_id', window.currentUserId)
-                .eq('title', title)
-                .eq('category', category)
-                .maybeSingle();
-            
-            if (existing) {
-                console.log("Found existing sequence with same name/cat, updating instead of inserting:", existing.id);
-                targetId = existing.id;
-            }
-        }
-
-        if (targetId) {
-            // Update existing
-            result = await supabase.from('user_sequences')
-                .update(payload)
-                .eq('id', targetId)
-                .select();
-            if (result.error) throw result.error;
-            console.log("✅ SUPABASE UPDATE SUCCESS:", result.data);
-        } else {
-            // Insert new
-            result = await supabase.from('user_sequences').insert([{
-                ...payload,
-                user_id: window.currentUserId
-            }]).select();
-            if (result.error) throw result.error;
-            console.log("✅ SUPABASE INSERT SUCCESS:", result.data);
-        }
+        if (upsertError) throw upsertError;
+        console.log("✅ SUPABASE UPSERT SUCCESS:", data);
 
         // 4. UI Refresh
         await loadCourses(); 
