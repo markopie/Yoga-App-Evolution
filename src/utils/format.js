@@ -62,7 +62,7 @@ export function renderMarkdownMinimal(md) {
 
       if (!trimmed) {
          const next = peekNextNonEmpty(i + 1);
-         const nextOl = next.match(/^(\d+)[\.)]\s+/);
+         const nextOl = next.match(/^(\d+)[\.)] \s+/);
          const nextUl = next.match(/^[-*]\s+/);
          
          if ((inOl && nextOl) || (inUl && nextUl)) continue;
@@ -72,7 +72,7 @@ export function renderMarkdownMinimal(md) {
          continue;
       }
 
-      const ol = trimmed.match(/^(\d+)[\.)]\s+(.*)$/);
+      const ol = trimmed.match(/^(\d+)[\.)] \s+(.*)$/);
       const ul = trimmed.match(/^[-*]\s+(.*)$/);
 
       if (ol) {
@@ -109,6 +109,18 @@ export function formatTechniqueText(text) {
     // SAFETY CHECK: If text is null, undefined, or an object, return empty string
     if (!text || typeof text !== 'string') return "";
     
+    // Strip surrounding quotes
     let clean = text.replace(/^"|"$/g, '').trim();
-    return clean.replace(/\.(\s+|$)/g, '.\\n\\n');
+    
+    // Convert literal \n escape sequences (stored as backslash-n in the DB) to real newlines
+    // This handles text like "Stand erect.\n\nTouch your heels..." from Supabase
+    clean = clean.replace(/\\n/g, '\n');
+    
+    // Collapse 3+ consecutive newlines down to 2
+    clean = clean.replace(/\n{3,}/g, '\n\n');
+    
+    // Trim trailing whitespace on each line
+    clean = clean.split('\n').map(l => l.trimEnd()).join('\n').trim();
+    
+    return clean;
 }

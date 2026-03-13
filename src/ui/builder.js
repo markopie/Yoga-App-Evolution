@@ -107,26 +107,87 @@ function builderRender() {
                </select>`;
         }
 
-        // BUILD THE DURATION INPUT (Locked if not Flow/Macro)
-        // BUILD THE DURATION INPUT (Locked if not Flow/Macro/Loop)
-        const displayTime = (isMacro || isLoopStart) ? durOrReps : (isFlow ? durOrReps : (asana?.hold_data?.standard || 30));
-        const isLocked = !isFlow && !isMacro && !isLoopStart;
-
-        let durInputHTML = ``;
-        if (isLoopEnd) {
-             durInputHTML = `<span style="color:#aaa;">-</span>`;
-        } else {
-             durInputHTML = `
-                <input type="number" class="b-dur" data-idx="${idx}" 
-                    value="${displayTime}" 
-                    min="1" 
-                    ${isLocked ? 'readonly' : ''} 
-                    style="width:60px; padding:4px; border:1px solid #ccc; text-align:center; ${isLocked ? 'background:#f0f0f0; color:#888; cursor:not-allowed;' : ''}">
-                ${(isMacro || isLoopStart) ? `<div style="font-size:0.7rem; color:#0d47a1; margin-top:4px; font-weight:bold;">Rounds</div>` : (isLocked ? '' : `<button class="tiny b-std-time" data-idx="${idx}" style="display:block; margin:4px auto 0;">⏱ Std</button>`)}
-            `;
-        }
-    
+        // Duration is now governed by library defaults — no per-row editing needed
+        // For macros/loop-starts, we still allow rounds input
         const isSpecial = isMacro || isLoopStart || isLoopEnd;
+        let roundsHTML = '';
+        if (isMacro || isLoopStart) {
+            roundsHTML = `<div style="font-size:0.75rem; color:#0d47a1; margin-top:4px;">
+                <label style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                    Rounds:
+                    <input type="number" class="b-dur" data-idx="${idx}" value="${durOrReps}" min="1" style="width:50px; padding:2px 4px; border:1px solid #ccc; border-radius:4px;">
+                </label>
+            </div>`;
+        }
+
+        // --- INJECTED POSE BADGES ---
+        // Inform the builder author about auto-injected prep/recovery poses so the
+        // total runtime makes sense (injected time is NOT included in the builder stats).
+        let injectionBadgesHTML = '';
+        if (!isSpecial && asana) {
+            const lib = window.asanaLibrary || {};
+
+            // Helper: resolve a pose ID to its name + standard duration
+            const resolvePose = (rawId) => {
+                if (!rawId || rawId === 'NULL' || rawId === 'null') return null;
+                const cleanId = String(rawId).trim().replace(/\|/g, '').replace(/\s+/g, '');
+                const parsed = cleanId.match(/^(\d+)(.*)?$/);
+                if (!parsed) return null;
+                const numId = parsed[1].padStart(3, '0');
+                const varSuffix = (parsed[2] || '').toUpperCase();
+                const target = lib[numId];
+                if (!target) return null;
+                // hold_json is the field in asanaLibrary; hold_data is on variation objects
+                let dur = (target.hold_json?.standard) ?? (target.hold_data?.standard) ?? target.standard_seconds ?? 30;
+                let name = target.english || target.name || `ID ${numId}`;
+                if (varSuffix && target.variations) {
+                    const vd = target.variations[varSuffix];
+                    if (vd) {
+                        name += ` (${vd.title || varSuffix})`;
+                        dur = (vd.hold_data?.standard) ?? dur;
+                    }
+                }
+                // Double if sides required
+                if (target.requiresSides || target.requires_sides) dur *= 2;
+                return { name, dur };
+            };
+
+            // Check base asana's prep/recovery
+            let prepId = asana.preparatory_pose_id;
+            let recovId = asana.recovery_pose_id;
+
+            // Check if the currently selected variation overrides them
+            const selectedVar = pose.variation;
+            if (selectedVar && asana.variations && asana.variations[selectedVar]) {
+                const vd = asana.variations[selectedVar];
+                if (vd.preparatory_pose_id) prepId = vd.preparatory_pose_id;
+                if (vd.recovery_pose_id)    recovId = vd.recovery_pose_id;
+            }
+
+            const prepInfo  = resolvePose(prepId);
+            const recovInfo = resolvePose(recovId);
+
+            if (prepInfo || recovInfo) {
+                const badges = [];
+                if (prepInfo) {
+                    badges.push(`<span title="Auto-injected before this pose at runtime" style="
+                        display:inline-flex; align-items:center; gap:3px;
+                        background:#fff8e1; color:#f57f17; border:1px solid #ffe082;
+                        border-radius:10px; padding:1px 7px; font-size:0.7rem; font-weight:600; white-space:nowrap;">
+                        ⚡ +Prep: ${prepInfo.name} (${prepInfo.dur}s)
+                    </span>`);
+                }
+                if (recovInfo) {
+                    badges.push(`<span title="Auto-injected after this pose at runtime" style="
+                        display:inline-flex; align-items:center; gap:3px;
+                        background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7;
+                        border-radius:10px; padding:1px 7px; font-size:0.7rem; font-weight:600; white-space:nowrap;">
+                        💚 +Recovery: ${recovInfo.name} (${recovInfo.dur}s)
+                    </span>`);
+                }
+                injectionBadgesHTML = `<div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:5px;">${badges.join('')}</div>`;
+            }
+        }
 
         // --- 4. INJECT HTML ---
         tr.innerHTML = `
@@ -142,12 +203,8 @@ function builderRender() {
                  ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" ${isSpecial ? 'readonly' : ''} style="width:${isSpecial ? 'auto' : '50px'}; padding:2px; border:1px solid #ccc; border-radius:4px; ${isSpecial ? 'background:#f0f0f0;' : ''}">
                  ${varSelectHTML}
               </div>
-           </td>
-           <td style="padding:8px; text-align:center;">
-              ${durInputHTML}
-           </td>
-           <td style="padding:8px;">
-              <input type="text" class="b-note" data-idx="${idx}" value="${(pose.note || '').replace(/"/g, '&quot;')}" placeholder="Notes..." style="width:100%; padding:4px; border:1px solid #ccc;">
+              ${injectionBadgesHTML}
+              ${roundsHTML}
            </td>
            <td style="padding:8px; text-align:center; white-space:nowrap;">
               <button class="tiny b-move-top" data-idx="${idx}" title="Move to Top" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤒</button>
@@ -202,6 +259,7 @@ function builderRender() {
         builderRender();
     });
 
+    // Rounds input for Macros and Loop starts only
     qS('.b-dur').forEach(el => {
         el.onchange = (e) => {
             const idx = e.target.dataset.idx;
@@ -214,8 +272,6 @@ function builderRender() {
             builderRender(); 
         };
     });
-
-    qS('.b-note').forEach(el => el.oninput = (e) => builderPoses[e.target.dataset.idx].note = e.target.value);
     qS('.b-move-up').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), -1));
     qS('.b-move-dn').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), 1));
     qS('.b-remove').forEach(el => el.onclick = () => removePose(parseInt(el.dataset.idx)));
@@ -241,16 +297,48 @@ function builderRender() {
     // --- 6. STATS UPDATER (Builder Modal) ---
     const statsEl = document.getElementById("builderStats");
     if (statsEl) {
-        // Efficiently calculate expanded totals
-        const tempSeq = { poses: builderPoses.map(p => [p.id, p.duration, p.variation || "", p.variation || "", p.note || ""]) };
+        // Build a sequence using library-standard hold times (the source of truth for timing)
+        const libraryArray2 = Object.values(window.asanaLibrary || {});
+        
+        const tempPoses = builderPoses.map(p => {
+            const idStr = String(p.id);
+            const isMacroOrLoop = idStr.startsWith("MACRO:") || idStr.startsWith("LOOP_");
+            let standardTime = p.duration; // fallback
+            
+            if (!isMacroOrLoop) {
+                const normId2 = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
+                const asana2 = libraryArray2.find(a => String(a.id || a.asanaNo) === String(normId2));
+                if (asana2 && asana2.hold_data && asana2.hold_data.standard) {
+                    standardTime = asana2.hold_data.standard;
+                }
+            }
+            
+            return [p.id, standardTime, p.variation || "", p.variation || "", p.note || ""];
+        });
+        
+        const tempSeq = { poses: tempPoses };
         const expanded = (typeof window.getExpandedPoses === "function") ? window.getExpandedPoses(tempSeq) : builderPoses;
         
-        const finalTotalSecs = expanded.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
-        const expandedPoseCount = expanded.length;
+        // Authored poses = non-injected (no note matching the injection marker)
+        const authoredPoses  = expanded.filter(p => !String(p[4] || "").includes("Auto-Injected"));
+        const injectedPoses  = expanded.filter(p =>  String(p[4] || "").includes("Auto-Injected"));
 
-        const m = Math.floor(finalTotalSecs / 60);
-        const s = finalTotalSecs % 60;
-        statsEl.textContent = `${expandedPoseCount} poses · ${m}m ${s}s total (incl. reps & sides)`;
+        const authoredSecs  = authoredPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
+        const injectedSecs  = injectedPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
+        const runtimeSecs   = authoredSecs + injectedSecs;
+
+        const fmt = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
+
+        if (injectedSecs > 0) {
+            statsEl.innerHTML = `
+                <span>${authoredPoses.length} poses · <strong>${fmt(authoredSecs)}</strong> authored</span>
+                <span style="margin-left:10px; color:#f57f17; font-size:0.85em;" title="Additional time from auto-injected preparatory/recovery poses">
+                    + ~${fmt(injectedSecs)} injected → 
+                    <strong>~${fmt(runtimeSecs)} runtime</strong>
+                </span>`;
+        } else {
+            statsEl.textContent = `${authoredPoses.length} poses · ${fmt(authoredSecs)} total (incl. reps & sides)`;
+        }
     }
 }
 

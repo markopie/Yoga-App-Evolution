@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <link rel="icon" href="data:,">
@@ -72,8 +72,11 @@
           </div>
           <div>
             <label class="muted" style="font-size:0.8rem;">Category</label>
-            <input type="text" id="editAsanaCategory" list="asanaCategoryList" placeholder="Select or type new..." style="width:100%; padding:6px;">
-            <datalist id="asanaCategoryList"></datalist>
+            <select id="editAsanaCategory" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+              <option value="">-- Select category --</option>
+            </select>
+            <input type="text" id="editAsanaCategoryCustom" placeholder="Type new category name…"
+              style="display:none; margin-top:4px; width:100%; padding:6px; border:1px solid #f57f17; border-radius:4px; box-sizing:border-box;">
           </div>
           <div>
             <label class="muted" style="font-size:0.8rem;">Hold Times (seconds)</label>
@@ -193,8 +196,8 @@
           </div>
          
          <button id="browseBtn" type="button" title="Browse / search asanas">Browse</button>
-         
-         <span class="pill" id="poseCounter">–</span>
+          
+          <span class="pill" id="poseCounter">–</span>
           <span class="pill" id="poseTimer">–</span>
           
           <div id="timeDashboard" class="time-capsule" title="Time Remaining / Total Time">
@@ -205,7 +208,6 @@
                 <span id="timeTotalDisplay">--:--</span>
              </div>
           </div>
-          <span class="pill" id="lastCompletedPill" title="Last time you marked this sequence complete">Last: –</span>
 
           <div class="controls">
              <button id="prevBtn" type="button">◀ Prev</button>
@@ -234,33 +236,22 @@
                 </div>
                 <div style="text-align:right">
                    <div class="muted" id="debugSmall"></div>
-                   <button id="iastToggleBtn" class="tiny" style="font-size:0.75rem;opacity:0.7;margin-top:4px;" title="Toggle IAST / English name display">IAST</button>
-                   </div>
+                </div>
              </div>
 
              <div style="margin-top:12px" id="collageWrap">
                 <div class="msg" id="loadingText">Select a course</div>
              </div>
-             
-             <div id="poseInstructions" class="muted" style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; white-space: pre-wrap;"></div>
-             
-             <details id="poseNoteDetails" style="margin-top:12px;max-width:720px;">
-                <summary style="cursor:pointer;font-weight:650;">Note</summary>
-                <div id="poseNoteBody" class="muted" style="padding-top:8px;color:#111"></div>
-             </details>
 
-             <details id="poseAsanaDescDetails" style="margin-top:12px;max-width:720px;">
+             <div id="poseInstructions" class="muted" style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; white-space: pre-wrap;"></div>
+
+             <details id="poseAsanaDescDetails" style="margin-top:12px;max-width:720px;" open>
                 <summary style="cursor:pointer;font-weight:650;">Description</summary>
                 <div id="poseAsanaDescBody" class="muted" style="padding-top:8px;color:#111; white-space: pre-wrap;"></div>
              </details>
-
-             <details id="poseDescDetails" style="margin-top:12px; max-width:720px" open>
-                <summary style="cursor:pointer; font-weight:650">My Personal Notes</summary>
-                <div id="poseDescBody" class="muted" style="padding-top:8px; color:#111"></div>
-             </details>
           </div>
        </div>
-    </main>
+     </main>
   </div>
 
   <!-- Sequence Builder Modal -->
@@ -302,8 +293,6 @@
             <tr style="border-bottom:2px solid #e0e0e0;">
               <th style="padding:8px 6px;width:32px;text-align:center;color:#999;">#</th>
               <th style="padding:8px 6px;text-align:left;">Pose</th>
-              <th style="padding:8px 6px;width:90px;text-align:left;">Duration</th>
-              <th style="padding:8px 6px;text-align:left;">Note / Variation</th>
               <th style="padding:8px 6px;width:64px;text-align:center;">Order</th>
               <th style="padding:8px 6px;width:32px;"></th>
             </tr>
@@ -342,22 +331,10 @@
             <div style="display:flex;gap:8px;align-items:center;flex:1;min-width:180px">
                <input id="browseSearch" placeholder="Search name (English or IAST)" style="flex:1">
             </div>
-            <input id="browsePlate" class="tiny" placeholder="Plate e.g. 184 or 176-183">
             <input id="browseAsanaNo" class="tiny" placeholder="Asana #">
             
             <select id="browseCategory">
               <option value="">All categories</option>
-              <option value="__UNCAT__">Uncategorized</option>
-              <option value="01_Standing_and_Basic">Standing &amp; Basic</option>
-              <option value="02_Seated_and_Lotus_Variations">Seated &amp; Lotus</option>
-              <option value="03_Forward_Bends">Forward Bends</option>
-              <option value="04_Inversions_Sirsasana_Sarvangasana">Inversions</option>
-              <option value="05_Abdominal_and_Supine">Abdominal &amp; Supine</option>
-              <option value="06_Twists">Twists</option>
-              <option value="07_Arm_Balances">Arm Balances</option>
-              <option value="08_Advanced_Leg_behind_Head">Leg Behind Head &amp; Advanced</option>
-              <option value="09_Backbends">Backbends</option>
-              <option value="10_Restorative_Pranayama">Restorative / Pranayama</option>
             </select>
 
             <label class="muted" style="display:flex;gap:8px;align-items:center;min-width:170px">
@@ -514,9 +491,9 @@
   
 <script type="module" src="src/services/supabaseClient.js"></script>
 
-<script type="module" src="src/services/dataAdapter.js?v=2"></script>
+<script type="module" src="src/services/dataAdapter.js?v=29"></script>
 
-<script type="module" src="app.js?v=23"></script>
+<script type="module" src="app.js?v=29"></script>
 
 </body>
 </html>

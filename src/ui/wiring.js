@@ -1,17 +1,29 @@
-import { $, showError, safeListen, normaliseText, setStatus } from '../utils/dom.js';
+﻿import { $, showError, safeListen, normaliseText, setStatus } from '../utils/dom.js';
 console.log("🚀 WIRING.JS LOADING...");
 import { prefersIAST, setIASTPref } from '../utils/format.js';
 import { supabase } from '../services/supabaseClient.js';
 import { normalizePlate } from '../services/dataAdapter.js';
 import { playbackEngine } from '../playback/timer.js';
-import { openHistoryModal, switchHistoryTab, renderGlobalHistory } from './historyModal.js?v=23';
-import { builderRender, builderSave, openEditCourse, builderOpen, addPoseToBuilder, processSemicolonCommand, openLinkSequenceModal, createRepeatGroup } from './builder.js?v=23';
+import { openHistoryModal, switchHistoryTab, renderGlobalHistory } from './historyModal.js?v=29';
+import { builderRender, builderSave, openEditCourse, builderOpen, addPoseToBuilder, processSemicolonCommand, openLinkSequenceModal, createRepeatGroup } from './builder.js?v=29';
 import { formatHMS, displayName } from '../utils/format.js';
 
 // Setup some window aliases since we're breaking up a monolithic file
 const getActivePlaybackList = () => window.activePlaybackList;
 const getCurrentSequence = () => window.currentSequence;
 const getAsanaIndex = () => Object.values(window.asanaLibrary || {}).filter(Boolean);
+
+/** Update the Next button text: "Complete ▶" on last pose, "Next ▶" otherwise */
+function updateNextBtnText() {
+    const nextBtn = document.getElementById('nextBtn');
+    if (!nextBtn) return;
+    const poses = (window.activePlaybackList && window.activePlaybackList.length > 0)
+        ? window.activePlaybackList
+        : (window.currentSequence?.poses || []);
+    const isLast = poses.length > 0 && window.currentIndex >= poses.length - 1;
+    nextBtn.textContent = isLast ? 'Complete ▶' : 'Next ▶';
+}
+window.updateNextBtnText = updateNextBtnText;
 
 // #region 1. DROPDOWN & SEQ SELECTION
 const seqSelect = $("sequenceSelect");
@@ -22,8 +34,17 @@ if (seqSelect) {
         
         if (!idx) {
             window.currentSequence = null;
-            if($("statusText")) $("statusText").textContent = "Select a sequence";
-            if($("collageWrap")) $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`; 
+            window.activePlaybackList = [];
+            window.currentIndex = 0;
+            if (typeof window.stopTimer === "function") window.stopTimer();
+            if ($("poseName"))         $("poseName").textContent = "Select a sequence";
+            if ($("poseMeta"))         $("poseMeta").textContent = "";
+            if ($("poseInstructions")) $("poseInstructions").textContent = "";
+            if ($("poseTimer"))        $("poseTimer").textContent = "–";
+            if ($("statusText"))       $("statusText").textContent = "Select a sequence";
+            if ($("collageWrap"))      $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`;
+            const _tp = document.querySelector(".time-content");
+            if (_tp) _tp.innerHTML = `<span id="timeRemainingDisplay">--:--</span><span class="time-sep">/</span><span id="timeTotalDisplay">--:--</span>`;
             if (typeof window.updateActiveCategoryTitle === 'function') window.updateActiveCategoryTitle();
             return;
         }
@@ -45,6 +66,7 @@ if (seqSelect) {
         try {
             window.currentIndex = 0; 
             window.setPose(0);
+            updateNextBtnText();
             if($("statusText")) $("statusText").textContent = "Ready to Start"; 
             const btn = document.getElementById("startStopBtn");
             if (btn) btn.textContent = "Start";
@@ -77,8 +99,8 @@ if (seqSelect) {
 }
 
 // #region 2. PLAYBACK CONTROLS
-safeListen("nextBtn", "click", () => { window.stopTimer(); window.nextPose(); });
-safeListen("prevBtn", "click", () => { window.stopTimer(); window.prevPose(); });
+safeListen("nextBtn", "click", () => { window.stopTimer(); window.nextPose(); updateNextBtnText(); });
+safeListen("prevBtn", "click", () => { window.stopTimer(); window.prevPose(); updateNextBtnText(); });
 safeListen("startStopBtn", "click", () => {
     if (!getCurrentSequence()) return;
     if (!playbackEngine.running) window.startTimer();

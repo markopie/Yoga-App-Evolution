@@ -79,6 +79,8 @@ async function loadAsanaLibrary() {
                     audio: row.audio_url ?? '',
                     image_url: row.image_url ?? '',
                     technique: row.technique ?? row.Technique ?? '',
+                    description: row.description ?? row.Description ?? '',
+                    category: row.category ?? '',
                     requiresSides: !!(row.requires_sides ?? row.Requires_Sides ?? false),
                     plates: typeof parsePlates === 'function' ? parsePlates(row.plate_numbers ?? '') : (row.plate_numbers ?? ''),
                     hold: rawHoldText,

@@ -1118,3 +1118,119 @@ body.modal-open {
     position: relative;
     z-index: 20;
 }
+/* ==========================================================================
+   MOBILE-RESPONSIVE: BROWSE FILTERS
+   ========================================================================== */
+.browse-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    align-items: center;
+}
+
+.browse-filters input,
+.browse-filters select {
+    font-size: 0.9rem;
+    padding: 8px 10px;
+    min-height: 36px;
+}
+
+@media (max-width: 600px) {
+    .browse-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .browse-filters input,
+    .browse-filters select {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    #browseSearch {
+        font-size: 1rem;
+    }
+}
+
+/* ==========================================================================
+   MOBILE-RESPONSIVE: SEQUENCE BUILDER TABLE
+   ========================================================================== */
+@media (max-width: 600px) {
+    /* Builder table: collapse the header */
+    #builderTable thead { display: none; }
+    
+    /* Each row becomes its own card */
+    #builderTable tr,
+    #builderTable td {
+        display: block;
+        width: 100%;
+    }
+    
+    #builderTable tr {
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        padding: 4px;
+        background: #fff;
+    }
+    
+    /* Number/checkbox cell: float left as a small badge */
+    #builderTable td:first-child {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid #f0f0f0;
+        padding-bottom: 6px;
+        margin-bottom: 4px;
+    }
+    
+    /* Order controls cell: horizontal strip */
+    #builderTable td:last-child {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        justify-content: flex-end;
+        padding-top: 6px;
+        border-top: 1px solid #f0f0f0;
+    }
+    
+    /* Make the builder modal full-height scrollable on mobile */
+    #editCourseBackdrop .modal {
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+    }
+    
+    /* Builder header: stack vertically on mobile */
+    #editCourseBackdrop .modal-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    /* Variation dropdown: full width on mobile */
+    .b-var {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-top: 6px !important;
+    }
+}
+
+/* ==========================================================================
+   TECHNIQUE TEXT: ensure pre-wrap works and looks clean
+   ========================================================================== */
+#poseInstructions {
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: #333;
+    white-space: pre-wrap;
+    max-width: 720px;
+}
+
+/* Browse technique text also clean */
+.technique-text {
+    font-size: 0.9rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    color: #333;
+}

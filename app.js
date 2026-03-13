@@ -1,4 +1,4 @@
-// #region 1. STATE & CONSTANTS
+﻿// #region 1. STATE & CONSTANTS
 /* ==========================================================================
    APP CONFIGURATION & CONSTANTS
    ========================================================================== */
@@ -21,9 +21,9 @@ import { parseHoldTimes, buildHoldString } from "./src/utils/parsing.js";
 import { prefersIAST, setIASTPref, displayName, escapeHtml2, renderMarkdownMinimal, formatHMS, formatTechniqueText } from "./src/utils/format.js";
 import { playbackEngine } from "./src/playback/timer.js";
 import { parsePlateTokens, plateFromFilename, primaryAsanaFromFilename, filenameFromUrl, mobileVariantUrl, ensureArray, isBrowseMobile, smartUrlsForPoseId } from "./src/utils/helpers.js";
-import { findAsanaByIdOrPlate } from "./src/services/dataAdapter.js?v=19";
-import "./src/ui/wiring.js?v=23"; // 👈 Core UI Wiring & Listeners
-import { builderOpen, openEditCourse } from "./src/ui/builder.js?v=23";
+import { findAsanaByIdOrPlate } from "./src/services/dataAdapter.js?v=29";
+import "./src/ui/wiring.js?v=29"; // 👈 Core UI Wiring & Listeners
+import { builderOpen, openEditCourse } from "./src/ui/builder.js?v=29";
 
 // UI Renderers
 import { 
@@ -32,13 +32,19 @@ import {
     updatePoseDescription, 
     loadUserPersonalNote, 
     descriptionForPose 
-} from "./src/ui/renderers.js?v=23";
+} from "./src/ui/renderers.js?v=29";
 
 // Extracted UI modules (side-effects: registers functions on window)
-import "./src/ui/browse.js";
-import "./src/ui/asanaEditor.js";
+import "./src/ui/browse.js?v=29";
+import "./src/ui/asanaEditor.js?v=29";
 import "./src/ui/durationDial.js";
 import "./src/ui/courseUI.js";
+import { openHistoryModal, switchHistoryTab, renderGlobalHistory } from "./src/ui/historyModal.js?v=29";
+
+// Expose history modal on window for legacy callers
+window.openHistoryModal = openHistoryModal;
+window.switchHistoryTab = switchHistoryTab;
+window.renderGlobalHistory = renderGlobalHistory;
 
 
 // Make them global so old UI buttons and other files can call them if needed
@@ -59,7 +65,7 @@ import {
     globalState, setCourses, setSequences, setAsanaLibrary, setPlateGroups, setServerAudioFiles, 
     setIdAliases, setActivePlaybackList, setCurrentSequence, setCurrentIndex, 
     setCurrentSide, setNeedsSecondSide, getCurrentSequence, getActivePlaybackList, getCurrentSide
-} from "./src/store/state.js?v=23";
+} from "./src/store/state.js?v=29";
 
 // Expose robust proxies on window so ANY lingering bare reads in app.js seamlessly hit globalState without ReferenceErrors
 ['courses', 'sequences', 'asanaLibrary', 'activePlaybackList', 'currentSequence', 'currentIndex', 'currentSide', 'needsSecondSide'].forEach(prop => {
@@ -115,7 +121,7 @@ async function disableWakeLock() {
    AUDIO ENGINE
    ========================================================================== */
 
-import { getCurrentAudio, setCurrentAudio, playFaintGong, detectSide, playSideCue, playAsanaAudio, playPoseMainAudio } from "./src/playback/audioEngine.js?v=23";
+import { getCurrentAudio, setCurrentAudio, playFaintGong, detectSide, playSideCue, playAsanaAudio, playPoseMainAudio } from "./src/playback/audioEngine.js?v=29";
 
 // #endregion
 // #region 3. HELPERS & FORMATTING
@@ -179,20 +185,6 @@ window.loadCourses = async function() {
     if (typeof renderSequenceDropdown === "function") renderSequenceDropdown(); 
 };
 
-// 3. Local Sequence Editing (Save/Reset)
-function saveSequencesLocally() {
-    if (!sequences || !sequences.length) return;
-    if (typeof LOCAL_SEQ_KEY !== 'undefined') {
-        localStorage.setItem(LOCAL_SEQ_KEY, JSON.stringify(sequences));
-    }
-    alert("Changes saved to browser storage!");
-}
- 
-function resetToOriginalJSON() {
-    if(!confirm("Erase custom edits?")) return;
-    if (typeof LOCAL_SEQ_KEY !== 'undefined') localStorage.removeItem(LOCAL_SEQ_KEY);
-    location.reload();
-}
 
 // 4. Load Asana Library
 
@@ -216,21 +208,6 @@ window.prevPose = prevPose;
 
 
 
-// History Loader (Clean version)
-async function setupHistory() {
-    try {
-        // FIX: Only fetch history here. Use the history URL.
-        // We use a timestamp to prevent caching old data.
-        const res = await fetch("history.json?t=" + Date.now()); 
-        if (res.ok) {
-            window.completionHistory = await res.json();
-        } else {
-            window.completionHistory = {};
-        }
-    } catch (e) {
-        window.completionHistory = {};
-    }
-}
  // #endregion
 // #region 5. HISTORY & LOGGING
 /* ==========================================================================
@@ -244,15 +221,39 @@ async function setupHistory() {
     if (Array.isArray(rawId)) rawId = rawId[0];
     if (Array.isArray(rawId)) rawId = rawId[0]; // Double unwrap just in case
     
+    const strId = String(rawId || "");
+    
+    // Special: Macros and Loop markers don't have a time contribution themselves
+    // (they contribute via expansion). Treat them as 0s to avoid double-counting.
+    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END")) {
+        return 0;
+    }
+    // LOOP_START: dur is the repeat count, not seconds, so skip too
+    if (strId.startsWith("LOOP_START")) {
+        return 0;
+    }
+    
     const lib = window.asanaLibrary || {};
     
     // 2. The ID Fix: Compare them mathematically (so "003" safely matches "3")
     const searchId = Number(rawId);
     const asana = Object.values(lib).find(a => Number(a.id || a.asanaNo) === searchId);
     
-    const duration = Number(dur) || 0;
+    // 3. Prefer library-standard time; fall back to sequence-stored duration
+    let duration;
+    if (asana) {
+        // Library stores hold times in hold_json (not hold_data)
+        const hj = asana.hold_json || asana.hold_data;
+        if (hj && hj.standard) {
+            duration = Number(hj.standard);
+        } else {
+            duration = Number(dur) || 0;
+        }
+    } else {
+        duration = Number(dur) || 0;
+    }
 
-    // 3. Double the time if the pose requires sides
+    // 4. Double the time if the pose requires both sides
     if (asana && (asana.requiresSides || asana.requires_sides)) {
         return duration * 2;
     }
@@ -269,7 +270,7 @@ import {
     addCompletion, lastCompletionFor, seedManualCompletionsOnce, fetchServerHistory, 
     appendServerHistory, deleteCompletionById, deleteAllCompletionsForTitle, 
     calculateStreak, toggleHistoryPanel 
-} from "./src/services/historyService.js?v=23";
+} from "./src/services/historyService.js?v=29";
 
 window.clearProgress = clearProgress;
 
@@ -568,7 +569,8 @@ function getExpandedPoses(sequence) {
             let displayNameStr = "Action";
 
             if (targetAsana) {
-                duration = targetAsana.standard_seconds || 30;
+                const hj = targetAsana.hold_json || targetAsana.hold_data;
+                duration = (hj && hj.standard) ? Number(hj.standard) : 30;
                 displayNameStr = (typeof displayName === "function" ? displayName(targetAsana) : (targetAsana.english || targetAsana.name)) || "Action";
 
                 // Variation specific hold
@@ -693,6 +695,37 @@ function triggerSequenceEnd() {
     const focusOverlay = document.getElementById("focusOverlay");
     if (focusOverlay) focusOverlay.style.display = "none";
 
+    // 90% completion gate: check if user completed enough of the sequence
+    const totalSeqTime = calculateTotalSequenceTime(currentSequence);
+    const focusDuration = playbackEngine.totalFocusSeconds || 0;
+    
+    // Skip gate if timer was never started (user just skipped through)
+    if (focusDuration === 0) {
+        // Timer never ran — silently allow (no rating) or just return
+        const ratingOverlay = document.getElementById("ratingOverlay");
+        if (ratingOverlay) ratingOverlay.style.display = "none";
+        return;
+    }
+    
+    const completionRatio = totalSeqTime > 0 ? focusDuration / totalSeqTime : 1;
+    
+    if (completionRatio < 0.9 && totalSeqTime > 60) {
+        // User hasn't completed enough
+        const pct = Math.round(completionRatio * 100);
+        const needed = Math.round(totalSeqTime * 0.9);
+        const got = Math.round(focusDuration);
+        const needMore = needed - got;
+        const mm = Math.floor(needMore / 60);
+        const ss = needMore % 60;
+        const timeStr = mm > 0 ? `${mm}m ${ss}s` : `${ss}s`;
+        
+        const msg = `You've completed ${pct}% of this sequence's timed practice.\n\n` +
+            `Keep going — ${timeStr} more to reach 90% to record this session.`;
+        
+        setTimeout(() => alert(msg), 100);
+        return;
+    }
+
     const ratingOverlay = document.getElementById("ratingOverlay");
     if (ratingOverlay && ratingOverlay.style.display !== "flex") {
         ratingOverlay.style.display = "flex";
@@ -704,8 +737,6 @@ function triggerSequenceEnd() {
         
         if (typeof appendServerHistory === "function") {
             const finalDuration = playbackEngine.totalFocusSeconds || 0;
-            // appendServerHistory allows us to pass focusDuration if implemented in historyService
-            // The user requested to pass 'duration_seconds', so let's pass it.
             appendServerHistory(title, new Date(), category, finalDuration).then(resultId => {
                 if (resultId && resultId !== true && typeof resultId !== "boolean") {
                     ratingOverlay.dataset.sessionId = resultId;
@@ -872,10 +903,12 @@ function updateTimerUI(remaining, currentPoseSeconds) {
     }
 
     if (currentSequence) {
+        // Use activePlaybackList to get the accurate (expanded) list
         const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
             ? window.activePlaybackList 
             : (currentSequence.poses || []);
         
+        // Total time = sum of library-standard hold times (via getEffectiveTime)
         const totalSeconds = poses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
         let secondsLeft = remaining; 
 
@@ -1249,25 +1282,22 @@ if (focusCounter) {
         renderSmartGlossary(displayShorthand);
     }
 
-    // 7. INSTRUCTIONS UI
+    // 7. TECHNIQUE UI (shown directly in poseInstructions, no collapsible wrapper)
     const textContainer = document.getElementById("poseInstructions");
     if (textContainer) {
         if (displayTechnique && typeof formatTechniqueText === 'function') {
             textContainer.style.display = "block";
             
-            // Dynamically prepend the variation title in bold IF a variation is active
+            // Prepend variation title in bold if a variation is active
             let techniqueHTML = formatTechniqueText(displayTechnique);
             if (variationTitle) {
                 techniqueHTML = `<div style="font-weight:600; color:#333; margin-bottom:8px; padding-bottom:5px; border-bottom:1px solid #ddd;">${variationTitle} Instructions:</div>` + techniqueHTML;
             }
 
-            textContainer.innerHTML = `
-                <details>
-                    <summary style="cursor:pointer; color:#2e7d32; font-weight:600; padding:5px 0;">View Full Technique Instructions</summary>
-                    <div style="margin-top:10px; padding:10px; background:#f9f9f9; border-radius:8px; white-space: pre-wrap;">${techniqueHTML}</div>
-                </details>`;
+            textContainer.innerHTML = techniqueHTML;
         } else {
             textContainer.style.display = "none";
+            textContainer.innerHTML = "";
         }
     }
 
@@ -1284,19 +1314,19 @@ if (focusCounter) {
         const infoSpan = document.createElement("span");
         infoSpan.className = "meta-text-only"; 
 
-        // --- THE FIX: Use the sequence duration for the display string ---
-        // currentPose[1] contains the duration defined in your sequence/macro
-        const currentSeconds = currentPose[1]; 
-
         // Get range from library for reference
         const hj = asana?.hold_json || asana?.hold_data;
         let rangeText = "";
-        if (hj && hj.standard) {
-            rangeText = ` (Range: ${hj.short}s - ${hj.long}s)`;
+        if (hj && hj.short && hj.long) {
+            rangeText = `Range: ${hj.short}s\u2013${hj.long}s`;
+        } else if (hj && hj.standard) {
+            rangeText = `~${hj.standard}s`;
         }
 
-        // Update the text content to use the dynamic currentSeconds
-        infoSpan.textContent = `ID: ${lookupId} • ${currentSeconds}s${rangeText}`;
+        // Show ID and Range only — sequence duration is no longer relevant here
+        infoSpan.textContent = rangeText 
+            ? `ID: ${lookupId} \u2022 ${rangeText}` 
+            : `ID: ${lookupId}`;
         metaContainer.appendChild(infoSpan);
 
         if (asana) {
@@ -1544,280 +1574,9 @@ function renderIdFixer(container, brokenId) {
 
 // (Sequence dropdown & IAST wiring already handled in src/ui/wiring.js)
 
-// 2. History Interactions (Clickable Pill)
-const lastPill = $("lastCompletedPill");
-if (lastPill) {
-    lastPill.style.cursor = "pointer";
-    lastPill.title = "Click to view full completion history";
-    lastPill.style.textDecoration = "underline dotted";
-
-    lastPill.addEventListener("click", () => {
-        if (!currentSequence) return alert("Please select a sequence first.");
-        openHistoryModal("current");
-    });
-}
-
-// History Modal & Tabs Logic
-const histBackdrop = $("historyBackdrop");
-if ($("historyCloseBtn")) $("historyCloseBtn").onclick = () => {
-    if(histBackdrop) histBackdrop.style.display = "none";
-};
-
-// Tab Switching
-const tabCurrent = $("histTabCurrent");
-const tabGlobal = $("histTabGlobal");
-const viewCurrent = $("histViewCurrent");
-const viewGlobal = $("histViewGlobal");
-
-if (tabCurrent && tabGlobal) {
-    tabCurrent.onclick = () => switchHistoryTab("current");
-    tabGlobal.onclick = () => switchHistoryTab("global");
-}
-
-function switchHistoryTab(mode) {
-    if (mode === "current") {
-        tabCurrent.style.background = "#fff";
-        tabCurrent.style.fontWeight = "bold";
-        tabCurrent.style.border = "1px solid #ddd";
-        
-        tabGlobal.style.background = "transparent";
-        tabGlobal.style.fontWeight = "normal";
-        tabGlobal.style.border = "none";
-
-        viewCurrent.style.display = "block";
-        viewGlobal.style.display = "none";
-    } else {
-        tabGlobal.style.background = "#fff";
-        tabGlobal.style.fontWeight = "bold";
-        tabGlobal.style.border = "1px solid #ddd";
-
-        tabCurrent.style.background = "transparent";
-        tabCurrent.style.fontWeight = "normal";
-        tabCurrent.style.border = "none";
-
-        viewCurrent.style.display = "none";
-        viewGlobal.style.display = "block";
-        renderGlobalHistory(); // Render on demand
-    }
-}
-
-// Clear History Button — now deletes from Supabase
-if ($("clearHistoryBtn")) $("clearHistoryBtn").onclick = async () => {
-    if (!currentSequence) return;
-    if (!confirm("Clear all completion dates for this sequence?")) return;
-    const btn = $("clearHistoryBtn");
-    if (btn) { btn.disabled = true; btn.textContent = "Clearing…"; }
-    await deleteAllCompletionsForTitle(currentSequence.title);
-    if (btn) { btn.disabled = false; btn.textContent = "Clear This Sequence"; }
-    openHistoryModal("current");
-    updateTotalAndLastUI();
-};
-
-async function openHistoryModal(defaultTab = "current") {
-    if (!histBackdrop) return;
-
-    const titleEl = $("historyTitle");
-    if (titleEl && currentSequence) titleEl.textContent = currentSequence.title;
-
-    const listEl = $("historyList");
-    if (listEl && currentSequence) {
-        listEl.innerHTML = `<div class="muted" style="padding:8px;">Loading…</div>`;
-
-        // Always pull the freshest data from the unified cache (Supabase-backed)
-        const hist = serverHistoryCache || await fetchServerHistory();
-        const entries = hist
-            .filter(e => e.title === currentSequence.title)
-            .sort((a, b) => b.ts - a.ts);
-
-        listEl.innerHTML = "";
-
-        if (entries.length === 0) {
-            listEl.innerHTML = `<div class="muted" style="padding:8px;">No completion history yet.</div>`;
-        } else {
-            // Streak banner
-            const streak = calculateStreak(entries.map(e => e.iso));
-            if (streak > 0) {
-                const streakEl = document.createElement("div");
-                streakEl.style.cssText = "padding:8px 10px; background:#e8f5e9; color:#2e7d32; font-weight:bold; border-radius:6px; margin-bottom:8px; font-size:0.9rem;";
-                streakEl.textContent = streak === 1
-                    ? "Practiced today — keep the momentum!"
-                    : `${streak}-day practice streak — well done!`;
-                listEl.appendChild(streakEl);
-            }
-
-            entries.forEach(e => {
-                const row = document.createElement("div");
-                row.style.cssText = "padding:8px 4px; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;";
-                const d = new Date(e.ts);
-                const niceDate = isNaN(d) ? e.local : d.toLocaleDateString("en-AU") + " " + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                const dateSpan = document.createElement("span");
-                dateSpan.textContent = niceDate;
-                const delBtn = document.createElement("button");
-                delBtn.textContent = "✕";
-                delBtn.className = "tiny";
-                delBtn.style.cssText = "color:#999; border:none; background:transparent; cursor:pointer; font-size:0.8rem;";
-                delBtn.title = "Remove this entry";
-                delBtn.onclick = async () => {
-                    delBtn.disabled = true;
-                    await deleteCompletionById(e.id);
-                    openHistoryModal("current");
-                    updateTotalAndLastUI();
-                };
-                row.appendChild(dateSpan);
-                row.appendChild(delBtn);
-                listEl.appendChild(row);
-            });
-        }
-    }
-
-    switchHistoryTab(defaultTab);
-    histBackdrop.style.display = "flex";
-}
-
-// Render Global Dashboard — reads from the unified Supabase-backed cache
-function renderGlobalHistory() {
-   const container = $("globalHistoryList");
-   if (!container) return;
-   container.innerHTML = "";
-
-   const entries = serverHistoryCache || [];
-   if (!entries.length) {
-      container.innerHTML = `<div class="msg">No history found for any sequence.</div>`;
-      return;
-   }
-
-   // Build per-title aggregation
-   const byTitle = {};
-   entries.forEach(e => {
-      if (!e.title) return;
-      if (!byTitle[e.title]) byTitle[e.title] = { category: e.category || '', isos: [], lastTs: 0 };
-      byTitle[e.title].isos.push(e.iso);
-      if (e.ts > byTitle[e.title].lastTs) byTitle[e.title].lastTs = e.ts;
-   });
-
-   // Overall streak across ALL practice (any sequence)
-   const allIsos = entries.map(e => e.iso).filter(Boolean);
-   const overallStreak = calculateStreak(allIsos);
-
-   // Total sessions count
-   const totalCompletions = entries.length;
-
-   // Stats header
-   const statsHeader = document.createElement("div");
-   statsHeader.style.cssText = "padding:10px 14px; background:#e8f5e9; border-radius:6px; margin-bottom:12px; font-size:0.9rem;";
-   let statsHtml = `<div style="font-weight:bold; font-size:1rem; margin-bottom:4px;">Total sessions: ${totalCompletions}</div>`;
-   if (overallStreak > 1) {
-      statsHtml += `<div style="color:#2e7d32; font-weight:bold;">${overallStreak}-day practice streak — keep it up!</div>`;
-   } else if (overallStreak === 1) {
-      statsHtml += `<div style="color:#2e7d32;">Practiced today — great work!</div>`;
-   }
-   statsHeader.innerHTML = statsHtml;
-   container.appendChild(statsHeader);
-
-   // Group by category
-   const grouped = {};
-   const allSeqs = window.sequences || [];
-   const titleToCat = {};
-   allSeqs.forEach(s => titleToCat[s.title] = s.category || "Uncategorized");
-
-   Object.keys(byTitle).forEach(title => {
-      const cat = byTitle[title].category || titleToCat[title] || "Archived / Removed";
-      if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push({
-         title,
-         count: byTitle[title].isos.length,
-         lastDate: new Date(byTitle[title].lastTs),
-         lastDateStr: new Date(byTitle[title].lastTs).toLocaleDateString("en-AU")
-      });
-   });
-
-   Object.keys(grouped).sort().forEach(catName => {
-      const items = grouped[catName].sort((a, b) => b.lastDate - a.lastDate);
-
-      const section = document.createElement("details");
-      section.open = true;
-      section.style.cssText = "margin-bottom:10px; border:1px solid #ddd; border-radius:6px; background:#fff;";
-
-      const summary = document.createElement("summary");
-      summary.style.cssText = "padding:10px; cursor:pointer; font-weight:bold; background:#f5f5f5; border-radius:6px 6px 0 0;";
-      summary.innerHTML = `${catName} <span style="font-weight:normal; color:#666; font-size:0.85em;">(${items.length} sequences)</span>`;
-
-      const content = document.createElement("div");
-
-      items.forEach(item => {
-         const row = document.createElement("div");
-         row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee; font-size:0.9rem;";
-         let countColor = "#eee";
-         if (item.count > 5) countColor = "#ffe0b2";
-         if (item.count > 10) countColor = "#c8e6c9";
-         row.innerHTML = `
-            <div style="flex:1;">
-               <div style="font-weight:600;">${item.title}</div>
-               <div style="font-size:0.8rem; color:#888;">Last: ${item.lastDateStr}</div>
-            </div>
-            <div style="background:${countColor}; padding:2px 8px; border-radius:10px; font-size:0.8rem; font-weight:bold; margin-left:8px;">
-               ${item.count}x
-            </div>`;
-         content.appendChild(row);
-      });
-
-      section.appendChild(summary);
-      section.appendChild(content);
-      container.appendChild(section);
-   });
-}
 
 // (nextBtn/prevBtn/startStopBtn wiring already in src/ui/wiring.js)
 
-safeListen("resetBtn", "click", () => {
-   // 1. Stop the clock
-   stopTimer();
-
-   // 2. WIPE MEMORY (Fixes the "Resume" popup on refresh)
-   localStorage.removeItem("lastPlayedSequence");
-   localStorage.removeItem("currentPoseIndex");
-   localStorage.removeItem("timeLeft");
-   
-   // Optional: Clear internal progress tracking if you use it
-   if (typeof clearProgress === "function") clearProgress();
-
-   // 3. RESET DROPDOWN (Fixes the ID: sequenceSelect)
-   const dropdown = $("sequenceSelect");
-   if (dropdown) dropdown.value = ""; 
-
-   // 4. NULLIFY DATA
-   setCurrentSequence(null);
-   setCurrentIndex(0);
-   playbackEngine.totalFocusSeconds = 0;
-
-   // 5. RESET UI VISUALS (Matched to your specific HTML IDs)
-   const titleEl = $("poseName");
-   const metaEl = $("poseMeta"); // Used for english/sanskrit subtext
-   const collageEl = $("collageWrap"); // Where images go
-   const timerEl = $("poseTimer");
-   const statusEl = $("statusText");
-   const instructionsEl = $("poseInstructions");
-
-   // Reset Title
-   if (titleEl) titleEl.innerText = "Select a sequence";
-   
-   // Reset Meta/Subtitle
-   if (metaEl) metaEl.innerText = "";
-
-   // Reset Image Area (Restore the "Select a sequence" message)
-   if (collageEl) {
-       collageEl.innerHTML = '<div class="msg" id="loadingText">Select a sequence</div>';
-   }
-
-   // Reset Timer
-   if (timerEl) timerEl.innerText = "–"; // Matching your default HTML
-
-   // Reset Status
-   if (statusEl) statusEl.textContent = "Session Reset";
-   
-   // Reset Instructions
-   if (instructionsEl) instructionsEl.textContent = "";
-});
 // (Duration Dial functions removed — now in src/ui/durationDial.js)
 
 

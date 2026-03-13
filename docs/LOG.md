@@ -79,4 +79,54 @@ Unified the entire data architecture by migrating all custom user-defined entrie
 #### Code Refactoring (`app.js` module architecture)
 - **`src/services/dataAdapter.js`**: Stripped the dual-loading sequences and `try/catch` user-defined overrides. Fetches now operate flawlessly off the single core tables directly (fetching just `courses`, `asanas`, and `stages`).
 - **`src/ui/builder.js`**: Swapped save logic to hit `courses` using the single command `.upsert([payload], { onConflict: 'title, category' })`, removing lines of verification logic checking `user_id` collisions.
-- **`src/ui/asanaEditor.js`**: Retargeted save logic and DOM hydration directly onto `asanas` and `stages`, stripping the requirement of applying active `user_id` mapping when defining universal custom variations.
+- **`src/ui/asanaEditor.js`**: Retargeted save logic and DOM hydration directly onto `asanas` and `stages`, stripping the requirement of applying active `user_id` mapping when defining universal custom variations.
+---
+
+## Phase 3: Browse, Timing & Refactor (2026-03-13)
+
+### Root Cause Fixes
+
+#### Timing Bug (`getEffectiveTime` reading wrong field)
+- **Bug**: `getEffectiveTime()` checked `asana.hold_data.standard` — this field doesn't exist. Library normalizes hold times into `asana.hold_json` (not `hold_data`).
+- **Impact**: ALL timing was falling back to raw sequence-stored durations rather than library standard hold times. Affected timer pill, builder stats, total sequence time, and injected pose durations.
+- **Fix**: Changed to `const hj = asana.hold_json || asana.hold_data; duration = hj?.standard` with proper fallback.
+
+#### Same bug in `getExpandedPoses` injected poses
+- Injected prep/recovery poses used `targetAsana.standard_seconds` (nonexistent field) → always got 30s fallback.
+- Fixed to use `hold_json.standard`.
+
+#### Missing `category` and `description` in dataAdapter
+- `asanas` table has `category` and `description` columns but they were never mapped in `dataAdapter.js`.
+- Fixed: both fields now included in normalized asana object.
+- Result: Browse now shows real categories (e.g. "Standing and Basic") and description pre-populates in editor.
+
+### UI Improvements
+
+#### Browse Screen
+- **Category filter**: Now populates from live `asanaLibrary` with human-friendly labels (strips `01_` prefix).
+- **List items**: "Plates: Final: X" text removed. Items show only ID + category badge.
+- **ID search**: Input `"1"` now matches asana `001` (both inputs are stripped of leading zeros before comparison).
+- **IAST toggle**: "Show IAST" button added to browse sidebar — switches list between English and Sanskrit/IAST names.
+- **Title layout**: Fixed double-append bug where pose title was indented inconsistently when filtering.
+
+#### Asana Editor Category Field
+- Changed from unreliable `<input type="text" list="...">` (datalist) to a proper `<select>` dropdown.
+- Includes all existing categories with human-friendly labels, plus a "(+ Add new category)" option that reveals a text input.
+- Pre-populates correctly with the existing category when editing an asana.
+
+#### Sequence Dropdown Deselect
+- Selecting blank in the sequence dropdown now fully wipes the main UI: pose name, meta, instructions, timer pill, image area, status text all reset.
+
+#### 90% Completion Gate
+- Gate now skips (returns silently) if `totalFocusSeconds === 0` (user never started the timer).
+- Alert message simplified and made more accurate.
+
+### app.js Refactor
+- **Removed duplicate History Modal block** (~250 lines): `switchHistoryTab`, `openHistoryModal`, `renderGlobalHistory`, and related wiring were duplicated in `app.js` despite existing in `src/ui/historyModal.js`. Duplicate removed.
+- **Removed dead legacy functions**: `setupHistory()` (file-based JSON, unused since Supabase migration), `saveSequencesLocally()`, `resetToOriginalJSON()`.
+- **Removed duplicate `resetBtn` listener** (handled by `wiring.js`).
+- **Net removal**: ~300 lines. `app.js` now ~1,660 lines.
+- `historyModal.js` functions explicitly imported into `app.js` and exposed on `window` for legacy compatibility.
+
+### Cache Busting
+- All versioned imports bumped to `?v=28`.

@@ -1,4 +1,4 @@
-// src/ui/asanaEditor.js
+﻿// src/ui/asanaEditor.js
 // Full Asana Editor — handles add/edit of asana records via Supabase
 
 import { $ } from "../utils/dom.js";
@@ -197,15 +197,27 @@ window.openAsanaEditor = async function (id) {
     }
     bd.style.display = "flex";
 
-    // Populate Category Datalist dynamically
-    const dl = $("asanaCategoryList");
-    if (dl) {
-        dl.innerHTML = "";
+    // Populate Category Select dynamically
+    const catSel = $("editAsanaCategory");
+    const catCustom = $("editAsanaCategoryCustom");
+    if (catSel) {
+        catSel.innerHTML = '<option value="">-- Select category --</option>';
         getUniqueCategories().forEach(c => {
             const opt = document.createElement("option");
-            opt.value = getDisplayCategory(c);
-            dl.appendChild(opt);
+            opt.value = c;  // raw value for saving
+            opt.textContent = getDisplayCategory(c);
+            catSel.appendChild(opt);
         });
+        // Add new option
+        const newOpt = document.createElement("option");
+        newOpt.value = "__NEW__";
+        newOpt.textContent = "(+ Add new category)";
+        catSel.appendChild(newOpt);
+        // Wire toggle for custom input
+        catSel.onchange = () => {
+            if (catCustom) catCustom.style.display = catSel.value === "__NEW__" ? "block" : "none";
+        };
+        if (catCustom) catCustom.style.display = "none";
     }
 
     // Reset all fields
@@ -214,6 +226,7 @@ window.openAsanaEditor = async function (id) {
     $("editAsanaIAST").value       = "";
     $("editAsanaEnglish").value    = "";
     $("editAsanaCategory").value   = "";
+    if ($("editAsanaCategoryCustom")) { $("editAsanaCategoryCustom").value = ""; $("editAsanaCategoryCustom").style.display = "none"; }
     if ($("editAsanaHoldStandard")) $("editAsanaHoldStandard").value = "";
     if ($("editAsanaHoldShort"))    $("editAsanaHoldShort").value    = "";
     if ($("editAsanaHoldLong"))     $("editAsanaHoldLong").value     = "";
@@ -239,7 +252,20 @@ window.openAsanaEditor = async function (id) {
         $("editAsanaName").value     = a.name || "";
         $("editAsanaIAST").value     = a.iast || a.IAST || "";
         $("editAsanaEnglish").value  = a.english || a.english_name || "";
-        $("editAsanaCategory").value = a.category || "";
+        // Pre-select category in the select element
+        if ($("editAsanaCategory") && a.category) {
+            $("editAsanaCategory").value = a.category;
+            // If not found (new category from old data), fall back to custom
+            if ($("editAsanaCategory").value !== a.category) {
+                $("editAsanaCategory").value = "__NEW__";
+                if ($("editAsanaCategoryCustom")) {
+                    $("editAsanaCategoryCustom").style.display = "block";
+                    $("editAsanaCategoryCustom").value = getDisplayCategory(a.category);
+                }
+            }
+        } else if ($("editAsanaCategory")) {
+            $("editAsanaCategory").value = "";
+        }
 
         const holdData = parseHoldTimes(a.Hold || a.hold || "");
         if ($("editAsanaHoldStandard")) $("editAsanaHoldStandard").value = holdData.standard;
@@ -423,6 +449,13 @@ function wireEditorSave() {
         const lib = window.asanaLibrary || {};
         const baseAsana = lib[id] || {};
 
+
+        // Get category value: if __NEW__ selected, use custom input
+        const _catSel = $("editAsanaCategory");
+        const _catCustom = $("editAsanaCategoryCustom");
+        const _rawCat = (_catSel && _catSel.value === "__NEW__" && _catCustom)
+            ? _catCustom.value.trim()
+            : (_catSel ? _catSel.value.trim() : "");
         const asanaData = {
             id,
             name:          $("editAsanaName").value.trim(),
@@ -435,7 +468,7 @@ function wireEditorSave() {
             page_2015:     $("editAsanaPage2015").value.trim() || null,
             intensity:     $("editAsanaIntensity").value.trim() || null,
             note:          $("editAsanaNote").value.trim(),
-            category:      formatCategoryName($("editAsanaCategory").value.trim()),
+            category:      formatCategoryName(_rawCat),
             description:   $("editAsanaDescription").value.trim(),
             image_url:     baseAsana.image_url || null,
             hold:          asanaHoldStr

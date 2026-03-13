@@ -26,13 +26,16 @@ export function updatePoseAsanaDescription(asana) {
    const body = document.getElementById("poseAsanaDescBody");
    if (!details || !body) return;
 
-   const text = (asana?.description || asana?.Description || "").toString().trim();
+   let text = (asana?.description || asana?.Description || "").toString().trim();
    if (!text) {
       details.style.display = "none";
       details.open = false;
       body.innerHTML = "";
       return;
    }
+
+   // Convert literal \n escape sequences from the DB into real newlines
+   text = text.replace(/\\n/g, '\n');
 
    details.style.display = "block";
    details.open = false;

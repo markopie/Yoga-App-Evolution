@@ -1,4 +1,4 @@
-import { $, enterBrowseDetailMode, exitBrowseDetailMode } from "../utils/dom.js";
+﻿import { $, enterBrowseDetailMode, exitBrowseDetailMode } from "../utils/dom.js";
 import { displayName, prefersIAST, formatTechniqueText } from "../utils/format.js";
 import { isBrowseMobile, mobileVariantUrl, smartUrlsForPoseId } from "../utils/helpers.js";
 import { playAsanaAudio } from "../playback/audio.js";
@@ -89,17 +89,72 @@ function setupBrowseUI() {
     };
 
     if ($("browseSearch")) $("browseSearch").addEventListener("input", debounce(onChange, 120));
-    if ($("browsePlate")) $("browsePlate").addEventListener("input", debounce(onChange, 120));
     if ($("browseAsanaNo")) $("browseAsanaNo").addEventListener("input", debounce(onChange, 120));
     if ($("browseCategory")) $("browseCategory").addEventListener("change", onChange);
+    
+    // Populate category dropdown dynamically from asana library
+    // Called once after library loads; also exposed on window for re-population
+    window.populateBrowseCategoryDropdown = function() {
+        const catEl = $("browseCategory");
+        if (!catEl) return;
+        const lib = window.asanaLibrary || {};
+        const cats = new Set();
+        Object.values(lib).forEach(a => {
+            if (a && a.category && a.category.trim()) cats.add(a.category.trim());
+        });
+        
+        // Keep the existing first option ("All categories")
+        catEl.innerHTML = '<option value="">All categories</option>';
+        
+        // Sort by the category string (numeric prefix preserves order)
+        const sortedCats = Array.from(cats).sort();
+        sortedCats.forEach(rawCat => {
+            const displayLabel = rawCat.replace(/^\d+_/, '').replace(/_/g, ' ');
+            const opt = document.createElement('option');
+            opt.value = rawCat;
+            opt.textContent = displayLabel;
+            catEl.appendChild(opt);
+        });
+        
+        if (sortedCats.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '__UNCAT__';
+            opt.textContent = 'Uncategorized';
+            catEl.appendChild(opt);
+        }
+    };
+
+    // --- IAST Toggle button on the browse list header ---
+    const browseListHeader = document.querySelector('#browseBackdrop .browse-list-header, #browseBackdrop .browse-panel');
+    let iastToggleBtn = document.getElementById('browseIastToggle');
+    if (!iastToggleBtn) {
+        const filtersRow = $("browseCategory")?.parentElement?.parentElement || $("browseSearch")?.parentElement;
+        iastToggleBtn = document.createElement('button');
+        iastToggleBtn.id = 'browseIastToggle';
+        iastToggleBtn.className = 'tiny';
+        iastToggleBtn.title = 'Toggle IAST / English names in the list';
+        iastToggleBtn.style.cssText = 'white-space:nowrap; flex-shrink:0;';
+        window._browseShowIAST = false;
+        iastToggleBtn.textContent = 'Show IAST';
+        iastToggleBtn.onclick = () => {
+            window._browseShowIAST = !window._browseShowIAST;
+            iastToggleBtn.textContent = window._browseShowIAST ? 'Show English' : 'Show IAST';
+            iastToggleBtn.style.background = window._browseShowIAST ? '#7b1fa2' : '';
+            iastToggleBtn.style.color = window._browseShowIAST ? '#fff' : '';
+            applyBrowseFilters();
+        };
+        // Append into .browse-filters (the filter bar) - browseCategory is a direct child of .browse-filters
+        const filtersBar = $("browseCategory")?.parentElement;
+        if (filtersBar) {
+            filtersBar.appendChild(iastToggleBtn);
+        }
+    }
 }
 
 
 window.openBrowse = function() {
-// console.log("✅ openBrowse() was successfully triggered!");
 document.body.classList.add("modal-open");
     const bd = $("browseBackdrop");
-// console.log("🔍 Looking for backdrop element:", bd);
     
     if (!bd) {
         console.error("❌ ERROR: browseBackdrop not found in the HTML!");
@@ -108,12 +163,14 @@ document.body.classList.add("modal-open");
     
     bd.style.display = "flex";
     bd.setAttribute("aria-hidden", "false");
-// console.log("✅ Backdrop display set to flex.");
+    
+    // Populate category dropdown if not already done
+    if (typeof window.populateBrowseCategoryDropdown === 'function') {
+        window.populateBrowseCategoryDropdown();
+    }
     
     try {
-// console.log("🔄 Calling applyBrowseFilters()...");
         applyBrowseFilters(); 
-// console.log("✅ Filters applied successfully.");
     } catch (e) {
         console.error("❌ ERROR inside applyBrowseFilters:", e);
     }
@@ -162,36 +219,42 @@ function renderBrowseList(items) {
        const title = document.createElement("div");
        title.className = "title";
        
-       // Fallback logic for title
-       let titleText = (typeof displayName === "function" ? displayName(asma) : null);
-       if (!titleText || titleText === "(no name)") {
-           titleText = asma.name || asma.english || asma.iast || "(no name)";
+       // Use IAST or English based on toggle
+       const showIAST = !!window._browseShowIAST;
+       let titleText;
+       if (showIAST && asma.iast) {
+           // Show IAST as primary, english as subtitle
+           titleText = asma.iast;
+       } else {
+           titleText = (typeof displayName === "function" ? displayName(asma) : null);
+           if (!titleText || titleText === "(no name)") {
+               titleText = asma.name || asma.english || asma.iast || "(no name)";
+           }
        }
        
-       // Use plural 'variations' length if present
+       // Variation count badge
        const varCount = asma.variations ? Object.keys(asma.variations).length : 0;
        if (varCount > 0) {
            titleText += ` <span style="font-weight:normal; color:#666; font-size:0.9em;">(${varCount} variations)</span>`;
        }
        title.innerHTML = titleText;
 
+       // Subtitle: when IAST mode, show english beneath the IAST title
+       if (showIAST && asma.english) {
+           const sub = document.createElement('div');
+           sub.style.cssText = 'font-size:0.8rem; color:#888; margin-top:1px;';
+           sub.textContent = asma.english;
+           left.appendChild(sub);
+       }
+
        const meta = document.createElement("div");
        meta.className = "meta";
-       const catDisplay = asma.category ? asma.category.replace(/^\d+_/, "").replace(/_/g, " ") : "Uncategorized";
-       const catBadge = catDisplay ? ` <span class="badge">${catDisplay}</span>` : "";
+       const catRaw = (asma.category || "").trim();
+       const catDisplay = catRaw ? catRaw.replace(/^\d+_/, "").replace(/_/g, " ") : "Uncategorized";
+       const catBadge = `<span class="badge">${catDisplay}</span>`;
        
-        // Smart plate formatter
-        let platesText = "";
-        if (typeof asma.plates === 'object' && asma.plates !== null) {
-            const finalStr = asma.plates.final && asma.plates.final.length ? `Final: ${asma.plates.final.join(", ")}` : "";
-            const interStr = asma.plates.intermediate && asma.plates.intermediate.length ? `Int: ${asma.plates.intermediate.join(", ")}` : "";
-            platesText = [finalStr, interStr].filter(Boolean).join(" | ");
-        } else {
-            platesText = asma.plates || asma.plate_numbers || "";
-        }
        meta.innerHTML = `
          <span style="color:#000; font-weight:bold;">ID: ${asma.id || asma.asanaNo || "?"}</span>
-         ${platesText ? ` • Plates: ${platesText}` : ""}
          ${catBadge}
        `;
        
@@ -391,7 +454,6 @@ async function showAsanaDetail(asana) {
 
 function applyBrowseFilters() {
     const q = document.getElementById("browseSearch")?.value.trim() || "";
-    const plateStr = document.getElementById("browsePlate")?.value.trim() || "";
     const noQ = document.getElementById("browseAsanaNo")?.value.trim() || "";
     const cat = document.getElementById("browseCategory")?.value || "";
     const finalsOnly = document.getElementById("browseFinalOnly")?.checked || false;
@@ -411,25 +473,22 @@ function applyBrowseFilters() {
             if (!searchStr.includes(normQ)) return false;
         }
 
-        // 2. Category Dropdown
+        // 2. Category Dropdown — match against raw category value exactly
         if (cat && cat !== "") {
             const safeCat = String(a.category || "");
             if (cat === "__UNCAT__") {
                 if (safeCat && safeCat !== "Uncategorized") return false;
             } else {
-                if (!safeCat.includes(cat) && safeCat !== cat) return false;
+                // Exact match against the raw category value
+                if (safeCat !== cat) return false;
             }
         }
 
-        // 3. Asana ID 
-        if (noQ && String(a.id) !== noQ && String(a.asanaNo) !== noQ) return false;
-
-        // 4. Plates
-        if (plateStr) {
-            const plateArr = plateStr.match(/\d+/g) || [];
-            const aPlates = String(a.plates || a.plate_numbers || "").match(/\d+/g) || [];
-            const hasPlate = plateArr.some(p => aPlates.includes(p));
-            if (!hasPlate) return false;
+        // 3. Asana ID — normalize input so "1" matches "001"
+        if (noQ) {
+            const normalizedNoQ = noQ.replace(/^0+/, ''); // strip leading zeros for comparison
+            const aId = String(a.id || a.asanaNo || '').replace(/^0+/, '');
+            if (aId !== normalizedNoQ) return false;
         }
 
         return true;
