@@ -5,7 +5,12 @@ export class PlaybackEngine {
         this.running = false;
         this.remaining = 0;
         this.currentPoseSeconds = 0;
-        this.totalFocusSeconds = 0;
+        
+        // ── Active practice duration tracking ────────────────────────────────
+        // We track wall-clock intervals rather than counting ticks so that
+        // paused time, browsing time, and tab-switch gaps are excluded.
+        this._activePracticeMs = 0;     // accumulated ms across completed play intervals
+        this._playStartWallMs  = null;  // wall-clock timestamp of last "Start" press
         
         // Hooks
         this.onStart = () => {};
@@ -15,6 +20,22 @@ export class PlaybackEngine {
         this.onTransitionTick = (secs) => {};
         this.onTransitionComplete = () => {};
         this.onStop = () => {};
+    }
+
+    // ── Public getter: active seconds elapsed (paused time excluded) ─────────
+    get activePracticeSeconds() {
+        let ms = this._activePracticeMs;
+        // If currently playing, add the in-progress interval too
+        if (this.running && this._playStartWallMs !== null) {
+            ms += (Date.now() - this._playStartWallMs);
+        }
+        return Math.round(ms / 1000);
+    }
+
+    // ── Reset all duration tracking (call when a new sequence is selected) ───
+    resetPracticeTimer() {
+        this._activePracticeMs = 0;
+        this._playStartWallMs  = null;
     }
     
     setPoseTime(seconds) {
@@ -30,18 +51,23 @@ export class PlaybackEngine {
         }
 
         this.running = true;
+        this._playStartWallMs = Date.now(); // ← record wall-clock start
         this.onStart();
 
         this.timer = setInterval(() => {
             if (this.remaining > 0) {
                 this.remaining--;
-                this.totalFocusSeconds++;
                 this.onTick(this.remaining, this.currentPoseSeconds);
             }
             
             if (this.remaining <= 0) {
                 clearInterval(this.timer);
                 this.timer = null;
+                // Accumulate this play interval before marking as stopped
+                if (this._playStartWallMs !== null) {
+                    this._activePracticeMs += (Date.now() - this._playStartWallMs);
+                    this._playStartWallMs = null;
+                }
                 this.running = false;
 
                 const wasLongHold = this.currentPoseSeconds >= 60;
@@ -55,6 +81,12 @@ export class PlaybackEngine {
         this.timer = null;
         if (this.transitionTimer) clearInterval(this.transitionTimer);
         this.transitionTimer = null;
+        
+        // Accumulate wall-clock ms for this play interval
+        if (this.running && this._playStartWallMs !== null) {
+            this._activePracticeMs += (Date.now() - this._playStartWallMs);
+            this._playStartWallMs = null;
+        }
         this.running = false;
         this.onStop();
     }
@@ -63,9 +95,10 @@ export class PlaybackEngine {
         let transitionSecs = secs;
         this.onTransitionStart(transitionSecs);
         
+        // Transition time is NOT counted as active practice (user is recovering/
+        // reading which next pose is coming, not actively holding a pose).
         this.transitionTimer = setInterval(() => {
             transitionSecs--;
-            this.totalFocusSeconds++;
             this.onTransitionTick(transitionSecs);
             
             if (transitionSecs <= 0) {
@@ -90,3 +123,4 @@ export class PlaybackEngine {
 }
 
 export const playbackEngine = new PlaybackEngine();
+

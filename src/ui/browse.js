@@ -1,4 +1,4 @@
-﻿import { $, enterBrowseDetailMode, exitBrowseDetailMode } from "../utils/dom.js";
+import { $, enterBrowseDetailMode, exitBrowseDetailMode } from "../utils/dom.js";
 import { displayName, prefersIAST, formatTechniqueText } from "../utils/format.js";
 import { isBrowseMobile, mobileVariantUrl, smartUrlsForPoseId } from "../utils/helpers.js";
 import { playAsanaAudio } from "../playback/audio.js";
@@ -192,7 +192,6 @@ function closeBrowse() {
     if (d) d.innerHTML = "";
     if ($("browseBtn")) $("browseBtn").focus();
 }
-
 function renderBrowseList(items) {
     const list = document.getElementById("browseList");
     if (!list) return;
@@ -201,7 +200,14 @@ function renderBrowseList(items) {
     const countEl = document.getElementById("browseCount");
     
     const totalCount = Object.keys(asanaLibrary || {}).length;
-    if (countEl) countEl.textContent = `Showing ${items.length} of ${totalCount}`;
+    // Count includes stage hits — show base poses count in denominator
+    const stageHitCount = items.filter(a => a._sourceType === 'stage').length;
+    const baseHitCount = items.length - stageHitCount;
+    if (countEl) {
+        countEl.textContent = stageHitCount > 0
+            ? `Showing ${baseHitCount} poses + ${stageHitCount} stages of ${totalCount} total`
+            : `Showing ${items.length} of ${totalCount}`;
+    }
 
     if (!items.length) {
        list.innerHTML = `<div class="msg" style="padding:10px 0">No matches found.</div>`;
@@ -212,7 +218,11 @@ function renderBrowseList(items) {
     
     items.slice(0, 400).forEach(asma => {
        const row = document.createElement("div");
-       row.className = "browse-item";
+       // Give stage rows a subtle left border to visually group them under their parent
+       row.className = "browse-item" + (asma._sourceType === 'stage' ? " browse-item--stage" : "");
+       if (asma._sourceType === 'stage') {
+           row.style.cssText = "border-left: 3px solid #00695c; margin-left: 8px; background: #f0faf9;";
+       }
 
        const left = document.createElement("div");
        
@@ -222,8 +232,11 @@ function renderBrowseList(items) {
        // Use IAST or English based on toggle
        const showIAST = !!window._browseShowIAST;
        let titleText;
-       if (showIAST && asma.iast) {
-           // Show IAST as primary, english as subtitle
+
+       if (asma._sourceType === 'stage' && asma._stageTitle) {
+           // For stage results: show stage title as primary
+           titleText = asma._stageTitle;
+       } else if (showIAST && asma.iast) {
            titleText = asma.iast;
        } else {
            titleText = (typeof displayName === "function" ? displayName(asma) : null);
@@ -232,15 +245,23 @@ function renderBrowseList(items) {
            }
        }
        
-       // Variation count badge
-       const varCount = asma.variations ? Object.keys(asma.variations).length : 0;
-       if (varCount > 0) {
-           titleText += ` <span style="font-weight:normal; color:#666; font-size:0.9em;">(${varCount} variations)</span>`;
+       // Variation count badge (only for base poses)
+       if (asma._sourceType !== 'stage') {
+           const varCount = asma.variations ? Object.keys(asma.variations).length : 0;
+           if (varCount > 0) {
+               titleText += ` <span style="font-weight:normal; color:#666; font-size:0.9em;">(${varCount} variations)</span>`;
+           }
        }
        title.innerHTML = titleText;
 
-       // Subtitle: when IAST mode, show english beneath the IAST title
-       if (showIAST && asma.english) {
+       // Sub-label: parent asana name when showing a stage result
+       if (asma._sourceType === 'stage') {
+           const parentSub = document.createElement('div');
+           parentSub.style.cssText = 'font-size:0.78rem; color:#00695c; margin-top:1px; font-weight:600;';
+           const parentName = asma.english || asma.name || `ID ${asma.id}`;
+           parentSub.textContent = `↳ ${parentName}`;
+           left.appendChild(parentSub);
+       } else if (showIAST && asma.english) {
            const sub = document.createElement('div');
            sub.style.cssText = 'font-size:0.8rem; color:#888; margin-top:1px;';
            sub.textContent = asma.english;
@@ -252,10 +273,16 @@ function renderBrowseList(items) {
        const catRaw = (asma.category || "").trim();
        const catDisplay = catRaw ? catRaw.replace(/^\d+_/, "").replace(/_/g, " ") : "Uncategorized";
        const catBadge = `<span class="badge">${catDisplay}</span>`;
+
+       // Stage key badge — shows the stage code (e.g. "I", "II", "A") so user can see what to select
+       const stageKeyBadge = asma._sourceType === 'stage' && asma._stageKey
+           ? `<span style="background:#00695c; color:#fff; border-radius:10px; padding:1px 8px; font-size:0.72rem; font-weight:700; white-space:nowrap; font-family:monospace;">Stage ${asma._stageKey}</span>`
+           : '';
        
        meta.innerHTML = `
          <span style="color:#000; font-weight:bold;">ID: ${asma.id || asma.asanaNo || "?"}</span>
          ${catBadge}
+         ${stageKeyBadge}
        `;
        
        left.appendChild(title);
@@ -264,8 +291,9 @@ function renderBrowseList(items) {
        const btn = document.createElement("button");
        btn.textContent = "View";
        btn.className = "tiny";
+       // Pass _stageKey so showAsanaDetail can pre-highlight the correct variation panel
        btn.addEventListener("click", () => {
-          if (typeof showAsanaDetail === "function") showAsanaDetail(asma);
+          if (typeof showAsanaDetail === "function") showAsanaDetail(asma, asma._stageKey || null);
           if (typeof isBrowseMobile === 'function' && isBrowseMobile()) {
              if (typeof enterBrowseDetailMode === "function") enterBrowseDetailMode();
           }
@@ -308,7 +336,7 @@ function startBrowseAsana(asma) {
    setPose(0);
    closeBrowse();
 }
-async function showAsanaDetail(asana) {
+async function showAsanaDetail(asana, highlightStageKey = null) {
 // console.log("showAsanaDetail called with:", asana);
     const d = document.getElementById('browseDetail');
 // console.log("browseDetail element found:", d);
@@ -439,9 +467,25 @@ async function showAsanaDetail(asana) {
             }
 
             wrapper.innerHTML = html;
+
+            // If we arrived here from a stage-search result, highlight this variation
+            if (highlightStageKey && key === highlightStageKey) {
+                wrapper.style.border = '2px solid #00695c';
+                wrapper.style.background = '#e0f2f1';
+                wrapper.dataset.highlighted = 'true';
+            }
+
             varSection.appendChild(wrapper);
         });
         d.appendChild(varSection);
+
+        // Auto-scroll to the highlighted stage wrapper (after paint)
+        if (highlightStageKey) {
+            requestAnimationFrame(() => {
+                const highlighted = varSection.querySelector('[data-highlighted="true"]');
+                if (highlighted) highlighted.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        }
     }
 
     // 7. Bind Audio Button
@@ -456,37 +500,32 @@ function applyBrowseFilters() {
     const q = document.getElementById("browseSearch")?.value.trim() || "";
     const noQ = document.getElementById("browseAsanaNo")?.value.trim() || "";
     const cat = document.getElementById("browseCategory")?.value || "";
-    const finalsOnly = document.getElementById("browseFinalOnly")?.checked || false;
 
     const normalizeText = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     const normQ = normalizeText(q);
 
-    // Get all asanas as an array
     const asanaArray = Object.values(window.asanaIndex || asanaLibrary || {});
 
-    const filtered = asanaArray.filter(a => {
+    // ── 1. Base-asana results ─────────────────────────────────────────────────
+    const baseFiltered = asanaArray.filter(a => {
         if (!a) return false;
 
-        // 1. Text Search (Null-proof)
         if (normQ) {
             const searchStr = normalizeText(a.name) + " " + normalizeText(a.english) + " " + normalizeText(a.iast);
             if (!searchStr.includes(normQ)) return false;
         }
 
-        // 2. Category Dropdown — match against raw category value exactly
         if (cat && cat !== "") {
             const safeCat = String(a.category || "");
             if (cat === "__UNCAT__") {
                 if (safeCat && safeCat !== "Uncategorized") return false;
             } else {
-                // Exact match against the raw category value
                 if (safeCat !== cat) return false;
             }
         }
 
-        // 3. Asana ID — normalize input so "1" matches "001"
         if (noQ) {
-            const normalizedNoQ = noQ.replace(/^0+/, ''); // strip leading zeros for comparison
+            const normalizedNoQ = noQ.replace(/^0+/, '');
             const aId = String(a.id || a.asanaNo || '').replace(/^0+/, '');
             if (aId !== normalizedNoQ) return false;
         }
@@ -494,23 +533,67 @@ function applyBrowseFilters() {
         return true;
     });
 
-    // 5. Safe Deduplication by ID
+    // Mark base asanas so renderBrowseList can tell them apart
+    const baseResults = baseFiltered.map(a => ({ ...a, _sourceType: 'asana', _stageKey: null, _stageTitle: null }));
+
+    // ── 2. Stage results (unified_page_index via asanaLibrary.variations) ─────
+    // Only add stage hits when there is a text query — avoids flooding the list
+    const stageResults = [];
+    if (normQ && !noQ) {
+        asanaArray.forEach(a => {
+            if (!a || !a.variations) return;
+            // Apply category filter to parent asana
+            if (cat && cat !== "") {
+                const safeCat = String(a.category || "");
+                if (cat === "__UNCAT__") { if (safeCat && safeCat !== "Uncategorized") return; }
+                else { if (safeCat !== cat) return; }
+            }
+            Object.entries(a.variations).forEach(([stageKey, vData]) => {
+                if (!vData || typeof vData !== 'object') return;
+                const stageTitleRaw = vData.title || vData.Title || `Stage ${stageKey}`;
+                const stageShorthand = vData.shorthand || vData.Shorthand || '';
+                const searchStr = normalizeText(stageTitleRaw)
+                    + ' ' + normalizeText(stageShorthand)
+                    + ' ' + normalizeText(a.english)
+                    + ' ' + normalizeText(a.iast);
+                if (!searchStr.includes(normQ)) return;
+
+                // Avoid duplicate if the base pose already matched
+                const alreadyBase = baseResults.some(r => r.id === a.id && r._stageKey === null);
+                // We still add the stage even if the base matched — it's a distinct hit
+                stageResults.push({
+                    ...a,
+                    _sourceType: 'stage',
+                    _stageKey: stageKey,
+                    _stageTitle: stageTitleRaw,
+                    // Synthetic ID for dedup (asana id + stage key)
+                    _uniqueKey: String(a.id) + ':' + stageKey
+                });
+            });
+        });
+    }
+
+    // ── 3. Merge, deduplicate, sort ───────────────────────────────────────────
+    const allResults = [...baseResults, ...stageResults];
     const uniqueFiltered = [];
     const seen = new Set();
-    filtered.forEach(a => {
-        const uniqueKey = String(a.id || a.asanaNo || a.name || "").toLowerCase().trim();
+    allResults.forEach(a => {
+        const uniqueKey = a._uniqueKey || String(a.id || a.asanaNo || a.name || "").toLowerCase().trim();
         if (uniqueKey && !seen.has(uniqueKey)) {
             seen.add(uniqueKey);
             uniqueFiltered.push(a);
         }
     });
 
-    // 6. Sort Numerically by ID
     uniqueFiltered.sort((x, y) => {
         const idX = String(x.id || x.asanaNo || "9999");
         const idY = String(y.id || y.asanaNo || "9999");
-        // { numeric: true } ensures that "2" comes before "10"
-        return idX.localeCompare(idY, undefined, { numeric: true });
+        const cmp = idX.localeCompare(idY, undefined, { numeric: true });
+        if (cmp !== 0) return cmp;
+        // Stages come after their parent base pose
+        if (x._stageKey && !y._stageKey) return 1;
+        if (!x._stageKey && y._stageKey) return -1;
+        return (x._stageKey || '').localeCompare(y._stageKey || '');
     });
 
     if (typeof renderBrowseList === "function") {

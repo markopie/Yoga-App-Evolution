@@ -1,7 +1,11 @@
 {
     "type": "module",
     "scripts": {
-      "start": "npx http-server . -p 3000",
-      "test": "node --test"
+        "start": "npx http-server . -p 3000",
+        "test": "node --test"
+    },
+    "devDependencies": {
+        "@supabase/supabase-js": "^2.99.1",
+        "dotenv": "^17.3.1"
     }
-  }
+}

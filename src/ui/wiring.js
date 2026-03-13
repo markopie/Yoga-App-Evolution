@@ -1,4 +1,4 @@
-﻿import { $, showError, safeListen, normaliseText, setStatus } from '../utils/dom.js';
+import { $, showError, safeListen, normaliseText, setStatus } from '../utils/dom.js';
 console.log("🚀 WIRING.JS LOADING...");
 import { prefersIAST, setIASTPref } from '../utils/format.js';
 import { supabase } from '../services/supabaseClient.js';
@@ -51,6 +51,9 @@ if (seqSelect) {
 
         const rawSequence = window.courses[parseInt(idx, 10)];
         window.currentSequence = rawSequence; 
+
+        // ── Reset active-practice timer so duration only counts this session ──
+        playbackEngine.resetPracticeTimer();
 
         if (typeof window.getExpandedPoses === "function") {
             window.activePlaybackList = window.getExpandedPoses(rawSequence);

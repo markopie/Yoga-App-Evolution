@@ -1,0 +1,83 @@
+{
+  "generatedAt": "2026-03-13T23:24:43.110Z",
+  "imageMismatches": [
+    {
+      "stageId": 168,
+      "actualAId": "004",
+      "stageName": "I",
+      "title": "Back foot against the wall, hand on a brick.",
+      "embeddedId": "003",
+      "filename": "003_master_utthita_trikonasana.webp",
+      "url": "https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/public/yoga-cards/003_master_utthita_trikonasana.webp"
+    }
+  ],
+  "audioMismatches": [
+    {
+      "stageId": 168,
+      "actualAId": "004",
+      "stageName": "I",
+      "title": "Back foot against the wall, hand on a brick.",
+      "embeddedId": "074",
+      "filename": "074_20_NearWallSupport.mp3",
+      "url": "https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/public/audio-assets//074_20_NearWallSupport.mp3"
+    },
+    {
+      "stageId": 169,
+      "actualAId": "016",
+      "stageName": "I",
+      "title": "Supported with a chair",
+      "embeddedId": "177",
+      "filename": "177_29_SupportedonChair.mp3",
+      "url": "https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/public/audio-assets//177_29_SupportedonChair.mp3"
+    },
+    {
+      "stageId": 167,
+      "actualAId": "033",
+      "stageName": "I",
+      "title": "Head supported on a bolster",
+      "embeddedId": "062",
+      "filename": "062_14_HeadSupportedonBolster.mp3",
+      "url": "https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/public/audio-assets//062_14_HeadSupportedonBolster.mp3"
+    },
+    {
+      "stageId": 166,
+      "actualAId": "067",
+      "stageName": "III",
+      "title": "Sitting on a blanket",
+      "embeddedId": "062",
+      "filename": "062_13_SeatedonBlanket.mp3",
+      "url": "https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/public/audio-assets//062_13_SeatedonBlanket.mp3"
+    }
+  ],
+  "sharedImageUrls": [],
+  "sharedAudioUrls": [
+    {
+      "url": "https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/public/audio-assets//074_20_NearWallSupport.mp3",
+      "stageIds": [
+        168,
+        20
+      ]
+    },
+    {
+      "url": "https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/public/audio-assets//177_29_SupportedonChair.mp3",
+      "stageIds": [
+        169,
+        29
+      ]
+    },
+    {
+      "url": "https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/public/audio-assets//062_14_HeadSupportedonBolster.mp3",
+      "stageIds": [
+        167,
+        14
+      ]
+    },
+    {
+      "url": "https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/public/audio-assets//062_13_SeatedonBlanket.mp3",
+      "stageIds": [
+        13,
+        166
+      ]
+    }
+  ]
+}

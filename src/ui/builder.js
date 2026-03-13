@@ -361,65 +361,169 @@ function removePose(idx) {
 
 
 
-async function processSemicolonCommand(commandString, useMehta = false) {
+async function processSemicolonCommand(commandString) {
     const parts = commandString.split(';').map(p => p.trim());
     if (parts.length < 3) return;
 
     const [title, category, idsStr] = parts;
     
-    // Expand ranges (001-005) if any, then split by comma
-    const expandedIds = idsStr.replace(/(\d+)\s*-\s*(\d+)/g, (m, start, end) => {
-        let r = [];
-        for (let i = parseInt(start); i <= parseInt(end); i++) {
-            if (useMehta) {
-               r.push(String(i));
-            } else {
-               r.push(String(i).padStart(3, '0'));
-            }
-        }
+    // Expand ranges (51-55) then split by comma
+    const expandedTokens = idsStr.replace(/(\d+)\s*-\s*(\d+)/g, (m, start, end) => {
+        const r = [];
+        for (let i = parseInt(start); i <= parseInt(end); i++) r.push(String(i));
         return r.join(',');
     });
 
-    const parsedArray = expandedIds.split(',').map(s => s.trim()).filter(id => id.length > 0 && id !== "000");
-    const validAsanas = [];
-    
-    parsedArray.forEach(id => {
-       if (!useMehta) {
-           const cleanId = id.padStart(3, '0');
-           if (window.asanaLibrary[cleanId]) {
-               validAsanas.push({ id: cleanId, asana: window.asanaLibrary[cleanId] });
-           }
-       } else {
-           const asanaArr = Object.values(window.asanaLibrary);
-           const asana = asanaArr.find(a => {
-               if (!a.yoga_the_iyengar_way_id) return false;
-               if (a.yoga_the_iyengar_way_id === id) return true;
-               const pList = a.yoga_the_iyengar_way_id.split(',').map(s=>s.trim());
-               return pList.some(p => p === id || p.replace(/\s*\|\s*/g, '') === id);
-           });
-           if (asana) {
-               validAsanas.push({ id: asana.id, asana: asana });
-           }
-       }
+    const tokens = expandedTokens.split(',').map(s => s.trim()).filter(s => s.length > 0 && s !== '0');
+
+    // ── Per-token resolution using Mehta page_primary lookup ─────────────────
+    // Strategy:
+    //   1. Fast path  – scan asanaLibrary for page_primary match (no network).
+    //   2. Stage path – if not found as a base asana, scan every asana's stages
+    //                   for a page_primary match → returns parent id + stage_name.
+    //   3. Fallback   – treat the token as a direct LOY ID (padded to 3 digits).
+
+    const resolveToken = async (token) => {
+        const pageNum = parseInt(token, 10);
+        const isPageNum = !isNaN(pageNum) && /^\d+$/.test(token.trim());
+
+        // ── Fast path: search asanaLibrary first (no network round-trip needed) ──
+        if (isPageNum) {
+            const libArray = Object.values(window.asanaLibrary || {});
+
+            // Check base asanas by page_primary
+            const baseMatch = libArray.find(a => Number(a.page_primary) === pageNum || Number(a.yoga_the_iyengar_way_id) === pageNum);
+            if (baseMatch) {
+                return {
+                    id: baseMatch.id,
+                    asana: baseMatch,
+                    variation: '',
+                    stageKey: '',
+                    name: baseMatch.english || baseMatch.name || baseMatch.id
+                };
+            }
+
+            // Check stages embedded in asanaLibrary.variations (page_primary stored there post-load)
+            for (const a of libArray) {
+                if (!a.variations) continue;
+                for (const [stageKey, vData] of Object.entries(a.variations)) {
+                    if (vData && Number(vData.page_primary) === pageNum) {
+                        return {
+                            id: a.id,
+                            asana: a,
+                            variation: stageKey,
+                            stageKey,
+                            name: `${a.english || a.name} › ${vData.title || stageKey}`
+                        };
+                    }
+                }
+            }
+
+            // ── Network path: query Supabase searchable_asanas_view ──────────────
+            try {
+                // Try asanas table first
+                const { data: aHits } = await supabase
+                    .from('asanas')
+                    .select('id, english_name, name')
+                    .eq('page_primary', pageNum)
+                    .limit(1);
+                if (aHits && aHits.length > 0) {
+                    const row = aHits[0];
+                    const asanaKey = String(row.id).padStart(3, '0');
+                    const asana = window.asanaLibrary?.[asanaKey];
+                    return {
+                        id: asanaKey,
+                        asana: asana || { id: asanaKey },
+                        variation: '',
+                        stageKey: '',
+                        name: row.english_name || row.name || asanaKey
+                    };
+                }
+
+                // Try stages table — page_primary on a stage → resolve parent
+                const { data: sHits } = await supabase
+                    .from('stages')
+                    .select('asana_id, stage_name, title')
+                    .eq('page_primary', pageNum)
+                    .limit(1);
+                if (sHits && sHits.length > 0) {
+                    const row = sHits[0];
+                    const asanaKey = String(row.asana_id).padStart(3, '0');
+                    const asana = window.asanaLibrary?.[asanaKey];
+                    return {
+                        id: asanaKey,
+                        asana: asana || { id: asanaKey },
+                        variation: row.stage_name || '',
+                        stageKey: row.stage_name || '',
+                        name: `${asana?.english || asanaKey} › ${row.title || row.stage_name || ''}`
+                    };
+                }
+            } catch (netErr) {
+                console.warn(`⚠️ page_primary network lookup failed for ${pageNum}:`, netErr.message);
+            }
+
+            // Nothing found for this page number
+            console.warn(`⚠️ No asana or stage found for page_primary = ${pageNum}`);
+            return null;
+        }
+
+        // ── Non-numeric token: treat as a direct LOY ID ───────────────────────
+        const cleanId = token.padStart(3, '0');
+        const asana = window.asanaLibrary?.[cleanId];
+        if (asana) {
+            return { id: cleanId, asana, variation: '', stageKey: '', name: asana.english || asana.name || cleanId };
+        }
+        return null;
+    };
+
+    // Resolve all tokens (parallel network calls where needed)
+    const resolvedItems = await Promise.all(tokens.map(resolveToken));
+    const validItems = resolvedItems.filter(Boolean);
+
+    if (validItems.length === 0) {
+        console.warn('⚠️ processSemicolonCommand: no valid poses resolved from:', idsStr);
+        return;
+    }
+
+    // ── Build sequence rows and add to builder ────────────────────────────────
+    validItems.forEach(item => {
+        const duration = item.asana?.hold_data?.standard || item.asana?.hold_json?.standard || 30;
+        // If this resolved to a stage variation, pre-select it in the dropdown
+        builderPoses.push({
+            id: item.id,
+            name: item.name,
+            duration,
+            variation: item.stageKey || '',
+            note: item.stageKey ? `[${item.stageKey}]` : ''
+        });
     });
 
-    // Format: ID | Duration | [] (Matches existing DB format with empty notes)
-    const sequenceText = validAsanas.map(item => {
-        const duration = item.asana?.hold_data?.standard || 30;
-        return `${item.id} | ${duration} | []`; 
+    builderRender();
+
+    // ── Also persist to Supabase courses table (like before) ──────────────────
+    const sequenceText = validItems.map(item => {
+        const duration = item.asana?.hold_data?.standard || item.asana?.hold_json?.standard || 30;
+        const varPart = item.stageKey ? `[${item.stageKey}]` : `[]`;
+        return `${item.id} | ${duration} | ${varPart}`;
     }).join('\n');
 
     const payload = {
-        title: title,
-        category: category,
+        title,
+        category,
         sequence_text: sequenceText,
         last_edited: new Date().toISOString()
     };
 
-    const { error } = await supabase.from('courses').upsert([payload], { onConflict: 'title, category' });
-    if (error) {
-        console.error(`❌ Error saving ${title}:`, error.message);
-        throw error; // Pass it up to the main try/catch
+    try {
+        const { error } = await supabase.from('courses').upsert([payload], { onConflict: 'title, category' });
+        if (error) {
+            console.error(`❌ Error saving ${title}:`, error.message);
+            throw error;
+        }
+        console.log(`✅ Bulk import saved: "${title}" (${validItems.length} poses)`);
+    } catch (e) {
+        console.error('❌ processSemicolonCommand save failed:', e);
+        throw e;
     }
 }
 

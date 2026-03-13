@@ -1,0 +1,613 @@
+{
+  "generatedAt": "2026-03-13T23:35:17.621Z",
+  "totalStages": 156,
+  "missingImage": [
+    {
+      "id": 164,
+      "asana_id": "007",
+      "stage_name": "I",
+      "title": "Hands on Hips"
+    },
+    {
+      "id": 36,
+      "asana_id": "203",
+      "stage_name": "V",
+      "title": "Stage V"
+    },
+    {
+      "id": 38,
+      "asana_id": "203",
+      "stage_name": "VII",
+      "title": "Stage VII"
+    },
+    {
+      "id": 34,
+      "asana_id": "203",
+      "stage_name": "IV",
+      "title": "Stage IV"
+    },
+    {
+      "id": 33,
+      "asana_id": "203",
+      "stage_name": "III",
+      "title": "Stage III"
+    },
+    {
+      "id": 32,
+      "asana_id": "203",
+      "stage_name": "II",
+      "title": "Stage II"
+    },
+    {
+      "id": 39,
+      "asana_id": "203",
+      "stage_name": "VIII",
+      "title": "Stage VIII"
+    },
+    {
+      "id": 42,
+      "asana_id": "203",
+      "stage_name": "XII",
+      "title": "Stage XII"
+    },
+    {
+      "id": 37,
+      "asana_id": "203",
+      "stage_name": "VI",
+      "title": "Stage VI"
+    },
+    {
+      "id": 41,
+      "asana_id": "203",
+      "stage_name": "XI",
+      "title": "Stage XI"
+    },
+    {
+      "id": 40,
+      "asana_id": "203",
+      "stage_name": "X",
+      "title": "Stage X"
+    },
+    {
+      "id": 35,
+      "asana_id": "203",
+      "stage_name": "IX",
+      "title": "Stage IX"
+    },
+    {
+      "id": 31,
+      "asana_id": "203",
+      "stage_name": "I",
+      "title": "Stage I"
+    },
+    {
+      "id": 43,
+      "asana_id": "203",
+      "stage_name": "XIII",
+      "title": "Stage XIII"
+    },
+    {
+      "id": 52,
+      "asana_id": "204",
+      "stage_name": "VIII",
+      "title": "Stage VIII"
+    },
+    {
+      "id": 57,
+      "asana_id": "204",
+      "stage_name": "XIV",
+      "title": "Stage XIV"
+    },
+    {
+      "id": 48,
+      "asana_id": "204",
+      "stage_name": "IX",
+      "title": "Stage IX"
+    },
+    {
+      "id": 56,
+      "asana_id": "204",
+      "stage_name": "XIII",
+      "title": "Stage XIII"
+    },
+    {
+      "id": 50,
+      "asana_id": "204",
+      "stage_name": "VI",
+      "title": "Stage VI"
+    },
+    {
+      "id": 45,
+      "asana_id": "204",
+      "stage_name": "II",
+      "title": "Stage II"
+    },
+    {
+      "id": 47,
+      "asana_id": "204",
+      "stage_name": "IV",
+      "title": "Stage IV"
+    },
+    {
+      "id": 59,
+      "asana_id": "204",
+      "stage_name": "XVI",
+      "title": "Stage XVI"
+    },
+    {
+      "id": 58,
+      "asana_id": "204",
+      "stage_name": "XV",
+      "title": "Stage XV"
+    },
+    {
+      "id": 49,
+      "asana_id": "204",
+      "stage_name": "V",
+      "title": "Stage V"
+    },
+    {
+      "id": 44,
+      "asana_id": "204",
+      "stage_name": "I",
+      "title": "Stage I"
+    },
+    {
+      "id": 46,
+      "asana_id": "204",
+      "stage_name": "III",
+      "title": "Stage III"
+    },
+    {
+      "id": 54,
+      "asana_id": "204",
+      "stage_name": "XI",
+      "title": "Stage XI"
+    },
+    {
+      "id": 53,
+      "asana_id": "204",
+      "stage_name": "X",
+      "title": "Stage X"
+    },
+    {
+      "id": 51,
+      "asana_id": "204",
+      "stage_name": "VII",
+      "title": "Stage VII"
+    },
+    {
+      "id": 55,
+      "asana_id": "204",
+      "stage_name": "XII",
+      "title": "Stage XII"
+    },
+    {
+      "id": 65,
+      "asana_id": "205",
+      "stage_name": "IIIb",
+      "title": "Stage IIIb"
+    },
+    {
+      "id": 66,
+      "asana_id": "205",
+      "stage_name": "IVa",
+      "title": "Stage IVa"
+    },
+    {
+      "id": 60,
+      "asana_id": "205",
+      "stage_name": "Ia",
+      "title": "Stage Ia"
+    },
+    {
+      "id": 67,
+      "asana_id": "205",
+      "stage_name": "IVb",
+      "title": "Stage IVb"
+    },
+    {
+      "id": 62,
+      "asana_id": "205",
+      "stage_name": "IIa",
+      "title": "Stage IIa"
+    },
+    {
+      "id": 63,
+      "asana_id": "205",
+      "stage_name": "IIb",
+      "title": "Stage IIb"
+    },
+    {
+      "id": 64,
+      "asana_id": "205",
+      "stage_name": "IIIa",
+      "title": "Stage IIIa"
+    },
+    {
+      "id": 61,
+      "asana_id": "205",
+      "stage_name": "Ib",
+      "title": "Stage Ib"
+    },
+    {
+      "id": 70,
+      "asana_id": "206",
+      "stage_name": "III",
+      "title": "Stage III"
+    },
+    {
+      "id": 69,
+      "asana_id": "206",
+      "stage_name": "II",
+      "title": "Stage II"
+    },
+    {
+      "id": 68,
+      "asana_id": "206",
+      "stage_name": "I",
+      "title": "Stage I"
+    },
+    {
+      "id": 71,
+      "asana_id": "206",
+      "stage_name": "IV",
+      "title": "Stage IV"
+    },
+    {
+      "id": 73,
+      "asana_id": "207",
+      "stage_name": "II",
+      "title": "Stage II"
+    },
+    {
+      "id": 74,
+      "asana_id": "207",
+      "stage_name": "III",
+      "title": "Stage III"
+    },
+    {
+      "id": 72,
+      "asana_id": "207",
+      "stage_name": "I",
+      "title": "Stage I"
+    },
+    {
+      "id": 75,
+      "asana_id": "207",
+      "stage_name": "IV",
+      "title": "Stage IV"
+    },
+    {
+      "id": 78,
+      "asana_id": "209",
+      "stage_name": "III",
+      "title": "Stage III"
+    },
+    {
+      "id": 76,
+      "asana_id": "209",
+      "stage_name": "I",
+      "title": "Stage I"
+    },
+    {
+      "id": 77,
+      "asana_id": "209",
+      "stage_name": "II",
+      "title": "Stage II"
+    },
+    {
+      "id": 79,
+      "asana_id": "210",
+      "stage_name": "I",
+      "title": "Stage I"
+    },
+    {
+      "id": 81,
+      "asana_id": "210",
+      "stage_name": "III",
+      "title": "Stage III"
+    },
+    {
+      "id": 80,
+      "asana_id": "210",
+      "stage_name": "II",
+      "title": "Stage II"
+    },
+    {
+      "id": 92,
+      "asana_id": "213",
+      "stage_name": "VIII",
+      "title": "Stage VIII"
+    },
+    {
+      "id": 86,
+      "asana_id": "213",
+      "stage_name": "IV",
+      "title": "Stage IV"
+    },
+    {
+      "id": 90,
+      "asana_id": "213",
+      "stage_name": "VI",
+      "title": "Stage VI"
+    },
+    {
+      "id": 89,
+      "asana_id": "213",
+      "stage_name": "V",
+      "title": "Stage V"
+    },
+    {
+      "id": 91,
+      "asana_id": "213",
+      "stage_name": "VII",
+      "title": "Stage VII"
+    },
+    {
+      "id": 82,
+      "asana_id": "213",
+      "stage_name": "I",
+      "title": "Stage I"
+    },
+    {
+      "id": 84,
+      "asana_id": "213",
+      "stage_name": "II",
+      "title": "Stage II"
+    },
+    {
+      "id": 85,
+      "asana_id": "213",
+      "stage_name": "III",
+      "title": "Stage III"
+    },
+    {
+      "id": 87,
+      "asana_id": "213",
+      "stage_name": "IX",
+      "title": "Stage IX"
+    },
+    {
+      "id": 99,
+      "asana_id": "214",
+      "stage_name": "IIIb",
+      "title": "Stage IIIb"
+    },
+    {
+      "id": 106,
+      "asana_id": "214",
+      "stage_name": "VIIa",
+      "title": "Stage VIIa"
+    },
+    {
+      "id": 105,
+      "asana_id": "214",
+      "stage_name": "VIb",
+      "title": "Stage VIb"
+    },
+    {
+      "id": 100,
+      "asana_id": "214",
+      "stage_name": "IVa",
+      "title": "Stage IVa"
+    },
+    {
+      "id": 101,
+      "asana_id": "214",
+      "stage_name": "IVb",
+      "title": "Stage IVb"
+    },
+    {
+      "id": 97,
+      "asana_id": "214",
+      "stage_name": "IIIa",
+      "title": "Stage IIIa"
+    },
+    {
+      "id": 104,
+      "asana_id": "214",
+      "stage_name": "VIa",
+      "title": "Stage VIa"
+    },
+    {
+      "id": 94,
+      "asana_id": "214",
+      "stage_name": "Ib",
+      "title": "Stage Ib"
+    },
+    {
+      "id": 95,
+      "asana_id": "214",
+      "stage_name": "IIa",
+      "title": "Stage IIa"
+    },
+    {
+      "id": 93,
+      "asana_id": "214",
+      "stage_name": "Ia",
+      "title": "Stage Ia"
+    },
+    {
+      "id": 103,
+      "asana_id": "214",
+      "stage_name": "Vb",
+      "title": "Stage Vb"
+    },
+    {
+      "id": 88,
+      "asana_id": "214",
+      "stage_name": "VIIIb",
+      "title": "Stage VIIIb"
+    },
+    {
+      "id": 96,
+      "asana_id": "214",
+      "stage_name": "IIb",
+      "title": "Stage IIb"
+    },
+    {
+      "id": 107,
+      "asana_id": "214",
+      "stage_name": "VIIb",
+      "title": "Stage VIIb"
+    },
+    {
+      "id": 83,
+      "asana_id": "214",
+      "stage_name": "VIIIa",
+      "title": "Stage VIIIa"
+    },
+    {
+      "id": 102,
+      "asana_id": "214",
+      "stage_name": "Va",
+      "title": "Stage Va"
+    },
+    {
+      "id": 114,
+      "asana_id": "215",
+      "stage_name": "IVa",
+      "title": "Stage IVa"
+    },
+    {
+      "id": 113,
+      "asana_id": "215",
+      "stage_name": "IIIb",
+      "title": "Stage IIIb"
+    },
+    {
+      "id": 110,
+      "asana_id": "215",
+      "stage_name": "IIa",
+      "title": "Stage IIa"
+    },
+    {
+      "id": 109,
+      "asana_id": "215",
+      "stage_name": "Ib",
+      "title": "Stage Ib"
+    },
+    {
+      "id": 112,
+      "asana_id": "215",
+      "stage_name": "IIIa",
+      "title": "Stage IIIa"
+    },
+    {
+      "id": 108,
+      "asana_id": "215",
+      "stage_name": "Ia",
+      "title": "Stage Ia"
+    },
+    {
+      "id": 115,
+      "asana_id": "215",
+      "stage_name": "IVb",
+      "title": "Stage IVb"
+    },
+    {
+      "id": 111,
+      "asana_id": "215",
+      "stage_name": "IIb",
+      "title": "Stage IIb"
+    },
+    {
+      "id": 125,
+      "asana_id": "217",
+      "stage_name": "X",
+      "title": "Stage X"
+    },
+    {
+      "id": 117,
+      "asana_id": "217",
+      "stage_name": "II",
+      "title": "Stage II"
+    },
+    {
+      "id": 121,
+      "asana_id": "217",
+      "stage_name": "V",
+      "title": "Stage V"
+    },
+    {
+      "id": 127,
+      "asana_id": "217",
+      "stage_name": "XII",
+      "title": "Stage XII"
+    },
+    {
+      "id": 129,
+      "asana_id": "217",
+      "stage_name": "XIV",
+      "title": "Stage XIV"
+    },
+    {
+      "id": 123,
+      "asana_id": "217",
+      "stage_name": "VII",
+      "title": "Stage VII"
+    },
+    {
+      "id": 119,
+      "asana_id": "217",
+      "stage_name": "IV",
+      "title": "Stage IV"
+    },
+    {
+      "id": 131,
+      "asana_id": "217",
+      "stage_name": "XVI",
+      "title": "Stage XVI"
+    },
+    {
+      "id": 124,
+      "asana_id": "217",
+      "stage_name": "VIII",
+      "title": "Stage VIII"
+    },
+    {
+      "id": 128,
+      "asana_id": "217",
+      "stage_name": "XIII",
+      "title": "Stage XIII"
+    },
+    {
+      "id": 122,
+      "asana_id": "217",
+      "stage_name": "VI",
+      "title": "Stage VI"
+    },
+    {
+      "id": 118,
+      "asana_id": "217",
+      "stage_name": "III",
+      "title": "Stage III"
+    },
+    {
+      "id": 126,
+      "asana_id": "217",
+      "stage_name": "XI",
+      "title": "Stage XI"
+    },
+    {
+      "id": 116,
+      "asana_id": "217",
+      "stage_name": "I",
+      "title": "Stage I"
+    },
+    {
+      "id": 120,
+      "asana_id": "217",
+      "stage_name": "IX",
+      "title": "Stage IX"
+    },
+    {
+      "id": 130,
+      "asana_id": "217",
+      "stage_name": "XV",
+      "title": "Stage XV"
+    }
+  ],
+  "missingAudio": []
+}

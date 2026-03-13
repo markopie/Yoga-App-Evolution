@@ -125,6 +125,7 @@ async function loadAsanaLibrary() {
                 audio: stage.audio_url ?? stage.Audio_URL ?? '',
                 recovery_pose_id: stage.recovery_pose_id ?? null,
                 preparatory_pose_id: stage.preparatory_pose_id ?? null,
+                page_primary: stage.page_primary ?? null,  // ← Mehta lookup key
                 isCustom: !!stage.user_id 
             };
         });

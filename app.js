@@ -1,4 +1,4 @@
-﻿// #region 1. STATE & CONSTANTS
+// #region 1. STATE & CONSTANTS
 /* ==========================================================================
    APP CONFIGURATION & CONSTANTS
    ========================================================================== */
@@ -697,7 +697,8 @@ function triggerSequenceEnd() {
 
     // 90% completion gate: check if user completed enough of the sequence
     const totalSeqTime = calculateTotalSequenceTime(currentSequence);
-    const focusDuration = playbackEngine.totalFocusSeconds || 0;
+    // ── Use activePracticeSeconds (wall-clock, paused time excluded) ──────────
+    const focusDuration = playbackEngine.activePracticeSeconds || 0;
     
     // Skip gate if timer was never started (user just skipped through)
     if (focusDuration === 0) {
@@ -736,7 +737,9 @@ function triggerSequenceEnd() {
         ratingOverlay.dataset.sessionId = "";
         
         if (typeof appendServerHistory === "function") {
-            const finalDuration = playbackEngine.totalFocusSeconds || 0;
+            // ── Use activePracticeSeconds — precise active play time only ─────
+            const finalDuration = playbackEngine.activePracticeSeconds || 0;
+            console.log(`📊 Practice duration: ${finalDuration}s (active play only, paused time excluded)`);
             appendServerHistory(title, new Date(), category, finalDuration).then(resultId => {
                 if (resultId && resultId !== true && typeof resultId !== "boolean") {
                     ratingOverlay.dataset.sessionId = resultId;
