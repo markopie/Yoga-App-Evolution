@@ -59,12 +59,46 @@ This project has moved to Supabase for data and storage concerns. The next refac
 - [x] Add automated unit tests for `src/utils/parsing.js`.
 - [x] Ensure parsing functions gracefully handle missing or malformed inputs.
 
+## Phase 4: Sequence Engine Extraction (March 2026)
+- **Extracted `getExpandedPoses`** into `src/services/sequenceEngine.js`. Handles MACRO sub-sequence expansion, LOOP_START/LOOP_END unrolling, and preparatory/recovery pose injection.
+- **Extracted `getEffectiveTime` + `calculateTotalSequenceTime`** into `src/utils/sequenceUtils.js`. Pure functions, no DOM access, unit-testable.
+- **Net result:** `app.js` reduced from ~1,664 to **~1,447 lines** (−217 lines). Total reduction from 3,300 original → 56% reduction overall.
+- **Created `docs/AGENT.md`** — agent-oriented quick-reference guide covering file map, DB schema, common admin scripts, and key patterns.
+
+---
+
+## ⚠️ Critical Lessons Learned — Read Before Any app.js Refactoring
+
+### 1. The `window.*` Export Block Must Never Be Broken
+After the `getExpandedPoses` function body, app.js has a block:
+```js
+// Export for Wiring
+window.findAsanaByIdOrPlate = findAsanaByIdOrPlate;
+window.getExpandedPoses     = getExpandedPoses;
+window.init                 = init;                  // ← CRITICAL
+window.getActivePlaybackList = getActivePlaybackList;
+window.getCurrentSide       = getCurrentSide;
+```
+`window.init` is the entry point called by `wiring.js` auth listener. If it's missing, the app **silently never initialises**. When patching function removal, always verify this block is intact.
+
+### 2. `dataAdapter.js` Self-Executes `loadAsanaLibrary()`
+Line ~150 of `src/services/dataAdapter.js` has `loadAsanaLibrary();` — intentional eager cache warm. This causes the library to load twice in the console (once per module instance). This is normal and not a bug.
+
+### 3. Module URL Deduplication
+`dataAdapter.js` and `dataAdapter.js?v=29` are **different URLs = two separate Supabase client instances** in the browser. Minimise the number of distinct import URLs for the same file. Do not add new imports from modules already imported elsewhere if you can avoid it.
+
+### 4. `sequenceEngine.js` Must Not Import External Modules
+`src/services/sequenceEngine.js` deliberately has **no imports** — using `window.*` lookups only. Adding imports risks creating duplicate module instances and breaking Supabase auth. Any helper it needs must be accessed via `window.*`.
+
+### 5. Debug Cleanup Must Be Atomic
+When adding temporary `console.log` with new variables (e.g. `const { error: myErr } = ...`), ensure the cleanup script removes BOTH the variable reference AND the declaration. A partial cleanup leaves `ReferenceError` in production.
+
+---
+
 ## Next Targets (Remaining in app.js)
 - [ ] Extract `setPose()` and related pose rendering logic into `src/ui/posePlayer.js` (~425 lines — largest remaining block)
-- [ ] Extract `getExpandedPoses()` / macro engine into `src/services/sequenceEngine.js` (~160 lines)
 - [ ] Move timer event callbacks (`playbackEngine.onStart`, `onTick`, `onTransitionStart` etc.) into playback module (~300 lines)
-- [ ] Extract `updateTotalAndLastUI`, `calculateTotalSequenceTime`, `getEffectiveTime` into `src/utils/sequenceUtils.js`
-- [x] ~~Move `openHistoryModal` wiring into `src/ui/historyModal.js`~~ — **Done**
-- [x] ~~Extract `renderGlobalHistory` / `switchHistoryTab`~~ — **Done**
-- [ ] Clean up remaining stale comments and dead code
-- [ ] Add `?v=28` to remaining unversioned imports (`durationDial.js`, `courseUI.js`, `renderers.js`)
+- [ ] Extract `updateTotalAndLastUI` into `src/ui/courseUI.js` or `src/ui/statsUI.js`
+- [ ] Remove unused `COURSES_URL` import (dead since Supabase migration)
+- [ ] Add `?v=` cache bust to `sequenceEngine.js` and `sequenceUtils.js`
+

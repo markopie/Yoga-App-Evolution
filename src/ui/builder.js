@@ -923,23 +923,22 @@ async function builderSave() {
         }
 
         document.getElementById("editCourseBackdrop").style.display = "none";
-        alert(`"${title}" saved successfully!`);
-
-        // ── Admin: offer to promote to system ─────────────────────────────────
+        // ── Save success feedback ─────────────────────────────────────────────
         if (isAdmin() && data && data[0]) {
             const savedId = data[0].id;
-            const promote = confirm(`"${title}" saved!\n\nPromote to system sequence? (visible to all users)\n\nCancel = keep as personal draft.`);
+            const promote = confirm(`"${title}" saved!\n\n📌 Promote to published? Makes it visible to all users.\n\nOK = Publish   |   Cancel = Keep as private draft`);
             if (promote) {
                 await supabase.from('courses')
-                    .update({ is_system: true })  // keep user_id as author
+                    .update({ is_system: true })
                     .eq('id', savedId);
-                console.log(`✅ "${title}" promoted to system sequence.`);
             }
+        } else {
+            alert(`"${title}" saved!`);
         }
 
     } catch(e) {
         console.error("❌ Save failed:", e);
-        alert("Failed to save: " + (e.message || "Unknown error"));
+        alert("Save failed. Please try again.\n\n(Detail: " + (e.message?.replace(/https?:\/\/\S+/g, "").trim() || "Unknown error") + ")");
     }
 }
 

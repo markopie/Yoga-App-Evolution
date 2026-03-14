@@ -10,6 +10,8 @@ async function fetchCourses(currentUserId = null) {
 
         // 1. System & User Sequences (Now all unified in `courses` table after migration)
         const { data: coursesData } = await supabase.from('courses').select('*');
+
+
         if (coursesData) {
             coursesData.forEach(row => {
                 const poses = parseSequenceText(row.sequence_text || '');
@@ -18,7 +20,7 @@ async function fetchCourses(currentUserId = null) {
                         title: row.title.trim(), 
                         category: (row.category || '').trim(), 
                         poses, 
-                        isUserSequence: row.category === 'My Sequences', // Can use category naming logic if needed
+                        isUserSequence: row.category === 'My Sequences',
                         id: String(row.id)
                     });
                 }

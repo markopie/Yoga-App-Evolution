@@ -115,11 +115,11 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
     const prefixMatch = existingTitle.match(/^(Modified|Stage)\s+/i);
     const prefix = prefixMatch ? prefixMatch[1] : "Modified";
     const suffix = existingTitle.replace(/^(Modified|Stage)\s+[IVXLCDM]+\s*/i, "").trim();
-    const existingShorthand = typeof stageData === "object" ? (stageData.shorthand || stageData.Shorthand || "") : "";
+    const existingShorthand  = typeof stageData === "object" ? (stageData.shorthand   || stageData.Shorthand   || "") : "";
     const existingTech = typeof stageData === "object"
         ? (stageData.full_technique || stageData.Full_Technique || stageData.technique || "")
         : (stageData || "");
-    const existingDbId = typeof stageData === "object" ? (stageData.id || stageData.db_id || "") : "";
+    const existingDbId       = typeof stageData === "object" ? (stageData.id           || stageData.db_id       || "") : "";
 
     const existingHoldStr = typeof stageData === "object" ? (stageData.hold || stageData.Hold || "") : "";
     const parsedHold = parseHoldTimes(existingHoldStr);
@@ -177,11 +177,36 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
         </div>
         <div>
            <label class="muted" style="font-size:0.75rem;">Technique</label>
+           <div style="margin-bottom:4px;">
+             <select class="stage-prefix-tpl" style="font-size:0.78rem; padding:3px 6px; border:1px solid #ddd; border-radius:4px; background:#f9f9f9; color:#555;">
+               <option value="">— prepend technique prefix —</option>
+               <option value="Back against the wall: ">Back against the wall</option>
+               <option value="Bent legs throughout: ">Bent legs throughout</option>
+               <option value="With chair support: ">With chair support</option>
+               <option value="Using a bolster / prop: ">Using a bolster / prop</option>
+               <option value="Against the wall (side): ">Against the wall (side)</option>
+               <option value="Supported inverted: ">Supported inverted</option>
+             </select>
+           </div>
            <textarea class="stage-tech" style="height:60px; padding:6px; width:100%; font-family:inherit; border:1px solid #ccc; border-radius:4px;">${existingTech}</textarea>
         </div>
     `;
 
     div.querySelector(".remove-stage-btn").onclick = () => div.remove();
+
+    // Prefix template picker: prepend chosen text then reset select
+    const prefixSel = div.querySelector(".stage-prefix-tpl");
+    const techArea  = div.querySelector(".stage-tech");
+    if (prefixSel && techArea) {
+        prefixSel.onchange = () => {
+            const chosen = prefixSel.value;
+            if (!chosen) return;
+            techArea.value = chosen + techArea.value;
+            techArea.focus();
+            prefixSel.value = ""; // reset so it can be reused
+        };
+    }
+
     container.appendChild(div);
 };
 
@@ -377,6 +402,21 @@ function wireEditorSave() {
         $("addStageBtn").onclick = () => window.addStageToEditor();
     }
 
+    // Clone from Base: pre-fill technique + hold times from the base asana form
+    if ($("cloneFromBaseBtn")) {
+        $("cloneFromBaseBtn").onclick = () => {
+            const cloneHold = buildHoldString(
+                parseInt($("editAsanaHoldStandard")?.value || "30", 10),
+                parseInt($("editAsanaHoldShort")?.value    || "15", 10),
+                parseInt($("editAsanaHoldLong")?.value     || "60", 10)
+            );
+            window.addStageToEditor("", {
+                full_technique: $("editAsanaTechnique")?.value || "",
+                hold:           cloneHold
+            });
+        };
+    }
+
     const saveBtn = $("asanaEditorSaveBtn");
     if (!saveBtn) return;
 
@@ -503,9 +543,11 @@ function wireEditorSave() {
                         asana_id:       id,
                         stage_name:     key,
                         title:          sfx ? `${pfx} ${key} ${sfx}` : `${pfx} ${key}`,
-                        full_technique: div.querySelector(".stage-tech")?.value.trim() || null,
-                        shorthand:      div.querySelector(".stage-short")?.value.trim() || null,
-                        image_url:      baseVariation.image_url || null,
+                        full_technique: div.querySelector(".stage-tech")?.value.trim()        || null,
+                        shorthand:      div.querySelector(".stage-short")?.value.trim()       || null,
+                        image_url:      baseVariation.image_url                               || null,
+                        audio_url:      div.querySelector(".stage-audio-url")?.value.trim()   || null,
+                        audio_title:    div.querySelector(".stage-audio-title")?.value.trim() || null,
                         hold:           holdStr
                     };
 

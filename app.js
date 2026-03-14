@@ -13,7 +13,7 @@ import {
     COMPLETION_LOG_URL,
     LOCAL_SEQ_KEY,
 } from "./src/config/appConfig.js";
-import { fetchCourses, loadAsanaLibrary, normalizeAsana, normalizeAsanaRow, normalizePlate, parsePlates, normaliseAsanaId } from "./src/services/dataAdapter.js";
+import { fetchCourses, loadAsanaLibrary, normalizeAsana, normalizeAsanaRow, normalizePlate, parsePlates, normaliseAsanaId, findAsanaByIdOrPlate } from "./src/services/dataAdapter.js?v=29";
 import { supabase } from "./src/services/supabaseClient.js";
 import { loadJSON } from "./src/services/http.js";
 import { $, normaliseText, safeListen, setStatus, showError, enterBrowseDetailMode, exitBrowseDetailMode } from "./src/utils/dom.js";
@@ -21,8 +21,10 @@ import { parseHoldTimes, buildHoldString } from "./src/utils/parsing.js";
 import { prefersIAST, setIASTPref, displayName, escapeHtml2, renderMarkdownMinimal, formatHMS, formatTechniqueText } from "./src/utils/format.js";
 import { playbackEngine } from "./src/playback/timer.js";
 import { parsePlateTokens, plateFromFilename, primaryAsanaFromFilename, filenameFromUrl, mobileVariantUrl, ensureArray, isBrowseMobile, smartUrlsForPoseId } from "./src/utils/helpers.js";
-import { findAsanaByIdOrPlate } from "./src/services/dataAdapter.js?v=29";
+
 import "./src/ui/wiring.js?v=29"; // 👈 Core UI Wiring & Listeners
+import { getExpandedPoses } from "./src/services/sequenceEngine.js";
+import { getEffectiveTime, calculateTotalSequenceTime } from "./src/utils/sequenceUtils.js";
 import { builderOpen, openEditCourse } from "./src/ui/builder.js?v=29";
 
 // UI Renderers
@@ -181,9 +183,9 @@ window.loadCourses = async function() {
     window.courses = deduplicated;
     setCourses(deduplicated);
     setSequences(deduplicated);
-
-    if (typeof renderSequenceDropdown === "function") renderSequenceDropdown(); 
+    if (typeof window.renderSequenceDropdown === "function") window.renderSequenceDropdown();
 };
+
 
 
 // 4. Load Asana Library
@@ -215,55 +217,7 @@ window.prevPose = prevPose;
    ========================================================================== */
 
 
-   function getEffectiveTime(id, dur) {
-    // 1. Unwrap the ID if it's hiding in an array (fixes Player math)
-    let rawId = id;
-    if (Array.isArray(rawId)) rawId = rawId[0];
-    if (Array.isArray(rawId)) rawId = rawId[0]; // Double unwrap just in case
-    
-    const strId = String(rawId || "");
-    
-    // Special: Macros and Loop markers don't have a time contribution themselves
-    // (they contribute via expansion). Treat them as 0s to avoid double-counting.
-    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END")) {
-        return 0;
-    }
-    // LOOP_START: dur is the repeat count, not seconds, so skip too
-    if (strId.startsWith("LOOP_START")) {
-        return 0;
-    }
-    
-    const lib = window.asanaLibrary || {};
-    
-    // 2. The ID Fix: Compare them mathematically (so "003" safely matches "3")
-    const searchId = Number(rawId);
-    const asana = Object.values(lib).find(a => Number(a.id || a.asanaNo) === searchId);
-    
-    // 3. Prefer library-standard time; fall back to sequence-stored duration
-    let duration;
-    if (asana) {
-        // Library stores hold times in hold_json (not hold_data)
-        const hj = asana.hold_json || asana.hold_data;
-        if (hj && hj.standard) {
-            duration = Number(hj.standard);
-        } else {
-            duration = Number(dur) || 0;
-        }
-    } else {
-        duration = Number(dur) || 0;
-    }
-
-    // 4. Double the time if the pose requires both sides
-    if (asana && (asana.requiresSides || asana.requires_sides)) {
-        return duration * 2;
-    }
-    
-    return duration;
-}
-
-
-
-window.getEffectiveTime = getEffectiveTime; // Make it global
+// getEffectiveTime → src/utils/sequenceUtils.js
 
 import { 
     safeGetLocalStorage, safeSetLocalStorage, loadCompletionLog, saveCompletionLog, 
@@ -383,28 +337,28 @@ function showResumePrompt(state) {
 // console.log(`Manifest loaded: ${window.serverAudioFiles.length} audio files`);
 }
 async function init() {
-// console.log("init() has started executing!");
     window.appInitialized = true; // Prevents the fallback from running twice
     try {
         const statusEl = $("statusText");
-        
+
         // 1. Core Config
         if (typeof seedManualCompletionsOnce === "function") seedManualCompletionsOnce();
 
-        // 2. Load History
+        // 2. Load History;
         await Promise.all([
             typeof loadManifestAndPopulateLists === "function" ? loadManifestAndPopulateLists() : Promise.resolve(),
             typeof fetchIdAliases === "function" ? fetchIdAliases() : Promise.resolve(),
             fetchServerHistory()
-        ]);
+        ]);;
 
         // 3. Load Main Data (Sequential)
-        if (statusEl) statusEl.textContent = "Loading library...";
+        if (statusEl) statusEl.textContent = "Loading library...";;
         asanaLibrary = await loadAsanaLibrary();
-        window.asanaLibrary = asanaLibrary;
+        window.asanaLibrary = asanaLibrary;;
 
         if (statusEl) statusEl.textContent = "Loading courses...";
-        await loadCourses();
+        await loadCourses();;
+
 
 
 
@@ -436,176 +390,13 @@ async function init() {
 
 // Export for Wiring
 window.findAsanaByIdOrPlate = findAsanaByIdOrPlate;
-window.getExpandedPoses = getExpandedPoses;
-window.init = init;
+window.getExpandedPoses     = getExpandedPoses;
+window.init                 = init;
 window.getActivePlaybackList = getActivePlaybackList;
-window.getCurrentSide = getCurrentSide;
+window.getCurrentSide       = getCurrentSide;
+// getExpandedPoses implementation → src/services/sequenceEngine.js
 
-function getExpandedPoses(sequence) {
-    let expanded = [];
-    if (!sequence || !sequence.poses) return [];
 
-    const allCourses = window.courses || [];
-
-    // 1. Unpack Macros
-    sequence.poses.forEach((p, originalIdx) => {
-        const idStr = String(p[0]);
-        const durOrReps = Number(p[1]) || 1; 
-
-        if (idStr.startsWith("MACRO:")) {
-            const targetTitle = idStr.replace("MACRO:", "").trim();
-            const sub = allCourses.find(c => c.title === targetTitle);
-            
-            if (sub && sub.poses) {
-                for (let i = 0; i < durOrReps; i++) {
-                    sub.poses.forEach(sp => {
-                        let cloned = [...sp];
-                        cloned[5] = originalIdx; 
-                        expanded.push(cloned);
-                    });
-                }
-            }
-        } else {
-            let cloned = [...p];
-            cloned[5] = originalIdx; 
-            expanded.push(cloned);
-        }
-    });
-
-    // 2. Unpack Loops
-    let finalExpanded = [];
-    let loopBuffer = [];
-    let inLoop = false;
-    let loopCount = 1;
-    
-    expanded.forEach(p => {
-        const idStr = String(p[0]);
-        if (idStr === "LOOP_START") {
-            if (inLoop) {
-                for (let i = 0; i < loopCount; i++) {
-                    finalExpanded.push(...loopBuffer.map(bp => [...bp]));
-                }
-            }
-            inLoop = true;
-            loopCount = Number(p[1]) || 1;
-            loopBuffer = [];
-        } else if (idStr === "LOOP_END") {
-            if (inLoop) {
-                inLoop = false;
-                for (let i = 0; i < loopCount; i++) {
-                    finalExpanded.push(...loopBuffer.map(bp => [...bp]));
-                }
-                loopBuffer = [];
-            }
-        } else {
-            if (inLoop) {
-                loopBuffer.push(p);
-            } else {
-                finalExpanded.push(p);
-            }
-        }
-    });
-    
-    if (inLoop) {
-        for (let i = 0; i < loopCount; i++) {
-            finalExpanded.push(...loopBuffer.map(bp => [...bp]));
-        }
-    }
-
-    // 3. Inject Preparatory & Recovery Poses dynamically
-    let withInjected = [];
-    finalExpanded.forEach(p => {
-        const idStr = String(p[0] || "");
-        if (idStr.startsWith("MACRO") || idStr.startsWith("LOOP_") || idStr === "GROUP_END") {
-            withInjected.push(p);
-            return;
-        }
-
-        const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(idStr)) : null;
-
-        let currKey = null;
-        let keyMatch = [p[2], p[3], p[4]].filter(Boolean).join(" ").trim().match(/\[(.*?)\]/);
-        if (keyMatch) {
-            currKey = keyMatch[1].trim();
-        } else if (p[3]) {
-            currKey = String(p[3]).trim();
-        }
-
-        let prepIds = [];
-        let recovIds = [];
-
-        if (asana) {
-            let prep = asana.preparatory_pose_id;
-            let recov = asana.recovery_pose_id;
-
-            // Variation overrides
-            if (currKey && asana.variations) {
-                const cleanNk = currKey.toLowerCase();
-                for (const [vk, vd] of Object.entries(asana.variations)) {
-                    const vtitle = (vd.title || vd.Title || "").toLowerCase().trim();
-                    if (vk.toLowerCase() === cleanNk || vtitle.includes(cleanNk)) {
-                        if (vd.preparatory_pose_id) prep = vd.preparatory_pose_id;
-                        if (vd.recovery_pose_id) recov = vd.recovery_pose_id;
-                        break;
-                    }
-                }
-            }
-
-            if (prep && prep !== "NULL" && prep !== "null") prepIds.push(prep);
-            if (recov && recov !== "NULL" && recov !== "null") recovIds.push(recov);
-        }
-
-        const createInjectedPose = (rawId, label) => {
-            const cleanRawId = String(rawId).trim().replace(/\|/g, "").replace(/\s+/g, "");
-            const parsed = cleanRawId.match(/^(\d+)(.*)$/);
-            if (!parsed) return null;
-
-            const numId = parsed[1].padStart(3, "0");
-            let varSuffix = parsed[2] ? parsed[2].toUpperCase() : "";
-            if (varSuffix === "NULL") varSuffix = "";
-
-            const targetAsana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(numId) : null;
-            let duration = 30; // default fallback
-            let displayNameStr = "Action";
-
-            if (targetAsana) {
-                const hj = targetAsana.hold_json || targetAsana.hold_data;
-                duration = (hj && hj.standard) ? Number(hj.standard) : 30;
-                displayNameStr = (typeof displayName === "function" ? displayName(targetAsana) : (targetAsana.english || targetAsana.name)) || "Action";
-
-                // Variation specific hold
-                if (varSuffix && targetAsana.variations) {
-                    for (const [vk, vd] of Object.entries(targetAsana.variations)) {
-                        if (vk.toUpperCase() === varSuffix && vd.hold_data && vd.hold_data.standard) {
-                            duration = vd.hold_data.standard;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // [ID, duration, Override Name, Variation, Note, OriginalIdx, MetaLabel]
-            return [numId, duration, null, varSuffix || null, `* ${label} (Auto-Injected) *`, p[5] || null, label];
-        };
-
-        // 1. Inject Prep Poses First
-        prepIds.forEach(prepId => {
-            const prepP = createInjectedPose(prepId, "Preparatory Action");
-            if (prepP) withInjected.push(prepP);
-        });
-
-        // 2. The Main Target Pose
-        withInjected.push(p);
-
-        // 3. Inject Recovery Poses Last
-        recovIds.forEach(recovId => {
-            const recovP = createInjectedPose(recovId, "Recovery Action");
-            if (recovP) withInjected.push(recovP);
-        });
-    });
-
-    return withInjected;
-}
 /* ==========================================================================
    TIMER ENGINE (Updated for Centered Focus Mode & Macro Engine)
    ========================================================================== */
@@ -941,11 +732,7 @@ function updateTimerUI(remaining, currentPoseSeconds) {
 // Export for Wiring
 window.updateTimerUI = updateTimerUI;
 
-function calculateTotalSequenceTime(seq) {
-    if (!seq || !seq.poses) return 0;
-    const expanded = typeof getExpandedPoses === "function" ? getExpandedPoses(seq) : seq.poses;
-    return expanded.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
-}
+// calculateTotalSequenceTime → src/utils/sequenceUtils.js
 
 function nextPose() {
     // 1. Get the correct list (Always prefer the expanded playback list)
