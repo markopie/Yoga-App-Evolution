@@ -931,7 +931,7 @@ async function builderSave() {
             const promote = confirm(`"${title}" saved!\n\nPromote to system sequence? (visible to all users)\n\nCancel = keep as personal draft.`);
             if (promote) {
                 await supabase.from('courses')
-                    .update({ is_system: true, user_id: null })
+                    .update({ is_system: true })  // keep user_id as author
                     .eq('id', savedId);
                 console.log(`✅ "${title}" promoted to system sequence.`);
             }
