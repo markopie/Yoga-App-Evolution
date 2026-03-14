@@ -14,6 +14,23 @@ let builderMode = "edit";
 let builderEditingCourseIndex = -1;
 let builderEditingSupabaseId = null;
 
+// ── Admin identity ────────────────────────────────────────────────────────────
+const ADMIN_EMAIL = 'mark.opie@gmail.com';
+const isAdmin = () => window.currentUserEmail === ADMIN_EMAIL;
+
+// ── Sanskrit / English name toggle ────────────────────────────────────────────
+// When true, builder rows show asana.name (Sanskrit) instead of asana.english.
+let builderShowSanskrit = false;
+
+/** Returns the display name for a pose row respecting the Sanskrit toggle. */
+function builderPoseName(asana, fallback) {
+    if (!asana) return fallback || 'Unknown';
+    if (builderShowSanskrit) {
+        return asana.name || asana.iast || asana.english || fallback || 'Unknown';
+    }
+    return asana.english || asana.name || fallback || 'Unknown';
+}
+
 
 function builderRender() {
     const tbody = document.getElementById("builderTableBody");
@@ -197,7 +214,7 @@ function builderRender() {
            </td>
            <td style="padding:8px;">
               <div style="font-weight:bold; margin-bottom:4px; line-height: 1.2;">
-                 ${pose.name || 'Unknown'} ${sideBadge}
+                 ${isSpecial ? (pose.name || 'Unknown') : builderPoseName(asana, pose.name)} ${sideBadge}
               </div>
               <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; font-size:0.75rem; color:#666;">
                  ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" ${isSpecial ? 'readonly' : ''} style="width:${isSpecial ? 'auto' : '50px'}; padding:2px; border:1px solid #ccc; border-radius:4px; ${isSpecial ? 'background:#f0f0f0;' : ''}">
@@ -216,7 +233,36 @@ function builderRender() {
            
         tbody.appendChild(tr);
 
+        // ── Ambiguous page warning banner ──────────────────────────────────────
+        // Shown when multiple asanas share the same page_primary. User must pick.
+        if (pose._ambiguous && pose._alternatives && pose._alternatives.length > 0) {
+            const warnRow = document.createElement('tr');
+            warnRow.dataset.ambiguousFor = idx;
+            const altButtons = pose._alternatives.map(alt =>
+                `<button class="b-amb-switch tiny" data-idx="${idx}" data-alt-id="${alt.id}" data-alt-name="${alt.name}"
+                    style="background:#e65100; color:#fff; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.72rem; margin-left:4px;">
+                    Switch to ${alt.name}
+                </button>`
+            ).join('');
+            warnRow.innerHTML = `
+                <td colspan="3" style="
+                    background:#fff3e0; border-left:4px solid #ff6d00;
+                    padding:6px 12px; font-size:0.78rem; color:#bf360c;">
+                    ⚠️ <strong>Page ${pose._pageNum} has multiple asanas.</strong>
+                    Currently using: <em>${pose.name}</em>.
+                    <span style="margin-left:4px;">
+                        ${altButtons}
+                    </span>
+                    <button class="b-amb-keep tiny" data-idx="${idx}"
+                        style="background:#2e7d32; color:#fff; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.72rem; margin-left:8px;">
+                        ✓ Keep ${pose.name}
+                    </button>
+                </td>`;
+            tbody.appendChild(warnRow);
+        }
+
         // Flash highlight for newly unshifted row
+
         if (idx === 0 && builderPoses.length > 1) {
             tr.style.backgroundColor = "#fff9c4"; 
             setTimeout(() => { tr.style.transition = "background 1s"; tr.style.backgroundColor = ""; }, 100);
@@ -275,7 +321,40 @@ function builderRender() {
     qS('.b-move-up').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), -1));
     qS('.b-move-dn').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), 1));
     qS('.b-remove').forEach(el => el.onclick = () => removePose(parseInt(el.dataset.idx)));
-  
+
+    // ── Ambiguous-page resolution buttons ─────────────────────────────────────
+    qS('.b-amb-keep').forEach(el => el.onclick = () => {
+        const i = parseInt(el.dataset.idx);
+        builderPoses[i]._ambiguous = false;
+        builderPoses[i]._alternatives = [];
+        builderRender();
+    });
+
+    qS('.b-amb-switch').forEach(el => el.onclick = () => {
+        const i = parseInt(el.dataset.idx);
+        const altId   = el.dataset.altId;
+        const altName = el.dataset.altName;
+        const libArray2 = Object.values(window.asanaLibrary || {});
+        const altAsana = libArray2.find(a => String(a.id) === String(altId) || String(a.asanaNo) === String(altId));
+        builderPoses[i].id         = altId;
+        builderPoses[i].name       = altName;
+        builderPoses[i].asana      = altAsana || { id: altId };
+        builderPoses[i]._ambiguous = false;
+        builderPoses[i]._alternatives = [];
+        builderRender();
+    });
+
+    // ── Disable Save while any ambiguous row exists ───────────────────────────
+    const saveBtn = document.getElementById('editCourseSaveBtn');
+    if (saveBtn) {
+        const hasAmbiguous = builderPoses.some(p => p._ambiguous);
+        saveBtn.disabled = hasAmbiguous;
+        saveBtn.title = hasAmbiguous
+            ? 'Resolve all ⚠️ ambiguous pages before saving'
+            : '';
+        saveBtn.style.opacity = hasAmbiguous ? '0.45' : '';
+    }
+
     qS('.b-move-top').forEach(el => el.onclick = () => {
         const idx = parseInt(el.dataset.idx);
         if (idx > 0) {
@@ -366,8 +445,15 @@ async function processSemicolonCommand(commandString) {
     if (parts.length < 3) return;
 
     const [title, category, idsStr] = parts;
-    
-    // Expand ranges (51-55) then split by comma
+
+    // ── Pre-populate the builder title + category fields immediately ──────────
+    const titleEl = document.getElementById('builderTitle');
+    const catEl   = document.getElementById('builderCategory');
+    if (titleEl && title)    titleEl.value = title;
+    if (catEl   && category) catEl.value   = category;
+
+    // Expand integer ranges (51-55) then split by comma
+    // Note: decimal tokens like 44.1 are NOT expanded by range logic
     const expandedTokens = idsStr.replace(/(\d+)\s*-\s*(\d+)/g, (m, start, end) => {
         const r = [];
         for (let i = parseInt(start); i <= parseInt(end); i++) r.push(String(i));
@@ -379,68 +465,98 @@ async function processSemicolonCommand(commandString) {
     // ── Per-token resolution using Mehta page_primary lookup ─────────────────
     // Strategy:
     //   1. Fast path  – scan asanaLibrary for page_primary match (no network).
-    //   2. Stage path – if not found as a base asana, scan every asana's stages
-    //                   for a page_primary match → returns parent id + stage_name.
-    //   3. Fallback   – treat the token as a direct LOY ID (padded to 3 digits).
+    //   2. Stage path – scan asanaLibrary.variations for page_primary match.
+    //   3. Network    – query asanas (without limit) to detect multi-match pages,
+    //                   then stages as fallback.
+    //   4. Fallback   – treat the token as a direct LOY ID (padded to 3 digits).
+    //
+    // Decimal support: parseFloat handles both "44" and "44.1"
 
     const resolveToken = async (token) => {
-        const pageNum = parseInt(token, 10);
-        const isPageNum = !isNaN(pageNum) && /^\d+$/.test(token.trim());
+        // ── Parse page number (supports decimals like 44.1) ───────────────────
+        const pageNum = parseFloat(token);
+        const isPageNum = !isNaN(pageNum) && /^\d+(\.\d+)?$/.test(token.trim());
 
-        // ── Fast path: search asanaLibrary first (no network round-trip needed) ──
         if (isPageNum) {
             const libArray = Object.values(window.asanaLibrary || {});
 
-            // Check base asanas by page_primary
-            const baseMatch = libArray.find(a => Number(a.page_primary) === pageNum || Number(a.yoga_the_iyengar_way_id) === pageNum);
-            if (baseMatch) {
+            // ── Fast path: base asanas ────────────────────────────────────────
+            const baseMatches = libArray.filter(a =>
+                parseFloat(a.page_primary) === pageNum
+            );
+
+            if (baseMatches.length === 1) {
+                const m = baseMatches[0];
+                return { id: m.id, asana: m, variation: '', stageKey: '',
+                         name: m.english || m.name || m.id,
+                         _pageNum: pageNum };
+            }
+            if (baseMatches.length > 1) {
+                // Multiple asanas share this page — flag for user confirmation
+                const primary = baseMatches[0];
                 return {
-                    id: baseMatch.id,
-                    asana: baseMatch,
-                    variation: '',
-                    stageKey: '',
-                    name: baseMatch.english || baseMatch.name || baseMatch.id
+                    id: primary.id, asana: primary, variation: '', stageKey: '',
+                    name: primary.english || primary.name || primary.id,
+                    _pageNum: pageNum,
+                    _ambiguous: true,
+                    _alternatives: baseMatches.slice(1).map(a => ({
+                        id: a.id, name: a.english || a.name || a.id, asana: a
+                    }))
                 };
             }
 
-            // Check stages embedded in asanaLibrary.variations (page_primary stored there post-load)
+            // ── Fast path: stages (variations) ───────────────────────────────
             for (const a of libArray) {
                 if (!a.variations) continue;
                 for (const [stageKey, vData] of Object.entries(a.variations)) {
-                    if (vData && Number(vData.page_primary) === pageNum) {
+                    if (vData && parseFloat(vData.page_primary) === pageNum) {
                         return {
-                            id: a.id,
-                            asana: a,
-                            variation: stageKey,
-                            stageKey,
-                            name: `${a.english || a.name} › ${vData.title || stageKey}`
+                            id: a.id, asana: a, variation: stageKey, stageKey,
+                            name: `${a.english || a.name} › ${vData.title || stageKey}`,
+                            _pageNum: pageNum
                         };
                     }
                 }
             }
 
-            // ── Network path: query Supabase searchable_asanas_view ──────────────
+            // ── Network path ──────────────────────────────────────────────────
             try {
-                // Try asanas table first
+                // Fetch WITHOUT limit to catch multi-match pages
                 const { data: aHits } = await supabase
                     .from('asanas')
                     .select('id, english_name, name')
-                    .eq('page_primary', pageNum)
-                    .limit(1);
-                if (aHits && aHits.length > 0) {
+                    .eq('page_primary', pageNum);
+
+                if (aHits && aHits.length === 1) {
                     const row = aHits[0];
                     const asanaKey = String(row.id).padStart(3, '0');
                     const asana = window.asanaLibrary?.[asanaKey];
+                    return { id: asanaKey, asana: asana || { id: asanaKey },
+                             variation: '', stageKey: '',
+                             name: row.english_name || row.name || asanaKey,
+                             _pageNum: pageNum };
+                }
+
+                if (aHits && aHits.length > 1) {
+                    // Ambiguous — multiple asanas on this page
+                    const primary = aHits[0];
+                    const asanaKey = String(primary.id).padStart(3, '0');
+                    const asana = window.asanaLibrary?.[asanaKey];
                     return {
-                        id: asanaKey,
-                        asana: asana || { id: asanaKey },
-                        variation: '',
-                        stageKey: '',
-                        name: row.english_name || row.name || asanaKey
+                        id: asanaKey, asana: asana || { id: asanaKey },
+                        variation: '', stageKey: '',
+                        name: primary.english_name || primary.name || asanaKey,
+                        _pageNum: pageNum,
+                        _ambiguous: true,
+                        _alternatives: aHits.slice(1).map(r => {
+                            const k = String(r.id).padStart(3, '0');
+                            return { id: k, name: r.english_name || r.name || k,
+                                     asana: window.asanaLibrary?.[k] || { id: k } };
+                        })
                     };
                 }
 
-                // Try stages table — page_primary on a stage → resolve parent
+                // Try stages table
                 const { data: sHits } = await supabase
                     .from('stages')
                     .select('asana_id, stage_name, title')
@@ -451,18 +567,16 @@ async function processSemicolonCommand(commandString) {
                     const asanaKey = String(row.asana_id).padStart(3, '0');
                     const asana = window.asanaLibrary?.[asanaKey];
                     return {
-                        id: asanaKey,
-                        asana: asana || { id: asanaKey },
-                        variation: row.stage_name || '',
-                        stageKey: row.stage_name || '',
-                        name: `${asana?.english || asanaKey} › ${row.title || row.stage_name || ''}`
+                        id: asanaKey, asana: asana || { id: asanaKey },
+                        variation: row.stage_name || '', stageKey: row.stage_name || '',
+                        name: `${asana?.english || asanaKey} › ${row.title || row.stage_name || ''}`,
+                        _pageNum: pageNum
                     };
                 }
             } catch (netErr) {
                 console.warn(`⚠️ page_primary network lookup failed for ${pageNum}:`, netErr.message);
             }
 
-            // Nothing found for this page number
             console.warn(`⚠️ No asana or stage found for page_primary = ${pageNum}`);
             return null;
         }
@@ -471,12 +585,13 @@ async function processSemicolonCommand(commandString) {
         const cleanId = token.padStart(3, '0');
         const asana = window.asanaLibrary?.[cleanId];
         if (asana) {
-            return { id: cleanId, asana, variation: '', stageKey: '', name: asana.english || asana.name || cleanId };
+            return { id: cleanId, asana, variation: '', stageKey: '',
+                     name: asana.english || asana.name || cleanId };
         }
         return null;
     };
 
-    // Resolve all tokens (parallel network calls where needed)
+    // Resolve all tokens (parallel for speed)
     const resolvedItems = await Promise.all(tokens.map(resolveToken));
     const validItems = resolvedItems.filter(Boolean);
 
@@ -485,42 +600,44 @@ async function processSemicolonCommand(commandString) {
         return;
     }
 
-    // ── Build sequence rows and add to builder ────────────────────────────────
+    // ── Add to builder (ambiguous items get _ambiguous flag — rendered with ⚠️) ─
     validItems.forEach(item => {
         const duration = item.asana?.hold_data?.standard || item.asana?.hold_json?.standard || 30;
-        // If this resolved to a stage variation, pre-select it in the dropdown
         builderPoses.push({
             id: item.id,
             name: item.name,
             duration,
             variation: item.stageKey || '',
-            note: item.stageKey ? `[${item.stageKey}]` : ''
+            note: item.stageKey ? `[${item.stageKey}]` : '',
+            // Ambiguous-page metadata — used by builderRender to show ⚠️ UI
+            _ambiguous:     item._ambiguous || false,
+            _pageNum:       item._pageNum || null,
+            _alternatives:  item._alternatives || []
         });
     });
 
     builderRender();
 
-    // ── Also persist to Supabase courses table (like before) ──────────────────
-    const sequenceText = validItems.map(item => {
+    // ── Persist to Supabase (skip ambiguous rows — they need resolution first) ─
+    const saveable = validItems.filter(item => !item._ambiguous);
+    if (saveable.length === 0) {
+        console.warn('⚠️ All resolved items are ambiguous — resolve conflicts before saving.');
+        return;
+    }
+
+    const sequenceText = saveable.map(item => {
         const duration = item.asana?.hold_data?.standard || item.asana?.hold_json?.standard || 30;
         const varPart = item.stageKey ? `[${item.stageKey}]` : `[]`;
         return `${item.id} | ${duration} | ${varPart}`;
     }).join('\n');
 
-    const payload = {
-        title,
-        category,
-        sequence_text: sequenceText,
-        last_edited: new Date().toISOString()
-    };
-
+    const payload = { title, category, sequence_text: sequenceText,
+                      last_edited: new Date().toISOString(),
+                      user_id: window.currentUserId || null };
     try {
         const { error } = await supabase.from('courses').upsert([payload], { onConflict: 'title, category' });
-        if (error) {
-            console.error(`❌ Error saving ${title}:`, error.message);
-            throw error;
-        }
-        console.log(`✅ Bulk import saved: "${title}" (${validItems.length} poses)`);
+        if (error) { console.error(`❌ Error saving ${title}:`, error.message); throw error; }
+        console.log(`✅ Bulk import saved: "${title}" (${saveable.length} poses${validItems.length - saveable.length > 0 ? `, ${validItems.length - saveable.length} awaiting disambiguation` : ''})`);
     } catch (e) {
         console.error('❌ processSemicolonCommand save failed:', e);
         throw e;
@@ -529,39 +646,31 @@ async function processSemicolonCommand(commandString) {
 
 
 
-
-
 // Removed dynamic button creation as it's now explicitly in index.html
 
 function openLinkSequenceModal() {
-    // We can use a simple prompt for now, but a searchable dropdown is better.
-    // Let's create a tiny temporary overlay or use a prompt with a datalist hint.
-    const allTitles = window.courses.map(c => c.title).filter(Boolean);
-    const targetTitle = prompt(`Enter Sequence Title to link:\nAvailable: ${allTitles.join(", ")}`);
-    
-    if (!targetTitle) return;
-    
-    // Validate that the course exists
-    const exists = window.courses.find(c => c.title.trim().toLowerCase() === targetTitle.trim().toLowerCase());
-    if (!exists) {
-        alert("Sequence not found. Please enter the exact title.");
-        return;
+    const overlay   = document.getElementById('linkSequenceOverlay');
+    const input     = document.getElementById('linkSequenceInput');
+    const datalist  = document.getElementById('linkSequenceList');
+    const repsInput = document.getElementById('linkSequenceReps');
+    if (!overlay) return;
+
+    // Populate datalist with all courses (Flow takes priority, rest alphabetical)
+    const allCourses = [...(window.courses || [])];
+    const sorted = [
+        ...allCourses.filter(c => (c.category || '').toLowerCase().includes('flow')),
+        ...allCourses.filter(c => !(c.category || '').toLowerCase().includes('flow'))
+    ];
+    if (datalist) {
+        datalist.innerHTML = sorted
+            .map(c => `<option value="${c.title}">${c.category ? '(' + c.category + ')' : ''}</option>`)
+            .join('');
     }
+    if (input)     input.value     = '';
+    if (repsInput) repsInput.value = '1';
 
-    const reps = prompt(`How many repetitions for "${exists.title}"?`, "1");
-    if (reps === null) return;
-
-    // Add as a Macro row to builderPoses
-    
-    builderPoses.unshift({ // Changed from .push()
-    id: `MACRO:${exists.title}`,
-    name: `[Sequence] ${exists.title}`,
-    duration: parseInt(reps) || 1,
-    variation: "",
-    note: `Linked Sequence: ${reps} Rounds`
-});
-
-    builderRender(); // Refresh the table
+    overlay.style.display = 'flex';
+    setTimeout(() => { if (input) input.focus(); }, 50);
 }
 
 
@@ -596,6 +705,22 @@ function builderOpen(mode, seq) {
 
     // SETUP SEARCH LISTENER
     setupBuilderSearch();
+
+    // ── Sanskrit / English toggle button ─────────────────────────────────────
+    const nameToggleBtn = document.getElementById('builderNameToggle');
+    if (nameToggleBtn) {
+        // Reflect current state on open
+        nameToggleBtn.style.background = builderShowSanskrit ? '#f9a825' : '#fff8e1';
+        nameToggleBtn.style.color      = builderShowSanskrit ? '#fff'    : '#6d4c00';
+        nameToggleBtn.textContent      = builderShowSanskrit ? 'अ SA' : 'अ EN';
+        nameToggleBtn.onclick = () => {
+            builderShowSanskrit = !builderShowSanskrit;
+            nameToggleBtn.style.background = builderShowSanskrit ? '#f9a825' : '#fff8e1';
+            nameToggleBtn.style.color      = builderShowSanskrit ? '#fff'    : '#6d4c00';
+            nameToggleBtn.textContent      = builderShowSanskrit ? 'अ SA' : 'अ EN';
+            builderRender();
+        };
+    }
 
     // Populate Category Datalist
     if (catInput && datalist) {
@@ -771,7 +896,8 @@ async function builderSave() {
             title, 
             category, 
             sequence_text: sequenceText,
-            last_edited: new Date().toISOString()
+            last_edited: new Date().toISOString(),
+            user_id: window.currentUserId
         };
 
         console.log("🚀 SAVING TO SUPABASE (courses):", payload);
@@ -798,6 +924,18 @@ async function builderSave() {
 
         document.getElementById("editCourseBackdrop").style.display = "none";
         alert(`"${title}" saved successfully!`);
+
+        // ── Admin: offer to promote to system ─────────────────────────────────
+        if (isAdmin() && data && data[0]) {
+            const savedId = data[0].id;
+            const promote = confirm(`"${title}" saved!\n\nPromote to system sequence? (visible to all users)\n\nCancel = keep as personal draft.`);
+            if (promote) {
+                await supabase.from('courses')
+                    .update({ is_system: true, user_id: null })
+                    .eq('id', savedId);
+                console.log(`✅ "${title}" promoted to system sequence.`);
+            }
+        }
 
     } catch(e) {
         console.error("❌ Save failed:", e);

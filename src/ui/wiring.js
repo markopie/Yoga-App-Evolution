@@ -157,6 +157,26 @@ safeListen("btnOpenLinkModal", "click", () => {
     openLinkSequenceModal();
 });
 
+// Wire the confirm button inside the linkSequenceOverlay modal
+safeListen("btnConfirmLink", "click", () => {
+    const input    = document.getElementById('linkSequenceInput');
+    const repsInp  = document.getElementById('linkSequenceReps');
+    const overlay  = document.getElementById('linkSequenceOverlay');
+    const title    = (input?.value || '').trim();
+    const reps     = parseInt(repsInp?.value || '1', 10) || 1;
+    if (!title) { alert('Please select or type a sequence name.'); return; }
+    const exists = (window.courses || []).find(c => c.title.trim().toLowerCase() === title.toLowerCase());
+    if (!exists) { alert('Sequence not found. Choose from the list.'); return; }
+    addPoseToBuilder({
+        id:        `MACRO:${exists.title}`,
+        name:      `[Sequence] ${exists.title}`,
+        duration:  reps,
+        variation: '',
+        note:      `Linked Sequence: ${reps} Round${reps !== 1 ? 's' : ''}`
+    });
+    if (overlay) overlay.style.display = 'none';
+});
+
 const repeatBtn = document.getElementById("btnGroupRepeat");
 console.log("btnGroupRepeat found in DOM?", !!repeatBtn);
 
@@ -210,7 +230,6 @@ function showLogin() {
 
 function setupAuthListeners() {
     const googleBtn = document.getElementById("googleSignInBtn");
-    const skipBtn = document.getElementById("skipLoginBtn");
     const signOutBtn = document.getElementById("signOutBtn");
 
     if (googleBtn) {
@@ -223,34 +242,18 @@ function setupAuthListeners() {
         };
     }
 
-    if (skipBtn) {
-        skipBtn.onclick = () => { 
-            window.isGuestMode = true; 
-            window.currentUserId = null; 
-            const emailSpan = document.getElementById('userEmailDisplay');
-            if (emailSpan) {
-                emailSpan.textContent = 'Guest';
-                emailSpan.style.display = 'inline';
-            }
-            showApp(); 
-        };
-    }
-
     if (signOutBtn) {
         signOutBtn.onclick = async () => {
             const emailSpan = document.getElementById('userEmailDisplay');
-            if (emailSpan) {
-                emailSpan.textContent = '';
-                emailSpan.style.display = 'none';
-            }
-            if (window.isGuestMode) { window.isGuestMode = false; showLogin(); }
-            else await supabase.auth.signOut();
+            if (emailSpan) { emailSpan.textContent = ''; emailSpan.style.display = 'none'; }
+            await supabase.auth.signOut();
         };
     }
 
     supabase.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
             window.currentUserId = session.user.id;
+            window.currentUserEmail = session.user.email;
             const emailSpan = document.getElementById('userEmailDisplay');
             if (emailSpan) {
                 emailSpan.textContent = session.user.email;
