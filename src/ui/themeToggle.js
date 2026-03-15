@@ -82,6 +82,7 @@ class ThemeManager {
         this.button.className = 'theme-toggle tiny';
         this.button.setAttribute('aria-label', 'Toggle dark mode');
         this.button.setAttribute('title', 'Toggle dark mode');
+        this.button.style.marginRight = '12px';
 
         this.button.addEventListener('click', () => this.toggleTheme());
 
