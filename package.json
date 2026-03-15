@@ -2,6 +2,7 @@
     "type": "module",
     "scripts": {
         "start": "npx http-server . -p 3000",
+        "build": "mkdir -p dist && cp index.html app.js dist/ && cp -r src styles fonts data dist/ && cp *.json dist/ 2>/dev/null || true",
         "test": "node --test"
     },
     "devDependencies": {
