@@ -25,29 +25,13 @@ function updateNextBtnText() {
 }
 window.updateNextBtnText = updateNextBtnText;
 
-// Helper function to update UI visibility based on sequence selection
-function updateUIVisibility(hasSequence) {
-    const playbackControls = $("playbackControls");
-    const playbackInfo = $("playbackInfo");
-    const durationDial = $("durationDialWrap");
-    const editBtn = $("quickEditBtn");
-
-    if (playbackControls) playbackControls.style.display = hasSequence ? "flex" : "none";
-    if (playbackInfo) playbackInfo.style.display = hasSequence ? "flex" : "none";
-    if (durationDial) durationDial.style.display = hasSequence ? "block" : "none";
-    if (editBtn) editBtn.style.display = hasSequence ? "inline-block" : "none";
-}
-
-// Export to window for app.js initialization
-window.updateUIVisibility = updateUIVisibility;
-
 // #region 1. DROPDOWN & SEQ SELECTION
 const seqSelect = $("sequenceSelect");
 if (seqSelect) {
     seqSelect.addEventListener("change", () => {
         const idx = seqSelect.value;
-        if (typeof window.stopTimer === "function") window.stopTimer();
-
+        if (typeof window.stopTimer === "function") window.stopTimer(); 
+        
         if (!idx) {
             window.currentSequence = null;
             window.activePlaybackList = [];
@@ -62,9 +46,6 @@ if (seqSelect) {
             const _tp = document.querySelector(".time-content");
             if (_tp) _tp.innerHTML = `<span id="timeRemainingDisplay">--:--</span><span class="time-sep">/</span><span id="timeTotalDisplay">--:--</span>`;
             if (typeof window.updateActiveCategoryTitle === 'function') window.updateActiveCategoryTitle();
-
-            // Hide playback controls when no sequence selected
-            updateUIVisibility(false);
             return;
         }
 
@@ -86,27 +67,38 @@ if (seqSelect) {
         if (typeof window.updateActiveCategoryTitle === 'function') window.updateActiveCategoryTitle();
 
         try {
-            window.currentIndex = 0;
+            window.currentIndex = 0; 
             window.setPose(0);
             updateNextBtnText();
-            if($("statusText")) $("statusText").textContent = "Ready to Start";
+            if($("statusText")) $("statusText").textContent = "Ready to Start"; 
             const btn = document.getElementById("startStopBtn");
             if (btn) btn.textContent = "Start";
-
-            // Show playback controls when sequence is selected
-            updateUIVisibility(true);
         } catch (e) {
             console.error("Error setting initial pose:", e);
         }
     });
 
-    // Wire up Edit/New buttons (they're now in HTML)
-    safeListen("quickEditBtn", "click", () => {
-        if (!getCurrentSequence()) return alert("Select a sequence first.");
-        openEditCourse();
-    });
+    // Edit/New buttons injection
+    if (!document.getElementById("quickEditBtn")) {
+        const editBtn = document.createElement("button");
+        editBtn.id = "quickEditBtn";
+        editBtn.innerHTML = "✏️";
+        editBtn.className = "tiny";
+        editBtn.style.cssText = "margin-left: 8px; padding: 4px 10px; font-size: 1.1rem;";
+        seqSelect.parentNode.insertBefore(editBtn, seqSelect.nextSibling);
+        editBtn.onclick = () => {
+            if (!getCurrentSequence()) return alert("Select a sequence first.");
+            openEditCourse();
+        };
 
-    safeListen("newSequenceBtn", "click", () => builderOpen("new", null));
+        const newBtn = document.createElement("button");
+        newBtn.id = "newSequenceBtn";
+        newBtn.textContent = "+ New";
+        newBtn.className = "tiny";
+        newBtn.style.cssText = "margin-left: 4px; padding: 4px 10px;";
+        editBtn.parentNode.insertBefore(newBtn, editBtn.nextSibling);
+        newBtn.onclick = () => builderOpen("new", null);
+    }
 }
 
 // #region 2. PLAYBACK CONTROLS
@@ -123,15 +115,12 @@ safeListen("resetBtn", "click", () => {
     localStorage.removeItem("currentPoseIndex");
     localStorage.removeItem("timeLeft");
     const dropdown = $("sequenceSelect");
-    if (dropdown) dropdown.value = "";
+    if (dropdown) dropdown.value = ""; 
     window.currentSequence = null;
     window.currentIndex = 0;
     if($("poseName")) $("poseName").innerText = "Select a sequence";
     if($("poseTimer")) $("poseTimer").innerText = "–";
     if($("statusText")) $("statusText").textContent = "Session Reset";
-
-    // Hide playback controls after reset
-    updateUIVisibility(false);
 });
 
 // #region 3. UI EXTRAS (IAST, DIAL, HISTORY)

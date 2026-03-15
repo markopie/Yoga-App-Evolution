@@ -367,11 +367,6 @@ async function init() {
 
         // 5. Finalize
         if (statusEl) statusEl.textContent = "Ready";
-
-        // Initialize UI visibility (hide playback controls on startup)
-        if (typeof window.updateUIVisibility === 'function') {
-            window.updateUIVisibility(false);
-        }
         const loadText = $("loadingText");
         if (loadText) loadText.textContent = "Select a course";
         if (typeof updateDialUI === 'function') updateDialUI();

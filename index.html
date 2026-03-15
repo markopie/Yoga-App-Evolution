@@ -196,17 +196,8 @@
             <select id="sequenceSelect" style="flex:1; min-width: 200px;">
               <option value="">Select a course</option>
            </select>
-
-         <button id="browseBtn" type="button" title="Browse / search asanas">Browse Asanas</button>
-
-          <!-- Sequence Management Buttons (always visible) -->
-          <div id="sequenceManagementBtns" style="display:flex; gap:6px;">
-            <button id="newSequenceBtn" type="button" class="tiny" title="Create new sequence">+ New</button>
-            <button id="quickEditBtn" type="button" class="tiny" title="Edit selected sequence" style="display:none;">✏️ Edit</button>
-          </div>
-
-          <!-- Duration Dial (only shows when sequence selected) -->
-          <div id="durationDialWrap" title="Adjust hold pace — double-click to reset" style="display:none;">
+           
+          <div id="durationDialWrap" title="Adjust hold pace — double-click to reset">
             <div id="durationDialHeader">
               <span id="durationDialLabel">Default</span>
               <span id="durationDialEst"></span>
@@ -220,31 +211,29 @@
             </div>
             </div>
           </div>
-
-          <!-- Playback Info (only shows when sequence selected) -->
-          <div id="playbackInfo" style="display:none; gap:8px;">
-            <span class="pill" id="poseCounter">–</span>
-            <span class="pill" id="poseTimer">–</span>
-
-            <div id="timeDashboard" class="time-capsule" title="Time Remaining / Total Time">
-               <div id="timeProgressFill"></div>
-               <div class="time-content">
-                  <span id="timeRemainingDisplay">--:--</span>
-                  <span class="time-sep">/</span>
-                  <span id="timeTotalDisplay">--:--</span>
-               </div>
-            </div>
+         
+         <button id="browseBtn" type="button" title="Browse / search asanas">Browse</button>
+          
+          <span class="pill" id="poseCounter">–</span>
+          <span class="pill" id="poseTimer">–</span>
+          
+          <div id="timeDashboard" class="time-capsule" title="Time Remaining / Total Time">
+             <div id="timeProgressFill"></div> 
+             <div class="time-content">
+                <span id="timeRemainingDisplay">--:--</span>
+                <span class="time-sep">/</span>
+                <span id="timeTotalDisplay">--:--</span>
+             </div>
           </div>
 
-          <!-- Playback Controls (only shows when sequence selected) -->
-          <div class="controls" id="playbackControls" style="display:none;">
+          <div class="controls">
              <button id="prevBtn" type="button">◀ Prev</button>
              <button id="nextBtn" type="button">Next ▶</button>
              <button id="startStopBtn" type="button">Start</button>
              <button id="resetBtn" type="button">Reset</button>
              <button id="completeBtn" type="button" style="display:none">✓ Complete</button>
           </div>
-
+          
           <span class="muted" id="statusText" style="display:block; margin-top:5px;">Loading…</span>
        </div>
     </header>
