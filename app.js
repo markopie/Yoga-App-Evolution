@@ -704,20 +704,35 @@ function updateTimerUI(remaining, currentPoseSeconds) {
 
     if (currentSequence) {
         // Use activePlaybackList to get the accurate (expanded) list
-        const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
-            ? window.activePlaybackList 
+        const poses = (window.activePlaybackList && window.activePlaybackList.length > 0)
+            ? window.activePlaybackList
             : (currentSequence.poses || []);
-        
-        // Total time = sum of library-standard hold times (via getEffectiveTime)
-        const totalSeconds = poses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
-        let secondsLeft = remaining; 
+
+        // Total time = sum of actual durations in activePlaybackList (respects duration dial)
+        const totalSeconds = poses.reduce((acc, p) => {
+            const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
+            const strId = String(rawId || "");
+            // Skip structural markers
+            if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END") || strId.startsWith("LOOP_START")) {
+                return acc;
+            }
+            return acc + (Number(p[1]) || 0);
+        }, 0);
+
+        let secondsLeft = remaining;
 
         if (typeof needsSecondSide !== "undefined" && needsSecondSide && poses[currentIndex]) {
              secondsLeft += (Number(poses[currentIndex][1]) || 0);
         }
 
         for (let i = currentIndex + 1; i < poses.length; i++) {
-             secondsLeft += getEffectiveTime(poses[i][0], poses[i][1]);
+            const rawId = Array.isArray(poses[i][0]) ? poses[i][0][0] : poses[i][0];
+            const strId = String(rawId || "");
+            // Skip structural markers
+            if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END") || strId.startsWith("LOOP_START")) {
+                continue;
+            }
+            secondsLeft += (Number(poses[i][1]) || 0);
         }
 
         const remDisp = document.getElementById("timeRemainingDisplay");
