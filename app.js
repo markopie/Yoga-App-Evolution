@@ -41,7 +41,6 @@ import "./src/ui/browse.js?v=29";
 import "./src/ui/asanaEditor.js?v=29";
 import "./src/ui/durationDial.js";
 import "./src/ui/courseUI.js";
-import "./src/ui/zenSearch.js";
 import { openHistoryModal, switchHistoryTab, renderGlobalHistory } from "./src/ui/historyModal.js?v=29";
 
 // Expose history modal on window for legacy callers
@@ -365,12 +364,11 @@ async function init() {
 
                 
         if (typeof setupBrowseUI === "function") setupBrowseUI();
-        if (typeof window.setupZenSearch === "function") window.setupZenSearch();
 
         // 5. Finalize
         if (statusEl) statusEl.textContent = "Ready";
         const loadText = $("loadingText");
-        if (loadText) loadText.textContent = "Select a practice to begin";
+        if (loadText) loadText.textContent = "Select a course";
         if (typeof updateDialUI === 'function') updateDialUI();
 
         // 6. Resume Check

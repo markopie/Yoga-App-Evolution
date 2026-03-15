@@ -83,472 +83,105 @@
 }
 
 /* ==========================================================================
-   1. GLOBAL STYLES & BASE COMPONENTS — Jobbsian Aesthetic
+   1. GLOBAL STYLES & BASE COMPONENTS
    ========================================================================== */
    body {
-    font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", system-ui, sans-serif;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
-    background: #faf9f7;
-    color: #1d1d1f;
-    line-height: 1.6;
-    font-size: 17px;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    padding-bottom: 100px;
+    background: #fafafa;
+    color: #111;
+    line-height: 1.5;
 }
 
 header {
-    padding: 20px 24px;
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+    padding: 14px 18px;
+    background: #fff;
+    border-bottom: 1px solid #e8e8e8;
     position: sticky;
     top: 0;
     z-index: 100;
 }
 
 main {
-    padding: 24px;
-    max-width: 1200px;
+    padding: 18px;
+    max-width: 1100px;
     margin: 0 auto;
-}
-
-/* ==========================================================================
-   ZEN MODE LAYOUT
-   ========================================================================== */
-
-#zenProfile {
-    position: fixed;
-    top: 24px;
-    right: 24px;
-    z-index: 1000;
-}
-
-#zenProfileIcon {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-}
-
-#zenProfileIcon::before {
-    content: '';
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #86868b 0%, #1d1d1f 100%);
-}
-
-#zenProfileIcon:hover {
-    background: rgba(255, 255, 255, 0.9);
-    transform: scale(1.05);
-}
-
-.zen-profile-btn {
-    display: none;
-    position: absolute;
-    top: 48px;
-    right: 0;
-    background: white;
-    border: none;
-    border-radius: 12px;
-    padding: 12px 20px;
-    font-size: 15px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    white-space: nowrap;
-    cursor: pointer;
-}
-
-#zenProfileIcon:hover .zen-profile-btn,
-.zen-profile-btn:hover {
-    display: block;
-}
-
-.zen-header {
-    padding: 80px 24px 40px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 24px;
-    background: transparent;
-    border: none;
-    position: static;
-}
-
-#zenSearchContainer {
-    width: 100%;
-    max-width: 600px;
-    position: relative;
-}
-
-#zenSearch {
-    width: 100%;
-    padding: 18px 24px;
-    font-size: 19px;
-    border: none;
-    border-radius: 24px;
-    background: white;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-#zenSearch:focus {
-    outline: none;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    transform: translateY(-2px);
-}
-
-#zenSearchDropdown {
-    position: absolute;
-    top: calc(100% + 12px);
-    left: 0;
-    right: 0;
-    background: white;
-    border-radius: 20px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    animation: fadeInDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes fadeInDown {
-    from {
-        opacity: 0;
-        transform: translateY(-12px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-#zenSearchDropdown select {
-    border: none;
-    background: rgba(0, 0, 0, 0.04);
-    padding: 14px 16px;
-    border-radius: 12px;
-    font-size: 16px;
-}
-
-.zen-main {
-    padding: 0;
-    max-width: 900px;
-    margin: 0 auto;
-}
-
-.zen-pose-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 0 24px;
-}
-
-.zen-pose-label {
-    font-size: 13px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: #86868b;
-    margin-bottom: 16px;
-}
-
-.zen-pose-name {
-    font-size: 2.5rem;
-    font-weight: 300;
-    color: #1d1d1f;
-    margin: 0 0 24px;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
-}
-
-.zen-pose-meta {
-    font-size: 15px;
-    color: #86868b;
-    margin-bottom: 48px;
-}
-
-.zen-hero-image {
-    width: 100%;
-    max-width: 700px;
-    margin: 0 auto 48px;
-}
-
-.zen-hero-image img {
-    width: 100%;
-    height: auto;
-    border-radius: 0;
-    box-shadow: none;
-    border: none;
-}
-
-.zen-instructions {
-    max-width: 600px;
-    font-size: 17px;
-    line-height: 1.8;
-    color: #1d1d1f;
-    white-space: pre-wrap;
-    margin: 48px auto;
-    text-align: left;
-}
-
-.zen-description {
-    max-width: 600px;
-    margin: 48px auto;
-    text-align: left;
-}
-
-.zen-description summary {
-    font-size: 17px;
-    font-weight: 600;
-    color: #1d1d1f;
-    cursor: pointer;
-    padding: 12px 0;
-}
-
-.zen-description div {
-    font-size: 17px;
-    line-height: 1.8;
-    color: #1d1d1f;
-    white-space: pre-wrap;
-    padding-top: 12px;
-}
-
-/* ==========================================================================
-   ZEN PLAYBACK BAR (Bottom Navigation)
-   ========================================================================== */
-
-#zenPlaybackBar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 80px;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    border-top: 0.5px solid rgba(0, 0, 0, 0.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 24px;
-    padding: 0 24px;
-    z-index: 100;
-}
-
-.zen-playback-btn {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: transparent;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    color: #1d1d1f;
-}
-
-.zen-playback-btn:hover {
-    background: rgba(0, 0, 0, 0.06);
-    transform: scale(1.1);
-}
-
-.zen-play-pulse {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: #1d1d1f;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    color: white;
-    position: relative;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(29, 29, 31, 0.4);
-    }
-    50% {
-        box-shadow: 0 0 0 12px rgba(29, 29, 31, 0);
-    }
-}
-
-.zen-play-pulse:hover {
-    transform: scale(1.08);
-    animation: none;
-}
-
-.zen-secondary-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.04);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    color: #86868b;
-}
-
-.zen-secondary-btn:hover {
-    background: rgba(0, 0, 0, 0.08);
-    color: #1d1d1f;
-}
-
-.zen-complete-btn {
-    padding: 10px 20px;
-    background: #34c759;
-    color: white;
-    border: none;
-    border-radius: 980px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.zen-complete-btn:hover {
-    background: #30b350;
-    transform: scale(1.05);
-}
-
-.zen-time-capsule {
-    position: static;
-    width: 120px;
-    height: 32px;
-    background: rgba(0, 0, 0, 0.04);
-    border-radius: 980px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-.zen-status {
-    position: absolute;
-    bottom: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 12px;
-    color: #86868b;
-    display: none;
 }
 
 .muted, .msg {
-    color: #86868b;
-    font-size: 15px;
-    font-weight: 400;
+    color: #666;
+    font-size: 14px;
 }
 
 .badge {
     display: inline-block;
-    padding: 4px 12px;
-    border: none;
-    border-radius: 20px;
-    background: rgba(0, 0, 0, 0.04);
-    font-size: 13px;
-    color: #6e6e73;
-    font-weight: 500;
-    letter-spacing: -0.01em;
+    padding: 2px 8px;
+    border: 1px solid #eee;
+    border-radius: 999px;
+    background: #fafafa;
+    font-size: 12px;
+    color: #555;
 }
 
 /* ==========================================================================
-   2. FORMS & INTERACTIVE — Tactile, Minimal
+   2. FORMS & INTERACTIVE
    ========================================================================== */
-select, input, button, textarea {
-    font: inherit;
-    -webkit-appearance: none;
-    appearance: none;
-}
+select, input, button, textarea { font: inherit; }
 
 select, input {
-    padding: 14px 16px;
-    border: none;
-    border-radius: 12px;
-    background: rgba(0, 0, 0, 0.04);
-    font-size: 17px;
-    min-height: 48px;
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-    color: #1d1d1f;
+    padding: 12px 14px;
+    border: 1px solid #d0d0d0;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 1rem;
+    min-height: 44px;
+    transition: border-color 0.2s ease;
 }
 
 select:focus, input:focus {
     outline: none;
-    background: rgba(0, 0, 0, 0.06);
-    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.03);
+    border-color: #333;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 
 button {
-    padding: 14px 24px;
-    border: none;
-    border-radius: 980px;
-    background: #1d1d1f;
-    color: #f5f5f7;
+    padding: 12px 18px;
+    border: 1px solid #d0d0d0;
+    border-radius: 12px;
+    background: #fff;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    font-size: 17px;
+    transition: all 0.2s ease;
+    font-size: 1rem;
     font-weight: 500;
-    min-height: 48px;
-    min-width: 48px;
-    letter-spacing: -0.02em;
+    min-height: 44px;
+    min-width: 44px;
 }
 
 button:hover {
-    background: #2d2d2f;
-    transform: scale(1.02);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    background: #f3f3f3;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 button:active {
-    transform: scale(0.98);
+    transform: translateY(0);
 }
 
+/* Tiny utility class for small buttons used in JS */
 button.tiny {
-    padding: 8px 16px;
-    font-size: 15px;
-    border-radius: 980px;
-    min-height: 36px;
-    min-width: 36px;
+    padding: 4px 10px;
+    font-size: 0.85rem;
+    border-radius: 6px;
 }
 
 textarea {
     width: 100%;
     min-height: 110px;
-    padding: 14px 16px;
-    border: none;
+    padding: 10px;
+    border: 1px solid #d0d0d0;
     border-radius: 12px;
-    background: rgba(0, 0, 0, 0.04);
     box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
-    font-size: 17px;
-    line-height: 1.6;
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-textarea:focus {
-    outline: none;
-    background: rgba(0, 0, 0, 0.06);
-    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.03);
+    font-family: monospace; /* Helpful for markdown editing */
 }
 
 /* ==========================================================================
@@ -600,10 +233,9 @@ textarea:focus {
 
 .card {
     background: #fff;
-    border: none;
-    border-radius: 20px;
-    padding: 24px;
-    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e8e8e8;
+    border-radius: 16px;
+    padding: 14px;
 }
 
 /* ==========================================================================
@@ -622,16 +254,16 @@ textarea:focus {
 }
 
 .modal {
-    width: 100%;
+    width: 100%; 
     max-width: 1200px;
-    height: 90vh;
-    max-height: 100%;
+    height: 90vh; 
+    max-height: 100%; 
     background: #fff;
-    border-radius: 20px;
+    border-radius: 12px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
 
 .modal-header {
@@ -865,14 +497,17 @@ th {
    7. TIMER & STATUS DISPLAYS (High Visibility)
    ========================================================================== */
 #poseTimer {
-    font-size: 4rem;
-    font-weight: 600;
-    color: #1d1d1f;
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: #1a1a1a;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.04em;
+    letter-spacing: -0.02em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     transition: color 0.3s ease;
+    
+    /* Fixed width to prevent jumping numbers */
     display: inline-block;
-    min-width: 4.5ch;
+    min-width: 4.5ch; 
     text-align: center;
 }
 
@@ -893,25 +528,23 @@ th {
 }
 
 #poseName {
-    font-size: 2rem;
+    font-size: 1.8rem;
     font-weight: 600;
-    color: #1d1d1f;
-    line-height: 1.2;
+    color: #1a1a1a;
+    line-height: 1.3;
     margin: 8px 0;
-    letter-spacing: -0.02em;
 }
 
 #poseMeta {
-    font-size: 15px;
-    color: #86868b;
-    font-weight: 400;
+    font-size: 1rem;
+    color: #666;
+    font-weight: 500;
 }
 
 #poseCounter {
-    font-size: 15px;
-    font-weight: 500;
-    color: #1d1d1f;
-    font-variant-numeric: tabular-nums;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #444;
 }
 
 #status {
@@ -1000,22 +633,26 @@ th {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 150px;
-    height: 40px;
-    background: rgba(0, 0, 0, 0.04);
-    border-radius: 980px;
-    overflow: hidden;
+    
+    /* FIXED DIMENSIONS = NO BUTTON JUMPING */
+    width: 140px; 
+    height: 36px;
+    
+    background: #e0e0e0;
+    border-radius: 18px;
+    overflow: hidden; /* Crops the progress bar */
     vertical-align: middle;
     margin: 0 5px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
 }
 
 /* The Background Progress Bar */
 #timeProgressFill {
     position: absolute;
     left: 0; top: 0; bottom: 0;
-    width: 100%;
-    background: rgba(52, 199, 89, 0.2);
-    transition: width 0.3s ease;
+    width: 100%; /* Starts full, JS will shrink it */
+    background: #c8e6c9; /* Light Green */
+    transition: width 0.3s ease; /* Smooth animation */
     z-index: 1;
 }
 
@@ -1023,29 +660,28 @@ th {
 .time-content {
     position: relative;
     z-index: 2;
-    font-family: 'SF Mono', 'Menlo', monospace;
-    font-size: 15px;
-    font-weight: 500;
-    color: #1d1d1f;
+    font-family: 'SF Mono', 'Roboto Mono', monospace; /* Tabular numbers = no jitter */
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
     display: flex;
     gap: 4px;
-    font-variant-numeric: tabular-nums;
 }
 
 /* Styling the specific numbers */
-#timeRemainingDisplay {
-    color: #1d1d1f;
+#timeRemainingDisplay { 
+    color: #1b5e20; 
     display: inline-block;
-    min-width: 4.5ch;
+    min-width: 4.5ch; /* Lock width */
+    text-align: center;
+} 
+#timeTotalDisplay { 
+    color: #757575; 
+    display: inline-block;
+    min-width: 4.5ch; /* Lock width */
     text-align: center;
 }
-#timeTotalDisplay {
-    color: #86868b;
-    display: inline-block;
-    min-width: 4.5ch;
-    text-align: center;
-}
-.time-sep { opacity: 0.3; }
+.time-sep { opacity: 0.4; }
 
 /* =========================================
    FOCUS OVERLAY (The Smart Way)
@@ -1685,96 +1321,20 @@ body.modal-open {
 }
 
 /* ==========================================================================
-   TECHNIQUE TEXT & MAGIC SEARCH ANIMATIONS
+   TECHNIQUE TEXT: ensure pre-wrap works and looks clean
    ========================================================================== */
 #poseInstructions {
-    font-size: 17px;
+    font-size: 0.9rem;
     line-height: 1.7;
-    color: #1d1d1f;
+    color: #333;
     white-space: pre-wrap;
     max-width: 720px;
 }
 
+/* Browse technique text also clean */
 .technique-text {
-    font-size: 17px;
+    font-size: 0.9rem;
     line-height: 1.7;
     white-space: pre-wrap;
-    color: #1d1d1f;
-}
-
-/* Magic Search: Fade-in animation */
-@keyframes fadeInSearch {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.search-result-item {
-    animation: fadeInSearch 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    animation-fill-mode: both;
-}
-
-.search-result-item:nth-child(1) { animation-delay: 0ms; }
-.search-result-item:nth-child(2) { animation-delay: 30ms; }
-.search-result-item:nth-child(3) { animation-delay: 60ms; }
-.search-result-item:nth-child(4) { animation-delay: 90ms; }
-.search-result-item:nth-child(5) { animation-delay: 120ms; }
-.search-result-item:nth-child(n+6) { animation-delay: 150ms; }
-
-/* Glassmorphic search results container */
-#builderSearchResults {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    border: 0.5px solid rgba(0, 0, 0, 0.08);
-    border-radius: 16px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
-}
-
-/* ==========================================================================
-   ZEN MODE MOBILE RESPONSIVE
-   ========================================================================== */
-@media (max-width: 700px) {
-    .zen-header {
-        padding: 60px 20px 32px;
-    }
-
-    .zen-pose-name {
-        font-size: 2rem;
-    }
-
-    .zen-hero-image {
-        max-width: 100%;
-    }
-
-    #zenPlaybackBar {
-        gap: 16px;
-        padding: 0 16px;
-        height: 72px;
-    }
-
-    .zen-play-pulse {
-        width: 56px;
-        height: 56px;
-    }
-
-    .zen-playback-btn {
-        width: 44px;
-        height: 44px;
-    }
-
-    .zen-time-capsule {
-        width: 100px;
-        height: 28px;
-        font-size: 14px;
-    }
-
-    #durationDialWrap {
-        max-width: 100%;
-    }
+    color: #333;
 }

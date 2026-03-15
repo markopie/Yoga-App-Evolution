@@ -176,110 +176,99 @@
     </div>
   </div>
   <div id="mainAppContainer" style="display:none;">
-    <div id="zenProfile" title="Profile">
-      <div id="zenProfileIcon">
-        <span id="userEmailDisplay" style="display:none;"></span>
-        <button id="signOutBtn" class="zen-profile-btn">Sign Out</button>
-      </div>
-    </div>
-
-    <header class="zen-header">
-       <div id="zenSearchContainer">
-         <input type="text" id="zenSearch" placeholder="Search poses or select a practice..." />
-         <div id="zenSearchDropdown" style="display:none;">
-           <div id="zenCategorySection">
-             <select id="categoryFilter">
-               <option value="ALL">All Collections</option>
-             </select>
-           </div>
-           <div id="zenSequenceSection">
-             <select id="sequenceSelect">
-               <option value="">Select a practice</option>
-             </select>
-           </div>
-         </div>
+    <header>
+       <div class="row" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+             <strong>Yoga Sequences</strong>
+             <div id="activeCategoryTitle" style="font-size: 0.8rem; color: #888; margin-top:-2px; display:none;"></div>
+          </div>
+          <div style="display:flex; align-items:center;">
+             <span id="userEmailDisplay" style="font-size: 0.75rem; color: #888; margin-right: 10px; display:none;"></span>
+             <button id="signOutBtn" class="tiny" style="font-size:0.75rem; color:#666; background:transparent; border:1px solid #ddd;" title="Sign out">Sign Out</button>
+          </div>
        </div>
+       
+       <div class="row" style="margin-top:10px; gap: 8px;">
+         <select id="categoryFilter" style="max-width: 160px; font-weight:bold; color:#444;">
+            <option value="ALL">📂 All Collections</option>
+            </select>
 
-       <div id="durationDialWrap" title="Adjust hold pace">
-         <div id="durationDialHeader">
-           <span id="durationDialLabel">Default</span>
-           <span id="durationDialEst"></span>
-         </div>
-         <div id="durationDialTrackWrap">
-           <input type="range" id="durationDial" min="0" max="100" step="1" value="50">
-           <div id="durationDialLabels">
-             <span>Shortest</span>
-             <span style="opacity: 0.6; font-size: 0.8rem;">Default</span>
-             <span>Longest</span>
-           </div>
-         </div>
-       </div>
-
-       <button id="browseBtn" type="button" style="display:none;">Browse</button>
-    </header>
-
-    <main class="zen-main">
-       <div class="zen-pose-container">
-          <div id="poseLabel" class="zen-pose-label"></div>
-
-          <div id="poseName" class="zen-pose-name">Select a practice</div>
-
-          <div id="poseMeta" class="zen-pose-meta"></div>
-
-          <div id="collageWrap" class="zen-hero-image">
-             <div class="msg" id="loadingText">Select a practice to begin</div>
+            <select id="sequenceSelect" style="flex:1; min-width: 200px;">
+              <option value="">Select a course</option>
+           </select>
+           
+          <div id="durationDialWrap" title="Adjust hold pace — double-click to reset">
+            <div id="durationDialHeader">
+              <span id="durationDialLabel">Default</span>
+              <span id="durationDialEst"></span>
+            </div>
+            <div id="durationDialTrackWrap">
+              <input type="range" id="durationDial" min="0" max="100" step="1" value="50">
+              <div id="durationDialLabels">
+                <span>Shortest</span>
+                <span style="opacity: 0.6; font-size: 0.8rem;">Default</span>
+                <span>Longest</span>
+            </div>
+            </div>
+          </div>
+         
+         <button id="browseBtn" type="button" title="Browse / search asanas">Browse</button>
+          
+          <span class="pill" id="poseCounter">–</span>
+          <span class="pill" id="poseTimer">–</span>
+          
+          <div id="timeDashboard" class="time-capsule" title="Time Remaining / Total Time">
+             <div id="timeProgressFill"></div> 
+             <div class="time-content">
+                <span id="timeRemainingDisplay">--:--</span>
+                <span class="time-sep">/</span>
+                <span id="timeTotalDisplay">--:--</span>
+             </div>
           </div>
 
-          <div id="poseInstructions" class="zen-instructions"></div>
+          <div class="controls">
+             <button id="prevBtn" type="button">◀ Prev</button>
+             <button id="nextBtn" type="button">Next ▶</button>
+             <button id="startStopBtn" type="button">Start</button>
+             <button id="resetBtn" type="button">Reset</button>
+             <button id="completeBtn" type="button" style="display:none">✓ Complete</button>
+          </div>
+          
+          <span class="muted" id="statusText" style="display:block; margin-top:5px;">Loading…</span>
+       </div>
+    </header>
 
-          <details id="poseAsanaDescDetails" class="zen-description" open>
-             <summary>Description</summary>
-             <div id="poseAsanaDescBody"></div>
-          </details>
+    <main>
+       <div class="grid">
+          <div class="card">
+             <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+                <div>
+                   <div id="poseLabel" style="font-size:0.65rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#86868b; display:none; margin-bottom:6px; border: 1px solid #d2d2d7; padding: 3px 10px; border-radius: 12px; background: #f5f5f7; width: fit-content;"></div>
+                   <div id="poseName" style="font-size:20px;font-weight:700">Select a course</div>
+                   <div id="poseShorthand" style="display:none;"></div>
+                  <div id="glossaryArea" style="display:none;"></div>
+                   <div class="muted">
+                      <span id="poseMeta"></span>
+                   </div>
+                </div>
+                <div style="text-align:right">
+                   <div class="muted" id="debugSmall"></div>
+                </div>
+             </div>
 
-          <div id="poseShorthand" style="display:none;"></div>
-          <div id="glossaryArea" style="display:none;"></div>
+             <div style="margin-top:12px" id="collageWrap">
+                <div class="msg" id="loadingText">Select a course</div>
+             </div>
+
+             <div id="poseInstructions" class="muted" style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; white-space: pre-wrap;"></div>
+
+             <details id="poseAsanaDescDetails" style="margin-top:12px;max-width:720px;" open>
+                <summary style="cursor:pointer;font-weight:650;">Description</summary>
+                <div id="poseAsanaDescBody" class="muted" style="padding-top:8px;color:#111; white-space: pre-wrap;"></div>
+             </details>
+          </div>
        </div>
      </main>
-
-     <div id="zenPlaybackBar">
-       <button id="prevBtn" class="zen-playback-btn" title="Previous">
-         <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-           <path d="M12 4l-8 6 8 6V4z"/>
-         </svg>
-       </button>
-
-       <button id="startStopBtn" class="zen-play-pulse" title="Start">
-         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-           <path d="M8 5v14l11-7z"/>
-         </svg>
-       </button>
-
-       <button id="nextBtn" class="zen-playback-btn" title="Next">
-         <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-           <path d="M8 4v12l8-6-8-6z"/>
-         </svg>
-       </button>
-
-       <div id="timeDashboard" class="zen-time-capsule">
-         <div id="timeProgressFill"></div>
-         <div class="time-content">
-           <span id="timeRemainingDisplay">--:--</span>
-           <span class="time-sep">/</span>
-           <span id="timeTotalDisplay">--:--</span>
-         </div>
-       </div>
-
-       <button id="resetBtn" class="zen-secondary-btn" title="Reset">
-         <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
-           <path d="M9 2v4l3-3-3-3v4zm0 0C5.7 2 3 4.7 3 8s2.7 6 6 6 6-2.7 6-6h-2c0 2.2-1.8 4-4 4s-4-1.8-4-4 1.8-4 4-4"/>
-         </svg>
-       </button>
-
-       <button id="completeBtn" class="zen-complete-btn" style="display:none">✓</button>
-
-       <span id="statusText" class="zen-status"></span>
-     </div>
   </div>
 
   <!-- Sequence Builder Modal -->
