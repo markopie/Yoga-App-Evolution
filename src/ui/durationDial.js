@@ -18,10 +18,10 @@ export function getDialPosition() {
 
 /**
  * Resolves the short / standard / long anchors for a pose.
- * Prefers the DB hold_data object; falls back to the raw sequence duration.
+ * Resolves the short / standard / long anchors for a pose.
  */
 export function resolveDialAnchors(origDur, asana) {
-    const hd = asana && asana.hold_data;
+    const hd = asana && window.getHoldTimes(asana);
     const defaultDur = origDur;
     const rawShort = (hd && typeof hd.short === "number") ? hd.short : defaultDur;
     const rawLong  = (hd && typeof hd.long  === "number") ? hd.long  : defaultDur;
@@ -98,7 +98,7 @@ export function updateDialUI() {
 
 /**
  * Applies the dial position to the active playback list, recomputing per-pose
- * durations using hold_json data (or a global % fallback).
+ * durations using hold times parsed from asana.hold (or a global % fallback).
  * Also updates the live timer if playback is mid-pose.
  */
 export function applyDurationDial() {
@@ -121,15 +121,17 @@ export function applyDurationDial() {
         const key = String(rawId).trim().replace(/^0+/, "").padStart(3, "0");
         const asana = lib[key];
 
-        if (asana && asana.hold_json && typeof asana.hold_json.standard === "number") {
-            const hj  = asana.hold_json;
-            const min = hj.short || Math.max(5, Math.round(hj.standard * 0.5));
-            const std = hj.standard;
-            const max = hj.long  || Math.round(hj.standard * 2.0);
+        if (asana && window.getHoldTimes) {
+            const hj = window.getHoldTimes(asana);
+            if (typeof hj.standard === "number") {
+                const min = hj.short || Math.max(5, Math.round(hj.standard * 0.5));
+                const std = hj.standard;
+                const max = hj.long  || Math.round(hj.standard * 2.0);
 
-            if (val < 50)       cloned[1] = Math.round(min + (std - min) * (val / 50));
-            else if (val > 50)  cloned[1] = Math.round(std + (max - std) * ((val - 50) / 50));
-            else                cloned[1] = std;
+                if (val < 50)       cloned[1] = Math.round(min + (std - min) * (val / 50));
+                else if (val > 50)  cloned[1] = Math.round(std + (max - std) * ((val - 50) / 50));
+                else                cloned[1] = std;
+            }
         } else {
             // Fallback: global percentage scaling
             const originalSeconds = Number(cloned[1]) || 30;

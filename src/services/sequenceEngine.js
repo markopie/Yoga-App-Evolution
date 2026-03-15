@@ -144,15 +144,16 @@ export function getExpandedPoses(sequence) {
             let displayNameStr = "Action";
 
             if (targetAsana) {
-                const hj = targetAsana.hold_json || targetAsana.hold_data;
+                const hj = window.getHoldTimes ? window.getHoldTimes(targetAsana) : {};
                 duration = (hj && hj.standard) ? Number(hj.standard) : 30;
                 const _dn = typeof window.displayName === "function" ? window.displayName : (a => a?.english || a?.name || "Action");
                 displayNameStr = _dn(targetAsana) || "Action";
 
                 if (varSuffix && targetAsana.variations) {
                     for (const [vk, vd] of Object.entries(targetAsana.variations)) {
-                        if (vk.toUpperCase() === varSuffix && vd.hold_data && vd.hold_data.standard) {
-                            duration = vd.hold_data.standard;
+                        const vdHold = window.getHoldTimes ? window.getHoldTimes(vd) : {};
+                        if (vk.toUpperCase() === varSuffix && vdHold.standard) {
+                            duration = vdHold.standard;
                             break;
                         }
                     }

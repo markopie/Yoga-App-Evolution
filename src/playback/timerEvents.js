@@ -300,7 +300,7 @@ function updateTimerUI(remaining, currentPoseSeconds) {
             ? window.activePlaybackList
             : (window.currentSequence.poses || []);
 
-        // Use getPosePillTime — reads p[1] (dial-adjusted), not hold_json.standard.
+        // Use getPosePillTime — reads p[1] (dial-adjusted), not the library hold standard.
         // See sequenceUtils.js Lesson #9 comment.
         const poseTime = (p) => window.getPosePillTime(p);
 

@@ -368,7 +368,7 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
 // console.log("Edit button onclick property:", editBtn.onclick);
 
     let rangeText = "";
-    const hj = asana?.hold_json || asana?.hold_data;
+    const hj = asana ? window.getHoldTimes(asana) : null;
     if (hj && hj.standard) {
         rangeText = ` • ${hj.standard}s (Range: ${hj.short}s - ${hj.long}s)`;
     }

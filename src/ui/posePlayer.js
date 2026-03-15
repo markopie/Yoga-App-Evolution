@@ -342,7 +342,7 @@ function setPose(idx, keepSamePose = false) {
         const infoSpan = document.createElement("span");
         infoSpan.className = "meta-text-only"; 
 
-        const hj = asana?.hold_json || asana?.hold_data;
+        const hj = asana ? window.getHoldTimes(asana) : null;
         let rangeText = "";
         if (hj && hj.short && hj.long) {
             rangeText = `Range: ${hj.short}s\u2013${hj.long}s`;

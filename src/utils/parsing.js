@@ -69,10 +69,30 @@ function parseSequenceText(sequenceText) {
       return;
     }
 
+    // Extract optional hold-tier override keyword from the note field.
+    // Format: "tier:S", "tier:L", or "tier:STD" (case-insensitive).
+    // Written by builderCompileSequenceText when author picks a non-standard tier.
+    // NOTE: we do NOT store this as p[5] — that slot is reserved for originalIdx
+    // (set by getExpandedPoses). Instead, tier is read directly from p[4] (the note)
+    // by consumers via a /\btier:(S|L|STD)\b/ regex when needed.
+
     poses.push([[normalizedId], duration, '', variationKey, note]);
   });
 
   return poses;
 }
 
-export { parseHoldTimes, secsToMSS, buildHoldString, parseSequenceText };
+export { parseHoldTimes, secsToMSS, buildHoldString, parseSequenceText, getHoldTimes };
+
+/**
+ * Returns the parsed hold-times object { short, standard, long } for any
+ * asana or stage object. Reads the `hold` text column — the single source of truth.
+ * @param {object} obj - asana or stage object from asanaLibrary
+ */
+function getHoldTimes(obj) {
+    return parseHoldTimes((obj && (obj.hold || obj.Hold)) || '');
+}
+
+// Expose globally so files that can't use ES6 imports (posePlayer, sequenceEngine, etc.)
+// can also call it without needing window.parseHoldTimes + a separate argument.
+window.getHoldTimes = getHoldTimes;

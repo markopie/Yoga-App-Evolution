@@ -69,7 +69,7 @@ function builderRender() {
             asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
             
             // IF NOT FLOW: Force library standard timing
-            const libraryStd = (asana && asana.hold_data) ? asana.hold_data.standard : 30;
+            const libraryStd = asana ? (window.getHoldTimes(asana).standard || 30) : 30;
             const activeTime = isFlow ? durOrReps : libraryStd;
     
             totalSec += getEffectiveTime(idStr, activeTime);
@@ -154,14 +154,16 @@ function builderRender() {
                 const varSuffix = (parsed[2] || '').toUpperCase();
                 const target = lib[numId];
                 if (!target) return null;
-                // hold_json is the field in asanaLibrary; hold_data is on variation objects
-                let dur = (target.hold_json?.standard) ?? (target.hold_data?.standard) ?? target.standard_seconds ?? 30;
+                // hold times come from getHoldTimes(target) — parses the hold text column
+                const targetHold = window.getHoldTimes ? window.getHoldTimes(target) : {};
+                let dur = targetHold.standard ?? target.standard_seconds ?? 30;
                 let name = target.english || target.name || `ID ${numId}`;
                 if (varSuffix && target.variations) {
                     const vd = target.variations[varSuffix];
                     if (vd) {
                         name += ` (${vd.title || varSuffix})`;
-                        dur = (vd.hold_data?.standard) ?? dur;
+                        const vdHold = window.getHoldTimes ? window.getHoldTimes(vd) : {};
+                        dur = vdHold.standard ?? dur;
                     }
                 }
                 // Double if sides required
@@ -212,30 +214,44 @@ function builderRender() {
         if (isSpecial) {
             infoHTML = `<td class="builder-info-cell builder-info-special">—</td>`;
         } else {
-            // Determine hold times — prefer active variation's hold_data, fall back to base asana
+            // Determine hold times — prefer active variation, fall back to base asana
             const activeVar = (pose.variation && asana?.variations?.[pose.variation]) ? asana.variations[pose.variation] : null;
-            const holdSrc = activeVar?.hold_data ?? asana?.hold_json ?? {};
-            const stdSec  = holdSrc.standard ?? asana?.hold_json?.standard ?? null;
-            const shortSec = holdSrc.short ?? asana?.hold_json?.short ?? null;
-            const longSec  = holdSrc.long  ?? asana?.hold_json?.long  ?? null;
+            const holdSrc = window.getHoldTimes ? window.getHoldTimes(activeVar || asana) : {};
+            const stdSec   = holdSrc.standard ?? null;
+            const shortSec = holdSrc.short    ?? null;
+            const longSec  = holdSrc.long     ?? null;
 
-            let durPillHTML = '';
-            if (stdSec != null) {
-                durPillHTML = `<span class="binfo-dur">⏱ ${stdSec}s</span>`;
-                // Show short–long range only when they differ from standard
-                const hasRange = (shortSec != null || longSec != null) &&
-                                 (shortSec !== stdSec || longSec !== stdSec);
-                if (hasRange) {
-                    const lo = shortSec ?? stdSec;
-                    const hi = longSec  ?? stdSec;
-                    durPillHTML += `<span class="binfo-range">${lo}s – ${hi}s</span>`;
-                }
-            }
+            // Current tier (default standard)
+            const currentTier = pose.holdTier || 'standard';
+
+            // Build the S / STD / L segmented control
+            // A tier button is disabled when that tier has no distinct value
+            const tierBtn = (tier, label, sec) => {
+                const isActive   = currentTier === tier;
+                const isDisabled = sec == null || sec === stdSec && tier !== 'standard';
+                const activeStyle  = 'background:#1976d2; color:#fff; border-color:#1976d2; font-weight:700;';
+                const normalStyle  = 'background:#f5f5f5; color:#555; border-color:#ccc;';
+                const disabledStyle = 'background:#f5f5f5; color:#bbb; border-color:#e0e0e0; cursor:not-allowed; opacity:0.5;';
+                const style = isActive ? activeStyle : (isDisabled ? disabledStyle : normalStyle);
+                const secLabel = sec != null ? `<div style="font-size:0.62rem; margin-top:1px; opacity:0.85;">${sec}s</div>` : '';
+                return `<button class="b-tier" data-idx="${idx}" data-tier="${tier}"
+                    ${isDisabled ? 'disabled' : ''}
+                    style="border:1px solid; border-radius:4px; padding:2px 6px; font-size:0.7rem;
+                           line-height:1.2; cursor:pointer; min-width:32px; ${style}">
+                    ${label}${secLabel}
+                </button>`;
+            };
+
+            const tierControlHTML = (stdSec != null) ? `
+                <div style="display:flex; gap:3px; margin-bottom:4px;">
+                    ${tierBtn('short',    'S',   shortSec)}
+                    ${tierBtn('standard', 'STD', stdSec)}
+                    ${tierBtn('long',     'L',   longSec)}
+                </div>` : '';
 
             const rawCat = (asana?.category || '').trim();
             let catChipHTML = '';
             if (rawCat) {
-                // Derive a stable key for CSS colour-map (lowercase, first word only)
                 const catKey = rawCat.toLowerCase().split(/[\s/]/)[0];
                 catChipHTML = `<span class="binfo-cat" data-cat="${catKey}">${rawCat}</span>`;
             }
@@ -245,9 +261,9 @@ function builderRender() {
                 : '';
 
             infoHTML = `<td class="builder-info-cell">
-                <div>${durPillHTML}</div>
+                ${tierControlHTML}
                 ${catChipHTML ? `<div>${catChipHTML}</div>` : ''}
-                ${sidesHTML ? `<div>${sidesHTML}</div>` : ''}
+                ${sidesHTML   ? `<div>${sidesHTML}</div>`   : ''}
             </td>`;
         }
 
@@ -326,7 +342,7 @@ function builderRender() {
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
         if (asanaMatch) {
             builderPoses[i].name = asanaMatch.name;
-            if (asanaMatch.hold_data?.standard) builderPoses[i].duration = asanaMatch.hold_data.standard;
+            if (asanaMatch && window.getHoldTimes) { const ah = window.getHoldTimes(asanaMatch); if (ah.standard) builderPoses[i].duration = ah.standard; }
         }
         builderRender();
     });
@@ -335,7 +351,7 @@ function builderRender() {
         const i = el.dataset.idx;
         const normId = typeof normalizePlate === "function" ? normalizePlate(builderPoses[i].id) : builderPoses[i].id;
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
-        if (asanaMatch?.hold_data?.standard) { builderPoses[i].duration = asanaMatch.hold_data.standard; builderRender(); }
+        if (asanaMatch && window.getHoldTimes) { const ah = window.getHoldTimes(asanaMatch); if (ah.standard) { builderPoses[i].duration = ah.standard; builderRender(); } }
     });
 
     qS('.b-var').forEach(el => el.onchange = (e) => {
@@ -419,6 +435,32 @@ function builderRender() {
         }
     });
 
+    // ── Hold tier (S / STD / L) buttons ──────────────────────────────────────
+    qS('.b-tier').forEach(el => el.onclick = () => {
+        const i    = parseInt(el.dataset.idx);
+        const tier = el.dataset.tier;           // 'short' | 'standard' | 'long'
+        const pose = builderPoses[i];
+        if (!pose) return;
+
+        // Resolve the duration value for the chosen tier from the asana library
+        const libraryArr = Object.values(window.asanaLibrary || {});
+        const normId = typeof normalizePlate === 'function' ? normalizePlate(String(pose.id)) : String(pose.id);
+        const asana  = libraryArr.find(a => String(a.id || a.asanaNo) === String(normId));
+        // Active variation takes priority for hold times
+        const activeVar = (pose.variation && asana?.variations?.[pose.variation]) ? asana.variations[pose.variation] : null;
+        const holdSrc = window.getHoldTimes ? window.getHoldTimes(activeVar || asana) : {};
+
+        const tierDur = {
+            short:    holdSrc.short    ?? holdSrc.standard ?? pose.duration,
+            standard: holdSrc.standard ?? pose.duration,
+            long:     holdSrc.long     ?? holdSrc.standard ?? pose.duration,
+        }[tier];
+
+        pose.holdTier = tier;
+        pose.duration = Number(tierDur) || pose.duration;
+        builderRender();
+    });
+
     // --- 6. STATS UPDATER (Builder Modal) ---
     const statsEl = document.getElementById("builderStats");
     if (statsEl) {
@@ -426,19 +468,13 @@ function builderRender() {
         const libraryArray2 = Object.values(window.asanaLibrary || {});
         
         const tempPoses = builderPoses.map(p => {
-            const idStr = String(p.id);
-            const isMacroOrLoop = idStr.startsWith("MACRO:") || idStr.startsWith("LOOP_");
-            let standardTime = p.duration; // fallback
-            
-            if (!isMacroOrLoop) {
-                const normId2 = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
-                const asana2 = libraryArray2.find(a => String(a.id || a.asanaNo) === String(normId2));
-                if (asana2 && asana2.hold_data && asana2.hold_data.standard) {
-                    standardTime = asana2.hold_data.standard;
-                }
-            }
-            
-            return [p.id, standardTime, p.variation || "", p.variation || "", p.note || ""];
+            // Embed tier tag in the note (p[4]) — p[5] is clobbered by getExpandedPoses
+            // (overwritten with originalIdx), so tier must survive in the note string.
+            const tierTag = (!p.holdTier || p.holdTier === 'standard') ? ''
+                : ` tier:${p.holdTier === 'short' ? 'S' : 'L'}`;
+            const cleanNote = (p.note || '').replace(/\btier:[SL]\b/gi, '').trim();
+            const noteWithTier = (cleanNote + tierTag).trim();
+            return [p.id, p.duration, p.variation || "", p.variation || "", noteWithTier];
         });
         
         const tempSeq = { poses: tempPoses };
@@ -448,8 +484,10 @@ function builderRender() {
         const authoredPoses  = expanded.filter(p => !String(p[4] || "").includes("Auto-Injected"));
         const injectedPoses  = expanded.filter(p =>  String(p[4] || "").includes("Auto-Injected"));
 
-        const authoredSecs  = authoredPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
-        const injectedSecs  = injectedPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
+        // extractTierLocal mirrors sequenceUtils.extractTier — reads from note (p[4])
+        const extractTierLocal = (note) => { const m = String(note||'').match(/\btier:(S|L|STD)\b/i); return m ? m[1].toUpperCase() : ''; };
+        const authoredSecs  = authoredPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4])), 0);
+        const injectedSecs  = injectedPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4])), 0);
         const runtimeSecs   = authoredSecs + injectedSecs;
 
         const fmt = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
@@ -648,13 +686,14 @@ async function processSemicolonCommand(commandString) {
 
     // ── Add to builder (ambiguous items get _ambiguous flag — rendered with ⚠️) ─
     validItems.forEach(item => {
-        const duration = item.asana?.hold_data?.standard || item.asana?.hold_json?.standard || 30;
+        const duration = (item.asana && window.getHoldTimes) ? (window.getHoldTimes(item.asana).standard || 30) : 30;
         builderPoses.push({
             id: item.id,
             name: item.name,
             duration,
             variation: item.stageKey || '',
             note: item.stageKey ? `[${item.stageKey}]` : '',
+            holdTier: 'standard',  // paste always starts at standard
             // Ambiguous-page metadata — used by builderRender to show ⚠️ UI
             _ambiguous:     item._ambiguous || false,
             _pageNum:       item._pageNum || null,
@@ -663,31 +702,8 @@ async function processSemicolonCommand(commandString) {
     });
 
     builderRender();
-
-    // ── Persist to Supabase (skip ambiguous rows — they need resolution first) ─
-    const saveable = validItems.filter(item => !item._ambiguous);
-    if (saveable.length === 0) {
-        console.warn('⚠️ All resolved items are ambiguous — resolve conflicts before saving.');
-        return;
-    }
-
-    const sequenceText = saveable.map(item => {
-        const duration = item.asana?.hold_data?.standard || item.asana?.hold_json?.standard || 30;
-        const varPart = item.stageKey ? `[${item.stageKey}]` : `[]`;
-        return `${item.id} | ${duration} | ${varPart}`;
-    }).join('\n');
-
-    const payload = { title, category, sequence_text: sequenceText,
-                      last_edited: new Date().toISOString(),
-                      user_id: window.currentUserId || null };
-    try {
-        const { error } = await supabase.from('courses').upsert([payload], { onConflict: 'title, category' });
-        if (error) { console.error(`❌ Error saving ${title}:`, error.message); throw error; }
-        console.log(`✅ Bulk import saved: "${title}" (${saveable.length} poses${validItems.length - saveable.length > 0 ? `, ${validItems.length - saveable.length} awaiting disambiguation` : ''})`);
-    } catch (e) {
-        console.error('❌ processSemicolonCommand save failed:', e);
-        throw e;
-    }
+    // Paste command only populates the builder UI.
+    // The user presses Save explicitly when satisfied.
 }
 
 
@@ -859,7 +875,19 @@ function builderOpen(mode, seq) {
                 name: asana ? (asana.name || displayName(asana)) : id,
                 duration: Number(p[1]) || 30,
                 variation: variation,
-                note: rawExtras
+                note: rawExtras,
+                // Read tier keyword from note (set by builderCompileSequenceText on save).
+                // This is the authoritative source — avoids fragile infer-from-number logic.
+                holdTier: (() => {
+                    const tierMatch = (p[4] || '').match(/\btier:(S|L|STD)\b/i);
+                    if (tierMatch) {
+                        const t = tierMatch[1].toUpperCase();
+                        if (t === 'S')   return 'short';
+                        if (t === 'L')   return 'long';
+                        return 'standard';
+                    }
+                    return 'standard';
+                })()
              });
          });
     }
@@ -893,8 +921,15 @@ function builderCompileSequenceText() {
         const dur = p.duration || 30;
         
         // Enforces exact 3-column structure: ID | Duration | [Variation] Note
-        const varPart = p.variation ? `[${p.variation}]` : `[]`;
-        const notePart = p.note ? p.note.trim() : "";
+        // Append a tier keyword when the author has overridden the hold tier so that
+        // runtime consumers can resolve the CURRENT library value (not the stored number).
+        const varPart  = p.variation ? `[${p.variation}]` : `[]`;
+        const tierTag  = (p.holdTier && p.holdTier !== 'standard')
+            ? ` tier:${p.holdTier === 'short' ? 'S' : 'L'}`
+            : '';
+        // Strip any existing tier tag from the stored note before re-appending
+        const cleanNote = (p.note || '').replace(/\btier:[SL]\b/gi, '').trim();
+        const notePart  = (cleanNote + tierTag).trim();
         
         return `${id} | ${dur} | ${varPart} ${notePart}`.trim();
     }).filter(s => s.trim().length > 0).join("\n");
@@ -906,6 +941,55 @@ function builderGetTitle() {
 
 function builderGetCategory() {
    return ($("builderCategory")?.value || "").trim();
+}
+
+/**
+ * Safely saves a course row to Supabase without relying on upsert/onConflict.
+ * Strategy: SELECT first → UPDATE by ID if found, INSERT if not.
+ * This avoids "duplicate key" errors regardless of RLS policy configuration.
+ * @param {object} payload  - Fields to write (must include title & category)
+ * @param {string|null} knownId - If we already know the row's Supabase ID, pass it to skip the SELECT.
+ * @returns {{ id: string }} - The saved row's ID
+ */
+async function saveOrUpdateCourse(payload, knownId = null) {
+    // If we already have an ID (editing mode), go straight to UPDATE.
+    if (knownId) {
+        const updatePayload = { ...payload };
+        delete updatePayload.user_id; // preserve original ownership
+        const { error } = await supabase.from('courses')
+            .update(updatePayload)
+            .eq('id', knownId);
+        if (error) throw error;
+        return { id: knownId };
+    }
+
+    // No ID yet — check if a row with this title+category already exists.
+    const { data: existing, error: selErr } = await supabase
+        .from('courses')
+        .select('id')
+        .eq('title', payload.title)
+        .eq('category', payload.category)
+        .maybeSingle();
+    if (selErr) throw selErr;
+
+    if (existing) {
+        // Row exists — UPDATE it by its known ID (safe regardless of RLS).
+        const updatePayload = { ...payload };
+        delete updatePayload.user_id;
+        const { error } = await supabase.from('courses')
+            .update(updatePayload)
+            .eq('id', existing.id);
+        if (error) throw error;
+        return { id: existing.id };
+    }
+
+    // No existing row — do a fresh INSERT.
+    const { data: inserted, error: insErr } = await supabase.from('courses')
+        .insert([payload])
+        .select('id')
+        .single();
+    if (insErr) throw insErr;
+    return { id: inserted.id };
 }
 
 async function builderSave() {
@@ -965,11 +1049,13 @@ async function builderSave() {
             }
             data = updateData;
         } else {
-            const { data: insertData, error: insertError } = await supabase.from('courses')
-                .insert([payload])
-                .select();
-            if (insertError) throw insertError;
-            data = insertData;
+            // No known ID — use SELECT-first helper to safely insert or update.
+            // This prevents duplicate-key errors even if the row was pre-created
+            // by the semicolon paste path or a previous save attempt.
+            const { id: savedId } = await saveOrUpdateCourse(payload);
+            data = [{ id: savedId }];
+            // Promote to edit mode so any further Save in this session is an UPDATE.
+            if (savedId) builderEditingSupabaseId = savedId;
         }
 
         // 4. UI Refresh
@@ -994,6 +1080,9 @@ async function builderSave() {
 }
 
 function addPoseToBuilder(poseData) {
+    // Ensure every pose entering the builder has a holdTier so the S/STD/L
+    // control renders with the right button highlighted from the first render.
+    if (!poseData.holdTier) poseData.holdTier = 'standard';
     builderPoses.push(poseData);
     builderRender();
 }
@@ -1125,7 +1214,7 @@ function setupBuilderSearch() {
         addPoseToBuilder({
             id: asma.id,
             name: asma.name || asma.english,
-            duration: asma.hold_data?.standard || asma.hold_json?.standard || 30,
+            duration: (window.getHoldTimes ? window.getHoldTimes(asma).standard : null) || 30,
             variation: "",
             note: ""
         });
