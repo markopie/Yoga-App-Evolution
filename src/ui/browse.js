@@ -276,11 +276,10 @@ function renderBrowseList(items) {
 
        // Stage key badge — shows the stage code (e.g. "I", "II", "A") so user can see what to select
        const stageKeyBadge = asma._sourceType === 'stage' && asma._stageKey
-           ? `<span style="background:#00695c; color:#fff; border-radius:10px; padding:1px 8px; font-size:0.72rem; font-weight:700; white-space:nowrap; font-family:monospace;">Stage ${asma._stageKey}</span>`
+           ? `<span style="background:#00695c; color:#fff; border-radius:20px; padding:4px 12px; font-size:13px; font-weight:600; white-space:nowrap;">Stage ${asma._stageKey}</span>`
            : '';
-       
+
        meta.innerHTML = `
-         <span style="color:#000; font-weight:bold;">ID: ${asma.id || asma.asanaNo || "?"}</span>
          ${catBadge}
          ${stageKeyBadge}
        `;
@@ -373,20 +372,17 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
         rangeText = ` • ${hj.standard}s (Range: ${hj.short}s - ${hj.long}s)`;
     }
 
-    // 3. Build the rest of the Info via a single HTML string
-    // Use a unique name for this string variable to avoid re-declaration errors
     let detailHTML = `
       ${
         asana.iast && prefersIAST() && asana.english
-          ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;">${asana.english}</div>`
+          ? `<div style="font-size:15px;color:#86868b;margin-bottom:8px;">${asana.english}</div>`
           : asana.iast && !prefersIAST()
-          ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;font-style:italic;">${asana.iast}</div>`
+          ? `<div style="font-size:15px;color:#86868b;margin-bottom:8px;font-style:italic;">${asana.iast}</div>`
           : ''
       }
-      <div class="muted">
-         <span id="poseMetaBrowse"><span class="meta-text-only">ID: ${asana.id || asana.asanaNo}${rangeText}</span><button id="playNameBtn" class="tiny" style="margin-left: 10px;" title="Play Audio">🔊</button></span>
+      <div class="muted" style="margin-bottom:20px;">
+         <span id="poseMetaBrowse"><span class="meta-text-only">${rangeText}</span><button id="playNameBtn" class="tiny" style="margin-left: 10px;" title="Play Audio">🔊</button></span>
       </div>
-      <hr>
     `;
 
     // 4. Append Images
