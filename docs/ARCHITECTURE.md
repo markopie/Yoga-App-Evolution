@@ -57,8 +57,10 @@ Public SELECT. Admin writes via scripts or the Add Stage UI.
 RLS enforced:
 - Anon SELECT: `is_system = true` rows only
 - Auth SELECT: `is_system = true` OR `user_id = auth.uid()`
-- INSERT/UPDATE/DELETE: own rows (`user_id = auth.uid()`)
-- Admin: Save → confirm "Promote to published?" → sets `is_system = true`
+- INSERT: own rows (`user_id = auth.uid()`)
+- UPDATE: own rows OR system rows (`user_id = auth.uid() OR user_id IS NULL OR is_system = true`)
+- DELETE: own rows (`user_id = auth.uid()`)
+- Admin: saves auto-set `is_system = true` (no manual promote step)
 
 | Column | Type | Notes |
 |---|---|---|
@@ -156,8 +158,9 @@ Data collection only — not integrated with current app code.
 ## Authentication
 - Google OAuth via Supabase Auth
 - `wiring.js` `onAuthStateChange` → calls `window.init()` once on login
-- No guest mode (removed); all features require login
-- Admin (`mark.opie@gmail.com`): extra UI for "Promote to published" on sequence save
+- Anonymous guest login supported (`signInAnonymously`)
+- Admin (`mark.opie@gmail.com`): auto-publishes sequences (`is_system = true`)
+- **User UUID can drift** between sessions — RLS policies account for this via `is_system = true` fallback
 
 ## Scripts & Tooling
 - `/scripts/` — Python/Node scripts for data management

@@ -22,7 +22,6 @@ function safeListen(id, event, handler) {
     el.removeEventListener(event, registeredListeners.get(key));
   }
 
-  console.log(`[DOM] safeListen: Registering ${event} for #${id}`);
   el.addEventListener(event, handler);
   registeredListeners.set(key, handler);
 }

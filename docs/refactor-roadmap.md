@@ -93,12 +93,47 @@ Line ~150 of `src/services/dataAdapter.js` has `loadAsanaLibrary();` — intenti
 ### 5. Debug Cleanup Must Be Atomic
 When adding temporary `console.log` with new variables (e.g. `const { error: myErr } = ...`), ensure the cleanup script removes BOTH the variable reference AND the declaration. A partial cleanup leaves `ReferenceError` in production.
 
+### 6. Extracted Modules Must Use Zero Imports + Dynamic Loading
+`posePlayer.js` and `timerEvents.js` follow the same pattern as `sequenceEngine.js` (Lesson #4): **no ES imports**, all helpers via `window.*`. They are loaded with dynamic `import()` in `app.js` (not static `import` statements) because static ES module imports execute depth-first **before** the importing module's body runs. The `window.*` bindings in `app.js` must be set first.
+
+### 7. `courses` Save Must Use UPDATE for Edits, INSERT for New
+**Never use `.upsert()` on `courses`.** The RLS INSERT policy checks `user_id = auth.uid()` on the **new row** — and upsert always triggers the INSERT pathway first. For system sequences with `user_id = NULL` or a different UUID, this is rejected before conflict resolution runs. Use:
+- **Editing**: `.update(payload).eq('id', id)` — triggers UPDATE RLS only
+- **New**: `.insert([payload])` — clean INSERT with current `user_id`
+- **Admin saves**: include `is_system: true` in payload automatically
+- **UPDATE payload must NOT include `user_id`** — preserves ownership of system rows
+
+### 8. User UUID Can Drift Between Sessions
+Supabase OAuth can create multiple user records for the same email (e.g. after re-authentication). Rows created under an old UUID become inaccessible via `user_id = auth.uid()` RLS. The UPDATE RLS policy on `courses` includes `OR is_system = true` to ensure published sequences remain editable regardless of which UUID created them.
+
 ---
 
 ## Next Targets (Remaining in app.js)
-- [ ] Extract `setPose()` and related pose rendering logic into `src/ui/posePlayer.js` (~425 lines — largest remaining block)
-- [ ] Move timer event callbacks (`playbackEngine.onStart`, `onTick`, `onTransitionStart` etc.) into playback module (~300 lines)
-- [ ] Extract `updateTotalAndLastUI` into `src/ui/courseUI.js` or `src/ui/statsUI.js`
-- [ ] Remove unused `COURSES_URL` import (dead since Supabase migration)
-- [ ] Add `?v=` cache bust to `sequenceEngine.js` and `sequenceUtils.js`
+- [x] Extract `setPose()` and related pose rendering logic into `src/ui/posePlayer.js` (~425 lines — largest remaining block)
+- [x] Move timer event callbacks (`playbackEngine.onStart`, `onTick`, `onTransitionStart` etc.) into playback module (~300 lines)
+- [x] Extract `updateTotalAndLastUI` into `src/ui/courseUI.js` or `src/ui/statsUI.js`
+- [x] Remove unused `COURSES_URL` import (dead since Supabase migration)
+- [x] Add `?v=` cache bust to `sequenceEngine.js` and `sequenceUtils.js`
 
+### 9. Timer Pill Must Use Dial-Adjusted `p[1]`, Not `getEffectiveTime()`
+`getEffectiveTime()` (in `sequenceUtils.js`) always reads `hold_json.standard` from the library — the authoritative default. This is correct for the **builder stats** (which always show standard library times).
+
+But the **live pill** (`updateTimerUI` in `app.js`) works off `activePlaybackList`, where `applyDurationDial()` has already written the dial-scaled duration into `p[1]`. If the pill uses `getEffectiveTime()`, it overrides those values and the dial has no visible effect on the pill.
+
+**Rule**: The pill must read `p[1]` directly and only apply bilateral doubling from the library lookup. Never call `getEffectiveTime()` for the live timer pill.
+
+### 10. Extracted Files Are Currently Orphaned (Incomplete Refactor)
+`src/ui/posePlayer.js` and `src/playback/timerEvents.js` were created as extracted versions of inline `app.js` code, but **they are not loaded anywhere** (not in `index.html`, not imported by any loaded module). The canonical code running in production is inline in `app.js`.
+
+**Status**: The checked-off items in "Next Targets" above were checked off prematurely — the extraction was done but never wired in.
+
+**To complete the refactor**, for each extracted file:
+1. Add a `<script type="module" src="...">` tag to `index.html` (or dynamic `import()` in `app.js` after all `window.*` bindings are set)
+2. Remove the corresponding inline block from `app.js`
+3. Verify the `window.*` exports in the extracted file match what `app.js` expects
+
+**Priority order**:
+- `src/playback/timerEvents.js` — already in sync with `app.js` fixes (bilateral, dial-aware)
+- `src/ui/posePlayer.js` — depends on many `window.*` bindings being set first
+
+**Do not wire them in during a bug fix session** — allocate a dedicated refactoring session with full test coverage.

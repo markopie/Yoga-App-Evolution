@@ -39,7 +39,8 @@
 ### courses table key columns
 - `user_id` — UUID of creator; NULL for legacy system rows
 - `is_system` — `true` = visible to all; `false` = private draft (owner only)
-- Admin workflow: Save → `confirm("Promote to published?")` → sets `is_system=true`
+- Admin workflow: Save auto-sets `is_system = true` (no manual promote step)
+- Save uses UPDATE for edits (by ID), INSERT for new — **never upsert** (see refactor-roadmap.md Lesson #7)
 
 ## Common Admin Tasks
 
@@ -96,8 +97,11 @@ When a user types a page number like `56.1`, the bulk importer:
 | `ensure_stage_storage_urls.cjs` | Verify all stages have valid storage URLs |
 
 ## What stays in app.js
-- `setPose()` — main pose rendering (largest remaining block, ~425 lines)
-- `nextPose()` / `prevPose()`
 - `init()` — app bootstrap
-- Timer engine callbacks (`playbackEngine.onStart`, `onTick`, etc.)
-- `findAsanaByIdOrPlate()`, resume logic
+- `window.*` bindings for all imported helpers (consumed by zero-import modules)
+- Wake lock, resume logic, history, global state proxies
+
+## What was extracted
+- `setPose()`, `nextPose()`, `prevPose()` → `src/ui/posePlayer.js` (zero imports, `window.*` only)
+- Timer event callbacks → `src/playback/timerEvents.js` (zero imports, `window.*` only)
+- Both loaded via dynamic `import()` in `app.js` — see refactor-roadmap.md Lesson #6

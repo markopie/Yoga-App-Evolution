@@ -1,6 +1,12 @@
 // src/utils/sequenceUtils.js
 // Pure utility functions for sequence timing calculations.
 // No DOM access — safe to call from any context.
+//
+// Two timing contracts (see refactor-roadmap.md Lesson #9):
+//   getEffectiveTime(id, dur) — reads hold_json.standard from library.
+//                               Use for builder stats & calculateTotalSequenceTime.
+//   getPosePillTime(p)        — reads p[1] which is already dial-adjusted.
+//                               Use for the live timer pill & time-remaining display.
 
 /**
  * Returns the canonical effective duration (in seconds) for a single pose entry.
@@ -55,6 +61,29 @@ export function calculateTotalSequenceTime(seq) {
     return expanded.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
 }
 
+/**
+ * Returns the dial-aware duration for a single active pose entry.
+ * Reads p[1] directly — already scaled by applyDurationDial().
+ * Doubles for bilateral poses via a library lookup.
+ *
+ * ⚠️  Use this for the LIVE TIMER PILL and time-remaining display.
+ *     Do NOT use for builder stats — those must always show library defaults.
+ *
+ * @param {Array} p  - Pose tuple from activePlaybackList / currentSequence.poses
+ * @returns {number} Duration in seconds
+ */
+export function getPosePillTime(p) {
+    const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
+    const strId = String(rawId || "");
+    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END") || strId.startsWith("LOOP_START")) return 0;
+    const dur = Number(p[1]) || 0;
+    const lib = window.asanaLibrary || {};
+    const key = strId.trim().replace(/^0+/, "").padStart(3, "0");
+    const asana = lib[key];
+    return (asana && (asana.requiresSides || asana.requires_sides)) ? dur * 2 : dur;
+}
+
 // Global aliases for compatibility with app.js and wiring.js
 window.getEffectiveTime            = getEffectiveTime;
 window.calculateTotalSequenceTime  = calculateTotalSequenceTime;
+window.getPosePillTime             = getPosePillTime;

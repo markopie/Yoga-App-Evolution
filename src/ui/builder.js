@@ -1,4 +1,4 @@
-import { $, safeListen } from "../utils/dom.js";
+import { $, safeListen, normaliseText } from "../utils/dom.js";
 import { parseHoldTimes, parseSequenceText, buildHoldString } from "../utils/parsing.js";
 import { normalizePlate } from "../services/dataAdapter.js";
 import { supabase } from "../services/supabaseClient.js";
@@ -206,7 +206,52 @@ function builderRender() {
             }
         }
 
-        // --- 4. INJECT HTML ---
+        // --- 4. BUILD INFO CELL ---
+        // Gather duration & category from the resolved asana (or variation)
+        let infoHTML = '';
+        if (isSpecial) {
+            infoHTML = `<td class="builder-info-cell builder-info-special">—</td>`;
+        } else {
+            // Determine hold times — prefer active variation's hold_data, fall back to base asana
+            const activeVar = (pose.variation && asana?.variations?.[pose.variation]) ? asana.variations[pose.variation] : null;
+            const holdSrc = activeVar?.hold_data ?? asana?.hold_json ?? {};
+            const stdSec  = holdSrc.standard ?? asana?.hold_json?.standard ?? null;
+            const shortSec = holdSrc.short ?? asana?.hold_json?.short ?? null;
+            const longSec  = holdSrc.long  ?? asana?.hold_json?.long  ?? null;
+
+            let durPillHTML = '';
+            if (stdSec != null) {
+                durPillHTML = `<span class="binfo-dur">⏱ ${stdSec}s</span>`;
+                // Show short–long range only when they differ from standard
+                const hasRange = (shortSec != null || longSec != null) &&
+                                 (shortSec !== stdSec || longSec !== stdSec);
+                if (hasRange) {
+                    const lo = shortSec ?? stdSec;
+                    const hi = longSec  ?? stdSec;
+                    durPillHTML += `<span class="binfo-range">${lo}s – ${hi}s</span>`;
+                }
+            }
+
+            const rawCat = (asana?.category || '').trim();
+            let catChipHTML = '';
+            if (rawCat) {
+                // Derive a stable key for CSS colour-map (lowercase, first word only)
+                const catKey = rawCat.toLowerCase().split(/[\s/]/)[0];
+                catChipHTML = `<span class="binfo-cat" data-cat="${catKey}">${rawCat}</span>`;
+            }
+
+            const sidesHTML = (asana?.requiresSides)
+                ? `<span class="binfo-sides">↔ Both sides</span>`
+                : '';
+
+            infoHTML = `<td class="builder-info-cell">
+                <div>${durPillHTML}</div>
+                ${catChipHTML ? `<div>${catChipHTML}</div>` : ''}
+                ${sidesHTML ? `<div>${sidesHTML}</div>` : ''}
+            </td>`;
+        }
+
+        // --- 5. INJECT HTML ---
         tr.innerHTML = `
            <td style="padding:8px; text-align:center; color:#888;">
               <input type="checkbox" class="b-row-select" data-idx="${idx}" style="margin-bottom: 4px;" ${isSpecial ? 'disabled' : ''}><br>
@@ -223,6 +268,7 @@ function builderRender() {
               ${injectionBadgesHTML}
               ${roundsHTML}
            </td>
+           ${infoHTML}
            <td style="padding:8px; text-align:center; white-space:nowrap;">
               <button class="tiny b-move-top" data-idx="${idx}" title="Move to Top" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤒</button>
               <button class="tiny b-move-bot" data-idx="${idx}" title="Move to Bottom" ${idx === builderPoses.length - 1 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤓</button>
@@ -245,7 +291,7 @@ function builderRender() {
                 </button>`
             ).join('');
             warnRow.innerHTML = `
-                <td colspan="3" style="
+                <td colspan="4" style="
                     background:#fff3e0; border-left:4px solid #ff6d00;
                     padding:6px 12px; font-size:0.78rem; color:#bf360c;">
                     ⚠️ <strong>Page ${pose._pageNum} has multiple asanas.</strong>
@@ -695,10 +741,6 @@ function builderOpen(mode, seq) {
         catInput.oninput = () => builderRender(); 
     }
 
-    // Global IDs are short integers (e.g., "170"). User sequences use long UUIDs.
-    if (targetId && String(targetId).length < 30) {
-        targetId = null;
-    }
     builderEditingSupabaseId = targetId;
 
     document.body.classList.add("modal-open");
@@ -867,8 +909,6 @@ function builderGetCategory() {
 }
 
 async function builderSave() {
-    console.log("DB Target ID:", builderEditingSupabaseId);
-    console.log("Current User ID:", window.currentUserId);
 
     // 1. Extract and Validate Data
     const title = builderGetTitle();
@@ -905,16 +945,32 @@ async function builderSave() {
             last_edited: new Date().toISOString(),
             user_id: window.currentUserId
         };
+        // Admin saves are always published
+        if (isAdmin()) payload.is_system = true;
 
-        console.log("🚀 SAVING TO SUPABASE (courses):", payload);
-
-        // Thanks to the unique composite index (title, category) on courses, we can safely and cleanly upsert:
-        const { data, error: upsertError } = await supabase.from('courses')
-            .upsert([payload], { onConflict: 'title, category' })
-            .select();
-
-        if (upsertError) throw upsertError;
-        console.log("✅ SUPABASE UPSERT SUCCESS:", data);
+        // Editing existing → UPDATE by ID; New → INSERT
+        let data;
+        if (builderEditingSupabaseId) {
+            // Don't send user_id on update — preserves ownership of system rows
+            const updatePayload = { title, category, sequence_text: sequenceText,
+                                    last_edited: new Date().toISOString() };
+            if (isAdmin()) updatePayload.is_system = true;
+            const { data: updateData, error: updateError } = await supabase.from('courses')
+                .update(updatePayload)
+                .eq('id', builderEditingSupabaseId)
+                .select();
+            if (updateError) throw updateError;
+            if (!updateData || updateData.length === 0) {
+                throw new Error('Update matched 0 rows \u2014 check RLS policies for courses table');
+            }
+            data = updateData;
+        } else {
+            const { data: insertData, error: insertError } = await supabase.from('courses')
+                .insert([payload])
+                .select();
+            if (insertError) throw insertError;
+            data = insertData;
+        }
 
         // 4. UI Refresh
         await loadCourses(); 
@@ -929,18 +985,7 @@ async function builderSave() {
         }
 
         document.getElementById("editCourseBackdrop").style.display = "none";
-        // ── Save success feedback ─────────────────────────────────────────────
-        if (isAdmin() && data && data[0]) {
-            const savedId = data[0].id;
-            const promote = confirm(`"${title}" saved!\n\n📌 Promote to published? Makes it visible to all users.\n\nOK = Publish   |   Cancel = Keep as private draft`);
-            if (promote) {
-                await supabase.from('courses')
-                    .update({ is_system: true })
-                    .eq('id', savedId);
-            }
-        } else {
-            alert(`"${title}" saved!`);
-        }
+        alert(`"${title}" saved!`);
 
     } catch(e) {
         console.error("❌ Save failed:", e);
@@ -954,7 +999,6 @@ function addPoseToBuilder(poseData) {
 }
 
 function createRepeatGroup() {
-    console.log("createRepeatGroup UI flow started");
     const checkboxes = document.querySelectorAll('.b-row-select:checked');
     if (checkboxes.length === 0) {
         alert("Please select at least one pose using the checkboxes.");
@@ -994,7 +1038,6 @@ function createRepeatGroup() {
             return;
         }
 
-        console.log(`Injecting Loop: ${reps} rounds for range ${startIdx}-${endIdx}`);
         
         // Close modal
         overlay.style.display = "none";
@@ -1029,9 +1072,66 @@ function setupBuilderSearch() {
     const resultsBox = $("builderSearchResults");
     if (!searchInput || !resultsBox) return;
 
-    // Reset previous state
     resultsBox.style.display = "none";
-    
+
+    // ── Shared search logic ───────────────────────────────────────────────────
+    function scoreAsana(asma, query, source) {
+        const q = normaliseText(query);
+        if (!q) return 0;
+
+        // ID matching — depends on source dropdown
+        let idStr = '';
+        if (source === 'mehta') {
+            idStr = String(asma.yoga_the_iyengar_way_id || '');
+        } else {
+            idStr = String(asma.id || '');
+        }
+        const idNorm = idStr.toLowerCase();
+        // Exact ID: pad both to 3 digits for fair comparison
+        if (/^\d+$/.test(q) && idStr.padStart(3, '0') === q.padStart(3, '0')) return 100;
+        if (idNorm === q) return 100;
+
+        // Name fields — diacritic-folded
+        const eng  = normaliseText(asma.english || '');
+        const iast = normaliseText(asma.iast || '');
+        const sans = normaliseText(asma.name || '');
+        const plate = normaliseText(String(asma.plates || ''));
+
+        // Starts-with on any name
+        if (eng.startsWith(q) || iast.startsWith(q) || sans.startsWith(q)) return 50;
+
+        // Contains on any field
+        if (eng.includes(q) || iast.includes(q) || sans.includes(q)) return 20;
+        if (plate.includes(q)) return 10;
+        if (idNorm.includes(q)) return 5;
+
+        return 0;
+    }
+
+    function getSearchResults(query) {
+        const source = $("builderIdSource")?.value || "loy";
+        const library = getAsanaIndex();
+
+        const scored = [];
+        for (const asma of library) {
+            const s = scoreAsana(asma, query, source);
+            if (s > 0) scored.push({ asma, score: s });
+        }
+        scored.sort((a, b) => b.score - a.score);
+        return { results: scored, source };
+    }
+
+    function addAsanaFromResult(asma) {
+        addPoseToBuilder({
+            id: asma.id,
+            name: asma.name || asma.english,
+            duration: asma.hold_data?.standard || asma.hold_json?.standard || 30,
+            variation: "",
+            note: ""
+        });
+    }
+
+    // ── Enter key: exact ID → add immediately, else add top result ────────────
     searchInput.onkeydown = (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
             const val = searchInput.value.trim();
@@ -1039,27 +1139,13 @@ function setupBuilderSearch() {
                 e.preventDefault();
                 processSemicolonCommand(val);
                 searchInput.value = "";
-            } else if (val.length >= 1) {
-                const source = $("builderIdSource")?.value || "loy";
-                const library = getAsanaIndex();
-                
-                // Try perfect ID match based on source
-                let perfectMatch = null;
-                if (source === "mehta") {
-                    perfectMatch = library.find(a => String(a.yoga_the_iyengar_way_id || "").padStart(3, '0') === val.padStart(3, '0'));
-                } else {
-                    perfectMatch = library.find(a => String(a.id).padStart(3, '0') === val.padStart(3, '0'));
-                }
-
-                if (perfectMatch) {
-                    e.preventDefault();
-                    addPoseToBuilder({
-                        id: perfectMatch.id, // Always use LOY ID as the primary key for the sequence
-                        name: perfectMatch.name || perfectMatch.english,
-                        duration: perfectMatch.hold_data?.standard || 30,
-                        variation: "",
-                        note: ""
-                    });
+                return;
+            }
+            if (val.length >= 1) {
+                e.preventDefault();
+                const { results } = getSearchResults(val);
+                if (results.length > 0) {
+                    addAsanaFromResult(results[0].asma);
                     searchInput.value = "";
                     resultsBox.style.display = "none";
                 }
@@ -1067,66 +1153,49 @@ function setupBuilderSearch() {
         }
     };
 
-    searchInput.oninput = (e) => {
-        const query = e.target.value.trim().toLowerCase();
+    // ── Live search on typing ─────────────────────────────────────────────────
+    searchInput.oninput = () => {
+        const query = searchInput.value.trim();
         if (query.length < 1 || query.includes(';')) {
             resultsBox.style.display = "none";
             return;
         }
 
-        const source = $("builderIdSource")?.value || "loy";
-        const library = getAsanaIndex();
-        
-        const matches = library.filter(asma => {
-            let idMatch = false;
-            if (source === "mehta") {
-                idMatch = String(asma.yoga_the_iyengar_way_id || "").toLowerCase().includes(query);
-            } else {
-                idMatch = String(asma.id || asana.asanaNo || "").toLowerCase().includes(query);
-            }
-            
-            const engMatch = (asma.english || "").toLowerCase().includes(query);
-            const iastMatch = (asma.iast || "").toLowerCase().includes(query);
-            const plateMatch = (asma.plates || "").toString().toLowerCase().includes(query);
-            return idMatch || engMatch || iastMatch || plateMatch;
-        });
+        const { results, source } = getSearchResults(query);
 
-        if (matches.length > 0) {
-            resultsBox.innerHTML = matches.slice(0, 15).map(asma => {
-                const displayId = (source === "mehta") ? (asma.yoga_the_iyengar_way_id || "N/A") : asma.id;
-                const badgeColor = (source === "mehta") ? "#673ab7" : "#007aff"; // Purple for Mehta, Blue for LOY
-                
+        if (results.length > 0) {
+            resultsBox.innerHTML = results.slice(0, 15).map(({ asma, score }) => {
+                const displayId = (source === "mehta")
+                    ? (asma.yoga_the_iyengar_way_id || "N/A")
+                    : asma.id;
+                const badgeColor = (source === "mehta") ? "#673ab7" : "#007aff";
+                const catLabel = asma.category ? asma.category.replace(/^\d+_/, '').replace(/_/g, ' ') : '';
+
                 return `
                     <div class="search-result-item" data-id="${asma.id}" style="padding:10px; cursor:pointer; border-bottom:1px solid #eee; display:flex; gap:10px; align-items:center;">
-                        <div style="background:${badgeColor}; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:0.8rem;">${displayId}</div>
-                        <div style="flex:1;">
-                            <div style="font-weight:600;">${asma.english || asma.name}</div>
-                            <div style="font-size:0.75rem; color:#666; font-style:italic;">${asma.iast || ""}</div>
+                        <div style="background:${badgeColor}; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:0.8rem; min-width:28px; text-align:center;">${displayId}</div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${asma.english || asma.name || 'Unknown'}</div>
+                            <div style="font-size:0.75rem; color:#666; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${asma.iast || asma.name || ''}</div>
                         </div>
+                        ${catLabel ? `<div style="font-size:0.65rem; color:#999; white-space:nowrap;">${catLabel}</div>` : ''}
                     </div>
                 `;
             }).join("");
-            
+
             resultsBox.style.display = "block";
-            
-            // Positioning relative to the textarea
+
             const rect = searchInput.getBoundingClientRect();
             resultsBox.style.width = `${rect.width}px`;
-            resultsBox.style.top = `${rect.bottom + 4}px`; 
+            resultsBox.style.top = `${rect.bottom + 4}px`;
             resultsBox.style.left = `${rect.left}px`;
-            
+
             resultsBox.querySelectorAll('.search-result-item').forEach(item => {
                 item.onclick = () => {
                     const id = item.dataset.id;
-                    const asana = library.find(a => String(a.id) === id);
-                    if (asana) {
-                        addPoseToBuilder({
-                            id: asana.id,
-                            name: asana.name || asana.english,
-                            duration: asana.hold_data?.standard || 30,
-                            variation: "",
-                            note: ""
-                        });
+                    const asma = getAsanaIndex().find(a => String(a.id) === id);
+                    if (asma) {
+                        addAsanaFromResult(asma);
                         searchInput.value = "";
                         resultsBox.style.display = "none";
                         searchInput.focus();

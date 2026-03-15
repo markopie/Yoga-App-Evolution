@@ -1,5 +1,4 @@
 import { $, showError, safeListen, normaliseText, setStatus } from '../utils/dom.js';
-console.log("🚀 WIRING.JS LOADING...");
 import { prefersIAST, setIASTPref } from '../utils/format.js';
 import { supabase } from '../services/supabaseClient.js';
 import { themeManager } from './themeToggle.js';
@@ -151,10 +150,8 @@ if (durationDial) {
 }
 
 // #region 4. BUILDER WIRING
-console.log("Wiring.js: Setting up builder listeners...");
 
 safeListen("btnOpenLinkModal", "click", () => {
-    console.log("btnOpenLinkModal CLICKED");
     openLinkSequenceModal();
 });
 
@@ -179,10 +176,8 @@ safeListen("btnConfirmLink", "click", () => {
 });
 
 const repeatBtn = document.getElementById("btnGroupRepeat");
-console.log("btnGroupRepeat found in DOM?", !!repeatBtn);
 
 safeListen("btnGroupRepeat", "click", (e) => {
-    console.log("btnGroupRepeat CLICK EVENT DETECTED");
     e.preventDefault();
     createRepeatGroup();
 });
@@ -191,7 +186,6 @@ window.createRepeatGroup = createRepeatGroup;
 window.openLinkSequenceModal = openLinkSequenceModal;
 
 safeListen("editCourseBtn", "click", () => {
-    console.log("editCourseBtn CLICKED");
     openEditCourse();
 });
 

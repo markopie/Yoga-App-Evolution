@@ -49,7 +49,7 @@ async function fetchCourses(currentUserId = null) {
 }
 
 async function loadAsanaLibrary() {
-    console.log("🚀 Starting Asana Library Load..."); // Track in console
+    // Library load is intentional eager cache warm (see refactor-roadmap.md Lesson #2)
     if (!supabase) {
         console.error("Supabase client not initialized");
         return {};
@@ -134,7 +134,6 @@ async function loadAsanaLibrary() {
 
 
 window.asanaLibrary = normalized;
-        console.log(`✅ Library Synced: ${Object.keys(normalized).length} poses ready.`);
         return normalized;
 
     } catch (e) {
