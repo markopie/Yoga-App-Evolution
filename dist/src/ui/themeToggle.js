@@ -1,7 +1,7 @@
 // src/ui/themeToggle.js
 // Dark mode theme management with accessibility and persistence
-
-import { supabase } from '../services/supabaseClient.js';
+// Theme is stored in localStorage only. Supabase sync disabled until
+// user_preferences table is created.
 
 const THEME_KEY = 'yoga-app-theme';
 const THEME_LIGHT = 'light';
@@ -40,35 +40,11 @@ class ThemeManager {
         return this.systemPreference.matches ? THEME_DARK : THEME_LIGHT;
     }
 
-    async saveThemeToSupabase(theme) {
-        if (!this.userId) return;
-
-        try {
-            const { error } = await supabase
-                .from('user_preferences')
-                .upsert({
-                    user_id: this.userId,
-                    theme: theme,
-                    updated_at: new Date().toISOString()
-                }, {
-                    onConflict: 'user_id'
-                });
-
-            if (error && error.code !== '42P01') {
-                console.warn('Theme sync skipped:', error.message);
-            }
-        } catch (err) {
-            console.warn('Theme sync error:', err);
-        }
-    }
-
     applyTheme(theme) {
         this.currentTheme = theme;
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem(THEME_KEY, theme);
-
         this.updateButton();
-        this.saveThemeToSupabase(theme);
     }
 
     toggleTheme() {
@@ -106,9 +82,6 @@ class ThemeManager {
 
     setUserId(userId) {
         this.userId = userId;
-        if (userId) {
-            this.saveThemeToSupabase(this.currentTheme);
-        }
     }
 }
 

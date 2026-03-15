@@ -21,7 +21,8 @@ async function fetchCourses(currentUserId = null) {
                         category: (row.category || '').trim(), 
                         poses, 
                         isUserSequence: row.category === 'My Sequences',
-                        id: String(row.id)
+                        id: String(row.id),
+                        supabaseId: String(row.id)  // explicit alias used by builderOpen
                     });
                 }
             });
@@ -49,7 +50,7 @@ async function fetchCourses(currentUserId = null) {
 }
 
 async function loadAsanaLibrary() {
-    console.log("🚀 Starting Asana Library Load..."); // Track in console
+    // Library load is intentional eager cache warm (see refactor-roadmap.md Lesson #2)
     if (!supabase) {
         console.error("Supabase client not initialized");
         return {};
@@ -68,9 +69,6 @@ async function loadAsanaLibrary() {
                 if (!key) return;
 
                 const rawHoldText = String(row.hold ?? row.Hold ?? '');
-                const holdData = (row.hold_json && typeof row.hold_json === 'object') 
-                    ? row.hold_json 
-                    : parseHoldTimes(rawHoldText);
 
                 normalized[key] = {
                     id: key,
@@ -86,7 +84,6 @@ async function loadAsanaLibrary() {
                     requiresSides: !!(row.requires_sides ?? row.Requires_Sides ?? false),
                     plates: typeof parsePlates === 'function' ? parsePlates(row.plate_numbers ?? '') : (row.plate_numbers ?? ''),
                     hold: rawHoldText,
-                    hold_json: holdData,
                     yoga_the_iyengar_way_id: row.yoga_the_iyengar_way_id ?? '',
                     recovery_pose_id: row.recovery_pose_id ?? null,
                     preparatory_pose_id: row.preparatory_pose_id ?? null,
@@ -122,7 +119,6 @@ async function loadAsanaLibrary() {
                 shorthand: stage.Shorthand ?? stage.shorthand ?? '',
                 title: stage.Title ?? stage.title ?? `Stage ${stageKey}`,
                 hold: holdStr,
-                hold_data: parseHoldTimes(holdStr),
                 image_url: stage.image_url ?? '',
                 audio: stage.audio_url ?? stage.Audio_URL ?? '',
                 recovery_pose_id: stage.recovery_pose_id ?? null,
@@ -134,7 +130,6 @@ async function loadAsanaLibrary() {
 
 
 window.asanaLibrary = normalized;
-        console.log(`✅ Library Synced: ${Object.keys(normalized).length} poses ready.`);
         return normalized;
 
     } catch (e) {
@@ -166,11 +161,6 @@ function normalizeAsana(id, asana) {
 
 function normalizeAsanaRow(row, existingData = {}) {
     const rawHoldText = String(row.Hold ?? row.hold ?? '');
-    
-    // JSON-First Logic: Check if DB sent hold_json, otherwise parse text
-    const holdData = (row.hold_json && typeof row.hold_json === 'object') 
-        ? row.hold_json 
-        : parseHoldTimes(rawHoldText);
 
     return {
         ...existingData, // Preserve existing fields if overwriting
@@ -182,11 +172,10 @@ function normalizeAsanaRow(row, existingData = {}) {
         image_url: row.image_url ?? existingData.image_url ?? '',
         category: row.category ?? existingData.category,
         hold: rawHoldText,
-        hold_json: holdData, // <--- YOUR NEW DURATION BRAIN
         yoga_the_iyengar_way_id: row.yoga_the_iyengar_way_id ?? existingData.yoga_the_iyengar_way_id ?? '',
         recovery_pose_id: row.recovery_pose_id ?? existingData.recovery_pose_id ?? null,
         preparatory_pose_id: row.preparatory_pose_id ?? existingData.preparatory_pose_id ?? null,
-        standard_seconds: holdData.standard || 30, // Shortcut for the Slider
+        standard_seconds: parseHoldTimes(rawHoldText).standard || 30,
         isCustom: !!row.is_custom || false
     };
 }

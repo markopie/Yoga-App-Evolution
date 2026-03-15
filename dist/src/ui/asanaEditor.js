@@ -1,4 +1,4 @@
-﻿// src/ui/asanaEditor.js
+// src/ui/asanaEditor.js
 // Full Asana Editor — handles add/edit of asana records via Supabase
 
 import { $ } from "../utils/dom.js";
@@ -563,7 +563,6 @@ function wireEditorSave() {
                         shorthand:      payload.shorthand,
                         full_technique: payload.full_technique,
                         hold:           holdStr,
-                        hold_data:      parseHoldTimes(holdStr),
                         isCustom:       true
                     };
                 }
@@ -574,7 +573,6 @@ function wireEditorSave() {
                         ...window.asanaLibrary[id],
                         ...asanaData,
                         english:    asanaData.english_name,
-                        hold_data:  parseHoldTimes(asanaData.hold),
                         variations: { ...(window.asanaLibrary[id]?.variations || {}), ...localVariations },
                         isCustom:   true
                     };

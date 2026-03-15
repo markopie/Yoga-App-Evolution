@@ -57,15 +57,24 @@ function parseSequenceText(sequenceText) {
       ? numericPart[1].replace(/^0+/, '').padStart(3, '0') + suffix
       : id;
 
-    // Guard: reject IDs that smuggle a Roman numeral or a space (e.g. "53 II" or "53II").
-    // These are data-entry mistakes — the stage belongs in the note column as "[II]".
+    // MACRO: rows (e.g. "MACRO:Surya Namaskar A") are expected linked-sequence
+    // markers — not actually malformed. Skip them silently.
+    if (/^MACRO:/i.test(id)) return;
+
     if (/\s+/.test(suffix) || /^[IVX]{2,}/i.test(suffix)) {
       console.warn(
         `[parseSequenceText] Malformed ID "${id}" — it looks like "${numericPart?.[1]} | [${suffix.trim()}]" was intended.` +
         ` Move the stage name to the note column: "${numericPart?.[1]} | ${duration} | [${suffix.trim()}]"`
       );
-      return; // Skip row — do not insert a ghost pose that will never resolve.
+      return;
     }
+
+    // Extract optional hold-tier override keyword from the note field.
+    // Format: "tier:S", "tier:L", or "tier:STD" (case-insensitive).
+    // Written by builderCompileSequenceText when author picks a non-standard tier.
+    // NOTE: we do NOT store this as p[5] — that slot is reserved for originalIdx
+    // (set by getExpandedPoses). Instead, tier is read directly from p[4] (the note)
+    // by consumers via a /\btier:(S|L|STD)\b/ regex when needed.
 
     poses.push([[normalizedId], duration, '', variationKey, note]);
   });
@@ -73,4 +82,17 @@ function parseSequenceText(sequenceText) {
   return poses;
 }
 
-export { parseHoldTimes, secsToMSS, buildHoldString, parseSequenceText };
+export { parseHoldTimes, secsToMSS, buildHoldString, parseSequenceText, getHoldTimes };
+
+/**
+ * Returns the parsed hold-times object { short, standard, long } for any
+ * asana or stage object. Reads the `hold` text column — the single source of truth.
+ * @param {object} obj - asana or stage object from asanaLibrary
+ */
+function getHoldTimes(obj) {
+    return parseHoldTimes((obj && (obj.hold || obj.Hold)) || '');
+}
+
+// Expose globally so files that can't use ES6 imports (posePlayer, sequenceEngine, etc.)
+// can also call it without needing window.parseHoldTimes + a separate argument.
+window.getHoldTimes = getHoldTimes;
