@@ -92,5 +92,37 @@ describe('parsing helpers', () => {
       const result = parseSequenceText(input);
       assert.strictEqual(result[0][1], 0);
     });
+
+    test('normalises lowercase Roman numerals in brackets (e.g. [iia] → "IIA")', () => {
+      // Fix: variationMatch regex uses /i flag so [iia] is captured and uppercased
+      const input = '053 | 60 | [iia] supported version';
+      const result = parseSequenceText(input);
+      assert.strictEqual(result[0][3], 'IIA', 'lowercase [iia] should map to uppercase "IIA"');
+    });
+
+    test('normalises multi-char Roman numerals like IVa and IX', () => {
+      const cases = [
+        { line: '001 | 30 | [IVa] chair version', expected: 'IVA' },
+        { line: '001 | 30 | [IX]',               expected: 'IX'  },
+        { line: '001 | 30 | [IVb] wall support',  expected: 'IVB' },
+      ];
+      for (const { line, expected } of cases) {
+        const result = parseSequenceText(line);
+        assert.strictEqual(result[0][3], expected, `Expected "${expected}" from: ${line}`);
+      }
+    });
+
+    test('skips and warns on malformed IDs with Roman in ID column ("53 II", "53II")', () => {
+      // These are data-entry errors — stage belongs in note, not appended to ID.
+      // The parser should skip the row (return empty), not insert an unresolvable ghost pose.
+      const badInputs = [
+        '53 II | 60 | basic hold',   // space-separated Roman in ID column
+        '53II  | 60 | basic hold',   // concatenated Roman in ID column
+      ];
+      for (const line of badInputs) {
+        const result = parseSequenceText(line);
+        assert.strictEqual(result.length, 0, `Expected malformed line to be skipped: "${line}"`);
+      }
+    });
   });
 });

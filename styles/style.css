@@ -1153,9 +1153,82 @@ body.modal-open {
 }
 
 /* ==========================================================================
+   SEQUENCE BUILDER: TOOLBAR LAYOUT (responsive two-row design)
+   ========================================================================== */
+
+/* Primary row: search bar always full-width + tools toggle (mobile only) */
+.builder-toolbar-primary {
+    padding: 10px 16px 6px;
+    background: #f8f9fa;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    border-bottom: 1px solid transparent;
+}
+
+.builder-toolbar-primary #builderSearch {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    min-height: 40px;
+    resize: vertical;
+}
+
+/* ⚙️ toggle button: hidden on desktop (tools always shown) */
+.builder-tools-toggle-btn {
+    display: none;
+    padding: 8px 10px;
+    font-size: 1rem;
+    min-width: 40px;
+    min-height: 40px;
+    flex-shrink: 0;
+}
+
+/* Secondary row: all tools, shown as a wrapped flex strip */
+.builder-tools-panel {
+    padding: 6px 16px 10px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* ==========================================================================
    MOBILE-RESPONSIVE: SEQUENCE BUILDER TABLE
    ========================================================================== */
 @media (max-width: 600px) {
+    /* Show the ⚙️ toggle button; hide tools panel by default */
+    .builder-tools-toggle-btn { display: flex; align-items: center; justify-content: center; }
+    .builder-tools-panel { display: none; }
+
+    /* When tools are open (class added by JS) */
+    .builder-tools-panel.builder-tools-open { display: flex; }
+
+    /* Primary toolbar: compact on mobile */
+    .builder-toolbar-primary { padding: 6px 10px 4px; }
+    /* Override global textarea min-height (110px) for the search bar */
+    .builder-toolbar-primary #builderSearch {
+        font-size: 0.9rem;
+        min-height: 42px !important;
+        max-height: 80px;
+        padding: 8px 10px;
+    }
+
+    /* Compact modal header inputs to reduce wasted vertical space */
+    #editCourseBackdrop .modal-header input {
+        padding: 6px 8px !important;
+        font-size: 0.85rem !important;
+        min-height: 36px !important;
+    }
+    #builderCategory {
+        width: 120px !important;
+        min-width: 120px !important;
+    }
+
     /* Builder table: collapse the header */
     #builderTable thead { display: none; }
     
@@ -1169,12 +1242,13 @@ body.modal-open {
     #builderTable tr {
         border: 1px solid #e0e0e0;
         border-radius: 10px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         padding: 4px;
         background: #fff;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
     
-    /* Number/checkbox cell: float left as a small badge */
+    /* Number/checkbox cell: inline strip */
     #builderTable td:first-child {
         display: flex;
         align-items: center;
@@ -1182,16 +1256,32 @@ body.modal-open {
         border-bottom: 1px solid #f0f0f0;
         padding-bottom: 6px;
         margin-bottom: 4px;
+        font-size: 0.75rem;
+        color: #aaa;
     }
     
-    /* Order controls cell: horizontal strip */
+    /* Order controls cell: horizontal strip — touch friendly */
     #builderTable td:last-child {
         display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
+        flex-wrap: nowrap;
+        gap: 6px;
         justify-content: flex-end;
         padding-top: 6px;
         border-top: 1px solid #f0f0f0;
+    }
+
+    /* Enlarge all builder action buttons for touch targets */
+    #builderTableBody button.tiny {
+        min-width: 36px;
+        min-height: 36px;
+        padding: 6px 10px;
+        font-size: 1rem;
+    }
+
+    /* Hide top/bottom jump buttons on mobile — rely on drag-to-reorder */
+    #builderTableBody .b-move-top,
+    #builderTableBody .b-move-bot {
+        display: none;
     }
     
     /* Make the builder modal full-height scrollable on mobile */
@@ -1199,6 +1289,14 @@ body.modal-open {
         height: 100dvh;
         max-height: 100dvh;
         border-radius: 0;
+    }
+    
+    /* Builder list body: maximise visible rows.
+       Chrome = modal-header (~72px) + primary toolbar (~58px) + tools panel (0 when closed)
+                + footer (~56px) = ~186px. Use 190px as safe value. */
+    #editCourseBackdrop .modal-body {
+        max-height: calc(100dvh - 190px) !important;
+        flex: 1 !important;
     }
     
     /* Builder header: stack vertically on mobile */
@@ -1213,6 +1311,12 @@ body.modal-open {
         max-width: 100% !important;
         margin-left: 0 !important;
         margin-top: 6px !important;
+    }
+
+    /* Injection badges: shrink on mobile */
+    #builderTableBody span[title] {
+        font-size: 0.65rem !important;
+        padding: 1px 5px !important;
     }
 }
 

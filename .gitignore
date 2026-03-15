@@ -6,7 +6,7 @@ __pycache__/
 *.py[cod]
 
 # Secret Keys (NEVER PUSH THESE)
-.env
+.env*
 google-credentials.json
 # OS Files
 .DS_Store

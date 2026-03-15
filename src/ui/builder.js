@@ -890,6 +890,12 @@ async function builderSave() {
             alert("You must be signed in to save sequences.");
             return;
         }
+        // Guest users have a valid UUID but no persistent account — their sequences
+        // would be silently orphaned after the anonymous session expires.
+        if (window.isGuestMode) {
+            alert("Guest sessions cannot save sequences.\n\nSign in with Google to keep your work.");
+            return;
+        }
         let result;
 
         const payload = {

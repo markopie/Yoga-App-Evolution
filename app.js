@@ -4,7 +4,6 @@
    ========================================================================== */
 
 import {
-    COURSES_URL,
     MANIFEST_URL,
     ASANA_LIBRARY_URL,
     LIBRARY_URL,
@@ -26,6 +25,7 @@ import "./src/ui/wiring.js?v=29"; // 👈 Core UI Wiring & Listeners
 import { getExpandedPoses } from "./src/services/sequenceEngine.js";
 import { getEffectiveTime, calculateTotalSequenceTime } from "./src/utils/sequenceUtils.js";
 import { builderOpen, openEditCourse } from "./src/ui/builder.js?v=29";
+import { updateTotalAndLastUI } from "./src/ui/statsUI.js";
 
 // UI Renderers
 import { 
@@ -432,7 +432,13 @@ playbackEngine.onStart = () => {
             
             if (asana) {
                 if (playbackEngine.remaining === playbackEngine.currentPoseSeconds) {
-                    if (typeof playAsanaAudio === "function") playAsanaAudio(asana, poses[currentIndex][4] || "", false, window.getCurrentSide ? window.getCurrentSide() : null, window.currentVariationKey || null);
+                    if (typeof playAsanaAudio === "function") {
+                        // isSecondSide: getCurrentSide() is set by nextPose() before start() is called,
+                        // so 'left' = second side of a requires_sides asana.
+                        const side = window.getCurrentSide ? window.getCurrentSide() : null;
+                        const isSecondSide = side === "left" && !!(asana.requiresSides || asana.requires_sides);
+                        playAsanaAudio(asana, poses[currentIndex][4] || "", false, side, window.currentVariationKey || null, isSecondSide);
+                    }
                 } else {
                     new Audio("data:audio/mp3;base64,//MkxAAQ").play().catch(()=>{});
                 }
@@ -816,6 +822,9 @@ function prevPose() {
     if (!keepSamePose) {
         setCurrentSide("right");
         setNeedsSecondSide(false);
+        // Reset consecutive-bridge state when we go back to the first pose
+        // (new sequence selected or playback reset). Not in onStart — that fires per-pose.
+        if (idx === 0 && typeof resetBridgeState === "function") resetBridgeState();
     }
 
 // 2. DATA EXTRACTION
@@ -1180,72 +1189,20 @@ if (focusCounter) {
     // 11. AUDIO TRIGGER
     window.currentVariationKey = matchedVariationKey;
     if (playbackEngine.running && asana) {
-         playAsanaAudio(asana, baseOverrideName, false, getCurrentSide(), matchedVariationKey); 
+        // isSecondSide: getCurrentSide() is already set to 'left' by nextPose() before
+        // setPose() is called. Using this (rather than keepSamePose) correctly handles
+        // the prevPose() case which also uses keepSamePose=true when going back to right.
+        const isSecondSide = getCurrentSide() === "left" && !!(asana.requiresSides || asana.requires_sides);
+        playAsanaAudio(asana, baseOverrideName, false, getCurrentSide(), matchedVariationKey, isSecondSide);
     }
 }
 
 // Export for Wiring
 window.setPose = setPose;
 
-/* ==========================================================================
-   UI HELPERS (Notes & Stats)
-   ========================================================================== */
+// updateTotalAndLastUI → src/ui/statsUI.js (imported above; window binding done there)
 
 
-function updateTotalAndLastUI() {
-    // 1. EXPLORER FIX: Look at the activePlaybackList to include the injected standing poses
-    const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
-        ? window.activePlaybackList 
-        : ((currentSequence && currentSequence.poses) ? currentSequence.poses : []);
-
-    // 2. Calculate Total Time
-    const total = poses.reduce((acc, p) => {
-       const duration = Number(p?.[1]) || 0;
-       const idField = p?.[0];
-       const id = Array.isArray(idField) ? idField[0] : idField;
-       
-       const asana = (typeof findAsanaByIdOrPlate === 'function') 
-          ? findAsanaByIdOrPlate(id) 
-          : null;
-
-       if (asana && asana.requiresSides) {
-          return acc + (duration * 2);
-       }
-       return acc + duration;
-    }, 0);
-
-    // 3. Update Total Time UI
-    const totalEl = document.getElementById("totalTimePill");
-    if (totalEl) {
-        totalEl.textContent = `Total: ${formatHMS(total)}`;
-    }
-
-    // 4. Update History UI
-    const lastEl = document.getElementById("lastCompletedPill");
-    
-    if (lastEl) {
-        const title = currentSequence && currentSequence.title ? currentSequence.title : null;
-        
-        if (title) {
-           const source = (typeof serverHistoryCache !== 'undefined' && Array.isArray(serverHistoryCache) && serverHistoryCache.length) 
-              ? serverHistoryCache 
-              : (typeof loadCompletionLog === 'function' ? loadCompletionLog() : []);
-
-           const last = source
-              .filter(x => x && x.title === title && typeof x.ts === "number")
-              .sort((a, b) => b.ts - a.ts)[0];
-
-           lastEl.textContent = last ?
-              `Last: ${new Date(last.ts).toLocaleString("en-AU", {
-               year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
-              })}` : "Last: –";
-        } else {
-           lastEl.textContent = "Last: –";
-        }
-    }
-}
-
-// #endregion
 // #region 7. UI & BROWSING
 // NOTE: Browse UI, filters, asana detail view, collage renderers, and
 // course/category dropdown rendering have been extracted to:

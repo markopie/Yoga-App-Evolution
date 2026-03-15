@@ -45,9 +45,10 @@ function parseSequenceText(sequenceText) {
 
     let variationKey = '';
     const note = noteSection;
-    const variationMatch = noteSection.match(/\[.*?\b([IVX]+[a-z]?)\]/);
+    // 'i' flag: matches lowercase brackets like [iia]; toUpperCase() normalises to DB key format.
+    const variationMatch = noteSection.match(/\[.*?\b([IVX]+[a-z]?)\]/i);
     if (variationMatch) {
-      variationKey = variationMatch[1];
+      variationKey = variationMatch[1].toUpperCase();
     }
 
     const numericPart = id.match(/^(\d+)/);
@@ -55,6 +56,16 @@ function parseSequenceText(sequenceText) {
     const normalizedId = numericPart
       ? numericPart[1].replace(/^0+/, '').padStart(3, '0') + suffix
       : id;
+
+    // Guard: reject IDs that smuggle a Roman numeral or a space (e.g. "53 II" or "53II").
+    // These are data-entry mistakes — the stage belongs in the note column as "[II]".
+    if (/\s+/.test(suffix) || /^[IVX]{2,}/i.test(suffix)) {
+      console.warn(
+        `[parseSequenceText] Malformed ID "${id}" — it looks like "${numericPart?.[1]} | [${suffix.trim()}]" was intended.` +
+        ` Move the stage name to the note column: "${numericPart?.[1]} | ${duration} | [${suffix.trim()}]"`
+      );
+      return; // Skip row — do not insert a ghost pose that will never resolve.
+    }
 
     poses.push([[normalizedId], duration, '', variationKey, note]);
   });

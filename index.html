@@ -51,6 +51,23 @@
         </svg>
         Sign in with Google
       </button>
+
+      <!-- Guest mode: anonymous Supabase session, read-only library access -->
+      <button id="guestSignInBtn" style="
+          margin-top: 10px;
+          background: transparent;
+          border: 1px solid #d2d2d7;
+          color: #86868b;
+          font-size: 0.85rem;
+          padding: 10px 20px;
+          border-radius: 980px;
+          cursor: pointer;
+          transition: background 0.15s, color 0.15s;
+          width: 100%;
+      ">
+        Continue as Guest
+      </button>
+
       <p id="loginError" style="display:none;"></p>
     </div>
   </div>
@@ -270,28 +287,31 @@
         </div>
       </div>
 
-      <div style="padding:10px 16px; background:#f8f9fa; border-bottom:1px solid #eee; display:flex; gap:8px; align-items:flex-start;">
-        <select id="builderIdSource" style="padding:10px 8px; border:1px solid #ccc; border-radius:6px; font-size:0.9rem; background:#fff;">
+      <!-- Builder toolbar: primary row (search always visible) -->
+      <div class="builder-toolbar-primary">
+        <textarea id="builderSearch"
+                  placeholder="Search by name or ID — or batch: Title; Category; IDs…"
+                  autocomplete="off"></textarea>
+        <div id="builderSearchResults" style="display:none; position:absolute; z-index:9999; background:#fff; border:1px solid #ddd; border-radius:6px; max-height:240px; overflow-y:auto; box-shadow:0 4px 16px rgba(0,0,0,0.12); min-width:280px;"></div>
+        <button id="builderToolsToggle" type="button" class="tiny builder-tools-toggle-btn" title="Toggle tools">⚙️</button>
+      </div>
+
+      <!-- Builder toolbar: secondary tools panel (collapsible on mobile) -->
+      <div id="builderToolsPanel" class="builder-tools-panel">
+        <select id="builderIdSource" style="padding:7px 8px; border:1px solid #ccc; border-radius:6px; font-size:0.85rem; background:#fff; min-height:36px;">
           <option value="loy">LOY IDs</option>
           <option value="mehta">Mehta IDs</option>
         </select>
-        <textarea id="builderSearch" 
-                  placeholder="Search, paste IDs (001, 002), or batch sequences (Title; Cat; IDs)" 
-                  style="flex:1; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:0.9rem; min-height:42px; resize:vertical;" 
-                  autocomplete="off"></textarea>
-        
-        <div id="builderSearchResults" style="display:none; position:absolute; z-index:9999; background:#fff; border:1px solid #ddd; border-radius:6px; max-height:240px; overflow-y:auto; box-shadow:0 4px 16px rgba(0,0,0,0.12); min-width:280px;"></div>
-        
-        <button id="builderAddBlank" class="tiny" style="white-space:nowrap;">+ Blank row</button>
-        <button id="btnOpenLinkModal" type="button" class="secondary" style="margin-left: 8px;">🔗 Link Sequence</button>
-        <button id="btnGroupRepeat" type="button" class="secondary" style="margin-left: 8px;">🔁 Group & Repeat</button>
+        <button id="builderAddBlank" class="tiny" style="white-space:nowrap;">+ Blank</button>
+        <button id="btnOpenLinkModal" type="button" class="tiny secondary">🔗 Link</button>
+        <button id="btnGroupRepeat" type="button" class="tiny secondary">🔁 Repeat</button>
         <button id="builderNameToggle" type="button" title="Toggle Sanskrit / English pose names"
-          style="margin-left:8px; white-space:nowrap; padding:6px 10px; border-radius:6px;
+          style="white-space:nowrap; padding:6px 10px; border-radius:6px;
                  background:#fff8e1; border:1px solid #f9a825; color:#6d4c00; font-size:0.8rem;
                  cursor:pointer; transition:background 0.15s;">
           अ EN
         </button>
-    </div>
+      </div>
 
       <div class="modal-body" style="max-height:55vh; overflow-y:auto; padding:0;">
         <table style="width:100%;border-collapse:collapse;font-size:0.88rem;" id="builderTable">

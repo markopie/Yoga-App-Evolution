@@ -229,9 +229,11 @@ function showLogin() {
 }
 
 function setupAuthListeners() {
-    const googleBtn = document.getElementById("googleSignInBtn");
+    const googleBtn  = document.getElementById("googleSignInBtn");
+    const guestBtn   = document.getElementById("guestSignInBtn");
     const signOutBtn = document.getElementById("signOutBtn");
 
+    // ── Google OAuth ─────────────────────────────────────────────────────────
     if (googleBtn) {
         googleBtn.onclick = async () => {
             googleBtn.disabled = true;
@@ -242,23 +244,61 @@ function setupAuthListeners() {
         };
     }
 
+    // ── Guest (anonymous) login ───────────────────────────────────────────────
+    if (guestBtn) {
+        guestBtn.onclick = async () => {
+            guestBtn.disabled = true;
+            guestBtn.textContent = 'Starting guest session…';
+
+            const { data, error } = await supabase.auth.signInAnonymously();
+
+            if (error) {
+                console.error('Anonymous sign-in failed:', error.message);
+                const errEl = document.getElementById('loginError');
+                if (errEl) {
+                    errEl.textContent = `Guest sign-in failed: ${error.message}`;
+                    errEl.style.display = 'block';
+                }
+                guestBtn.disabled = false;
+                guestBtn.textContent = 'Continue as Guest';
+            }
+            // On success, onAuthStateChange fires with event=SIGNED_IN — handled below.
+        };
+    }
+
+    // ── Sign Out ─────────────────────────────────────────────────────────────
     if (signOutBtn) {
         signOutBtn.onclick = async () => {
             const emailSpan = document.getElementById('userEmailDisplay');
             if (emailSpan) { emailSpan.textContent = ''; emailSpan.style.display = 'none'; }
+            window.isGuestMode = false;
             await supabase.auth.signOut();
         };
     }
 
+    // ── Auth state handler ────────────────────────────────────────────────────
     supabase.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
             window.currentUserId = session.user.id;
-            window.currentUserEmail = session.user.email;
+
+            // is_anonymous is the canonical flag Supabase sets for anon users.
+            const isAnon = session.user.is_anonymous === true;
+            window.isGuestMode = isAnon;
+            window.currentUserEmail = isAnon ? null : (session.user.email || null);
+
             const emailSpan = document.getElementById('userEmailDisplay');
             if (emailSpan) {
-                emailSpan.textContent = session.user.email;
-                emailSpan.style.display = 'inline';
+                if (isAnon) {
+                    // Show a distinct "Guest" badge instead of an email address
+                    emailSpan.textContent = '👤 Guest';
+                    emailSpan.style.cssText = 'font-size:0.75rem; color:#f57f17; font-weight:600; margin-right:10px; display:inline;';
+                } else {
+                    emailSpan.textContent = session.user.email;
+                    emailSpan.style.cssText = 'font-size:0.75rem; color:#888; margin-right:10px; display:inline;';
+                }
             }
+
+            // Both signed-in and anonymous users go straight to the app.
             showApp();
         } else if (!window.isGuestMode) {
             showLogin();
