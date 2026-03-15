@@ -14,6 +14,7 @@ import {
 } from "./src/config/appConfig.js";
 import { fetchCourses, loadAsanaLibrary, normalizeAsana, normalizeAsanaRow, normalizePlate, parsePlates, normaliseAsanaId, findAsanaByIdOrPlate } from "./src/services/dataAdapter.js?v=29";
 import { supabase } from "./src/services/supabaseClient.js";
+import { themeManager } from "./src/ui/themeToggle.js";
 import { loadJSON } from "./src/services/http.js";
 import { $, normaliseText, safeListen, setStatus, showError, enterBrowseDetailMode, exitBrowseDetailMode } from "./src/utils/dom.js";
 import { parseHoldTimes, buildHoldString } from "./src/utils/parsing.js";
@@ -342,6 +343,7 @@ async function init() {
         const statusEl = $("statusText");
 
         // 1. Core Config
+        themeManager.init();
         if (typeof seedManualCompletionsOnce === "function") seedManualCompletionsOnce();
 
         // 2. Load History;

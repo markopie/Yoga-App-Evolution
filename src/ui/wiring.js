@@ -2,6 +2,7 @@ import { $, showError, safeListen, normaliseText, setStatus } from '../utils/dom
 console.log("🚀 WIRING.JS LOADING...");
 import { prefersIAST, setIASTPref } from '../utils/format.js';
 import { supabase } from '../services/supabaseClient.js';
+import { themeManager } from './themeToggle.js';
 import { normalizePlate } from '../services/dataAdapter.js';
 import { playbackEngine } from '../playback/timer.js';
 import { openHistoryModal, switchHistoryTab, renderGlobalHistory } from './historyModal.js?v=29';
@@ -280,6 +281,7 @@ function setupAuthListeners() {
     supabase.auth.onAuthStateChange((event, session) => {
         if (session && session.user) {
             window.currentUserId = session.user.id;
+            themeManager.setUserId(session.user.id);
 
             // is_anonymous is the canonical flag Supabase sets for anon users.
             const isAnon = session.user.is_anonymous === true;
