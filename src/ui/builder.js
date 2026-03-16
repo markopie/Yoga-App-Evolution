@@ -430,13 +430,14 @@ function builderRender() {
         builderRender();
     });
 
-    // --- 6. STATS UPDATER (Builder Modal) ---
+   // --- 6. STATS UPDATER (Builder Modal) ---
     const statsEl = document.getElementById("builderStats");
     if (statsEl) {
         const tempPoses = builderPoses.map(p => {
             const tierTag = (!p.holdTier || p.holdTier === 'standard') ? '' : ` tier:${p.holdTier === 'short' ? 'S' : 'L'}`;
             const cleanNote = (p.note || '').replace(/\btier:[SL]\b/gi, '').trim();
             const noteWithTier = (cleanNote + tierTag).trim();
+            // Format for getExpandedPoses
             return [p.id, p.duration, p.variation || "", p.variation || "", noteWithTier];
         });
         
@@ -446,11 +447,20 @@ function builderRender() {
         const authoredPoses  = expanded.filter(p => !String(p[4] || "").includes("Auto-Injected"));
         const injectedPoses  = expanded.filter(p =>  String(p[4] || "").includes("Auto-Injected"));
 
-        const extractTierLocal = (note) => { const m = String(note||'').match(/\btier:(S|L|STD)\b/i); return m ? m[1].toUpperCase() : ''; };
-        const authoredSecs  = authoredPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4]), p[3], p[4]), 0);
-        const injectedSecs  = injectedPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4]), p[3], p[4]), 0);
-        const runtimeSecs   = authoredSecs + injectedSecs;
+        // Central logic: use window.getEffectiveTime to match the Live Pill
+        const extractTierLocal = (note) => { 
+            const m = String(note||'').match(/\btier:(S|L|STD)\b/i); 
+            return m ? m[1].toUpperCase() : ''; 
+        };
 
+        // 🌟 Use same args as durationDial.js to ensure 42m match
+        const authoredSecs  = authoredPoses.reduce((acc, p) => 
+            acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4]), p[3], p[4]), 0);
+        
+        const injectedSecs  = injectedPoses.reduce((acc, p) => 
+            acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4]), p[3], p[4]), 0);
+
+        const runtimeSecs   = authoredSecs + injectedSecs;
         const fmt = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
 
         if (injectedSecs > 0) {

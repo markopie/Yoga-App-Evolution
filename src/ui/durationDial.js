@@ -116,10 +116,10 @@ export function applyDurationDial() {
     const currentSequence = window.currentSequence;
     if (!currentSequence) return;
 
-    const dial = $("durationDial");
+    const dial = document.getElementById("durationDial");
     if (!dial) return;
 
-    const val      = Number(dial.value);
+    const val = Number(dial.value);
     const baseList = typeof window.getExpandedPoses === "function"
         ? window.getExpandedPoses(currentSequence)
         : currentSequence.poses;
@@ -131,7 +131,7 @@ export function applyDurationDial() {
 
         if (strId.startsWith("MACRO:") || strId.startsWith("LOOP")) return cloned;
 
-        const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(normalizePlate(strId)) : null;
+        const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(window.normalizePlate(strId)) : null;
         
         const noteStr = cloned[4] || "";
         const tierMatch = noteStr.match(/\btier:(S|L|STD)\b/i);
@@ -139,21 +139,21 @@ export function applyDurationDial() {
 
         const needsSides = asana && (asana.requiresSides === true || asana.requires_sides === true || asana.requiresSides === "true" || asana.requires_sides === "true");
         
-        // 🌟 Use the True Base Time instead of the library standard
+        // Get the true base time (respecting authored 600s, Tiers, etc)
         let trueBase = Number(cloned[1]) || 30;
         if (typeof window.getEffectiveTime === "function") {
-            const effectiveTotal = window.getEffectiveTime(strId, cloned[1], tier);
+            const effectiveTotal = window.getEffectiveTime(strId, cloned[1], tier, cloned[3], cloned[4]);
             trueBase = needsSides ? Math.round(effectiveTotal / 2) : effectiveTotal;
         }
 
-        const { short, defaultDur, long } = resolveDialAnchors(trueBase, asana);
-        cloned[1] = interpolateDuration(val, short, defaultDur, long);
+        const { short, defaultDur, long } = window.resolveDialAnchors(trueBase, asana);
+        cloned[1] = window.interpolateDuration(val, short, defaultDur, long);
 
         return cloned;
     });
 
-    // Label
-    const label = $("durationDialLabel");
+    // Label Update
+    const label = document.getElementById("durationDialLabel");
     if (label) {
         if (val === 50)      label.textContent = "Standard Holds";
         else if (val < 50)   label.textContent = "Shorter Holds (-)";
@@ -164,17 +164,22 @@ export function applyDurationDial() {
     const currentIndex = window.currentIndex || 0;
     if (window.activePlaybackList[currentIndex]) {
         const newPoseSeconds = Number(window.activePlaybackList[currentIndex][1]) || 0;
-        if (playbackEngine.currentPoseSeconds > 0) {
-            const ratio = playbackEngine.remaining / playbackEngine.currentPoseSeconds;
-            playbackEngine.remaining = Math.round(newPoseSeconds * ratio);
-        } else {
-            playbackEngine.remaining = newPoseSeconds;
+        if (window.playbackEngine && window.playbackEngine.currentPoseSeconds > 0) {
+            const ratio = window.playbackEngine.remaining / window.playbackEngine.currentPoseSeconds;
+            window.playbackEngine.remaining = Math.round(newPoseSeconds * ratio);
+        } else if (window.playbackEngine) {
+            window.playbackEngine.remaining = newPoseSeconds;
         }
-        playbackEngine.currentPoseSeconds = newPoseSeconds;
+        if (window.playbackEngine) window.playbackEngine.currentPoseSeconds = newPoseSeconds;
     }
 
     if (typeof window.updateTimerUI === "function") {
-        window.updateTimerUI(playbackEngine.remaining, playbackEngine.currentPoseSeconds);
+        window.updateTimerUI(window.playbackEngine.remaining, window.playbackEngine.currentPoseSeconds);
+    }
+    
+    // 🛑 THIS FIXES THE BUG: Force the Pill to recalculate when dial turns
+    if (typeof window.updateTotalAndLastUI === "function") {
+        window.updateTotalAndLastUI();
     }
 
     if (typeof window.builderRender === "function") window.builderRender();

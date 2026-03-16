@@ -1,7 +1,4 @@
 // src/utils/sequenceUtils.js
-// Pure utility functions for sequence timing calculations.
-// No DOM access — safe to call from any context.
-
 import { getHoldTimes } from './parsing.js';
 
 export function extractTier(note) {
@@ -20,29 +17,18 @@ function resolveTierDuration(target, tier) {
     return null;
 }
 
-/**
- * Returns the canonical effective duration (in seconds) for a single pose entry.
- * Now STAGE-AWARE: Reads varKey and note to resolve specific variation holds.
- */
 export function getEffectiveTime(id, dur, tier, varKey, note) {
     let rawId = id;
     if (Array.isArray(rawId)) rawId = rawId[0];
-    if (Array.isArray(rawId)) rawId = rawId[0]; // double-unwrap guard
+    if (Array.isArray(rawId)) rawId = rawId[0]; 
 
     const strId = String(rawId || "");
-
-    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END") || strId.startsWith("LOOP_START")) {
-        return 0;
-    }
+    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END") || strId.startsWith("LOOP_START")) return 0;
 
     const lib = window.asanaLibrary || {};
-    const idNum = parseInt(strId.replace(/\D/g, ''), 10);
     const key = strId.trim().replace(/^0+/, "").padStart(3, "0");
     const asana = lib[key];
-    
-    if (!asana) return Number(dur) || 30;
 
-    // --- 🛑 STAGE-AWARE RESOLUTION ---
     let targetForHold = asana;
     let variation = varKey;
     
@@ -66,30 +52,24 @@ export function getEffectiveTime(id, dur, tier, varKey, note) {
         }
     }
 
-    const hj = getHoldTimes(targetForHold);
-    let libStandard = (hj && hj.standard != null) ? Number(hj.standard) : null;
-    
-    if (libStandard == null) {
-        const baseHj = getHoldTimes(asana);
-        libStandard = (baseHj && baseHj.standard != null) ? Number(baseHj.standard) : 30;
-    }
+    let duration = Number(dur) || 0;
 
-    let duration;
-    const isPranayama = idNum >= 203 && idNum <= 230;
-
-    // RULE 1: Pranayama Protection OR Explicit Tier Override
-    if (isPranayama || (tier && tier !== '')) {
-        if (tier && targetForHold) {
-            const tierDur = resolveTierDuration(targetForHold, tier);
-            duration = tierDur ?? Number(dur) ?? libStandard;
-        } else {
-            duration = Number(dur) || libStandard;
-        }
+    // RULE 1: Explicit Tier Overrides ALWAYS win (dynamic library lookup)
+    if (tier && targetForHold) {
+        const tierDur = resolveTierDuration(targetForHold, tier);
+        if (tierDur != null) duration = tierDur;
     } 
-    // RULE 2: Global Default
-    else {
-        duration = libStandard; // <--- This will now correctly equal 300!
+    // RULE 2: If duration is missing/0, fallback to library
+    else if (duration === 0) {
+        const hj = getHoldTimes(targetForHold);
+        let libStandard = (hj && hj.standard != null) ? Number(hj.standard) : null;
+        if (libStandard == null) {
+            const baseHj = getHoldTimes(asana);
+            libStandard = (baseHj && baseHj.standard != null) ? Number(baseHj.standard) : 30;
+        }
+        duration = libStandard;
     }
+    // RULE 3: Otherwise, TRUST THE WRITTEN SEQUENCE TEXT (600, 180, etc.)
 
     if (asana && (asana.requiresSides || asana.requires_sides)) return duration * 2;
     return duration;
@@ -98,7 +78,6 @@ export function getEffectiveTime(id, dur, tier, varKey, note) {
 export function calculateTotalSequenceTime(seq) {
     if (!seq || !seq.poses) return 0;
     const expanded = typeof window.getExpandedPoses === "function" ? window.getExpandedPoses(seq) : seq.poses;
-    // Pass the new arguments
     return expanded.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTier(p[4]), p[3], p[4]), 0);
 }
 
@@ -107,9 +86,13 @@ export function getPosePillTime(p) {
     const strId = String(rawId || "");
     if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END") || strId.startsWith("LOOP_START")) return 0;
     
-    const tier = extractTier(p[4]);
-    // Pass the new arguments
-    return getEffectiveTime(rawId, p[1], tier, p[3], p[4]);
+    // Trust the dial! p[1] is already rule-enforced and scaled by the dial engine.
+    const dur = Number(p[1]) || 0;
+    const lib = window.asanaLibrary || {};
+    const key = strId.trim().replace(/^0+/, "").padStart(3, "0");
+    const asana = lib[key];
+
+    return (asana && (asana.requiresSides || asana.requires_sides)) ? dur * 2 : dur;
 }
 
 window.getEffectiveTime            = getEffectiveTime;
