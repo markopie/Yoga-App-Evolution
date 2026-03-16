@@ -45,10 +45,15 @@ function parseSequenceText(sequenceText) {
 
     let variationKey = '';
     const note = noteSection;
-    // 'i' flag: matches lowercase brackets like [iia]; toUpperCase() normalises to DB key format.
-    const variationMatch = noteSection.match(/\[.*?\b([IVX]+[a-z]?)\]/i);
+    
+    // Separate the Roman Numeral from the optional suffix character
+    const variationMatch = noteSection.match(/\[.*?\b([IVX]+)([a-z]?)\b.*?\]/i);
+    
     if (variationMatch) {
-      variationKey = variationMatch[1].toUpperCase();
+      // variationMatch[1] = "VII", variationMatch[2] = "a"
+      const roman = variationMatch[1].toUpperCase();
+      const suffix = variationMatch[2] ? variationMatch[2].toLowerCase() : "";
+      variationKey = roman + suffix; // Properly reconstructs "VIIa" instead of "VIIA"
     }
 
     const numericPart = id.match(/^(\d+)/);

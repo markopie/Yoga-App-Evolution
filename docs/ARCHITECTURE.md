@@ -166,3 +166,13 @@ Data collection only — not integrated with current app code.
 - `/scripts/` — Python/Node scripts for data management
 - `/supabase/migrations/` — SQL migration history
 - All admin DB operations done via Supabase Dashboard SQL Editor or scripts
+
+## The Sequence Timing Bridge (getEffectiveTime)
+- To calculate a pose's true duration, the app relies on a strict priority ladder to prevent standard library times from overriding authored sequences:
+
+- Tier Supremacy: If p[4] (note) contains a tier string (e.g., tier:S), the library's short/long value is used, ignoring all other numbers.
+
+- Sequence Override: If the duration in p[1] differs from the library standard, the authored sequence number wins.
+
+- Library Fallback: The default standard time is used only if no tier or override exists.
+- Note: Bilateral multiplication (* 2) must only trigger on explicit === true checks to prevent string-coercion bugs.

@@ -52,10 +52,10 @@ export function interpolateDuration(pos, short, defaultDur, long) {
 // UI UPDATERS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Updates the dial label, CSS class and estimated total time pill.
- * Called on every 'input' event and after a sequence is loaded.
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// UI UPDATERS
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function updateDialUI() {
     const dial  = $("durationDial");
     const wrap  = $("durationDialWrap");
@@ -80,15 +80,31 @@ export function updateDialUI() {
     }
 
     const currentSequence = window.currentSequence;
-    const originalPoses   = window.currentSequenceOriginalPoses;
+    const originalPoses   = window.currentSequenceOriginalPoses || (currentSequence ? currentSequence.poses : null);
+    
     if (estEl && currentSequence && originalPoses) {
         const total = originalPoses.reduce((s, p) => {
-            const origDur = Number(p[1]) || 0;
-            const id      = Array.isArray(p[0]) ? p[0][0] : p[0];
-            const asana   = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(normalizePlate(id)) : null;
-            const { short, defaultDur, long } = resolveDialAnchors(origDur, asana);
+            const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
+            const strId = String(rawId || "").trim();
+            if (strId.startsWith("MACRO:") || strId.startsWith("LOOP")) return s;
+
+            const noteStr = p[4] || "";
+            const tierMatch = noteStr.match(/\btier:(S|L|STD)\b/i);
+            const tier = tierMatch ? tierMatch[1].toUpperCase() : null;
+
+            const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(normalizePlate(strId)) : null;
+            const needsSides = asana && (asana.requiresSides === true || asana.requires_sides === true || asana.requiresSides === "true" || asana.requires_sides === "true");
+
+            let trueBase = Number(p[1]) || 0;
+            if (typeof window.getEffectiveTime === "function") {
+                const effectiveTotal = window.getEffectiveTime(strId, p[1], tier);
+                trueBase = needsSides ? Math.round(effectiveTotal / 2) : effectiveTotal;
+            }
+
+            const { short, defaultDur, long } = resolveDialAnchors(trueBase, asana);
             const dur = interpolateDuration(pos, short, defaultDur, long);
-            return s + (asana && asana.requiresSides ? dur * 2 : dur);
+            
+            return s + (needsSides ? dur * 2 : dur);
         }, 0);
         estEl.textContent = formatHMS(total);
     } else if (estEl) {
@@ -96,11 +112,6 @@ export function updateDialUI() {
     }
 }
 
-/**
- * Applies the dial position to the active playback list, recomputing per-pose
- * durations using hold times parsed from asana.hold (or a global % fallback).
- * Also updates the live timer if playback is mid-pose.
- */
 export function applyDurationDial() {
     const currentSequence = window.currentSequence;
     if (!currentSequence) return;
@@ -115,29 +126,29 @@ export function applyDurationDial() {
 
     window.activePlaybackList = baseList.map(p => {
         const cloned = [...p];
-        const rawId  = Array.isArray(p[0]) ? p[0][0] : p[0];
+        const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
+        const strId = String(rawId || "").trim();
 
-        const lib = window.asanaLibrary || {};
-        const key = String(rawId).trim().replace(/^0+/, "").padStart(3, "0");
-        const asana = lib[key];
+        if (strId.startsWith("MACRO:") || strId.startsWith("LOOP")) return cloned;
 
-        if (asana && window.getHoldTimes) {
-            const hj = window.getHoldTimes(asana);
-            if (typeof hj.standard === "number") {
-                const min = hj.short || Math.max(5, Math.round(hj.standard * 0.5));
-                const std = hj.standard;
-                const max = hj.long  || Math.round(hj.standard * 2.0);
+        const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(normalizePlate(strId)) : null;
+        
+        const noteStr = cloned[4] || "";
+        const tierMatch = noteStr.match(/\btier:(S|L|STD)\b/i);
+        const tier = tierMatch ? tierMatch[1].toUpperCase() : null;
 
-                if (val < 50)       cloned[1] = Math.round(min + (std - min) * (val / 50));
-                else if (val > 50)  cloned[1] = Math.round(std + (max - std) * ((val - 50) / 50));
-                else                cloned[1] = std;
-            }
-        } else {
-            // Fallback: global percentage scaling
-            const originalSeconds = Number(cloned[1]) || 30;
-            const mult = val < 50 ? (0.5 + (val / 50) * 0.5) : (1.0 + ((val - 50) / 50) * 1.0);
-            cloned[1] = Math.round(originalSeconds * mult);
+        const needsSides = asana && (asana.requiresSides === true || asana.requires_sides === true || asana.requiresSides === "true" || asana.requires_sides === "true");
+        
+        // 🌟 Use the True Base Time instead of the library standard
+        let trueBase = Number(cloned[1]) || 30;
+        if (typeof window.getEffectiveTime === "function") {
+            const effectiveTotal = window.getEffectiveTime(strId, cloned[1], tier);
+            trueBase = needsSides ? Math.round(effectiveTotal / 2) : effectiveTotal;
         }
+
+        const { short, defaultDur, long } = resolveDialAnchors(trueBase, asana);
+        cloned[1] = interpolateDuration(val, short, defaultDur, long);
+
         return cloned;
     });
 
@@ -166,9 +177,10 @@ export function applyDurationDial() {
         window.updateTimerUI(playbackEngine.remaining, playbackEngine.currentPoseSeconds);
     }
 
-    // Refresh builder list if visible
     if (typeof window.builderRender === "function") window.builderRender();
 }
+
+
 
 /**
  * Snaps the dial back to 50 (default) and triggers all downstream updates.
@@ -236,6 +248,9 @@ if (document.readyState === "loading") {
 }
 
 // Expose functions window-wide for legacy calls from app.js
+
+window.resolveDialAnchors = resolveDialAnchors;
+window.interpolateDuration = interpolateDuration;
 window.updateDialUI    = updateDialUI;
 window.applyDurationDial = applyDurationDial;
 window.dialReset       = dialReset;

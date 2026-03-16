@@ -93,7 +93,7 @@ async function loadAsanaLibrary() {
             });
         }
 
-        // 2. Load Stages (Base table replaces both former globals and custom user stages)
+       // 2. Load Stages (Base table replaces both former globals and custom user stages)
         const { data: stagesData } = await supabase.from('stages').select('*');
         
         let allStagesData = stagesData ? [...stagesData] : [];
@@ -114,8 +114,9 @@ async function loadAsanaLibrary() {
             // User stages naturally overwrite global stages here because they were concatenated last
             normalized[parentKey].variations[stageKey] = {
                 id: stage.id ?? '',
-                technique: stage.Full_Technique ?? stage.full_technique ?? '',
-                full_technique: stage.Full_Technique ?? stage.full_technique ?? '',
+                // 🛑 CRITICAL FIX: Aggressively check all capitalizations of full_technique and technique
+                technique: stage.full_technique ?? stage.Full_Technique ?? stage.technique ?? stage.Technique ?? '',
+                full_technique: stage.full_technique ?? stage.Full_Technique ?? stage.technique ?? stage.Technique ?? '',
                 shorthand: stage.Shorthand ?? stage.shorthand ?? '',
                 title: stage.Title ?? stage.title ?? `Stage ${stageKey}`,
                 hold: holdStr,
@@ -123,7 +124,7 @@ async function loadAsanaLibrary() {
                 audio: stage.audio_url ?? stage.Audio_URL ?? '',
                 recovery_pose_id: stage.recovery_pose_id ?? null,
                 preparatory_pose_id: stage.preparatory_pose_id ?? null,
-                page_primary: stage.page_primary ?? null,  // ← Mehta lookup key
+                page_primary: stage.page_primary ?? null,  
                 isCustom: !!stage.user_id 
             };
         });

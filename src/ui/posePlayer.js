@@ -83,113 +83,113 @@ function setPose(idx, keepSamePose = false) {
     }
 
     // 2. DATA EXTRACTION
-    const currentPose = poses[idx];
-    const originalRowIndex = (currentPose && currentPose[5] !== undefined) 
-                            ? currentPose[5] 
-                            : idx;
+const currentPose = poses[idx];
+const originalRowIndex = (currentPose && currentPose[5] !== undefined) 
+                        ? currentPose[5] 
+                        : idx;
 
-    const displayTotal = window.currentSequence.poses ? window.currentSequence.poses.length : poses.length;
+const displayTotal = window.currentSequence.poses ? window.currentSequence.poses.length : poses.length;
 
-    const focusCounter = document.getElementById("focusPoseCounter");
-    if (focusCounter) {
-        focusCounter.textContent = `${originalRowIndex + 1} / ${displayTotal}`;
-    }
+const focusCounter = document.getElementById("focusPoseCounter");
+if (focusCounter) {
+    focusCounter.textContent = `${originalRowIndex + 1} / ${displayTotal}`;
+}
 
-    const rawIdField = currentPose[0];
-    let seconds      = currentPose[1];
+const rawIdField = currentPose[0];
+let lookupId = Array.isArray(rawIdField) ? rawIdField[0] : rawIdField;
+lookupId = window.normalizePlate(lookupId);
 
-    let lookupId = Array.isArray(rawIdField) ? rawIdField[0] : rawIdField;
-    lookupId = window.normalizePlate(lookupId);
+// ALIAS RESOLUTION
+if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
+    let aliasVal = window.idAliases[lookupId];
+    if (aliasVal.includes("|")) aliasVal = aliasVal.split("|")[0];
+    lookupId = window.normalizePlate(aliasVal);
+}
 
-    // ALIAS RESOLUTION
-    if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
-        let aliasVal = window.idAliases[lookupId];
-        if (aliasVal.includes("|")) aliasVal = aliasVal.split("|")[0];
-        lookupId = window.normalizePlate(aliasVal);
-    }
+// 3. SMART LOOKUP
+const asana = window.findAsanaByIdOrPlate(lookupId);
+const storedVarKey = currentPose[3]; // <--- Restored definition to prevent crash
 
-    // 3. SMART LOOKUP
-    const asana = window.findAsanaByIdOrPlate(lookupId);
+// --- 🛑 CRITICAL FIX: DURATION RESOLUTION ---
+// Use getEffectiveTime to guarantee we respect the Tier, the explicit number, and sides logic.
+const noteStr = currentPose[4] || "";
+const tierMatch = noteStr.match(/\btier:(S|L|STD)\b/i);
+const tier = tierMatch ? tierMatch[1].toUpperCase() : null;
 
-    // VARIATION DURATION OVERRIDE:
-    const storedVarKey = currentPose[3];
-    if (storedVarKey && asana && asana.variations && asana.variations[storedVarKey]) {
-        const varData = asana.variations[storedVarKey];
-        const varHoldStr = varData.hold || varData.Hold || "";
-        
-        if (varHoldStr) {
-            const varHd = window.parseHoldTimes(varHoldStr);
-            if (varHd.standard > 0) {
-                const dial = document.getElementById("durationDial");
-                const val = dial ? Number(dial.value) : 50;
-                
-                const min = varHd.short || Math.max(5, Math.round(varHd.standard * 0.5));
-                const std = varHd.standard;
-                const max = varHd.long || Math.round(varHd.standard * 2.0);
-            
-                if (val < 50) seconds = Math.round(min + (std - min) * (val / 50));
-                else if (val > 50) seconds = Math.round(std + (max - std) * ((val - 50) / 50));
-                else seconds = std;
-            }
-        }
-    }
+// Call the global helper to get the "true" base seconds before the dial
+let baseSeconds = typeof window.getEffectiveTime === "function" 
+    ? window.getEffectiveTime(lookupId, currentPose[1], tier)
+    : Number(currentPose[1]);
 
-    // Sides Check
-    if (asana && (asana.requiresSides || asana.requires_sides) && !keepSamePose) {
+// If it's bilateral and we are doing one side, halve it for the timer
+if (asana && (asana.requiresSides || asana.requires_sides)) {
+    baseSeconds = Math.round(baseSeconds / 2);
+    if (!keepSamePose) {
         window.setNeedsSecondSide(true);
     }
+}
 
-    // DIAL ENFORCER
-    const dial = document.getElementById("durationDial");
-    if (dial) {
-        const val = Number(dial.value);
-        if (val !== 50) {
-            let mult = 1.0;
-            if (val < 50) mult = 0.5 + (val / 50) * 0.5;
-            else mult = 1.0 + ((val - 50) / 50) * 1.0;
-            seconds = Math.round(seconds * mult);
-        }
+let seconds = baseSeconds;
+
+// DIAL ENFORCER (Apply smart scaling using anchors)
+const dial = document.getElementById("durationDial");
+if (dial && typeof window.resolveDialAnchors === "function" && typeof window.interpolateDuration === "function") {
+    const val = Number(dial.value);
+    if (val !== 50) {
+        const { short, defaultDur, long } = window.resolveDialAnchors(baseSeconds, asana);
+        seconds = window.interpolateDuration(val, short, defaultDur, long);
     }
+} else if (dial) {
+    // Fallback if helpers aren't loaded yet
+    const val = Number(dial.value);
+    if (val !== 50) {
+        let mult = 1.0;
+        if (val < 50) mult = 0.5 + (val / 50) * 0.5;
+        else mult = 1.0 + ((val - 50) / 50) * 1.0;
+        seconds = Math.round(seconds * mult);
+    }
+}
+// VARIATION & NOTE EXTRACTION
+    let noteField = currentPose[4] || "";
+    let variationTitle = currentPose[3] || ""; 
+    let actualNote = noteField;
+    let baseOverrideName = currentPose[2] || "";
 
-    // VARIATION & NOTE EXTRACTION
-    let rawExtras = [currentPose[2], currentPose[3], currentPose[4]].filter(Boolean).join(" ").trim();
-    let variationTitle = "";
-    let actualNote = "";
-    let baseOverrideName = "";
-
-    const bracketMatch = rawExtras.match(/\[(.*?)\]/);
+    const bracketMatch = noteField.match(/\[(.*?)\]/);
     if (bracketMatch) {
-        variationTitle = bracketMatch[1].trim();
-        actualNote = rawExtras.replace(bracketMatch[0], "").replace(/^[\s\-\|]+/, "").trim();
-    } else {
-        baseOverrideName = currentPose[2] || "";
+        if (!variationTitle) variationTitle = bracketMatch[1].trim();
+        // Clean out the bracket part so the note UI just shows the user's text
+        actualNote = noteField.replace(bracketMatch[0], "").replace(/^[\s\-\|]+/, "").trim();
+    } else if (!variationTitle) {
         actualNote = [currentPose[3], currentPose[4]].filter(Boolean).join(" ").trim();
     }
 
     // VARIATION TECHNIQUE & SHORTHAND
     let displayShorthand = "";
     let displayTechnique = asana ? (asana.technique || asana.Technique || "") : "";
-    let matchedVariationKey = storedVarKey;
+    let matchedVariationKey = storedVarKey || variationTitle;
 
     const normalizeText = (str) => (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const compactText = (str) => normalizeText(str).replace(/\s+/g, "");
 
     if (asana && asana.variations && variationTitle) {
-        const normVarTitle = normalizeText(variationTitle);
+        const compactVarTitle = compactText(variationTitle);
         let foundVariation = false;
 
-        // Pass 1: Exact matches
+        // Pass 1: Exact & Space-Agnostic Matches
         for (const [vKey, vData] of Object.entries(asana.variations)) {
             const resolvedTitle = typeof vData === 'object' ? (vData.title || vData.Title || "") : "";
-            const normTitle = normalizeText(resolvedTitle);
-            const normShort = normalizeText(typeof vData === 'object' ? (vData.shorthand || vData.Shorthand || "") : "");
-            const normKey = vKey.toLowerCase();
+            const compactTitle = compactText(resolvedTitle);
+            const compactShort = compactText(typeof vData === 'object' ? (vData.shorthand || vData.Shorthand || "") : "");
+            const compactKey = compactText(vKey);
 
-            if (normVarTitle === normTitle ||
-                normVarTitle === normShort ||
-                normVarTitle === `stage ${normKey}` ||
-                normVarTitle === normKey) {
+            if (compactVarTitle === compactTitle ||
+                compactVarTitle === compactShort ||
+                compactVarTitle === `stage${compactKey}` ||
+                compactVarTitle === compactKey) {
 
-                const varTech = (typeof vData === 'object') ? (vData.Full_Technique || vData.technique) : vData;
+                // 🛑 CRITICAL FIX: Explicitly target full_technique first
+                const varTech = (typeof vData === 'object') ? (vData.full_technique || vData.Full_Technique || vData.technique || vData.Technique) : vData;
                 if (varTech) displayTechnique = varTech;
                 if (typeof vData === 'object') displayShorthand = vData.shorthand || vData.Shorthand || "";
                 
@@ -225,11 +225,13 @@ function setPose(idx, keepSamePose = false) {
                 const resolvedTitle = typeof vData === 'object' ? (vData.title || vData.Title || "") : "";
                 const normTitle = normalizeText(resolvedTitle);
                 
+                const normVarTitle = normalizeText(variationTitle);
                 const safeVarTitle = normVarTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const matchRegex = new RegExp(`\\b${safeVarTitle}\\b`, 'i');
 
                 if (matchRegex.test(normKey) || matchRegex.test(normTitle)) {
-                    const varTech = (typeof vData === 'object') ? (vData.Full_Technique || vData.technique) : vData;
+                    // 🛑 CRITICAL FIX: Explicitly target full_technique first
+                    const varTech = (typeof vData === 'object') ? (vData.full_technique || vData.Full_Technique || vData.technique || vData.Technique) : vData;
                     if (varTech) displayTechnique = varTech;
                     if (typeof vData === 'object') displayShorthand = vData.shorthand || vData.Shorthand || "";
                     
@@ -265,7 +267,8 @@ function setPose(idx, keepSamePose = false) {
             displayTechnique = v;
         } else {
             displayShorthand = v.shorthand || v.Shorthand || "";
-            displayTechnique = v.Full_Technique || v.technique || "";
+            // 🛑 CRITICAL FIX: Explicitly target full_technique first
+            displayTechnique = v.full_technique || v.Full_Technique || v.technique || v.Technique || "";
             const legacyTitle = v.title || v.Title || "";
             if (legacyTitle) variationTitle = legacyTitle;
         }
