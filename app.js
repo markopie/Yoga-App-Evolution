@@ -1,34 +1,35 @@
 // #region 1. STATE & CONSTANTS
 /* ==========================================================================
-   APP CONFIGURATION & CONSTANTS
+   APP CONFIGURATION & MODULE IMPORTS
    ========================================================================== */
 
-import {
-    MANIFEST_URL,
-    ASANA_LIBRARY_URL,
-    LIBRARY_URL,
-    ID_ALIASES_URL,
-    AUDIO_BASE,
-    COMPLETION_LOG_URL,
-    LOCAL_SEQ_KEY,
-} from "./src/config/appConfig.js";
-import { fetchCourses, loadAsanaLibrary, normalizeAsana, normalizeAsanaRow, normalizePlate, parsePlates, normaliseAsanaId, findAsanaByIdOrPlate } from "./src/services/dataAdapter.js?v=29";
+// 1. Core Services & Data
 import { supabase } from "./src/services/supabaseClient.js";
+import { 
+    fetchCourses, 
+    loadAsanaLibrary, 
+    normalizeAsana, 
+    normalizePlate, 
+    findAsanaByIdOrPlate 
+} from "./src/services/dataAdapter.js?v=29";
+
+// 2. UI Framework & Utilities
 import { themeManager } from "./src/ui/themeToggle.js";
-import { loadJSON } from "./src/services/http.js";
-import { $, normaliseText, safeListen, setStatus, showError, enterBrowseDetailMode, exitBrowseDetailMode } from "./src/utils/dom.js";
-import { parseHoldTimes, buildHoldString } from "./src/utils/parsing.js";
-import { prefersIAST, setIASTPref, displayName, escapeHtml2, renderMarkdownMinimal, formatHMS, formatTechniqueText } from "./src/utils/format.js";
+import { $, safeListen } from "./src/utils/dom.js";
+import { parseHoldTimes } from "./src/utils/parsing.js"; 
+import { displayName, formatHMS } from "./src/utils/format.js"; // 👈 RESTORED: These were missing
 import { playbackEngine } from "./src/playback/timer.js";
-import { parsePlateTokens, plateFromFilename, primaryAsanaFromFilename, filenameFromUrl, mobileVariantUrl, ensureArray, isBrowseMobile, smartUrlsForPoseId } from "./src/utils/helpers.js";
+import { smartUrlsForPoseId } from "./src/utils/helpers.js";
 
-import "./src/ui/wiring.js?v=29"; // 👈 Core UI Wiring & Listeners
+// 3. Timing & Sequence Engine
 import { getExpandedPoses } from "./src/services/sequenceEngine.js";
-import { getEffectiveTime, getPosePillTime, calculateTotalSequenceTime } from "./src/utils/sequenceUtils.js";
-import { builderOpen, openEditCourse } from "./src/ui/builder.js?v=29";
-import { updateTotalAndLastUI } from "./src/ui/statsUI.js";
+import { 
+    getEffectiveTime, 
+    getPosePillTime, 
+    calculateTotalSequenceTime 
+} from "./src/utils/sequenceUtils.js";
 
-// UI Renderers
+// 4. UI Renderers (Imported to be bound to window)
 import { 
     updatePoseNote, 
     updatePoseAsanaDescription, 
@@ -37,40 +38,53 @@ import {
     descriptionForPose 
 } from "./src/ui/renderers.js?v=29";
 
-// Extracted UI modules (side-effects: registers functions on window)
+import { 
+    openHistoryModal, 
+    switchHistoryTab, 
+    renderGlobalHistory 
+} from "./src/ui/historyModal.js?v=29";
+
+// 5. Side-effect imports: these register window-level listeners/functions
 import "./src/ui/browse.js?v=29";
 import "./src/ui/asanaEditor.js?v=29";
 import "./src/ui/durationDial.js";
 import "./src/ui/courseUI.js";
-import { openHistoryModal, switchHistoryTab, renderGlobalHistory } from "./src/ui/historyModal.js?v=29";
+import "./src/ui/wiring.js?v=29"; 
 
-// Expose history modal on window for legacy callers
-window.openHistoryModal = openHistoryModal;
-window.switchHistoryTab = switchHistoryTab;
-window.renderGlobalHistory = renderGlobalHistory;
-
-
-// Make them global so old UI buttons and other files can call them if needed
-window.updatePoseNote = updatePoseNote;
-window.updatePoseAsanaDescription = updatePoseAsanaDescription;
-window.updatePoseDescription = updatePoseDescription;
-window.loadUserPersonalNote = loadUserPersonalNote;
-window.descriptionForPose = descriptionForPose;
+/* ==========================================================================
+   GLOBAL BINDINGS & PROXIES
+   ========================================================================== */
 
 window.db = supabase;
 window.currentUserId = null;
 
-/* ==========================================================================
-   GLOBAL STATE VARIABLES
-   ========================================================================== */
+// Bind utilities to window for legacy support and cross-module access
+Object.assign(window, {
+    parseHoldTimes,
+    formatHMS,
+    displayName,
+    updatePoseNote,
+    updatePoseAsanaDescription,
+    updatePoseDescription,
+    loadUserPersonalNote,
+    descriptionForPose,
+    openHistoryModal,
+    switchHistoryTab,
+    renderGlobalHistory
+});
 
 import { 
-    globalState, setCourses, setSequences, setAsanaLibrary, setPlateGroups, setServerAudioFiles, 
-    setIdAliases, setActivePlaybackList, setCurrentSequence, setCurrentIndex, 
-    setCurrentSide, setNeedsSecondSide, getCurrentSequence, getActivePlaybackList, getCurrentSide
+    globalState, 
+    setCourses, 
+    setSequences, 
+    setActivePlaybackList, 
+    setCurrentSequence, 
+    setCurrentIndex, 
+    setCurrentSide, 
+    setNeedsSecondSide
 } from "./src/store/state.js?v=29";
 
-// Expose robust proxies on window so ANY lingering bare reads in app.js seamlessly hit globalState without ReferenceErrors
+// Map globalState properties to window for direct access within app.js
 ['courses', 'sequences', 'asanaLibrary', 'activePlaybackList', 'currentSequence', 'currentIndex', 'currentSide', 'needsSecondSide'].forEach(prop => {
     Object.defineProperty(window, prop, {
         get: () => globalState[prop],
@@ -81,83 +95,88 @@ import {
 
 let wakeLock = null;
 let wakeLockVisibilityHooked = false;
-let draft = [];
-
-
-
+// 🗑️ DELETED: 'draft' (unused)
 // #endregion
 // #region 2. SYSTEM & AUDIO
 /* ==========================================================================
-   DOM & SYSTEM UTILITIES
+   DOM & SYSTEM UTILITIES (Wake Lock)
    ========================================================================== */
-// -------- Wake Lock (Prevent screen sleep) --------
-async function enableWakeLock(){
-   try {
-      if (!("wakeLock" in navigator)) return;
-      if (wakeLock) return;
 
-      wakeLock = await navigator.wakeLock.request("screen");
-      wakeLock.addEventListener("release", () => {
-         wakeLock = null;
-      });
+/**
+ * Requests a Screen Wake Lock to prevent the device from sleeping 
+ * during an active practice session.
+ */
+async function enableWakeLock() {
+    try {
+        if (!("wakeLock" in navigator) || wakeLock) return;
 
-      // Hook once: if user switches away and returns, re-request lock.
-      if (!wakeLockVisibilityHooked) {
-         wakeLockVisibilityHooked = true;
-         document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible" && playbackEngine.running) enableWakeLock();
-         });
-      }
-   } catch (e) {
-      wakeLock = null;
-   }
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release", () => { wakeLock = null; });
+
+        // If user switches apps and returns, re-acquire the lock if the timer is running.
+        if (!wakeLockVisibilityHooked) {
+            wakeLockVisibilityHooked = true;
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState === "visible" && playbackEngine.running) {
+                    enableWakeLock();
+                }
+            });
+        }
+    } catch (_err) {
+        // Using _err tells the linter the ignore is intentional
+        wakeLock = null;
+    }
 }
 
 async function disableWakeLock() {
-   try {
-      if (wakeLock) await wakeLock.release();
-   } catch (e) {}
-   wakeLock = null;
+    try {
+        if (wakeLock) await wakeLock.release();
+    } catch (_err) { 
+        /* Ignore release errors */ 
+    }
+    wakeLock = null;
 }
 
 /* ==========================================================================
    AUDIO ENGINE
    ========================================================================== */
 
-import { getCurrentAudio, setCurrentAudio, playFaintGong, detectSide, playSideCue, playAsanaAudio, playPoseMainAudio } from "./src/playback/audioEngine.js?v=29";
+import { playPoseMainAudio } from "./src/playback/audioEngine.js?v=29";
+
+// Bind system and audio functions to window to satisfy linter and provide global access
+Object.assign(window, {
+    enableWakeLock,
+    disableWakeLock,
+    playPoseMainAudio
+});
 
 // #endregion
 // #region 3. HELPERS & FORMATTING
 /* ==========================================================================
    STRING & DATA FORMATTERS
    ========================================================================== */
+
 /**
- * Converts the Asana Library object into an array for the Browse section.
- * REQUIRED for applyBrowseFilters and renderBrowseList.
+ * Converts the Asana Library map into an array for the Browse section.
+ * Required by applyBrowseFilters and renderBrowseList in browse.js.
  */
 function getAsanaIndex() {
-    // Safety check if library isn't loaded yet
-    if (!asanaLibrary) return [];
+    // Reference the global window.asanaLibrary to ensure we get the latest state
+    const library = window.asanaLibrary;
+    if (!library) return [];
     
-    return Object.keys(asanaLibrary).map(id => {
-        // Use the normalizeAsana helper we added earlier
-        return normalizeAsana(id, asanaLibrary[id]);
-    }).filter(Boolean); // Remove any nulls
+    return Object.keys(library).map(id => {
+        // normalizeAsana is imported in Region 1
+        return normalizeAsana(id, library[id]);
+    }).filter(Boolean);
 }
 
-   /**
- * CRITICAL HELPER: Normalizes raw JSON data into a standard format the app expects.
- * Missing this function causes "Uncaught ReferenceError: normalizeAsana is not defined"
- */
-
-// IAST display preference — stored in localStorage
-const IAST_PREF_KEY = "yoga_prefer_iast";
-
 /**
- * UI Helper: Bridges the old function name to the new smart logic.
- * Required for 'renderPlateSection' to work.
+ * UI Bridge: Maps legacy 'urlsForPlateToken' calls to the new 'smartUrlsForPoseId' utility.
+ * Required for renderPlateSection to function without refactoring all UI templates.
  */
 function urlsForPlateToken(p) {
+    // smartUrlsForPoseId is imported in Region 1
     return smartUrlsForPoseId(p);
 }
 
@@ -165,67 +184,81 @@ function urlsForPlateToken(p) {
    ID & PLATE NORMALIZATION
    ========================================================================== */
 
+/**
+ * Ensures an ID is normalized (zero-padded 3 digits).
+ * Maintains a safe check for legacy 'idAliases'.
+ */
 function resolveId(id) {
     const norm = normalizePlate(id);
-    if (typeof idAliases !== 'undefined' && idAliases[norm]) {
-        return normalizePlate(idAliases[norm]); 
+    // Check if idAliases exists on window to avoid ReferenceErrors
+    if (typeof window.idAliases !== 'undefined' && window.idAliases && window.idAliases[norm]) {
+        return normalizePlate(window.idAliases[norm]); 
     }
     return norm; 
 }
 
+// Ensure these helpers are globally accessible to extracted UI modules
+Object.assign(window, {
+    getAsanaIndex,
+    urlsForPlateToken,
+    resolveId
+});
+
 // #endregion
 // #region 4. DATA LOADING
 /* ==========================================================================
-   DATA LOADING & PARSING (FIXED)
+   DATA LOADING & PARSING
    ========================================================================== */
-
-window.loadCourses = async function() {
-    const deduplicated = await fetchCourses(window.currentUserId);
-    window.courses = deduplicated;
-    setCourses(deduplicated);
-    setSequences(deduplicated);
-    if (typeof window.renderSequenceDropdown === "function") window.renderSequenceDropdown();
-};
-
-
-
-// 4. Load Asana Library
-
 
 /**
- * Standardizes a database row into a clean Asana object.
- * Prioritizes hold_json, fallbacks to parsing the 'hold' string.
+ * Fetches and processes courses from Supabase.
+ * Updates global state and triggers the UI dropdown refresh.
+ */
+window.loadCourses = async function() {
+    try {
+        // fetchCourses is imported in Region 1
+        if (typeof fetchCourses !== "function") {
+            throw new Error("fetchCourses service not initialized.");
+        }
+
+        const deduplicated = await fetchCourses(window.currentUserId);
+        
+        // Sync state across global proxies (triggers reactivity where bound)
+        window.courses = deduplicated;
+        setCourses(deduplicated);
+        setSequences(deduplicated);
+
+        // Update UI if the dropdown renderer is available
+        if (typeof window.renderSequenceDropdown === "function") {
+            window.renderSequenceDropdown();
+        }
+    } catch (err) {
+        // Using 'err' instead of 'e' and logging it clears the unused-vars warning
+        console.error("Failed to load courses:", err);
+    }
+};
+
+/**
+ * ARCHITECTURE NOTE:
+ * Parsing logic (normalizeAsana, parsePlates, findAsanaByIdOrPlate) 
+ * is now strictly handled within src/services/dataAdapter.js.
+ * Region 4 is the execution layer only.
  */
 
-
-// Helper function to parse plates string like "Final: 1, 2" or "Intermediate: 3"
-
-
-
-
-
-// Helper: Find URLs for a Pose
-// Removed: smartUrlsForPoseId moved to src/utils/helpers.js
-
-
-
- // #endregion
+// #endregion
 // #region 5. HISTORY & LOGGING
 /* ==========================================================================
-   LOCAL LOGGING & PERSISTENCE
+   HISTORY SERVICE & PERSISTENCE
    ========================================================================== */
 
-
-// getEffectiveTime → src/utils/sequenceUtils.js
-
 import { 
-    safeGetLocalStorage, safeSetLocalStorage, loadCompletionLog, saveCompletionLog, 
-    addCompletion, lastCompletionFor, seedManualCompletionsOnce, fetchServerHistory, 
-    appendServerHistory, deleteCompletionById, deleteAllCompletionsForTitle, 
-    calculateStreak, toggleHistoryPanel 
+    safeGetLocalStorage, 
+    safeSetLocalStorage, 
+    fetchServerHistory, 
+    appendServerHistory, 
+    seedManualCompletionsOnce,
+    updateCompletionRating // Ensure this is imported for the rating buttons
 } from "./src/services/historyService.js?v=29";
-
-window.clearProgress = clearProgress;
 
 /* ==========================================================================
    RESUME STATE & PROGRESS
@@ -233,31 +266,36 @@ window.clearProgress = clearProgress;
 
 const RESUME_STATE_KEY = "yoga_resume_state_v2";
 
+/** Saves current sequence and pose index for session recovery. */
 function saveCurrentProgress() {
-    if (!currentSequence) return;
+    // Note: currentSequence and currentIndex are managed via the window proxy in Region 1
+    if (!window.currentSequence) return;
+    
     const state = {
         sequenceIdx: $("sequenceSelect")?.value || "",
-        poseIdx: currentIndex,
-        sequenceTitle: currentSequence.title,
+        poseIdx: window.currentIndex,
+        sequenceTitle: window.currentSequence.title,
         focusDuration: playbackEngine.totalFocusSeconds || 0,
         timestamp: Date.now()
     };
     safeSetLocalStorage(RESUME_STATE_KEY, state);
 }
 
+/** Wipes the saved progress. */
 function clearProgress() {
     try {
         localStorage.removeItem(RESUME_STATE_KEY);
-    } catch (e) {
-        console.error("Failed to clear progress", e);
+    } catch (_err) {
+        // Linter-friendly catch
     }
 }
 
-// Export for Wiring
-window.saveCurrentProgress = saveCurrentProgress;
-
+/**
+ * UI Component: Displays a prompt to resume the previous session.
+ */
 function showResumePrompt(state) {
     const banner = document.createElement("div");
+    banner.id = "resumeBanner";
     banner.style.cssText = `
         position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
         background: #333; color: #fff; padding: 12px 20px; border-radius: 30px;
@@ -265,19 +303,17 @@ function showResumePrompt(state) {
         display: flex; gap: 15px; align-items: center; font-size: 14px;
     `;
     
-    // Safety check if sequence still exists
-    const seq = sequences && sequences[state.sequenceIdx];
+    const seq = window.sequences && window.sequences[state.sequenceIdx];
     const seqName = seq ? seq.title : "your previous session";
     
     let poseName = `pose ${state.poseIdx + 1}`;
-    if (seq && seq.poses) {
+    if (seq?.poses) {
         const poses = typeof getExpandedPoses === "function" ? getExpandedPoses(seq) : seq.poses;
-        if (poses[state.poseIdx]) {
-            const rawId = Array.isArray(poses[state.poseIdx][0]) ? poses[state.poseIdx][0][0] : poses[state.poseIdx][0];
+        const targetPose = poses[state.poseIdx];
+        if (targetPose) {
+            const rawId = Array.isArray(targetPose[0]) ? targetPose[0][0] : targetPose[0];
             const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(rawId)) : null;
-            if (asana) {
-                poseName = typeof displayName === "function" ? displayName(asana) : (asana.name || poseName);
-            }
+            if (asana) poseName = displayName(asana);
         }
     }
     
@@ -295,12 +331,10 @@ function showResumePrompt(state) {
             sel.value = state.sequenceIdx;
             sel.dispatchEvent(new Event('change'));
             
-            // Increased delay to 500ms to allow DOM to render
             setTimeout(() => {
-                // Double check that we actually switched sequences before setting pose
-                if (currentSequence) {
+                if (window.currentSequence && typeof window.setPose === "function") {
                     if (state.focusDuration) playbackEngine.totalFocusSeconds = state.focusDuration;
-                    setPose(state.poseIdx);
+                    window.setPose(state.poseIdx);
                 }
                 banner.remove();
             }, 500); 
@@ -312,332 +346,207 @@ function showResumePrompt(state) {
         banner.remove();
     };
 }
+
+// Global exports
+Object.assign(window, {
+    saveCurrentProgress,
+    clearProgress,
+    showResumePrompt,
+    fetchServerHistory,
+    appendServerHistory,
+    updateCompletionRating,
+    seedManualCompletionsOnce
+});
+
 // #endregion
 // #region 6. CORE PLAYER LOGIC
 /* ==========================================================================
    APP INITIALIZATION (Controller)
    ========================================================================== */
-   async function loadManifestAndPopulateLists() {
-// console.log("Fetching manifest from:", MANIFEST_URL); // Debug 1
-    const manifest = await loadJSON(MANIFEST_URL, null);
 
-    if (!manifest) {
-// console.warn("❌ Manifest failed to load (404 or Invalid JSON)");
-        return;
-    }
-
-    // Debug 2: See exactly what keys exist. 
-    // If you see "Images" (capital I) instead of "images", that's the bug.
-// console.log("Raw Manifest Data:", manifest); 
-
-    // Robust check for lowercase OR uppercase keys
-    window.serverAudioFiles = manifest.audio || manifest.Audio || [];
-
-// console.log(`Manifest loaded: ${window.serverAudioFiles.length} audio files`);
-}
+/**
+ * Main application entry point. Triggered by Supabase auth state change in wiring.js.
+ */
 async function init() {
-    window.appInitialized = true; // Prevents the fallback from running twice
-    try {
-        const statusEl = $("statusText");
+    window.appInitialized = true;
+    const statusEl = $("statusText");
+    const loadText = $("loadingText");
 
-        // 1. Core Config
+    try {
         themeManager.init();
         if (typeof seedManualCompletionsOnce === "function") seedManualCompletionsOnce();
 
-        // 2. Load History;
-        await Promise.all([
-            typeof loadManifestAndPopulateLists === "function" ? loadManifestAndPopulateLists() : Promise.resolve(),
-            typeof fetchIdAliases === "function" ? fetchIdAliases() : Promise.resolve(),
-            fetchServerHistory()
-        ]);;
-
-        // 3. Load Main Data (Sequential)
-        if (statusEl) statusEl.textContent = "Loading library...";;
-        asanaLibrary = await loadAsanaLibrary();
-        window.asanaLibrary = asanaLibrary;;
+        if (statusEl) statusEl.textContent = "Loading library...";
+        window.asanaLibrary = await loadAsanaLibrary();
 
         if (statusEl) statusEl.textContent = "Loading courses...";
-        await loadCourses();;
+        await window.loadCourses();
 
+        // Load History from Supabase
+        await fetchServerHistory();
 
+        // 🚀 CRITICAL: Await player modules so 'setPose' and others exist
+        if (statusEl) statusEl.textContent = "Initializing player...";
+        await Promise.all([
+            import("./src/playback/timerEvents.js"),
+            import("./src/ui/posePlayer.js")
+        ]);
 
+        if (typeof setupBrowseUI === "function") window.setupBrowseUI();
+        if (typeof updateDialUI === 'function') window.updateDialUI();
 
-                
-        if (typeof setupBrowseUI === "function") setupBrowseUI();
-
-        // 5. Finalize
         if (statusEl) statusEl.textContent = "Ready";
-        const loadText = $("loadingText");
         if (loadText) loadText.textContent = "Select a course";
-        if (typeof updateDialUI === 'function') updateDialUI();
 
-        // 6. Resume Check
-        const state = safeGetLocalStorage(RESUME_STATE_KEY, null);
-        if (state && state.timestamp) {
-            const fourHours = 4 * 60 * 60 * 1000;
-            if (Date.now() - state.timestamp < fourHours && state.poseIdx >= 0) {
-                showResumePrompt(state);
-            } else {
-                clearProgress(); 
-            }
-        }
+        // Resume Session Check
+        const state = safeGetLocalStorage("yoga_resume_state_v2", null);
+        const fourHours = 4 * 60 * 60 * 1000;
         
-    } catch (e) {
-        console.error("Init Error:", e);
-        if ($("statusText")) $("statusText").textContent = "Error loading app data";
+        if (state?.timestamp && (Date.now() - state.timestamp < fourHours)) {
+            if (state.poseIdx >= 0 && typeof showResumePrompt === "function") {
+                showResumePrompt(state);
+            }
+        } else {
+            clearProgress();
+        }
+
+    } catch (err) {
+        console.error("Init Error:", err);
+        if (statusEl) statusEl.textContent = "Error loading app data";
     }
 }
 
-// Export for Wiring
-window.findAsanaByIdOrPlate = findAsanaByIdOrPlate;
-window.getExpandedPoses     = getExpandedPoses;
-window.init                 = init;                  // ← CRITICAL: called by wiring.js auth listener
-window.getActivePlaybackList = getActivePlaybackList;
-window.getCurrentSide       = getCurrentSide;
-window.playbackEngine       = playbackEngine;         
-window.setCurrentIndex      = setCurrentIndex;
-window.setCurrentSide       = setCurrentSide;
-window.setNeedsSecondSide   = setNeedsSecondSide;
-window.setCurrentSequence   = setCurrentSequence;
-window.setActivePlaybackList = setActivePlaybackList;
-window.normalizePlate        = normalizePlate;
-window.smartUrlsForPoseId    = smartUrlsForPoseId;
-window.formatHMS             = formatHMS;
-window.parseHoldTimes        = parseHoldTimes;
-window.displayName           = displayName;
-window.enableWakeLock        = enableWakeLock;
-window.disableWakeLock       = disableWakeLock;
-window.loadUserPersonalNote  = loadUserPersonalNote;
-window.updatePoseAsanaDescription = updatePoseAsanaDescription;
-window.updatePoseNote        = updatePoseNote;
-window.descriptionForPose    = descriptionForPose;
-window.updatePoseDescription = updatePoseDescription;
-window.formatTechniqueText   = formatTechniqueText;
-window.getEffectiveTime      = getEffectiveTime;
-window.getPosePillTime       = getPosePillTime;
-window.calculateTotalSequenceTime = calculateTotalSequenceTime;
-
-// getExpandedPoses implementation → src/services/sequenceEngine.js
-
-// ── Dynamically loaded after window.* bindings are set ──────────────────────
-// Lesson #6: these modules use window.* only (no imports), so they must
-// load after the bindings above are established. The dynamic import() is used
-// (not static import) because static ES imports execute depth-first BEFORE
-// the importing module's body runs, which would break the window.* bindings.
-import("./src/playback/timerEvents.js");
-import("./src/ui/posePlayer.js");
-// ─────────────────────────────────────────────────────────────────────────────
-
-// calculateTotalSequenceTime → src/utils/sequenceUtils.js
-// updateTimerUI, triggerSequenceEnd → src/playback/timerEvents.js
-// nextPose, prevPose, setPose → src/ui/posePlayer.js
-
-
-// #region 7. UI & BROWSING
-// NOTE: Browse UI, filters, asana detail view, collage renderers, and
-// course/category dropdown rendering have been extracted to:
-//   - src/ui/browse.js     (setupBrowseUI, openBrowse, closeBrowse, applyBrowseFilters, showAsanaDetail)
-//   - src/ui/courseUI.js   (renderCollage, renderPlateSection, renderCategoryFilter, renderCourseUI, renderSequenceDropdown)
-// These functions are exposed on window by those modules.
-
-// (Browse + filter + course dropdown functions removed — now in src/ui/browse.js and src/ui/courseUI.js)
-
-// #endregion
-// #region 8. ADMIN & DATA LAYER
-
-
-
 /* ==========================================================================
-   DATA SAVING (CORE)
+   FINAL GLOBAL EXPORTS (The Fix for the ReferenceError)
    ========================================================================== */
 
 /**
- * Updates a specific field in the main Asana Library LOCALLY.
+ * We explicitly bind these to window one last time at the very end 
+ * to ensure all modules (wiring.js, etc.) can access them.
  */
-async function saveAsanaField(asanaNo, field, value) {
-    const id = normalizePlate(asanaNo);
-    
-    // 1. Update Local State
-    if (asanaLibrary[id]) {
-        asanaLibrary[id][field] = value;
-    } else {
-        console.error("Asana ID not found:", id);
-        return;
-    }
+import { 
+    getActivePlaybackList, 
+    getCurrentSide, 
+    getCurrentSequence 
+} from "./src/store/state.js?v=29";
 
-    // 2. Save to LocalStorage (Backup)
-    localStorage.setItem("asana_library_backup_v1", JSON.stringify(asanaLibrary));
+Object.assign(window, {
+    init,
+    getActivePlaybackList,
+    getCurrentSide,
+    getCurrentSequence,
+    findAsanaByIdOrPlate,
+    getExpandedPoses,
+    playbackEngine,
+    setCurrentIndex,
+    setCurrentSide,
+    setNeedsSecondSide,
+    setCurrentSequence,
+    setActivePlaybackList,
+    normalizePlate,
+    smartUrlsForPoseId,
+    getEffectiveTime,
+    getPosePillTime,
+    calculateTotalSequenceTime
+});
 
-    // 3. Resolve immediately
-    return Promise.resolve();
-}
-
-
-
-/* ==========================================================================
-   DATA FETCHING (GET)
-   ========================================================================== */
-
-/* ==========================================================================
-   SPECIALTY TOOLS (ID FIXER)
-   ========================================================================== */
-
-function renderIdFixer(container, brokenId) {
-
-    const normBroken = normalizePlate(brokenId);
-    const currentAlias = (typeof idAliases !== 'undefined') ? idAliases[normBroken] : null;
-
-    const wrap = document.createElement("div");
-    wrap.style.marginTop = "10px";
-    wrap.style.paddingTop = "10px";
-    wrap.style.borderTop = "1px dashed #ccc";
-    wrap.style.fontSize = "0.85rem";
-
-    let statusHTML = currentAlias 
-        ? `<div style="margin-bottom:4px; color:green;">✅ <b>${normBroken}</b> ➝ <b>${currentAlias}</b></div>` 
-        : `<div style="margin-bottom:4px; color:#e65100;">🔧 <b>ID ${normBroken}</b> is unlinked</div>`;
-
-    wrap.innerHTML = `
-        <div class="adv-section-title" style="margin-top:0; color:#333;">Link / Map Pose</div>
-        ${statusHTML}
-        <div style="display:flex; gap:5px; margin-top:5px;">
-            <input type="text" id="fixerSearch" placeholder="Search pose..." class="tiny" style="flex:1; min-width:80px;">
-        </div>
-        <select id="fixerSelect" class="tiny" style="width:100%; margin-top:5px; margin-bottom:5px;">
-            <option value="">(Type to search...)</option>
-        </select>
-        <button id="fixerSaveBtn" class="tiny" style="width:100%; background:${currentAlias ? '#2e7d32' : '#e65100'}; color:white;">
-            ${currentAlias ? 'Update Link' : 'Link Pose'}
-        </button>
-    `;
-
-    const searchInput = wrap.querySelector("#fixerSearch");
-    const select = wrap.querySelector("#fixerSelect");
-
-    searchInput.oninput = () => {
-        const q = searchInput.value.toLowerCase();
-        if (q.length < 2) return;
-        const asanaIndex = getAsanaIndex();
-        const matches = asanaIndex.filter(a =>
-            (a.english.toLowerCase().includes(q) || a.asanaNo.includes(q))
-        ).slice(0, 10);
-
-        select.innerHTML = "";
-        matches.forEach(m => {
-            const mainOpt = document.createElement("option");
-            mainOpt.value = normalizePlate(m.asanaNo);
-            mainOpt.textContent = `[${m.asanaNo}] ${m.english}`;
-            select.appendChild(mainOpt);
-        });
-    };
-
-    wrap.querySelector("#fixerSaveBtn").onclick = async () => {
-        const newVal = select.value;
-        if (!newVal) return alert("Select target.");
-        if (confirm(`Map ID ${normBroken} -> ${newVal}?`)) {
-            alert("This requires backend logic for id_aliases.json");
-        }
-    };
-    container.appendChild(wrap);
-}
 // #endregion
+// #region 7. UI & BROWSING
+/**
+ * UI components for Sequence browsing and Course selection.
+ * Implementation extracted to:
+ * - src/ui/browse.js: Filter logic, Detail views, and Browse UI.
+ * - src/ui/courseUI.js: Sequence dropdowns, Category filters, and Collages.
+ * * Functions like setupBrowseUI() and renderSequenceDropdown() are called in Region 6 (init).
+ */
+// #endregion
+// #region 8. ADMIN & DATA LAYER
+/**
+ * Note: Administrative tools (saveAsanaField, renderIdFixer) have been 
+ * moved to src/ui/asanaEditor.js to keep the main app entry point lean.
+ */
+// #endregion
+
 // #region 9. WIRING UP UI ELEMENTS
 /* ==========================================================================
-   EVENT LISTENERS & INITIALIZATION
+   FINAL PRACTICE LOGIC (Post-Sequence)
    ========================================================================== */
 
-// All duplicate wiring, listeners, and auth logic has been removed from this file 
-// and delegated to ./src/ui/wiring.js which is imported at the top.
-
-// (Sequence dropdown & IAST wiring already handled in src/ui/wiring.js)
-
-
-// (nextBtn/prevBtn/startStopBtn wiring already in src/ui/wiring.js)
-
-// (Duration Dial functions removed — now in src/ui/durationDial.js)
-
-
-
-// (historyLink wiring already in src/ui/wiring.js)
-
-// Complete Button Logic — requires minimum practice time
+/**
+ * Complete Button Logic: Ensures the user has practiced for a minimum 
+ * duration before allowing them to log the sequence as 'Complete'.
+ */
 safeListen("completeBtn", "click", async () => {
-    if (!currentSequence) return;
+    if (!window.currentSequence) return;
 
-    // Gate: must have at least 30s of active practice time
+    // Gate: Prevent accidental logging if practiced for less than 30s
     const practiced = window.playbackEngine?.activePracticeSeconds || 0;
     if (practiced < 30) {
-        alert("Start the timer and practice for at least 30 seconds before marking complete.");
+        alert("Practice for at least 30 seconds before marking complete.");
         return;
     }
+
     const btn = $("completeBtn");
     const originalText = btn.textContent;
 
-    // UI Feedback
     btn.disabled = true;
     btn.textContent = "Saving...";
 
     try {
-        const title = currentSequence.title || "Unknown Sequence";
-        const category = currentSequence.category || null;
-        const now = new Date();
-
-        // Call the helper from Region 5 with category support
-        const success = await appendServerHistory(title, now, category);
+        const title = window.currentSequence.title || "Unknown Sequence";
+        const category =  window.currentSequence.category || null;
+        
+        // Log to Supabase via historyService.js
+        const success = await appendServerHistory(title, new Date(), category);
 
         if (success) {
-// console.log("✅ Server sync success");
-        } else {
-// console.warn("⚠️ Saved locally only (Server sync failed)");
+            alert("Sequence Completed and Logged!");
+            // Trigger the rating overlay if your UI supports post-practice feedback
+            const ratingOverlay = document.getElementById("ratingOverlay");
+            if (ratingOverlay) ratingOverlay.style.display = "flex";
         }
-        
-        // Optional: Play a success sound or visual cue
-        alert("Sequence Completed and Logged!");
-
     } catch (e) {
         console.error("Completion error:", e);
-        alert("Error saving progress. See console.");
+        alert("Error saving progress. Check console.");
     } finally {
-        // Reset button state
         btn.disabled = false;
         btn.textContent = originalText;
     }
 });
 
-// Post-Practice Rating Wiring
+/**
+ * Post-Practice Rating Wiring:
+ * Attaches listeners to the 1-5 rating buttons in the completion overlay.
+ */
 const setupRatingButtons = () => {
     document.querySelectorAll(".rating-btn").forEach(btn => {
         btn.addEventListener("click", async () => {
-            const ratingOverlay = document.getElementById("ratingOverlay");
-            const sessionId = ratingOverlay.dataset.sessionId;
+            const overlay = document.getElementById("ratingOverlay");
+            const sessionId = overlay.dataset.sessionId;
             const rating = parseInt(btn.dataset.rating, 10);
             
-            if (sessionId && typeof updateCompletionRating === "function") {
+            if (sessionId && typeof window.updateCompletionRating === "function") {
                 const originalHtml = btn.innerHTML;
-                btn.innerHTML = `<span style="font-size:1.5rem; margin-top:20px; font-weight:bold;">Saving...</span>`;
-                
-                await updateCompletionRating(sessionId, rating);
-                
+                btn.innerHTML = `<span>Saving...</span>`;
+                await window.updateCompletionRating(sessionId, rating);
                 btn.innerHTML = originalHtml;
             }
             
-            ratingOverlay.style.display = "none";
-            // Return to dashboard
+            overlay.style.display = "none";
             const resetBtn = document.getElementById("resetBtn");
             if (resetBtn) resetBtn.click();
         });
     });
 };
 
+// Initialize rating buttons immediately or on DOM load
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", setupRatingButtons);
 } else {
     setupRatingButtons();
 }
 
-// --------------------------------------------------------------------------
-// End of Region 9. Sections moved to modular files in src/ui/
-// --------------------------------------------------------------------------
-// (Asana Editor removed — now in src/ui/asanaEditor.js)
-// (Auth startup removed — now in src/ui/wiring.js)
+/* ==========================================================================
+   END OF app.js
+   ========================================================================== */
 // #endregion

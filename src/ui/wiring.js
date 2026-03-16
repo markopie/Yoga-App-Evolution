@@ -136,18 +136,10 @@ safeListen("lastCompletedPill", "click", () => {
 
 safeListen("historyLink", "click", (e) => {
     e.preventDefault();
-    if (typeof toggleHistoryPanel === 'function') toggleHistoryPanel();
+    if (typeof toggleHistoryPanel === 'function') window.toggleHistoryPanel();
 });
 
-const durationDial = document.getElementById("durationDial");
-if (durationDial) {
-    durationDial.addEventListener("input", () => {
-        let val = parseInt(durationDial.value, 10);
-        if (val > 45 && val < 55) durationDial.value = 50;
-        if (typeof window.updateDialUI === "function") window.updateDialUI();
-        if (getCurrentSequence()) window.applyDurationDial();
-    });
-}
+
 
 // #region 4. BUILDER WIRING
 

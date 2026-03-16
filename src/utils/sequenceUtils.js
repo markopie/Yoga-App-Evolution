@@ -1,40 +1,23 @@
 // src/utils/sequenceUtils.js
-// Pure utility functions for sequence timing calculations.
-// No DOM access — safe to call from any context.
-//
-// Timing contracts (see refactor-roadmap.md Lesson #9):
-//   getEffectiveTime(id, dur, tier) — resolves duration from hold column; honours tier keyword.
-//                                     Use for builder stats & calculateTotalSequenceTime.
-//   getPosePillTime(p)              — reads p[1] (dial-adjusted); honours tier from p[4] note.
-//                                     Use for the live timer pill & time-remaining display.
-//
-// Tier persistence:
-//   Tier overrides are stored as "tier:S" or "tier:L" in p[4] (the note field).
-//   p[5] is reserved for originalIdx (set by getExpandedPoses) — do NOT use for tier.
-//   Consumers call extractTier(p[4]) to get the tier string.
-
 import { getHoldTimes } from './parsing.js';
 
-/** Extracts a hold-tier keyword ('S', 'L', 'STD') from a note string, or '' if none. */
-function extractTier(note) {
+/**
+ * Extracts the tier from a pose note (e.g., "tier:S").
+ */
+export function extractTier(note) {
     if (!note || typeof note !== 'string') return '';
     const m = note.match(/\btier:(S|L|STD)\b/i);
     return m ? m[1].toUpperCase() : '';
 }
 
 /**
- * Resolves the actual seconds for a given hold tier ('S', 'L', 'STD') by doing a
- * LIVE lookup in window.asanaLibrary. If an asana's short/long value changes in the
- * database, all sequences using that tier keyword automatically pick up the new value.
- *
- * @param {object} asana - Asana object from asanaLibrary
- * @param {string} tier  - 'S' | 'L' | 'STD'
- * @returns {number|null} - Resolved seconds, or null if not found
+ * Resolves duration based on library tiers.
  */
-function resolveTierDuration(asana, tier) {
-    if (!asana || !tier || typeof tier !== 'string') return null;
-    const hj = getHoldTimes(asana);
-    const t = tier.toUpperCase();
+function resolveTierDuration(target, tier) {
+    if (!target || !tier) return null;
+    const hj = getHoldTimes(target);
+    const t = String(tier).toUpperCase();
+    
     if (t === 'S')   return hj.short    != null ? Number(hj.short)    : null;
     if (t === 'L')   return hj.long     != null ? Number(hj.long)     : null;
     if (t === 'STD') return hj.standard != null ? Number(hj.standard) : null;
@@ -42,116 +25,96 @@ function resolveTierDuration(asana, tier) {
 }
 
 /**
- * Returns the canonical effective duration (in seconds) for a single pose entry.
- * - If a tier keyword is present in p[4] (note), resolves LIVE from library.
- * - Otherwise reads hold standard from the asana library.
- * - Doubles duration if the asana requires both sides.
- * - Returns 0 for MACRO, LOOP_START, LOOP_END markers.
- *
- /**
- * Returns the canonical effective duration (in seconds) for a single pose entry.
- * * PRIORITY RULES:
- * 1. Use authored duration ONLY if:
- * - The ID is a protected stage (31-131)
- * - OR an explicit tier (S, L, STD) is present.
- * 2. DEFAULT: Use library 'standard' duration for everything else.
- * * @param {string|Array} id   - Asana ID
- * @param {number}       dur  - Authored duration from the sequence row
- * @param {string}       [tier] - Optional tier keyword: 'S' | 'L' | 'STD'
- * @returns {number} Duration in seconds
+ * The "Brain" Logic for pose timing.
  */
-export function getEffectiveTime(id, dur, tier) {
+export function getEffectiveTime(id, dur, tier, varKey, note, returnPerSide = false) {
     let rawId = id;
     if (Array.isArray(rawId)) rawId = rawId[0];
-    if (Array.isArray(rawId)) rawId = rawId[0]; // double-unwrap guard
-
     const strId = String(rawId || "");
 
-    // Structural markers — no time contribution
-    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END") || strId.startsWith("LOOP_START")) {
-        return 0;
+    // Macros and Loops carry no duration themselves
+    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP")) return 0;
+
+    const lib = window.asanaLibrary || {};
+    const key = strId.trim().replace(/^0+/, "").padStart(3, "0");
+    const asana = lib[key];
+
+    if (!asana) {
+        if (strId) console.warn(`⚠️ Timing Logic: ID ${strId} not found.`);
+        return Number(dur) || 30;
     }
 
-    const lib      = window.asanaLibrary || {};
-    // Ensure we handle numeric comparison for the range check
-    const idNum    = parseInt(strId.replace(/\D/g, ''), 10);
-    const key      = strId.trim().replace(/^0+/, "").padStart(3, "0");
-    const asana    = lib[key];
-    const hj       = getHoldTimes(asana);
+    let targetForHold = asana;
+    let variation = varKey;
+    
+    // Auto-detect variation from note if not explicitly provided
+    if (!variation && note) {
+        const match = note.match(/\[.*?\b([IVX]+)([a-z]?)\b.*?\]/i);
+        if (match) variation = match[1].toUpperCase() + (match[2] ? match[2].toLowerCase() : "");
+    }
+    
+    if (variation && asana.variations && asana.variations[variation]) {
+        targetForHold = asana.variations[variation];
+    }
 
-    let duration;
-
-    // RULE 1: Protected Stages (31-131) or Explicit Tiers use the authored sequence time
-    if ((idNum >= 31 && idNum <= 131) || tier) {
-        // If a tier is present, we try to resolve that specific tier value from the library first
-        if (tier && asana) {
-            const tierDur = resolveTierDuration(asana, tier);
-            duration = tierDur ?? Number(dur) ?? 0;
-        } else {
-            duration = Number(dur) || (hj ? hj.standard : 0);
+    // RULE 1: Explicit Tiers (S/L/STD) override everything.
+    if (tier) {
+        const tierDur = resolveTierDuration(targetForHold, tier);
+        if (tierDur != null) {
+            return returnPerSide ? tierDur : (asana.requiresSides || asana.requires_sides ? tierDur * 2 : tierDur);
         }
     } 
-    // RULE 2: Global Default - Use library standard, ignoring authored duration
-    else {
-        duration = (hj && hj.standard != null) ? Number(hj.standard) : (Number(dur) || 0);
+
+    // RULE 2: Fallback to Library ONLY if authored duration is missing/zero.
+    let duration = Number(dur) || 0;
+    if (duration === 0) {
+        const hj = getHoldTimes(targetForHold);
+        duration = (hj && hj.standard != null) ? Number(hj.standard) : 30;
     }
 
-    // Final side calculation
-    if (asana && (asana.requiresSides || asana.requires_sides)) return duration * 2;
+    // RULE 3: Trust the Author / Bilateral Logic
+    const isBilateral = asana.requiresSides || asana.requires_sides;
+    if (isBilateral) {
+        return returnPerSide ? duration : (duration * 2);
+    }
+
     return duration;
 }
 
 /**
- * Sums the effective time of all poses in an expanded sequence.
- * Relies on window.getExpandedPoses (sequenceEngine.js) if available.
- *
- * @param {object} seq - Sequence object with .poses array
- * @returns {number} Total duration in seconds
+ * Sums the entire sequence time.
  */
 export function calculateTotalSequenceTime(seq) {
     if (!seq || !seq.poses) return 0;
-    const expanded = typeof window.getExpandedPoses === "function"
-        ? window.getExpandedPoses(seq)
+    const expanded = typeof window.getExpandedPoses === "function" 
+        ? window.getExpandedPoses(seq) 
         : seq.poses;
-    return expanded.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTier(p[4])), 0);
+        
+    return expanded.reduce((acc, p) => {
+        const time = getEffectiveTime(p[0], p[1], extractTier(p[4]), p[3], p[4]);
+        return acc + time;
+    }, 0);
 }
 
 /**
- * Returns the dial-aware duration for a single active pose entry.
- * Reads p[1] directly — already scaled by applyDurationDial().
- * Doubles for bilateral poses via a library lookup.
- * Respects tier keyword embedded in p[4] (note) for live library resolution.
- *
- * ⚠️  Use this for the LIVE TIMER PILL and time-remaining display.
- *     Do NOT use for builder stats — those must always show library defaults.
- *
- * @param {Array} p  - Pose tuple from activePlaybackList / currentSequence.poses
- * @returns {number} Duration in seconds
+ * Simple getter used by the UI (Pills/Dial Estimate).
  */
 export function getPosePillTime(p) {
     const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
     const strId = String(rawId || "");
-    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END") || strId.startsWith("LOOP_START")) return 0;
-
-    const lib   = window.asanaLibrary || {};
-    const key   = strId.trim().replace(/^0+/, "").padStart(3, "0");
+    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP")) return 0;
+    
+    const dur = Number(p[1]) || 0;
+    const lib = window.asanaLibrary || {};
+    const key = strId.trim().replace(/^0+/, "").padStart(3, "0");
     const asana = lib[key];
-
-    // Read tier from the note field (p[4]) — p[5] is originalIdx, not tier.
-    const tier  = extractTier(p[4]);
-
-    let dur;
-    if (tier && asana) {
-        const tierDur = resolveTierDuration(asana, tier);
-        dur = tierDur ?? Number(p[1]) ?? 0;
-    } else {
-        dur = Number(p[1]) || 0;
-    }
 
     return (asana && (asana.requiresSides || asana.requires_sides)) ? dur * 2 : dur;
 }
 
-// Global aliases for compatibility with app.js and wiring.js
-window.getEffectiveTime            = getEffectiveTime;
-window.calculateTotalSequenceTime  = calculateTotalSequenceTime;
-window.getPosePillTime             = getPosePillTime;
+// Global Exports
+Object.assign(window, {
+    getEffectiveTime,
+    calculateTotalSequenceTime,
+    getPosePillTime
+});

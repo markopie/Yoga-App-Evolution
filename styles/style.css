@@ -791,7 +791,7 @@ th {
     transform: scale(1.02);
 }
 
-* Filter Styling */
+/* Filter Styling */
 #categoryFilter {
     background-color: #f0f4f8; /* Light blue-grey to distinguish it */
     border-color: #cbd5e0;
@@ -1425,3 +1425,4 @@ body.modal-open {
     .builder-info-cell { display: none; }
     th.builder-info-th { display: none; }
 }
+v

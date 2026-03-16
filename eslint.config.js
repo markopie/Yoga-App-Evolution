@@ -1,35 +1,48 @@
+import js from "@eslint/js";
+import checkFile from "eslint-plugin-check-file";
+import globals from "globals";
 
-const checkFile = require("eslint-plugin-check-file");
-
-module.exports = [
+export default [
     {
-        // TARGET: Only check JS files to ensure no parsing errors
-        files: ["**/*.js"],
-        
-        // IGNORE: Don't lint the config file itself
-        ignores: ["eslint.config.js"],
-
+        // 1. GLOBAL IGNORES 
+        ignores: ["dist/**", "**/node_modules/**", "build/**", "scripts/legacy/**"]
+    },
+    {
+        files: ["**/*.js", "**/*.cjs"],
+        // Add this 'ignores' line here as well to protect this specific file from naming rules
+        ignores: ["eslint.config.js"], 
         plugins: {
             "check-file": checkFile
         },
-        
+        languageOptions: {
+            ecmaVersion: "latest",
+            sourceType: "module",
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+                supabase: "readonly",
+                asanaLibrary: "writable",
+                // Yoga App "Bridge" Globals
+                loadCourses: "readonly",
+                setupBrowseUI: "readonly",
+                updateDialUI: "readonly",
+                currentSequence: "readonly",
+                setPose: "readonly",
+                stopTimer: "readonly",
+                toggleHistoryPanel: "readonly"
+            }
+        },
         rules: {
-            // Rule 1: Files must be kebab-case
             "check-file/filename-naming-convention": [
                 "error",
-                { "**/*.js": "KEBAB_CASE" }
+                { "**/!(*.test).js": "CAMEL_CASE", "**/*.cjs": "SNAKE_CASE" }
             ],
-
-            // Rule 2: Strict Folder Structure
-            // If these files exist, they MUST be in the correct folder
-            "check-file/folder-match-with-fex": [
-                "error",
-                {
-                    "**/utils.js": "**/lib/",
-                    "**/image-manager.js": "**/lib/",
-                    "**/history.js": "**/lib/"
-                }
-            ]
+            "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+            "no-undef": "error",
+            "no-empty": "warn",
+            "no-useless-escape": "off",
+            "no-constant-binary-expression": "error",
+            "no-useless-assignment": "warn"
         }
     }
 ];

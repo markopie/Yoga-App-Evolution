@@ -168,6 +168,94 @@ export function getExpandedPoses(sequence) {
         recovIds.forEach(id => { const rp = createInjectedPose(id,  "Recovery Action");    if (rp) withInjected.push(rp); });
     });
 
+    // ────────────────────────────────────────────────────────────────────────
+   // ────────────────────────────────────────────────────────────────────────
+    // 4. THE ROOT INTERCEPTOR: Enforce Priority Rules (STAGE-AWARE)
+    // Permanently overwrite the authored sequence duration (p[1]) with the 
+    // strictly enforced hierarchy before any UI component can read it.
+    // ────────────────────────────────────────────────────────────────────────
+    const lib = window.asanaLibrary || {};
+    
+    withInjected.forEach(p => {
+        const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
+        const strId = String(rawId || "");
+        
+        // Skip structural markers and auto-injected poses
+        if (strId.startsWith("MACRO") || strId.startsWith("LOOP") || strId === "GROUP_END") return;
+        if (p[6] === "Preparatory Action" || p[6] === "Recovery Action") return;
+
+        const idNum = parseInt(strId.replace(/\D/g, ''), 10);
+        const key = strId.trim().replace(/^0+/, "").padStart(3, "0");
+        const asana = lib[key];
+        
+        if (!asana) return;
+
+        // --- 🛑 NEW: RESOLVE SPECIFIC STAGE/VARIATION ---
+        let targetForHold = asana;
+        let varKey = p[3]; // The parsing script extracts the Roman numeral to p[3]
+        
+        // Fallback: Check the note column just in case
+        if (!varKey && p[4]) {
+            const match = p[4].match(/\[.*?\b([IVX]+)([a-z]?)\b.*?\]/i);
+            if (match) varKey = match[1].toUpperCase() + (match[2] ? match[2].toLowerCase() : "");
+        }
+
+        if (varKey && asana.variations) {
+            // Check direct match
+            if (asana.variations[varKey]) {
+                targetForHold = asana.variations[varKey];
+            } else {
+                // Check fuzzy match (e.g. "I" vs "Stage I")
+                const normVar = varKey.toLowerCase().replace(/\s+/g, "");
+                for (const [vk, vd] of Object.entries(asana.variations)) {
+                    const title = (vd && typeof vd === 'object' && (vd.title || vd.Title)) || "";
+                    if (vk.toLowerCase() === normVar || title.toLowerCase().replace(/\s+/g, "").includes(normVar)) {
+                        targetForHold = vd;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Get the hold time from the STAGE (if found) or the BASE ASANA
+        const hj = window.getHoldTimes ? window.getHoldTimes(targetForHold) : {};
+        
+        // If the specific stage lacks a hold time, fallback to the base asana's standard
+        let libStandard = (hj && hj.standard != null) ? Number(hj.standard) : null;
+        if (libStandard == null) {
+            const baseHj = window.getHoldTimes ? window.getHoldTimes(asana) : {};
+            libStandard = (baseHj && baseHj.standard != null) ? Number(baseHj.standard) : 30;
+        }
+
+        // --- ENFORCE TIMING RULES ---
+        const note = p[4] || "";
+        const tierMatch = note.match(/\btier:(S|L|STD)\b/i);
+        const tier = tierMatch ? tierMatch[1].toUpperCase() : "";
+
+        // Pranayama Protection Zone (Asana IDs 203-230)
+        const isPranayama = idNum >= 203 && idNum <= 230;
+
+        // RULE 1: Pranayama Protection or Explicit Tier
+        if (isPranayama || tier) {
+            if (tier) {
+                let tierDur = libStandard;
+                if (tier === 'S' && hj.short != null) tierDur = Number(hj.short);
+                if (tier === 'L' && hj.long != null) tierDur = Number(hj.long);
+                if (tier === 'STD' && hj.standard != null) tierDur = Number(hj.standard);
+                
+                // Valid tier overwrites authored time, else falls back to authored time
+                p[1] = tierDur ?? (Number(p[1]) || libStandard);            } else {
+                // Pranayama without tier -> Respect the authored sequence time
+                p[1] = Number(p[1]) || libStandard;
+            }
+        } 
+        // RULE 2: Global Default
+        else {
+            // 🛑 DESTROY authored sequence time, FORCE STAGE/LIBRARY Standard
+            p[1] = libStandard;
+        }
+    });
+
     return withInjected;
 }
 

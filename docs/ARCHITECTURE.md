@@ -176,3 +176,28 @@ Data collection only — not integrated with current app code.
 
 - Library Fallback: The default standard time is used only if no tier or override exists.
 - Note: Bilateral multiplication (* 2) must only trigger on explicit === true checks to prevent string-coercion bugs.
+
+## 4. Technical Design Principles
+The "Single Brain" Pattern (Timing & Logic)
+To prevent UI drift and calculation discrepancies, the application follows a strict Centralized Logic architecture:
+
+Source of Truth: All timing math (Bilateral doubling, Tier overrides, Stage lookups) is quarantined within src/utils/sequenceUtils.js.
+
+The "Per-Side" Protocol: UI components (like the Duration Dial or Timer) must never perform division or multiplication (e.g., * 2 or / 2). Instead, they call getEffectiveTime(..., true) to request a single-side duration.
+
+Active Sync: The window.refreshAllTimingUI() hub ensures that a change in one component (e.g., the Dial) instantly propagates to all other displays (the Total Time Pill, the Dial Estimate, and the Builder Footer).
+
+Data Normalization & Resilience
+Idempotent Adaptation: dataAdapter.js normalizes inconsistent database strings into predictable objects (e.g., converting the hold string into a hold_json object) immediately upon fetch.
+
+Safe Guards: Functions like getEffectiveTime include "Bilateral Guards" to prevent application crashes if a sequence references a Pose ID that is missing from the library.
+
+## 5. Maintenance & Quality Control
+Python Logic Audit
+The project includes a audit_timing_logic.py script. This is a pre-commit requirement.
+
+Purpose: Scans all JavaScript files for "Logic Splits" (manual math).
+
+Target Patterns: Flags any instance of * 2, / 2, or Math.round used on durations outside of the central utility.
+
+Usage: python audit_timing_logic.py. If the script reports anything other than ✅ Clean, the code must be refactored to use sequenceUtils.js.

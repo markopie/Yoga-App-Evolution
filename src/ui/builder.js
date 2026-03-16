@@ -3,6 +3,8 @@ import { parseHoldTimes, parseSequenceText, buildHoldString } from "../utils/par
 import { normalizePlate } from "../services/dataAdapter.js";
 import { supabase } from "../services/supabaseClient.js";
 import { formatHMS, displayName } from "../utils/format.js";
+import { parseSemicolonCommand } from "../utils/builderParser.js";
+import { setupBuilderSearch } from "./builderSearch.js";
 
 const getEffectiveTime = (id, time) => window.getEffectiveTime ? window.getEffectiveTime(id, time) : time;
 const getAsanaIndex = () => {
@@ -19,10 +21,8 @@ const ADMIN_EMAIL = 'mark.opie@gmail.com';
 const isAdmin = () => window.currentUserEmail === ADMIN_EMAIL;
 
 // ── Sanskrit / English name toggle ────────────────────────────────────────────
-// When true, builder rows show asana.name (Sanskrit) instead of asana.english.
 let builderShowSanskrit = false;
 
-/** Returns the display name for a pose row respecting the Sanskrit toggle. */
 function builderPoseName(asana, fallback) {
     if (!asana) return fallback || 'Unknown';
     if (builderShowSanskrit) {
@@ -30,7 +30,6 @@ function builderPoseName(asana, fallback) {
     }
     return asana.english || asana.name || fallback || 'Unknown';
 }
-
 
 function builderRender() {
     const tbody = document.getElementById("builderTableBody");
@@ -42,8 +41,6 @@ function builderRender() {
  
     let totalSec = 0;
     const libraryArray = Object.values(window.asanaLibrary || {});
-    
-    // --- NEW: Category Detection ---
     const currentCategory = (document.getElementById("builderCategory")?.value || "").toLowerCase(); 
     const isFlow = currentCategory.includes("flow");
  
@@ -67,11 +64,8 @@ function builderRender() {
         } else if (!isLoopStart && !isLoopEnd) {
             const normId = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
             asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
-            
-            // IF NOT FLOW: Force library standard timing
             const libraryStd = asana ? (window.getHoldTimes(asana).standard || 30) : 30;
             const activeTime = isFlow ? durOrReps : libraryStd;
-    
             totalSec += getEffectiveTime(idStr, activeTime);
         }
     
@@ -124,8 +118,6 @@ function builderRender() {
                </select>`;
         }
 
-        // Duration is now governed by library defaults — no per-row editing needed
-        // For macros/loop-starts, we still allow rounds input
         const isSpecial = isMacro || isLoopStart || isLoopEnd;
         let roundsHTML = '';
         if (isMacro || isLoopStart) {
@@ -138,13 +130,10 @@ function builderRender() {
         }
 
         // --- INJECTED POSE BADGES ---
-        // Inform the builder author about auto-injected prep/recovery poses so the
-        // total runtime makes sense (injected time is NOT included in the builder stats).
         let injectionBadgesHTML = '';
         if (!isSpecial && asana) {
             const lib = window.asanaLibrary || {};
 
-            // Helper: resolve a pose ID to its name + standard duration
             const resolvePose = (rawId) => {
                 if (!rawId || rawId === 'NULL' || rawId === 'null') return null;
                 const cleanId = String(rawId).trim().replace(/\|/g, '').replace(/\s+/g, '');
@@ -154,7 +143,6 @@ function builderRender() {
                 const varSuffix = (parsed[2] || '').toUpperCase();
                 const target = lib[numId];
                 if (!target) return null;
-                // hold times come from getHoldTimes(target) — parses the hold text column
                 const targetHold = window.getHoldTimes ? window.getHoldTimes(target) : {};
                 let dur = targetHold.standard ?? target.standard_seconds ?? 30;
                 let name = target.english || target.name || `ID ${numId}`;
@@ -166,16 +154,13 @@ function builderRender() {
                         dur = vdHold.standard ?? dur;
                     }
                 }
-                // Double if sides required
                 if (target.requiresSides || target.requires_sides) dur *= 2;
                 return { name, dur };
             };
 
-            // Check base asana's prep/recovery
             let prepId = asana.preparatory_pose_id;
             let recovId = asana.recovery_pose_id;
 
-            // Check if the currently selected variation overrides them
             const selectedVar = pose.variation;
             if (selectedVar && asana.variations && asana.variations[selectedVar]) {
                 const vd = asana.variations[selectedVar];
@@ -209,23 +194,18 @@ function builderRender() {
         }
 
         // --- 4. BUILD INFO CELL ---
-        // Gather duration & category from the resolved asana (or variation)
         let infoHTML = '';
         if (isSpecial) {
             infoHTML = `<td class="builder-info-cell builder-info-special">—</td>`;
         } else {
-            // Determine hold times — prefer active variation, fall back to base asana
             const activeVar = (pose.variation && asana?.variations?.[pose.variation]) ? asana.variations[pose.variation] : null;
             const holdSrc = window.getHoldTimes ? window.getHoldTimes(activeVar || asana) : {};
             const stdSec   = holdSrc.standard ?? null;
             const shortSec = holdSrc.short    ?? null;
             const longSec  = holdSrc.long     ?? null;
 
-            // Current tier (default standard)
             const currentTier = pose.holdTier || 'standard';
 
-            // Build the S / STD / L segmented control
-            // A tier button is disabled when that tier has no distinct value
             const tierBtn = (tier, label, sec) => {
                 const isActive   = currentTier === tier;
                 const isDisabled = sec == null || sec === stdSec && tier !== 'standard';
@@ -296,7 +276,6 @@ function builderRender() {
         tbody.appendChild(tr);
 
         // ── Ambiguous page warning banner ──────────────────────────────────────
-        // Shown when multiple asanas share the same page_primary. User must pick.
         if (pose._ambiguous && pose._alternatives && pose._alternatives.length > 0) {
             const warnRow = document.createElement('tr');
             warnRow.dataset.ambiguousFor = idx;
@@ -323,13 +302,11 @@ function builderRender() {
             tbody.appendChild(warnRow);
         }
 
-        // Flash highlight for newly unshifted row
-
         if (idx === 0 && builderPoses.length > 1) {
             tr.style.backgroundColor = "#fff9c4"; 
             setTimeout(() => { tr.style.transition = "background 1s"; tr.style.backgroundColor = ""; }, 100);
         }
-    }); // <--- END OF THE forEach LOOP
+    }); 
  
     // --- 5. LISTENERS ---
     const qS = (sel) => tbody.querySelectorAll(sel);
@@ -367,7 +344,6 @@ function builderRender() {
         builderRender();
     });
 
-    // Rounds input for Macros and Loop starts only
     qS('.b-dur').forEach(el => {
         el.onchange = (e) => {
             const idx = e.target.dataset.idx;
@@ -384,7 +360,6 @@ function builderRender() {
     qS('.b-move-dn').forEach(el => el.onclick = () => movePose(parseInt(el.dataset.idx), 1));
     qS('.b-remove').forEach(el => el.onclick = () => removePose(parseInt(el.dataset.idx)));
 
-    // ── Ambiguous-page resolution buttons ─────────────────────────────────────
     qS('.b-amb-keep').forEach(el => el.onclick = () => {
         const i = parseInt(el.dataset.idx);
         builderPoses[i]._ambiguous = false;
@@ -406,14 +381,11 @@ function builderRender() {
         builderRender();
     });
 
-    // ── Disable Save while any ambiguous row exists ───────────────────────────
     const saveBtn = document.getElementById('editCourseSaveBtn');
     if (saveBtn) {
         const hasAmbiguous = builderPoses.some(p => p._ambiguous);
         saveBtn.disabled = hasAmbiguous;
-        saveBtn.title = hasAmbiguous
-            ? 'Resolve all ⚠️ ambiguous pages before saving'
-            : '';
+        saveBtn.title = hasAmbiguous ? 'Resolve all ⚠️ ambiguous pages before saving' : '';
         saveBtn.style.opacity = hasAmbiguous ? '0.45' : '';
     }
 
@@ -435,18 +407,15 @@ function builderRender() {
         }
     });
 
-    // ── Hold tier (S / STD / L) buttons ──────────────────────────────────────
     qS('.b-tier').forEach(el => el.onclick = () => {
         const i    = parseInt(el.dataset.idx);
-        const tier = el.dataset.tier;           // 'short' | 'standard' | 'long'
+        const tier = el.dataset.tier;
         const pose = builderPoses[i];
         if (!pose) return;
 
-        // Resolve the duration value for the chosen tier from the asana library
         const libraryArr = Object.values(window.asanaLibrary || {});
         const normId = typeof normalizePlate === 'function' ? normalizePlate(String(pose.id)) : String(pose.id);
         const asana  = libraryArr.find(a => String(a.id || a.asanaNo) === String(normId));
-        // Active variation takes priority for hold times
         const activeVar = (pose.variation && asana?.variations?.[pose.variation]) ? asana.variations[pose.variation] : null;
         const holdSrc = window.getHoldTimes ? window.getHoldTimes(activeVar || asana) : {};
 
@@ -461,35 +430,37 @@ function builderRender() {
         builderRender();
     });
 
-    // --- 6. STATS UPDATER (Builder Modal) ---
+   // --- 6. STATS UPDATER (Builder Modal) ---
     const statsEl = document.getElementById("builderStats");
     if (statsEl) {
-        // Build a sequence using library-standard hold times (the source of truth for timing)
-        const libraryArray2 = Object.values(window.asanaLibrary || {});
-        
         const tempPoses = builderPoses.map(p => {
-            // Embed tier tag in the note (p[4]) — p[5] is clobbered by getExpandedPoses
-            // (overwritten with originalIdx), so tier must survive in the note string.
-            const tierTag = (!p.holdTier || p.holdTier === 'standard') ? ''
-                : ` tier:${p.holdTier === 'short' ? 'S' : 'L'}`;
+            const tierTag = (!p.holdTier || p.holdTier === 'standard') ? '' : ` tier:${p.holdTier === 'short' ? 'S' : 'L'}`;
             const cleanNote = (p.note || '').replace(/\btier:[SL]\b/gi, '').trim();
             const noteWithTier = (cleanNote + tierTag).trim();
+            // Format for getExpandedPoses
             return [p.id, p.duration, p.variation || "", p.variation || "", noteWithTier];
         });
         
         const tempSeq = { poses: tempPoses };
         const expanded = (typeof window.getExpandedPoses === "function") ? window.getExpandedPoses(tempSeq) : builderPoses;
         
-        // Authored poses = non-injected (no note matching the injection marker)
         const authoredPoses  = expanded.filter(p => !String(p[4] || "").includes("Auto-Injected"));
         const injectedPoses  = expanded.filter(p =>  String(p[4] || "").includes("Auto-Injected"));
 
-        // extractTierLocal mirrors sequenceUtils.extractTier — reads from note (p[4])
-        const extractTierLocal = (note) => { const m = String(note||'').match(/\btier:(S|L|STD)\b/i); return m ? m[1].toUpperCase() : ''; };
-        const authoredSecs  = authoredPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4])), 0);
-        const injectedSecs  = injectedPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4])), 0);
-        const runtimeSecs   = authoredSecs + injectedSecs;
+        // Central logic: use window.getEffectiveTime to match the Live Pill
+        const extractTierLocal = (note) => { 
+            const m = String(note||'').match(/\btier:(S|L|STD)\b/i); 
+            return m ? m[1].toUpperCase() : ''; 
+        };
 
+        // 🌟 Use same args as durationDial.js to ensure 42m match
+        const authoredSecs  = authoredPoses.reduce((acc, p) => 
+            acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4]), p[3], p[4]), 0);
+        
+        const injectedSecs  = injectedPoses.reduce((acc, p) => 
+            acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4]), p[3], p[4]), 0);
+
+        const runtimeSecs   = authoredSecs + injectedSecs;
         const fmt = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
 
         if (injectedSecs > 0) {
@@ -505,9 +476,6 @@ function builderRender() {
     }
 }
 
-
-
-
 function movePose(idx, dir) {
     if (idx + dir < 0 || idx + dir >= builderPoses.length) return;
     const temp = builderPoses[idx];
@@ -519,196 +487,34 @@ function movePose(idx, dir) {
 function removePose(idx) {
     builderPoses.splice(idx, 1);
     builderRender();
-
 }
 
-
-
 async function processSemicolonCommand(commandString) {
-    const parts = commandString.split(';').map(p => p.trim());
-    if (parts.length < 3) return;
+    const result = await parseSemicolonCommand(commandString, getAsanaIndex(), window.asanaLibrary);
+    if (!result) return;
 
-    const [title, category, idsStr] = parts;
+    const { title, category, validItems } = result;
 
-    // ── Pre-populate the builder title + category fields immediately ──────────
     const titleEl = document.getElementById('builderTitle');
     const catEl   = document.getElementById('builderCategory');
     if (titleEl && title)    titleEl.value = title;
     if (catEl   && category) catEl.value   = category;
 
-    // Expand integer ranges (51-55) then split by comma
-    // Note: decimal tokens like 44.1 are NOT expanded by range logic
-    const expandedTokens = idsStr.replace(/(\d+)\s*-\s*(\d+)/g, (m, start, end) => {
-        const r = [];
-        for (let i = parseInt(start); i <= parseInt(end); i++) r.push(String(i));
-        return r.join(',');
-    });
-
-    const tokens = expandedTokens.split(',').map(s => s.trim()).filter(s => s.length > 0 && s !== '0');
-
-    // ── Per-token resolution using Mehta page_primary lookup ─────────────────
-    // Strategy:
-    //   1. Fast path  – scan asanaLibrary for page_primary match (no network).
-    //   2. Stage path – scan asanaLibrary.variations for page_primary match.
-    //   3. Network    – query asanas (without limit) to detect multi-match pages,
-    //                   then stages as fallback.
-    //   4. Fallback   – treat the token as a direct LOY ID (padded to 3 digits).
-    //
-    // Decimal support: parseFloat handles both "44" and "44.1"
-
-    const resolveToken = async (token) => {
-        // ── Parse page number (supports decimals like 44.1) ───────────────────
-        const pageNum = parseFloat(token);
-        const isPageNum = !isNaN(pageNum) && /^\d+(\.\d+)?$/.test(token.trim());
-
-        if (isPageNum) {
-            const libArray = Object.values(window.asanaLibrary || {});
-
-            // ── Fast path: base asanas ────────────────────────────────────────
-            const baseMatches = libArray.filter(a =>
-                parseFloat(a.page_primary) === pageNum
-            );
-
-            if (baseMatches.length === 1) {
-                const m = baseMatches[0];
-                return { id: m.id, asana: m, variation: '', stageKey: '',
-                         name: m.english || m.name || m.id,
-                         _pageNum: pageNum };
-            }
-            if (baseMatches.length > 1) {
-                // Multiple asanas share this page — flag for user confirmation
-                const primary = baseMatches[0];
-                return {
-                    id: primary.id, asana: primary, variation: '', stageKey: '',
-                    name: primary.english || primary.name || primary.id,
-                    _pageNum: pageNum,
-                    _ambiguous: true,
-                    _alternatives: baseMatches.slice(1).map(a => ({
-                        id: a.id, name: a.english || a.name || a.id, asana: a
-                    }))
-                };
-            }
-
-            // ── Fast path: stages (variations) ───────────────────────────────
-            for (const a of libArray) {
-                if (!a.variations) continue;
-                for (const [stageKey, vData] of Object.entries(a.variations)) {
-                    if (vData && parseFloat(vData.page_primary) === pageNum) {
-                        return {
-                            id: a.id, asana: a, variation: stageKey, stageKey,
-                            name: `${a.english || a.name} › ${vData.title || stageKey}`,
-                            _pageNum: pageNum
-                        };
-                    }
-                }
-            }
-
-            // ── Network path ──────────────────────────────────────────────────
-            try {
-                // Fetch WITHOUT limit to catch multi-match pages
-                const { data: aHits } = await supabase
-                    .from('asanas')
-                    .select('id, english_name, name')
-                    .eq('page_primary', pageNum);
-
-                if (aHits && aHits.length === 1) {
-                    const row = aHits[0];
-                    const asanaKey = String(row.id).padStart(3, '0');
-                    const asana = window.asanaLibrary?.[asanaKey];
-                    return { id: asanaKey, asana: asana || { id: asanaKey },
-                             variation: '', stageKey: '',
-                             name: row.english_name || row.name || asanaKey,
-                             _pageNum: pageNum };
-                }
-
-                if (aHits && aHits.length > 1) {
-                    // Ambiguous — multiple asanas on this page
-                    const primary = aHits[0];
-                    const asanaKey = String(primary.id).padStart(3, '0');
-                    const asana = window.asanaLibrary?.[asanaKey];
-                    return {
-                        id: asanaKey, asana: asana || { id: asanaKey },
-                        variation: '', stageKey: '',
-                        name: primary.english_name || primary.name || asanaKey,
-                        _pageNum: pageNum,
-                        _ambiguous: true,
-                        _alternatives: aHits.slice(1).map(r => {
-                            const k = String(r.id).padStart(3, '0');
-                            return { id: k, name: r.english_name || r.name || k,
-                                     asana: window.asanaLibrary?.[k] || { id: k } };
-                        })
-                    };
-                }
-
-                // Try stages table
-                const { data: sHits } = await supabase
-                    .from('stages')
-                    .select('asana_id, stage_name, title')
-                    .eq('page_primary', pageNum)
-                    .limit(1);
-                if (sHits && sHits.length > 0) {
-                    const row = sHits[0];
-                    const asanaKey = String(row.asana_id).padStart(3, '0');
-                    const asana = window.asanaLibrary?.[asanaKey];
-                    return {
-                        id: asanaKey, asana: asana || { id: asanaKey },
-                        variation: row.stage_name || '', stageKey: row.stage_name || '',
-                        name: `${asana?.english || asanaKey} › ${row.title || row.stage_name || ''}`,
-                        _pageNum: pageNum
-                    };
-                }
-            } catch (netErr) {
-                console.warn(`⚠️ page_primary network lookup failed for ${pageNum}:`, netErr.message);
-            }
-
-            console.warn(`⚠️ No asana or stage found for page_primary = ${pageNum}`);
-            return null;
-        }
-
-        // ── Non-numeric token: treat as a direct LOY ID ───────────────────────
-        const cleanId = token.padStart(3, '0');
-        const asana = window.asanaLibrary?.[cleanId];
-        if (asana) {
-            return { id: cleanId, asana, variation: '', stageKey: '',
-                     name: asana.english || asana.name || cleanId };
-        }
-        return null;
-    };
-
-    // Resolve all tokens (parallel for speed)
-    const resolvedItems = await Promise.all(tokens.map(resolveToken));
-    const validItems = resolvedItems.filter(Boolean);
-
     if (validItems.length === 0) {
-        console.warn('⚠️ processSemicolonCommand: no valid poses resolved from:', idsStr);
+        console.warn('⚠️ processSemicolonCommand: no valid poses resolved');
         return;
     }
 
-    // ── Add to builder (ambiguous items get _ambiguous flag — rendered with ⚠️) ─
     validItems.forEach(item => {
         const duration = (item.asana && window.getHoldTimes) ? (window.getHoldTimes(item.asana).standard || 30) : 30;
         builderPoses.push({
-            id: item.id,
-            name: item.name,
-            duration,
-            variation: item.stageKey || '',
-            note: item.stageKey ? `[${item.stageKey}]` : '',
-            holdTier: 'standard',  // paste always starts at standard
-            // Ambiguous-page metadata — used by builderRender to show ⚠️ UI
-            _ambiguous:     item._ambiguous || false,
-            _pageNum:       item._pageNum || null,
-            _alternatives:  item._alternatives || []
+            id: item.id, name: item.name, duration, variation: item.stageKey || '', note: item.stageKey ? `[${item.stageKey}]` : '', holdTier: 'standard',
+            _ambiguous: item._ambiguous || false, _pageNum: item._pageNum || null, _alternatives: item._alternatives || []
         });
     });
 
     builderRender();
-    // Paste command only populates the builder UI.
-    // The user presses Save explicitly when satisfied.
 }
-
-
-
-// Removed dynamic button creation as it's now explicitly in index.html
 
 function openLinkSequenceModal() {
     const overlay   = document.getElementById('linkSequenceOverlay');
@@ -717,16 +523,13 @@ function openLinkSequenceModal() {
     const repsInput = document.getElementById('linkSequenceReps');
     if (!overlay) return;
 
-    // Populate datalist with all courses (Flow takes priority, rest alphabetical)
     const allCourses = [...(window.courses || [])];
     const sorted = [
         ...allCourses.filter(c => (c.category || '').toLowerCase().includes('flow')),
         ...allCourses.filter(c => !(c.category || '').toLowerCase().includes('flow'))
     ];
     if (datalist) {
-        datalist.innerHTML = sorted
-            .map(c => `<option value="${c.title}">${c.category ? '(' + c.category + ')' : ''}</option>`)
-            .join('');
+        datalist.innerHTML = sorted.map(c => `<option value="${c.title}">${c.category ? '(' + c.category + ')' : ''}</option>`).join('');
     }
     if (input)     input.value     = '';
     if (repsInput) repsInput.value = '1';
@@ -735,39 +538,46 @@ function openLinkSequenceModal() {
     setTimeout(() => { if (input) input.focus(); }, 50);
 }
 
-
 function openEditCourse() {
    if (!window.currentSequence) { alert("Please select a course first."); return; }
    builderOpen("edit", window.currentSequence);
 }
+
 function builderOpen(mode, seq) {
     builderMode = mode;
     builderEditingCourseIndex = -1;
-    builderPoses = []; // CRITICAL: Clear previous state
+    builderPoses = []; 
     let targetId = seq ? (seq.supabaseId || seq.id) : null;
 
-    // Use your $ helper consistently for all elements at the start
     const catInput = $("builderCategory"); 
     const titleEl = $("builderTitle");
     const modeLabel = $("builderModeLabel");
     const datalist = $("builderCategoryList");
 
-    if (catInput) {
-        // Forces re-render to check for "Flow" on every keystroke
-        catInput.oninput = () => builderRender(); 
-    }
+    if (catInput) catInput.oninput = () => builderRender(); 
 
     builderEditingSupabaseId = targetId;
-
     document.body.classList.add("modal-open");
+    
+    // Initialize the Search UI component
+    setupBuilderSearch(
+        getAsanaIndex, 
+        (asma) => { // onResultSelected
+            addPoseToBuilder({
+                id: asma.id,
+                name: asma.name || asma.english,
+                duration: (window.getHoldTimes ? window.getHoldTimes(asma).standard : null) || 30,
+                variation: "",
+                note: ""
+            });
+        },
+        (val) => { // onSemicolonCommand
+            processSemicolonCommand(val);
+        }
+    );
 
-    // SETUP SEARCH LISTENER
-    setupBuilderSearch();
-
-    // ── Sanskrit / English toggle button ─────────────────────────────────────
     const nameToggleBtn = document.getElementById('builderNameToggle');
     if (nameToggleBtn) {
-        // Reflect current state on open
         nameToggleBtn.style.background = builderShowSanskrit ? '#f9a825' : '#fff8e1';
         nameToggleBtn.style.color      = builderShowSanskrit ? '#fff'    : '#6d4c00';
         nameToggleBtn.textContent      = builderShowSanskrit ? 'अ SA' : 'अ EN';
@@ -780,11 +590,9 @@ function builderOpen(mode, seq) {
         };
     }
 
-    // Populate Category Datalist
     if (catInput && datalist) {
         const allCats = [...new Set(window.courses.map(c => c.category).filter(Boolean))].sort();
         datalist.innerHTML = allCats.map(c => `<option value="${c}"></option>`).join("");
-
         let tempVal = "";
         catInput.onfocus = () => { tempVal = catInput.value; catInput.value = ""; };
         catInput.onblur = () => { if (catInput.value === "") catInput.value = tempVal; };
@@ -801,40 +609,22 @@ function builderOpen(mode, seq) {
        if (catInput) catInput.value = seq.category || "";
        
        const libraryArray = Object.values(window.asanaLibrary || {});
-       const rawPoses = (window.currentSequenceOriginalPoses && seq === window.currentSequence)
-           ? window.currentSequenceOriginalPoses : (seq.poses || []);
+       const rawPoses = (window.currentSequenceOriginalPoses && seq === window.currentSequence) ? window.currentSequenceOriginalPoses : (seq.poses || []);
            rawPoses.forEach(p => {
              const rawId = Array.isArray(p[0]) ? p[0][0] : p[0] || "";
              const idStr = String(rawId);
              
-             if (idStr === "LOOP_START") {
+             if (idStr === "LOOP_START" || idStr === "LOOP_END") {
                 builderPoses.push({
-                    id: "LOOP_START",
-                    name: `🔁 Loop Starts Here (${p[1]} Rounds)`,
-                    duration: Number(p[1]) || 2,
-                    variation: "",
-                    note: ""
-                });
-                return;
-             }
-             if (idStr === "LOOP_END") {
-                builderPoses.push({
-                    id: "LOOP_END",
-                    name: "🔁 Loop Ends Here",
-                    duration: 0,
-                    variation: "",
-                    note: ""
+                    id: idStr,
+                    name: idStr === "LOOP_START" ? `🔁 Loop Starts Here (${p[1]} Rounds)` : "🔁 Loop Ends Here",
+                    duration: idStr === "LOOP_START" ? Number(p[1]) || 2 : 0,
+                    variation: "", note: ""
                 });
                 return;
              }
              if (idStr.startsWith("MACRO:")) {
-                builderPoses.push({
-                    id: idStr,
-                    name: `[Sequence] ${idStr.replace("MACRO:", "").trim()}`,
-                    duration: Number(p[1]) || 1,
-                    variation: "",
-                    note: p[4] || "" // p[4] is the note for macros
-                });
+                builderPoses.push({ id: idStr, name: `[Sequence] ${idStr.replace("MACRO:", "").trim()}`, duration: Number(p[1]) || 1, variation: "", note: p[4] || "" });
                 return;
              }
 
@@ -876,15 +666,12 @@ function builderOpen(mode, seq) {
                 duration: Number(p[1]) || 30,
                 variation: variation,
                 note: rawExtras,
-                // Read tier keyword from note (set by builderCompileSequenceText on save).
-                // This is the authoritative source — avoids fragile infer-from-number logic.
                 holdTier: (() => {
                     const tierMatch = (p[4] || '').match(/\btier:(S|L|STD)\b/i);
                     if (tierMatch) {
                         const t = tierMatch[1].toUpperCase();
                         if (t === 'S')   return 'short';
                         if (t === 'L')   return 'long';
-                        return 'standard';
                     }
                     return 'standard';
                 })()
@@ -895,14 +682,6 @@ function builderOpen(mode, seq) {
     builderRender();
     $("editCourseBackdrop").style.display = "flex";
     setTimeout(() => { if($("builderSearch")) $("builderSearch").focus(); }, 50);
-}
-
-function builderUpdateStats() {
-   const statsEl = $("builderStats");
-   if (!statsEl) return;
-   if (!builderPoses.length) { statsEl.textContent = ""; return; }
-   const total = builderPoses.reduce((s, p) => s + (p.duration || 0), 0);
-   statsEl.textContent = `${builderPoses.length} poses · ${formatHMS(total)} estimated`;
 }
 
 function builderCompileSequenceText() {
@@ -920,16 +699,14 @@ function builderCompileSequenceText() {
         const id = String(p.id).padStart(3, '0');
         const dur = p.duration || 30;
         
-        // Enforces exact 3-column structure: ID | Duration | [Variation] Note
-        // Append a tier keyword when the author has overridden the hold tier so that
-        // runtime consumers can resolve the CURRENT library value (not the stored number).
+        let cleanNote = (p.note || '').replace(/\[.*?\b([IVX]+)([a-z]?)\b.*?\]/ig, '')
+                                      .replace(/\btier:[SL]\b/gi, '')
+                                      .replace(/\s+/g, ' ')
+                                      .trim();
+
         const varPart  = p.variation ? `[${p.variation}]` : `[]`;
-        const tierTag  = (p.holdTier && p.holdTier !== 'standard')
-            ? ` tier:${p.holdTier === 'short' ? 'S' : 'L'}`
-            : '';
-        // Strip any existing tier tag from the stored note before re-appending
-        const cleanNote = (p.note || '').replace(/\btier:[SL]\b/gi, '').trim();
-        const notePart  = (cleanNote + tierTag).trim();
+        const tierTag  = (p.holdTier && p.holdTier !== 'standard') ? ` tier:${p.holdTier === 'short' ? 'S' : 'L'}` : '';
+        const notePart = (cleanNote + tierTag).trim();
         
         return `${id} | ${dur} | ${varPart} ${notePart}`.trim();
     }).filter(s => s.trim().length > 0).join("\n");
@@ -943,123 +720,59 @@ function builderGetCategory() {
    return ($("builderCategory")?.value || "").trim();
 }
 
-/**
- * Safely saves a course row to Supabase without relying on upsert/onConflict.
- * Strategy: SELECT first → UPDATE by ID if found, INSERT if not.
- * This avoids "duplicate key" errors regardless of RLS policy configuration.
- * @param {object} payload  - Fields to write (must include title & category)
- * @param {string|null} knownId - If we already know the row's Supabase ID, pass it to skip the SELECT.
- * @returns {{ id: string }} - The saved row's ID
- */
 async function saveOrUpdateCourse(payload, knownId = null) {
-    // If we already have an ID (editing mode), go straight to UPDATE.
     if (knownId) {
         const updatePayload = { ...payload };
-        delete updatePayload.user_id; // preserve original ownership
-        const { error } = await supabase.from('courses')
-            .update(updatePayload)
-            .eq('id', knownId);
+        delete updatePayload.user_id; 
+        const { error } = await supabase.from('courses').update(updatePayload).eq('id', knownId);
         if (error) throw error;
         return { id: knownId };
     }
 
-    // No ID yet — check if a row with this title+category already exists.
     const { data: existing, error: selErr } = await supabase
-        .from('courses')
-        .select('id')
-        .eq('title', payload.title)
-        .eq('category', payload.category)
-        .maybeSingle();
+        .from('courses').select('id').eq('title', payload.title).eq('category', payload.category).maybeSingle();
     if (selErr) throw selErr;
 
     if (existing) {
-        // Row exists — UPDATE it by its known ID (safe regardless of RLS).
         const updatePayload = { ...payload };
         delete updatePayload.user_id;
-        const { error } = await supabase.from('courses')
-            .update(updatePayload)
-            .eq('id', existing.id);
+        const { error } = await supabase.from('courses').update(updatePayload).eq('id', existing.id);
         if (error) throw error;
         return { id: existing.id };
     }
 
-    // No existing row — do a fresh INSERT.
-    const { data: inserted, error: insErr } = await supabase.from('courses')
-        .insert([payload])
-        .select('id')
-        .single();
+    const { data: inserted, error: insErr } = await supabase.from('courses').insert([payload]).select('id').single();
     if (insErr) throw insErr;
     return { id: inserted.id };
 }
 
 async function builderSave() {
-
-    // 1. Extract and Validate Data
     const title = builderGetTitle();
     if (!title) { alert("Please enter a title."); return; }
     
     const sequenceText = builderCompileSequenceText();
     const category = builderGetCategory();
-    const isFlow = category.toLowerCase().includes("flow"); 
     
-    // 2. Calculate Total Time (Expanded)
-    const tempSeq = { poses: builderPoses.map(p => [p.id, p.duration, p.variation || "", p.variation || "", p.note || ""]) };
-    const expanded = (typeof window.getExpandedPoses === "function") ? window.getExpandedPoses(tempSeq) : builderPoses;
-    const totalSec = expanded.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1]), 0);
-
-    // 3. Database Operation
     try {
         if (!supabase) return;
-        if (!window.currentUserId) {
-            alert("You must be signed in to save sequences.");
-            return;
-        }
-        // Guest users have a valid UUID but no persistent account — their sequences
-        // would be silently orphaned after the anonymous session expires.
-        if (window.isGuestMode) {
-            alert("Guest sessions cannot save sequences.\n\nSign in with Google to keep your work.");
-            return;
-        }
-        let result;
+        if (!window.currentUserId) { alert("You must be signed in to save sequences."); return; }
+        if (window.isGuestMode) { alert("Guest sessions cannot save sequences.\n\nSign in with Google to keep your work."); return; }
 
-        const payload = {
-            title, 
-            category, 
-            sequence_text: sequenceText,
-            last_edited: new Date().toISOString(),
-            user_id: window.currentUserId
-        };
-        // Admin saves are always published
+        const payload = { title, category, sequence_text: sequenceText, last_edited: new Date().toISOString(), user_id: window.currentUserId };
         if (isAdmin()) payload.is_system = true;
 
-        // Editing existing → UPDATE by ID; New → INSERT
-        let data;
         if (builderEditingSupabaseId) {
-            // Don't send user_id on update — preserves ownership of system rows
-            const updatePayload = { title, category, sequence_text: sequenceText,
-                                    last_edited: new Date().toISOString() };
+            const updatePayload = { title, category, sequence_text: sequenceText, last_edited: new Date().toISOString() };
             if (isAdmin()) updatePayload.is_system = true;
-            const { data: updateData, error: updateError } = await supabase.from('courses')
-                .update(updatePayload)
-                .eq('id', builderEditingSupabaseId)
-                .select();
+            const { data: updateData, error: updateError } = await supabase.from('courses').update(updatePayload).eq('id', builderEditingSupabaseId).select();
             if (updateError) throw updateError;
-            if (!updateData || updateData.length === 0) {
-                throw new Error('Update matched 0 rows \u2014 check RLS policies for courses table');
-            }
-            data = updateData;
+            if (!updateData || updateData.length === 0) throw new Error('Update matched 0 rows \u2014 check RLS policies for courses table');
         } else {
-            // No known ID — use SELECT-first helper to safely insert or update.
-            // This prevents duplicate-key errors even if the row was pre-created
-            // by the semicolon paste path or a previous save attempt.
             const { id: savedId } = await saveOrUpdateCourse(payload);
-            data = [{ id: savedId }];
-            // Promote to edit mode so any further Save in this session is an UPDATE.
             if (savedId) builderEditingSupabaseId = savedId;
         }
 
-        // 4. UI Refresh
-        await loadCourses(); 
+        await window.loadCourses(); 
         
         const sel = document.getElementById("sequenceSelect");
         if (sel) {
@@ -1080,8 +793,6 @@ async function builderSave() {
 }
 
 function addPoseToBuilder(poseData) {
-    // Ensure every pose entering the builder has a holdTier so the S/STD/L
-    // control renders with the right button highlighted from the first render.
     if (!poseData.holdTier) poseData.holdTier = 'standard';
     builderPoses.push(poseData);
     builderRender();
@@ -1089,25 +800,17 @@ function addPoseToBuilder(poseData) {
 
 function createRepeatGroup() {
     const checkboxes = document.querySelectorAll('.b-row-select:checked');
-    if (checkboxes.length === 0) {
-        alert("Please select at least one pose using the checkboxes.");
-        return;
-    }
+    if (checkboxes.length === 0) { alert("Please select at least one pose using the checkboxes."); return; }
 
     const idxs = Array.from(checkboxes).map(c => parseInt(c.dataset.idx)).sort((a,b) => a - b);
     const startIdx = idxs[0];
     const endIdx = idxs[idxs.length - 1]; 
     
-    // Safety check for existing macros/loops
     for (let i = startIdx; i <= endIdx; i++) {
         const idStr = String(builderPoses[i].id);
-        if (idStr.startsWith('MACRO:') || idStr.startsWith('LOOP_')) {
-            alert("Cannot create a repeat group that intersects with Macros or other loops.");
-            return;
-        }
+        if (idStr.startsWith('MACRO:') || idStr.startsWith('LOOP_')) { alert("Cannot create a repeat group that intersects with Macros or other loops."); return; }
     }
 
-    // Show the custom modal
     const overlay = document.getElementById("repetitionModalOverlay");
     const input = document.getElementById("repetitionInput");
     const confirmBtn = document.getElementById("btnConfirmRepetition");
@@ -1116,189 +819,22 @@ function createRepeatGroup() {
     input.focus();
     input.select();
 
-    // Remove any old listener to prevent multiple bindings
     const newConfirmBtn = confirmBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
 
     newConfirmBtn.onclick = () => {
         const reps = parseInt(input.value, 10);
-        if (isNaN(reps) || reps < 2) {
-            alert("Please enter a number of 2 or more.");
-            return;
-        }
+        if (isNaN(reps) || reps < 2) { alert("Please enter a number of 2 or more."); return; }
 
-        
-        // Close modal
         overlay.style.display = "none";
 
-        // Insert Loop End first (so indices don't shift for Loop Start)
-        builderPoses.splice(endIdx + 1, 0, {
-            id: "LOOP_END",
-            name: "🔁 Loop Ends Here",
-            duration: 0,
-            variation: "",
-            note: ""
-        });
-        
-        // Insert Loop Start
-        builderPoses.splice(startIdx, 0, {
-            id: "LOOP_START",
-            name: `🔁 Loop Starts Here (${reps} Rounds)`,
-            duration: reps,
-            variation: "",
-            note: ""
-        });
+        builderPoses.splice(endIdx + 1, 0, { id: "LOOP_END", name: "🔁 Loop Ends Here", duration: 0, variation: "", note: "" });
+        builderPoses.splice(startIdx, 0, { id: "LOOP_START", name: `🔁 Loop Starts Here (${reps} Rounds)`, duration: reps, variation: "", note: "" });
         
         checkboxes.forEach(c => c.checked = false);
         builderRender();
         
         setTimeout(() => alert(`Successfully created a repetition group of ${endIdx - startIdx + 1} poses!`), 100);
-    };
-}
-
-function setupBuilderSearch() {
-    const searchInput = $("builderSearch");
-    const resultsBox = $("builderSearchResults");
-    if (!searchInput || !resultsBox) return;
-
-    resultsBox.style.display = "none";
-
-    // ── Shared search logic ───────────────────────────────────────────────────
-    function scoreAsana(asma, query, source) {
-        const q = normaliseText(query);
-        if (!q) return 0;
-
-        // ID matching — depends on source dropdown
-        let idStr = '';
-        if (source === 'mehta') {
-            idStr = String(asma.yoga_the_iyengar_way_id || '');
-        } else {
-            idStr = String(asma.id || '');
-        }
-        const idNorm = idStr.toLowerCase();
-        // Exact ID: pad both to 3 digits for fair comparison
-        if (/^\d+$/.test(q) && idStr.padStart(3, '0') === q.padStart(3, '0')) return 100;
-        if (idNorm === q) return 100;
-
-        // Name fields — diacritic-folded
-        const eng  = normaliseText(asma.english || '');
-        const iast = normaliseText(asma.iast || '');
-        const sans = normaliseText(asma.name || '');
-        const plate = normaliseText(String(asma.plates || ''));
-
-        // Starts-with on any name
-        if (eng.startsWith(q) || iast.startsWith(q) || sans.startsWith(q)) return 50;
-
-        // Contains on any field
-        if (eng.includes(q) || iast.includes(q) || sans.includes(q)) return 20;
-        if (plate.includes(q)) return 10;
-        if (idNorm.includes(q)) return 5;
-
-        return 0;
-    }
-
-    function getSearchResults(query) {
-        const source = $("builderIdSource")?.value || "loy";
-        const library = getAsanaIndex();
-
-        const scored = [];
-        for (const asma of library) {
-            const s = scoreAsana(asma, query, source);
-            if (s > 0) scored.push({ asma, score: s });
-        }
-        scored.sort((a, b) => b.score - a.score);
-        return { results: scored, source };
-    }
-
-    function addAsanaFromResult(asma) {
-        addPoseToBuilder({
-            id: asma.id,
-            name: asma.name || asma.english,
-            duration: (window.getHoldTimes ? window.getHoldTimes(asma).standard : null) || 30,
-            variation: "",
-            note: ""
-        });
-    }
-
-    // ── Enter key: exact ID → add immediately, else add top result ────────────
-    searchInput.onkeydown = (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            const val = searchInput.value.trim();
-            if (val.includes(';')) {
-                e.preventDefault();
-                processSemicolonCommand(val);
-                searchInput.value = "";
-                return;
-            }
-            if (val.length >= 1) {
-                e.preventDefault();
-                const { results } = getSearchResults(val);
-                if (results.length > 0) {
-                    addAsanaFromResult(results[0].asma);
-                    searchInput.value = "";
-                    resultsBox.style.display = "none";
-                }
-            }
-        }
-    };
-
-    // ── Live search on typing ─────────────────────────────────────────────────
-    searchInput.oninput = () => {
-        const query = searchInput.value.trim();
-        if (query.length < 1 || query.includes(';')) {
-            resultsBox.style.display = "none";
-            return;
-        }
-
-        const { results, source } = getSearchResults(query);
-
-        if (results.length > 0) {
-            resultsBox.innerHTML = results.slice(0, 15).map(({ asma, score }) => {
-                const displayId = (source === "mehta")
-                    ? (asma.yoga_the_iyengar_way_id || "N/A")
-                    : asma.id;
-                const badgeColor = (source === "mehta") ? "#673ab7" : "#007aff";
-                const catLabel = asma.category ? asma.category.replace(/^\d+_/, '').replace(/_/g, ' ') : '';
-
-                return `
-                    <div class="search-result-item" data-id="${asma.id}" style="padding:10px; cursor:pointer; border-bottom:1px solid #eee; display:flex; gap:10px; align-items:center;">
-                        <div style="background:${badgeColor}; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:0.8rem; min-width:28px; text-align:center;">${displayId}</div>
-                        <div style="flex:1; min-width:0;">
-                            <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${asma.english || asma.name || 'Unknown'}</div>
-                            <div style="font-size:0.75rem; color:#666; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${asma.iast || asma.name || ''}</div>
-                        </div>
-                        ${catLabel ? `<div style="font-size:0.65rem; color:#999; white-space:nowrap;">${catLabel}</div>` : ''}
-                    </div>
-                `;
-            }).join("");
-
-            resultsBox.style.display = "block";
-
-            const rect = searchInput.getBoundingClientRect();
-            resultsBox.style.width = `${rect.width}px`;
-            resultsBox.style.top = `${rect.bottom + 4}px`;
-            resultsBox.style.left = `${rect.left}px`;
-
-            resultsBox.querySelectorAll('.search-result-item').forEach(item => {
-                item.onclick = () => {
-                    const id = item.dataset.id;
-                    const asma = getAsanaIndex().find(a => String(a.id) === id);
-                    if (asma) {
-                        addAsanaFromResult(asma);
-                        searchInput.value = "";
-                        resultsBox.style.display = "none";
-                        searchInput.focus();
-                    }
-                };
-            });
-        } else {
-            resultsBox.style.display = "none";
-        }
-    };
-
-    // Close on blur
-    searchInput.onblur = () => {
-        setTimeout(() => { resultsBox.style.display = "none"; }, 250);
     };
 }
 

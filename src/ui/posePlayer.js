@@ -107,48 +107,21 @@ if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
 }
 
 // 3. SMART LOOKUP
-const asana = window.findAsanaByIdOrPlate(lookupId);
-const storedVarKey = currentPose[3]; // <--- Restored definition to prevent crash
+    const asana = window.findAsanaByIdOrPlate(lookupId);
+    const storedVarKey = currentPose[3]; 
 
-// --- 🛑 CRITICAL FIX: DURATION RESOLUTION ---
-// Use getEffectiveTime to guarantee we respect the Tier, the explicit number, and sides logic.
-const noteStr = currentPose[4] || "";
-const tierMatch = noteStr.match(/\btier:(S|L|STD)\b/i);
-const tier = tierMatch ? tierMatch[1].toUpperCase() : null;
+    // --- 🛑 DURATION RESOLUTION (TRUST THE PLAYBACK LIST) ---
+    // applyDurationDial() has ALREADY evaluated the strict rules, 
+    // applied the dial scaling, and calculated sides. We just read it directly!
+    let seconds = Number(currentPose[1]) || 30;
 
-// Call the global helper to get the "true" base seconds before the dial
-let baseSeconds = typeof window.getEffectiveTime === "function" 
-    ? window.getEffectiveTime(lookupId, currentPose[1], tier)
-    : Number(currentPose[1]);
-
-// If it's bilateral and we are doing one side, halve it for the timer
-if (asana && (asana.requiresSides || asana.requires_sides)) {
-    baseSeconds = Math.round(baseSeconds / 2);
-    if (!keepSamePose) {
-        window.setNeedsSecondSide(true);
+    if (asana && (asana.requiresSides || asana.requires_sides)) {
+        if (!keepSamePose) {
+            window.setNeedsSecondSide(true);
+        }
     }
-}
 
-let seconds = baseSeconds;
 
-// DIAL ENFORCER (Apply smart scaling using anchors)
-const dial = document.getElementById("durationDial");
-if (dial && typeof window.resolveDialAnchors === "function" && typeof window.interpolateDuration === "function") {
-    const val = Number(dial.value);
-    if (val !== 50) {
-        const { short, defaultDur, long } = window.resolveDialAnchors(baseSeconds, asana);
-        seconds = window.interpolateDuration(val, short, defaultDur, long);
-    }
-} else if (dial) {
-    // Fallback if helpers aren't loaded yet
-    const val = Number(dial.value);
-    if (val !== 50) {
-        let mult = 1.0;
-        if (val < 50) mult = 0.5 + (val / 50) * 0.5;
-        else mult = 1.0 + ((val - 50) / 50) * 1.0;
-        seconds = Math.round(seconds * mult);
-    }
-}
 // VARIATION & NOTE EXTRACTION
     let noteField = currentPose[4] || "";
     let variationTitle = currentPose[3] || ""; 
@@ -253,7 +226,7 @@ if (dial && typeof window.resolveDialAnchors === "function" && typeof window.int
                     }
                     
                     matchedVariationKey = vKey;
-                    foundVariation = true;
+                   
                     break;
                 }
             }
