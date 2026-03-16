@@ -48,10 +48,16 @@ function resolveTierDuration(asana, tier) {
  * - Doubles duration if the asana requires both sides.
  * - Returns 0 for MACRO, LOOP_START, LOOP_END markers.
  *
- * @param {string|Array} id   - Asana ID (or array-wrapped ID from pose tuple)
- * @param {number}       dur  - Fallback duration from the sequence row
+ /**
+ * Returns the canonical effective duration (in seconds) for a single pose entry.
+ * * PRIORITY RULES:
+ * 1. Use authored duration ONLY if:
+ * - The ID is a protected stage (31-131)
+ * - OR an explicit tier (S, L, STD) is present.
+ * 2. DEFAULT: Use library 'standard' duration for everything else.
+ * * @param {string|Array} id   - Asana ID
+ * @param {number}       dur  - Authored duration from the sequence row
  * @param {string}       [tier] - Optional tier keyword: 'S' | 'L' | 'STD'
- *                                Pass extractTier(p[4]) at call sites.
  * @returns {number} Duration in seconds
  */
 export function getEffectiveTime(id, dur, tier) {
@@ -62,31 +68,35 @@ export function getEffectiveTime(id, dur, tier) {
     const strId = String(rawId || "");
 
     // Structural markers — no time contribution
-    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END"))   return 0;
-    if (strId.startsWith("LOOP_START"))                                return 0;
-
-    const lib      = window.asanaLibrary || {};
-    const searchId = Number(rawId);
-    const asana    = Object.values(lib).find(a => Number(a.id || a.asanaNo) === searchId);
-
-    let duration;
-    if (tier && typeof tier === 'string' && asana) {
-        const tierDur = resolveTierDuration(asana, tier);
-        duration = tierDur ?? Number(dur) ?? 0;
-    } else if (asana) {
-        const hj = getHoldTimes(asana);
-        const libStandard = (hj && hj.standard != null) ? Number(hj.standard) : null;
-        const storedDur   = (dur != null && dur !== "") ? Number(dur) : null;
-
-        if (storedDur != null && libStandard != null && storedDur !== libStandard) {
-            duration = storedDur;
-        } else {
-            duration = libStandard ?? storedDur ?? 0;
-        }
-    } else {
-        duration = Number(dur) || 0;
+    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END") || strId.startsWith("LOOP_START")) {
+        return 0;
     }
 
+    const lib      = window.asanaLibrary || {};
+    // Ensure we handle numeric comparison for the range check
+    const idNum    = parseInt(strId.replace(/\D/g, ''), 10);
+    const key      = strId.trim().replace(/^0+/, "").padStart(3, "0");
+    const asana    = lib[key];
+    const hj       = getHoldTimes(asana);
+
+    let duration;
+
+    // RULE 1: Protected Stages (31-131) or Explicit Tiers use the authored sequence time
+    if ((idNum >= 31 && idNum <= 131) || tier) {
+        // If a tier is present, we try to resolve that specific tier value from the library first
+        if (tier && asana) {
+            const tierDur = resolveTierDuration(asana, tier);
+            duration = tierDur ?? Number(dur) ?? 0;
+        } else {
+            duration = Number(dur) || (hj ? hj.standard : 0);
+        }
+    } 
+    // RULE 2: Global Default - Use library standard, ignoring authored duration
+    else {
+        duration = (hj && hj.standard != null) ? Number(hj.standard) : (Number(dur) || 0);
+    }
+
+    // Final side calculation
     if (asana && (asana.requiresSides || asana.requires_sides)) return duration * 2;
     return duration;
 }
