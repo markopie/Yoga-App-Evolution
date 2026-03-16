@@ -1,3 +1,13 @@
+/* styles/theme.css */
+
+@font-face {
+    font-family: 'Noto Sans Devanagari';
+  src: url('../fonts/NotoSansDevanagari-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap; /* Ensures text remains visible during load */
+}
+
 /* ==========================================================================
    0. AUTH / LOGIN SCREEN
    ========================================================================== */
@@ -99,7 +109,8 @@ header {
     border-bottom: 1px solid #e8e8e8;
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 100;;
+    position: static;
 }
 
 main {
@@ -126,7 +137,9 @@ main {
 /* ==========================================================================
    2. FORMS & INTERACTIVE
    ========================================================================== */
-select, input, button, textarea { font: inherit; }
+select, input, button, textarea {
+    font: inherit;
+}
 
 select, input {
     padding: 12px 14px;
@@ -263,7 +276,11 @@ textarea {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);;
+    width: 100%;
+        height: 100vh;
+        margin: 0;
+        border-radius: 0;
 }
 
 .modal-header {
@@ -272,7 +289,8 @@ textarea {
     border-bottom: 1px solid #eee;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: center;;
+    position: sticky; top: 0; z-index: 20; background: #fff;
 }
 
 .modal-body {
@@ -342,7 +360,9 @@ textarea {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to { transform: rotate(360deg);
+}
+
 }
 
 .notification-success {
@@ -385,7 +405,10 @@ textarea {
     padding: 10px;
     border-bottom: 1px solid #f0f0f0;
 }
-.browse-item:last-child { border-bottom: none; }
+
+.browse-item:last-child {
+    border-bottom: none;
+}
 
 /* RIGHT SIDE (Detail) */
 .browse-right {
@@ -461,8 +484,11 @@ textarea {
     font-weight: 650;
     outline: none;
 }
+
 #poseDescDetails summary::-webkit-details-marker,
-#poseNoteDetails summary::-webkit-details-marker { display: none; }
+#poseNoteDetails summary::-webkit-details-marker {
+    display: none;
+}
 
 /* ==========================================================================
    6. ADMIN & TABLES
@@ -523,8 +549,13 @@ th {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    0%, 100% { opacity: 1;
+}
+
+50% {
+    opacity: 0.7;
+}
+
 }
 
 #poseName {
@@ -569,31 +600,49 @@ th {
    8. RESPONSIVE LOGIC
    ========================================================================== */
 @media (min-width: 900px) {
-    .grid { grid-template-columns: 1.4fr 0.6fr; }
-    
-    /* Hide the "Back" button on desktop since both panes are visible */
-    #browseDetail button.tiny:not(#playNameBtn) { display: none; } 
+    .grid { grid-template-columns: 1.4fr 0.6fr;
+}
+
+/* Hide the "Back" button on desktop since both panes are visible */
+    #browseDetail button.tiny:not(#playNameBtn) {
+    display: none;
+}
+
 }
 
 @media (max-width: 900px) {
-    .browse-left { width: 100%; }
-    
-    /* Mobile Browse Logic: Show ONE pane at a time */
-    .browse-right { display: none; } /* Default: Hidden */
+    .browse-left { width: 100%;
+}
+
+/* Mobile Browse Logic: Show ONE pane at a time */
+    .browse-right {
+    display: none;
+}
+
+/* Default: Hidden */
     
     /* When Detail Mode is Active (via JS class) */
-    .modal.detail-mode .browse-left { display: none; }
-    .modal.detail-mode .browse-right { display: flex; width: 100%; }
-    
-    /* Show "Back" button on mobile */
-    #browseDetail button.tiny:not(#playNameBtn) { display: block; } 
+    .modal.detail-mode .browse-left {
+    display: none;
+}
+
+.modal.detail-mode .browse-right {
+    display: flex; width: 100%;
+}
+
+/* Show "Back" button on mobile */
+    #browseDetail button.tiny:not(#playNameBtn) {
+    display: block;
+}
+
 }
 
 @media (max-width: 700px) {
-    body { padding-bottom: 70px; }
-    header { position: static; }
-    .controls {
-        position: fixed;
+    body { padding-bottom: 70px;
+}
+
+.controls {
+    position: fixed;
         bottom: 0px;
         left: 0px;
         right: 0px;
@@ -603,14 +652,8 @@ th {
         justify-content: center;
         z-index: 1000;
         box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-    }
-    .modal {
-        width: 100%;
-        height: 100vh;
-        margin: 0;
-        border-radius: 0;
-    }
-    .modal-header { position: sticky; top: 0; z-index: 20; background: #fff; }
+}
+
 }
 #poseShorthand {
     font-family: 'Segoe UI', monospace;
@@ -669,19 +712,23 @@ th {
 }
 
 /* Styling the specific numbers */
-#timeRemainingDisplay { 
+#timeRemainingDisplay {
     color: #1b5e20; 
     display: inline-block;
     min-width: 4.5ch; /* Lock width */
     text-align: center;
-} 
-#timeTotalDisplay { 
+}
+
+#timeTotalDisplay {
     color: #757575; 
     display: inline-block;
     min-width: 4.5ch; /* Lock width */
     text-align: center;
 }
-.time-sep { opacity: 0.4; }
+
+.time-sep {
+    opacity: 0.4;
+}
 
 /* =========================================
    FOCUS OVERLAY (The Smart Way)
@@ -697,11 +744,15 @@ th {
     padding: 20px;
     box-sizing: border-box;
 }
+
 #builderCategory {
     width: 280px !important;
     min-width: 280px;
-    flex: none !important;
+    flex: none !important;;
+    width: 120px !important;
+        min-width: 120px !important;
 }
+
 /* Removes the default dropdown arrow from the category input */
 #builderCategory::-webkit-calendar-picker-indicator {
     display: none !important;
@@ -713,23 +764,27 @@ th {
     -moz-appearance: none;
     -webkit-appearance: none;
 }
+
 /* Optional: Style the datalist dropdown behavior for better visibility */
 #builderCategoryList {
     background-color: white;
     border: 1px solid #ddd;
 }
+
 /* 1. Header Info */
 .focus-header {
     text-align: center;
     margin-bottom: 10px;
     width: 100%;
 }
+
 #focusCourseTitle {
     font-size: 1.1rem;
     color: #666;
     font-weight: bold;
     text-transform: uppercase;
 }
+
 #focusTotalTime {
     font-size: 1rem;
     color: #888;
@@ -767,6 +822,7 @@ th {
     margin-bottom: 20px;
     min-height: 0; /* Important for flex containers */
 }
+
 #focusImageWrap img {
     max-width: 100%;
     max-height: 100%;
@@ -786,6 +842,7 @@ th {
     cursor: pointer;
     min-width: 200px;
 }
+
 #focusPauseBtn:hover {
     background-color: #b71c1c;
     transform: scale(1.02);
@@ -797,6 +854,7 @@ th {
     border-color: #cbd5e0;
     cursor: pointer;
 }
+
 #categoryFilter:hover {
     background-color: #e2e8f0;
 }
@@ -805,7 +863,6 @@ th {
 header .row {
     flex-wrap: wrap;
 }
-
 
 /* ==========================================================================
    DURATION DIAL (Minimalist Apple-style)
@@ -872,9 +929,11 @@ header .row {
     cursor: grab;
     transition: box-shadow 0.12s;
 }
+
 #durationDial::-webkit-slider-thumb:hover {
     box-shadow: 0 0 0 1px rgba(0,0,0,0.18), 0 3px 10px rgba(0,0,0,0.22);
 }
+
 #durationDial::-webkit-slider-thumb:active {
     cursor: grabbing;
     box-shadow: 0 0 0 4px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.2);
@@ -889,6 +948,7 @@ header .row {
     box-shadow: 0 0 0 1px rgba(0,0,0,0.13), 0 2px 6px rgba(0,0,0,0.18);
     cursor: grab;
 }
+
 #durationDial::-moz-range-track {
     height: 2px;
     background: #d1d5db;
@@ -905,7 +965,10 @@ header .row {
     font-size: 0.58rem;
     color: #bbb;
     pointer-events: none;
-    line-height: 1;
+    line-height: 1;;
+    position: relative;
+    z-index: 10;
+    pointer-events: auto; /* Ensures it accepts touches */
 }
 
 #durationDialDefaultMark {
@@ -914,8 +977,13 @@ header .row {
     font-weight: 600;
 }
 
-#durationDialWrap.dial-slower #durationDialLabel { color: #2563eb; }
-#durationDialWrap.dial-faster #durationDialLabel { color: #d97706; }
+#durationDialWrap.dial-slower #durationDialLabel {
+    color: #2563eb;
+}
+
+#durationDialWrap.dial-faster #durationDialLabel {
+    color: #d97706;
+}
 
 /* ==========================================================================
    SEQUENCE BUILDER — MOBILE RESPONSIVE
@@ -931,78 +999,81 @@ header .row {
         border-radius: 0;
         display: flex;
         flex-direction: column;
-    }
+}
 
-    #editCourseBackdrop .modal-body {
-        flex: 1;
+#editCourseBackdrop .modal-body {
+    flex: 1;
         overflow-x: auto;
         overflow-y: auto;
         max-height: none;
-        -webkit-overflow-scrolling: touch;
-    }
+        -webkit-overflow-scrolling: touch;;
+    max-height: calc(100dvh - 190px) !important;
+        flex: 1 !important;
+}
 
-    #builderTable {
-        min-width: 560px;
-    }
+#builderTable {
+    min-width: 560px;
+}
 
-    /* Compact cells on mobile */
+/* Compact cells on mobile */
     #builderTable td,
     #builderTable th {
-        padding: 6px 4px;
+    padding: 6px 4px;
         font-size: 0.8rem;
-    }
+}
 
-    /* Duration column: stack the std button under the input */
+/* Duration column: stack the std button under the input */
     #builderTable td:nth-child(3) {
-        white-space: nowrap;
-    }
+    white-space: nowrap;
+}
 
-    /* Make the variation select smaller on mobile */
+/* Make the variation select smaller on mobile */
     .b-var {
-        max-width: 120px !important;
+    max-width: 120px !important;
         font-size: 0.7rem !important;
-    }
+}
 
-    /* Note input: full width but don't overflow */
+/* Note input: full width but don't overflow */
     .b-note {
-        width: 80px !important;
-    }
+    width: 80px !important;
+}
 
-    /* Builder header row: wrap gracefully */
+/* Builder header row: wrap gracefully */
     #editCourseBackdrop .modal-header {
-        flex-direction: column;
+    flex-direction: column;
         align-items: flex-start;
         gap: 8px;
         padding: 10px 12px;
-    }
+}
 
-    #editCourseBackdrop .modal-header > div {
-        width: 100%;
-    }
+#editCourseBackdrop .modal-header > div {
+    width: 100%;
+}
 
-    #builderTitle {
-        width: 100%;
-    }
+#builderTitle {
+    width: 100%;
+}
 
-    #editCourseBackdrop .modal-footer {
-        flex-direction: column;
+#editCourseBackdrop .modal-footer {
+    flex-direction: column;
         gap: 8px;
         padding: 10px 12px;
-    }
+}
 
-    #editCourseBackdrop .modal-footer > div {
-        width: 100%;
+#editCourseBackdrop .modal-footer > div {
+    width: 100%;
         display: flex;
         gap: 6px;
         flex-wrap: wrap;
-    }
+}
 
-    #editCourseBackdrop .modal-footer button {
-        flex: 1;
+#editCourseBackdrop .modal-footer button {
+    flex: 1;
         min-width: 80px;
         font-size: 0.82rem;
         padding: 8px 6px;
-    }
+}
+
 }
 
 /* Transition pause overlay */
@@ -1033,11 +1104,13 @@ header .row {
     font-variant-numeric: tabular-nums;
     line-height: 1;
 }
+
 /* Class to lock background scrolling */
 body.modal-open {
     overflow: hidden;
     height: 100vh;
 }
+
 #transitionOverlay .transition-next {
     font-size: 1.1rem;
     color: #666;
@@ -1104,15 +1177,12 @@ body.modal-open {
     border-color: #007aff;
     box-shadow: 0 0 0 2px rgba(0,122,255,0.2);
 }
-#durationDialLabels {
-    position: relative;
-    z-index: 10;
-    pointer-events: auto; /* Ensures it accepts touches */
-}
+
 #dialResetBtn {
     position: relative;
     z-index: 20;
 }
+
 /* ==========================================================================
    MOBILE-RESPONSIVE: BROWSE FILTERS
    ========================================================================== */
@@ -1131,8 +1201,6 @@ body.modal-open {
     padding: 8px 10px;
     min-height: 36px;
 }
-
-
 
 /* ==========================================================================
    SEQUENCE BUILDER: TOOLBAR LAYOUT (responsive two-row design)
@@ -1155,7 +1223,11 @@ body.modal-open {
     border-radius: 6px;
     font-size: 0.9rem;
     min-height: 40px;
-    resize: vertical;
+    resize: vertical;;
+    font-size: 0.9rem;
+        min-height: 42px !important;
+        max-height: 80px;
+        padding: 8px 10px;
 }
 
 /* ⚙️ toggle button: hidden on desktop (tools always shown) */
@@ -1261,16 +1333,45 @@ body.modal-open {
 }
 
 /* Category colour map via data-cat attribute */
-.binfo-cat[data-cat="standing"]   { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
-.binfo-cat[data-cat="seated"]     { background:#ede9fe; color:#5b21b6; border-color:#c4b5fd; }
-.binfo-cat[data-cat="supine"]     { background:#d1fae5; color:#065f46; border-color:#6ee7b7; }
-.binfo-cat[data-cat="prone"]      { background:#fce7f3; color:#9d174d; border-color:#f9a8d4; }
-.binfo-cat[data-cat="inversion"]  { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
-.binfo-cat[data-cat="balance"]    { background:#fff7ed; color:#9a3412; border-color:#fdba74; }
-.binfo-cat[data-cat="twists"]     { background:#ecfeff; color:#164e63; border-color:#67e8f9; }
-.binfo-cat[data-cat="backbend"]   { background:#fef9c3; color:#713f12; border-color:#fde047; }
-.binfo-cat[data-cat="forward"]    { background:#f0fdf4; color:#166534; border-color:#86efac; }
-.binfo-cat[data-cat="restorative"]{ background:#f0f9ff; color:#0c4a6e; border-color:#7dd3fc; }
+.binfo-cat[data-cat="standing"] {
+    background:#fef3c7; color:#92400e; border-color:#fcd34d;
+}
+
+.binfo-cat[data-cat="seated"] {
+    background:#ede9fe; color:#5b21b6; border-color:#c4b5fd;
+}
+
+.binfo-cat[data-cat="supine"] {
+    background:#d1fae5; color:#065f46; border-color:#6ee7b7;
+}
+
+.binfo-cat[data-cat="prone"] {
+    background:#fce7f3; color:#9d174d; border-color:#f9a8d4;
+}
+
+.binfo-cat[data-cat="inversion"] {
+    background:#fee2e2; color:#991b1b; border-color:#fca5a5;
+}
+
+.binfo-cat[data-cat="balance"] {
+    background:#fff7ed; color:#9a3412; border-color:#fdba74;
+}
+
+.binfo-cat[data-cat="twists"] {
+    background:#ecfeff; color:#164e63; border-color:#67e8f9;
+}
+
+.binfo-cat[data-cat="backbend"] {
+    background:#fef9c3; color:#713f12; border-color:#fde047;
+}
+
+.binfo-cat[data-cat="forward"] {
+    background:#f0fdf4; color:#166534; border-color:#86efac;
+}
+
+.binfo-cat[data-cat="restorative"] {
+    background:#f0f9ff; color:#0c4a6e; border-color:#7dd3fc;
+}
 
 /* Sides badge */
 .binfo-sides {
@@ -1287,7 +1388,6 @@ body.modal-open {
    MOBILE-RESPONSIVE STYLES (Max Width: 600px)
    ========================================================================== */
 @media (max-width: 600px) {
-
     /* --- 1. Header & Category Filters --- */
     #categoryFilter, #sequenceSelect {
         width: 100%;
@@ -1309,16 +1409,20 @@ body.modal-open {
     }
 
     /* --- 3. Builder Tools & Toolbar --- */
-    .builder-tools-toggle-btn { display: flex; align-items: center; justify-content: center; }
-    .builder-tools-panel { display: none; }
-    .builder-tools-panel.builder-tools-open { display: flex; }
-
-    .builder-toolbar-primary { padding: 6px 10px 4px; }
-    .builder-toolbar-primary #builderSearch {
-        font-size: 0.9rem;
-        min-height: 42px !important;
-        max-height: 80px;
-        padding: 8px 10px;
+    .builder-tools-toggle-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .builder-tools-panel {
+        display: none;
+        flex-direction: column;
+    }
+    .builder-tools-panel.show {
+        display: flex !important;
+    }
+    .builder-toolbar-primary {
+        padding: 6px 10px 4px;
     }
 
     /* --- 4. Modal Adjustments --- */
@@ -1326,10 +1430,7 @@ body.modal-open {
         height: 100dvh;
         max-height: 100dvh;
         border-radius: 0;
-    }
-    #editCourseBackdrop .modal-body {
-        max-height: calc(100dvh - 190px) !important;
-        flex: 1 !important;
+        padding-bottom: env(safe-area-inset-bottom, 12px);
     }
     #editCourseBackdrop .modal-header {
         flex-direction: column;
@@ -1340,9 +1441,9 @@ body.modal-open {
         font-size: 0.85rem !important;
         min-height: 36px !important;
     }
-    #builderCategory {
-        width: 120px !important;
-        min-width: 120px !important;
+    #editCourseBackdrop .modal-footer {
+        padding-bottom: max(16px, env(safe-area-inset-bottom, 20px));
+        margin-bottom: 5px;
     }
 
     /* --- 5. Builder Table Restructuring (SMART FLEX CARDS) --- */
@@ -1350,12 +1451,13 @@ body.modal-open {
         min-width: 0 !important;
         width: 100% !important;
     }
-    #builderTable thead { display: none; }
-    
-    /* Make the row itself a flex-wrapping container */
+    #builderTable thead {
+        display: none;
+    }
+
     #builderTable tr {
         display: flex;
-        flex-wrap: wrap; /* Allows cells to sit side-by-side or wrap to next line */
+        flex-wrap: wrap;
         border: 1px solid #e0e0e0;
         border-radius: 10px;
         margin-bottom: 8px;
@@ -1366,12 +1468,11 @@ body.modal-open {
 
     #builderTable td {
         box-sizing: border-box;
-        border: none !important; /* We will apply borders manually to the bottom half */
+        border: none !important;
     }
 
-    /* --- TOP LEFT: Checkbox & Number --- */
     #builderTable td:first-child {
-        width: 40px !important; /* Fixed width */
+        width: 40px !important;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -1381,21 +1482,22 @@ body.modal-open {
         margin: 0 !important;
     }
 
-    /* --- TOP RIGHT: Name, ID, Variation --- */
     #builderTable td:nth-child(2) {
-        width: calc(100% - 40px) !important; /* Fill the rest of the top row */
+        width: calc(100% - 40px) !important;
         display: flex !important; 
         flex-direction: column !important;
         align-items: flex-start !important;
         gap: 6px !important;
-        padding: 12px 10px 10px 0 !important; /* No left padding so it sits flush to the checkbox */
+        padding: 12px 10px 10px 0 !important;
     }
+
     #builderTable td:nth-child(2) > div:first-child {
         display: block !important;
         line-height: 1.3 !important;
         margin-bottom: 0 !important;
         width: 100%;
     }
+
     #builderTable td:nth-child(2) > div:nth-child(2) {
         display: flex !important;
         flex-direction: row !important;
@@ -1404,11 +1506,13 @@ body.modal-open {
         width: 100%;
         gap: 8px !important;
     }
+
     .b-id {
         flex-shrink: 0;
         width: 48px !important;
         text-align: center;
     }
+
     .b-var {
         flex: 1 !important;
         width: auto !important;
@@ -1416,41 +1520,39 @@ body.modal-open {
         margin: 0 !important;
     }
 
-    /* --- BOTTOM LEFT: Metadata (Tiers, Category, Sides) --- */
     #builderTable td:nth-child(3) {
         display: flex !important;
-        flex: 1 !important; /* Grows to take available space on the bottom left */
+        flex: 1 !important;
         flex-direction: column;
         justify-content: center;
         align-items: flex-start;
         gap: 4px;
         padding: 8px 10px !important;
-        border-top: 1px solid #f0f0f0 !important; /* Horizontal divider line */
-        min-width: 140px; /* Prevent it from getting crushed by buttons */
+        border-top: 1px solid #f0f0f0 !important;
+        min-width: 140px;
     }
-    /* Let the tier buttons sit horizontally */
+
     #builderTable td:nth-child(3) > div {
         display: flex;
         flex-wrap: wrap;
         gap: 4px;
     }
 
-    /* --- BOTTOM RIGHT: Controls --- */
     #builderTable td:last-child {
-        width: auto !important; /* Hugs the buttons */
+        width: auto !important;
         display: flex;
         flex-wrap: nowrap;
         justify-content: flex-end;
         align-items: center;
         gap: 6px;
         padding: 8px 10px !important;
-        border-top: 1px solid #f0f0f0 !important; /* Matches divider line */
+        border-top: 1px solid #f0f0f0 !important;
         overflow-x: auto;
     }
-    
+
     #builderTable td:last-child > *:not(#durationDialWrap) {
         display: flex;
-        gap: 4px;
+        gap: 2px !important;
     }
 
     #builderTableBody button.tiny {
@@ -1481,7 +1583,7 @@ body.modal-open {
     #builderTableBody span[title] {
         font-size: 0.65rem !important;
         padding: 3px 6px !important;
-        white-space: normal !important; /* Allows long badges to wrap safely */
+        white-space: normal !important;
         line-height: 1.3;
         display: inline-block !important;
         max-width: 100%; 
@@ -1489,20 +1591,225 @@ body.modal-open {
     }
 } /* <--- END OF 600px MEDIA BLOCK */
 
-/* --- EXTREMELY NARROW PHONES (Max Width: 400px) --- */
-@media (max-width: 400px) {
-    /* 1. Hide the Category Chip completely */
-    .binfo-cat {
+@media (min-width: 601px) {
+    .builder-tools-toggle-btn { display: none !important; }
+    .builder-tools-panel { display: flex !important; }
+}
+
+/* ==========================================================================
+   BUILDER: VIEW MODE & MOBILE SEARCH OVERLAYS
+   ========================================================================== */
+
+/* --- Builder View Mode (Jobbsian Aesthetic) --- */
+.builder-view-mode .builder-tools-panel,
+.builder-view-mode .builder-toolbar-primary {
+    display: none !important;
+}
+
+.builder-view-mode .b-move-top, 
+.builder-view-mode .b-move-bot, 
+.builder-view-mode .b-move-up, 
+.builder-view-mode .b-move-dn, 
+.builder-view-mode .b-remove, 
+.builder-view-mode .b-row-select,
+.builder-view-mode .b-row-search-btn {
+    display: none !important;
+}
+
+.builder-view-mode input.b-id, 
+.builder-view-mode input.b-dur, 
+.builder-view-mode select.b-var {
+    border: none !important; 
+    background: transparent !important; 
+    pointer-events: none !important; 
+    appearance: none; 
+    -webkit-appearance: none; 
+    -moz-appearance: none;
+    color: inherit; 
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+
+.builder-view-mode th:first-child,
+.builder-view-mode td:first-child input[type="checkbox"] {
+    display: none !important;
+}
+
+/* Tighten Column 1 and hide Column 4 in View Mode */
+.builder-view-mode th:nth-child(1), 
+.builder-view-mode td:nth-child(1) {
+    width: 60px !important; text-align: center;
+}
+
+.builder-view-mode th:nth-child(4), 
+.builder-view-mode td:nth-child(4) {
+    display: none !important;
+}
+
+/* Remove Pointless Bottom Space */
+.builder-view-mode .modal {
+    height: auto !important;
+    max-height: 90vh;
+}
+
+.builder-view-mode .modal-body {
+    max-height: 75vh !important;
+    overflow-y: auto;
+    flex: none; /* Allow it to shrink */
+}
+
+/* --- Builder Smart Variation Display --- */
+.b-var-view { display: none; } 
+.builder-view-mode .b-var-view { display: inline-block !important; }
+
+/* --- Builder Redundancy Cleanup --- */
+.builder-view-mode .edit-only-inline { display: none !important; }
+.builder-view-mode .b-var-edit { display: none !important; }
+
+/* --- VIEW MODE LOCKDOWNS --- */
+.builder-view-mode input.jobbsian-input {
+    pointer-events: none !important; /* Stops clicking, hovering, or focusing */
+}
+
+/* If the category is empty in View Mode, magically hide it entirely */
+.builder-view-mode input.jobbsian-category:placeholder-shown {
+    display: none !important;
+}
+
+/* ==========================================================================
+   SEAMLESS TYPOGRAPHY INPUTS (Unified Formatting Module)
+   ========================================================================== */
+.jobbsian-title {
+    font-size: 1.6rem !important;
+    font-weight: 700 !important;
+    color: #1d1d1f !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.02em !important;
+    width: 100% !important;
+    padding: 6px 8px !important;
+    margin-left: -8px !important;
+    background: transparent !important;
+    border: 2px solid transparent !important;
+    border-radius: 8px !important;
+    outline: none !important;
+    transition: all 0.2s ease;
+}
+
+.jobbsian-category {
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    color: #005580 !important;
+    background: #e3f2fd !important;
+    padding: 6px 12px !important;
+    border-radius: 12px !important;
+    border: 2px solid transparent !important;
+    text-overflow: ellipsis;
+    outline: none !important;
+    transition: all 0.2s ease;
+}
+
+/* Edit Mode Hover/Focus states */
+.jobbsian-title:hover:not(:disabled) { background: #f5f5f7 !important; }
+.jobbsian-title:focus { background: #fff !important; border-color: #007aff !important; box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15) !important; }
+
+.jobbsian-category:hover:not(:disabled) { background: #cce4f7 !important; }
+.jobbsian-category:focus { background: #fff !important; border-color: #007aff !important; box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15) !important; color: #1d1d1f !important; }
+
+/* --- VIEW MODE LOCKDOWN --- */
+.builder-view-mode .jobbsian-title,
+.builder-view-mode .jobbsian-category {
+    pointer-events: none !important;
+}
+
+/* ==========================================================================
+   PRINT / PDF EXPORT STYLES
+   ========================================================================== */
+/* ==========================================================================
+   PRINT / PDF EXPORT STYLES (Bulletproof Pagination)
+   ========================================================================== */
+@media print {
+    /* 1. Free the document from screen-height constraints */
+    html, body, body.modal-open {
+        height: auto !important;
+        min-height: auto !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+    }
+
+    /* 2. Hide the main app behind the modal */
+    body > *:not(#editCourseBackdrop) { 
+        display: none !important; 
+    }
+    
+    /* 3. Destroy the Flexbox layout just for printing (Flexbox kills pagination) */
+    #editCourseBackdrop {
+        position: absolute !important; /* Pulls it out of normal flow */
+        top: 0 !important;
+        left: 0 !important;
+        display: block !important; /* Flexbox is the enemy of print pagination */
+        background: #fff !important;
+        padding: 0 !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    
+    .modal {
+        box-shadow: none !important;
+        width: 100% !important;
+        max-width: none !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important; /* Remove flex */
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    /* 4. Let the table container grow infinitely */
+    .modal-body {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+        display: block !important;
+    }
+
+    /* 5. Hide UI Buttons, Toolbars, Checkboxes, and the Order column */
+    #builderModeToggleBtn, #editCourseCloseBtn, #builderPrintBtn, 
+    .modal-footer, .builder-toolbar-primary, .builder-tools-panel,
+    #builderTable th:last-child, #builderTable td:last-child,
+    #builderTable input[type="checkbox"] {
         display: none !important;
     }
 
-    /* 2. Hide the 'Jump to Top / Bottom' buttons to save space */
+    /* 6. Clean up the table for paper */
+    #builderTable { 
+        width: 100% !important; 
+        border-collapse: collapse !important; 
+        margin-top: 20px !important;
+    }
+    
+    /* 7. Prevent page breaks from cutting poses in half */
+    #builderTable tr { 
+        page-break-inside: avoid !important; 
+        break-inside: avoid !important; /* Modern syntax */
+        border-bottom: 1px solid #ddd !important; 
+    }
+}
+
+/* --- EXTREMELY NARROW PHONES (Max Width: 400px) --- */
+@media (max-width: 400px) {
+    .binfo-cat { display: none !important; }
+
     #builderTableBody .b-move-top,
     #builderTableBody .b-move-bot {
         display: none !important;
     }
 
-    /* 3. Drastically shrink the remaining Move and Delete buttons */
     #builderTableBody button.tiny {
         min-width: 28px !important;
         height: 28px !important;
@@ -1510,33 +1817,26 @@ body.modal-open {
         font-size: 0.85rem !important;
     }
 
-    /* 4. Tighten the gaps between the buttons on the bottom row */
     #builderTable td:last-child {
         gap: 3px !important;
-        padding: 6px !important; 
-    }
-    
-    #builderTable td:last-child > *:not(#durationDialWrap) {
-        gap: 2px !important; 
+        padding: 6px !important;
     }
 
-    /* 5. Allow the left side (Metadata) to shrink a bit more */
     #builderTable td:nth-child(3) {
         padding: 6px !important;
-        min-width: 100px !important; 
+        min-width: 100px !important;
     }
 
-    /* 6. Hide the Order Number and shrink the Checkbox column */
     #builderTable td:first-child {
-        font-size: 0 !important; /* Hides the plain text number */
-        width: 32px !important;  /* Shrink the column slightly */
+        font-size: 0 !important; 
+        width: 32px !important;  
     }
+
     #builderTable td:first-child br {
-        display: none !important; /* Removes the line break space */
+        display: none !important;
     }
-    
-    /* Expand the Middle Name/ID column to use the newly reclaimed space */
+
     #builderTable td:nth-child(2) {
         width: calc(100% - 32px) !important;
     }
-}   /* <--- END OF 400px MEDIA BLOCK */
+}

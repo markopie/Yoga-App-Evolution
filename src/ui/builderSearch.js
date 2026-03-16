@@ -1,12 +1,6 @@
 // src/ui/builderSearch.js
 import { $, normaliseText } from "../utils/dom.js";
 
-/**
- * Initializes the builder search input, dropdown logic, and hit scoring.
- * @param {function} getAsanaIndex - Function returning the library array to search.
- * @param {function} onResultSelected - Callback triggered when an item is clicked/enter.
- * @param {function} onSemicolonCommand - Callback triggered if the user types a semicolon command.
- */
 export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonCommand) {
     const searchInput = $("builderSearch");
     const resultsBox = $("builderSearchResults");
@@ -14,15 +8,21 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
 
     resultsBox.style.display = "none";
 
-    function scoreAsana(asma, query, source) {
+    function scoreAsana(asma, query) {
         const q = normaliseText(query);
         if (!q) return 0;
 
-        let idStr = source === 'mehta' ? String(asma.yoga_the_iyengar_way_id || '') : String(asma.id || '');
-        const idNorm = idStr.toLowerCase();
+        const idStrLoy = String(asma.id || '');
+        const idStrMehta = String(asma.yoga_the_iyengar_way_id || '');
+        const idNormLoy = idStrLoy.toLowerCase();
         
-        if (/^\d+$/.test(q) && idStr.padStart(3, '0') === q.padStart(3, '0')) return 100;
-        if (idNorm === q) return 100;
+        // Exact Numeric Match (Prioritize LOY, then Mehta)
+        if (/^\d+$/.test(q)) {
+            if (idStrLoy.padStart(3, '0') === q.padStart(3, '0')) return 100;
+            if (idStrMehta && idStrMehta.padStart(3, '0') === q.padStart(3, '0')) return 90;
+        }
+        
+        if (idNormLoy === q || idStrMehta.toLowerCase() === q) return 100;
 
         const eng  = normaliseText(asma.english || '');
         const iast = normaliseText(asma.iast || '');
@@ -32,22 +32,20 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
         if (eng.startsWith(q) || iast.startsWith(q) || sans.startsWith(q)) return 50;
         if (eng.includes(q) || iast.includes(q) || sans.includes(q)) return 20;
         if (plate.includes(q)) return 10;
-        if (idNorm.includes(q)) return 5;
+        if (idNormLoy.includes(q) || (idStrMehta && idStrMehta.includes(q))) return 5;
 
         return 0;
     }
 
     function getSearchResults(query) {
-        const source = $("builderIdSource")?.value || "loy";
         const library = getAsanaIndex();
-
         const scored = [];
         for (const asma of library) {
-            const s = scoreAsana(asma, query, source);
+            const s = scoreAsana(asma, query);
             if (s > 0) scored.push({ asma, score: s });
         }
         scored.sort((a, b) => b.score - a.score);
-        return { results: scored, source };
+        return { results: scored };
     }
 
     searchInput.onkeydown = (e) => {
@@ -72,23 +70,21 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
     };
 
     searchInput.oninput = () => {
-        const query = searchInput.value.trim();
+        const query = searchInput.value.trim(); // 🔥 Fixed scope issue
         if (query.length < 1 || query.includes(';')) {
             resultsBox.style.display = "none";
             return;
         }
 
-        const { results, source } = getSearchResults(query);
+        const { results } = getSearchResults(query); // 🔥 Removed undefined source
 
         if (results.length > 0) {
             resultsBox.innerHTML = results.slice(0, 15).map(({ asma, score }) => {
-                const displayId = (source === "mehta") ? (asma.yoga_the_iyengar_way_id || "N/A") : asma.id;
-                const badgeColor = (source === "mehta") ? "#673ab7" : "#007aff";
                 const catLabel = asma.category ? asma.category.replace(/^\d+_/, '').replace(/_/g, ' ') : '';
 
                 return `
                     <div class="search-result-item" data-id="${asma.id}" style="padding:10px; cursor:pointer; border-bottom:1px solid #eee; display:flex; gap:10px; align-items:center;">
-                        <div style="background:${badgeColor}; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:0.8rem; min-width:28px; text-align:center;">${displayId}</div>
+                        <div style="background:#007aff; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:0.8rem; min-width:28px; text-align:center;">${asma.id}</div>
                         <div style="flex:1; min-width:0;">
                             <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${asma.english || asma.name || 'Unknown'}</div>
                             <div style="font-size:0.75rem; color:#666; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${asma.iast || asma.name || ''}</div>

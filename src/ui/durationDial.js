@@ -121,10 +121,22 @@ export function applyDurationDial() {
 
         const needsSides = asana && (asana.requiresSides === true || asana.requires_sides === true || asana.requiresSides === "true" || asana.requires_sides === "true");
         
+        let targetForHold = asana;
+        let variation = cloned[3] || "";
+        
+        if (!variation && noteStr) {
+            const match = noteStr.match(/\[.*?\b([IVX]+)([a-z]?)\b.*?\]/i);
+            if (match) variation = match[1].toUpperCase() + (match[2] ? match[2].toLowerCase() : "");
+        }
+        
+        if (variation && asana && asana.variations && asana.variations[variation]) {
+            targetForHold = asana.variations[variation];
+        }
+
         // Get the true base time (respecting authored 600s, Tiers, etc)
         let trueBase = getPoseBaseTime(p);
 
-        const { short, defaultDur, long } = window.resolveDialAnchors(trueBase, asana);
+        const { short, defaultDur, long } = window.resolveDialAnchors(trueBase, targetForHold);
         cloned[1] = window.interpolateDuration(val, short, defaultDur, long);
 
         return cloned;

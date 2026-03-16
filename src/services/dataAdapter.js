@@ -76,6 +76,7 @@ async function loadAsanaLibrary() {
                     iast: row.iast ?? '',
                     // 🌟 CRITICAL FIX: Ensure 'english' is never empty
                     english: row.english_name ?? row.name ?? `Pose ${key}`, 
+                    devanagari: row.devanagari ?? '', 
                     audio: row.audio_url ?? '',
                     image_url: row.image_url ?? '',
                     technique: row.technique ?? row.Technique ?? '',
