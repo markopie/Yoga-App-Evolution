@@ -1,9 +1,8 @@
 import { $, enterBrowseDetailMode, exitBrowseDetailMode } from "../utils/dom.js";
-import { displayName, prefersIAST, formatTechniqueText } from "../utils/format.js";
 import { isBrowseMobile, mobileVariantUrl, smartUrlsForPoseId } from "../utils/helpers.js";
 import { playAsanaAudio } from "../playback/audio.js";
 import { normalizePlate } from "../services/dataAdapter.js";
-
+import { displayName, prefersIAST, formatTechniqueText, formatCategory } from "../utils/format.js";
 // Access global variables that app.js sets
 const getAsanaLibrary = () => window.asanaLibrary;
 
@@ -106,10 +105,10 @@ function setupBrowseUI() {
         // Keep the existing first option ("All categories")
         catEl.innerHTML = '<option value="">All categories</option>';
         
-        // Sort by the category string (numeric prefix preserves order)
+        
         const sortedCats = Array.from(cats).sort();
         sortedCats.forEach(rawCat => {
-            const displayLabel = rawCat.replace(/^\d+_/, '').replace(/_/g, ' ');
+            const displayLabel = formatCategory(rawCat);
             const opt = document.createElement('option');
             opt.value = rawCat;
             opt.textContent = displayLabel;
@@ -270,8 +269,7 @@ function renderBrowseList(items) {
 
        const meta = document.createElement("div");
        meta.className = "meta";
-       const catRaw = (asma.category || "").trim();
-       const catDisplay = catRaw ? catRaw.replace(/^\d+_/, "").replace(/_/g, " ") : "Uncategorized";
+       const catDisplay = formatCategory(asma.category);
        const catBadge = `<span class="badge">${catDisplay}</span>`;
 
        // Stage key badge — shows the stage code (e.g. "I", "II", "A") so user can see what to select

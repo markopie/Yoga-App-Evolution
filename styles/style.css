@@ -1345,95 +1345,114 @@ body.modal-open {
         min-width: 120px !important;
     }
 
-    /* --- 5. Builder Table Restructuring --- */
-    
-    /* ADD THIS TO KILL THE HORIZONTAL SCROLLING: */
+    /* --- 5. Builder Table Restructuring (SMART FLEX CARDS) --- */
     #builderTable {
         min-width: 0 !important;
         width: 100% !important;
     }
-    
     #builderTable thead { display: none; }
     
-    #builderTable tr,
-    #builderTable td {
-        display: block;
-        width: 100%;
-        box-sizing: border-box; /* Ensures padding doesn't push it off screen */
-    }
-
-    #builderTable thead { display: none; }
-    
-    #builderTable tr,
-    #builderTable td {
-        display: block;
-        width: 100%;
-    }
-    
+    /* Make the row itself a flex-wrapping container */
     #builderTable tr {
+        display: flex;
+        flex-wrap: wrap; /* Allows cells to sit side-by-side or wrap to next line */
         border: 1px solid #e0e0e0;
         border-radius: 10px;
         margin-bottom: 8px;
-        padding: 4px;
         background: #fff;
         box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-    }
-    
-    /* Top row: Number/Checkbox */
-    #builderTable td:first-child {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        border-bottom: 1px solid #f0f0f0;
-        padding-bottom: 6px;
-        margin-bottom: 4px;
-        font-size: 0.75rem;
-        color: #aaa;
+        box-sizing: border-box;
     }
 
-    /* ---> COMPACT MIDDLE SECTION (POSE IMAGE & NAME) <--- */
-    #builderTable td:nth-child(2) {
-        display: flex !important; 
-        align-items: center;
-        gap: 12px;
-        padding: 6px 8px;
-        text-align: left;
+    #builderTable td {
+        box-sizing: border-box;
+        border: none !important; /* We will apply borders manually to the bottom half */
     }
-    #builderTable td:nth-child(2) img {
-        width: 50px !important; 
-        height: 50px !important;
-        object-fit: contain;
-        flex-shrink: 0; 
-        border-radius: 4px;
-    }
-    #builderTable td:nth-child(2) > div,
-    #builderTable td:nth-child(2) > span {
+
+    /* --- TOP LEFT: Checkbox & Number --- */
+    #builderTable td:first-child {
+        width: 40px !important; /* Fixed width */
         display: flex;
         flex-direction: column;
-        justify-content: center;
-        gap: 2px;
-        line-height: 1.2;
-    }
-    
-    /* Bottom row: Controls/Buttons */
-    #builderTable td:last-child {
-        display: flex;
-        flex-wrap: nowrap; /* Prevent awkward line breaks */
-        justify-content: flex-end; /* Push everything to the right */
         align-items: center;
-        gap: 6px; /* Consistent spacing between all buttons */
-        padding-top: 8px;
-        border-top: 1px solid #f0f0f0;
-        overflow-x: auto; /* Allow horizontal scrolling if phone is extremely narrow */
+        justify-content: flex-start;
+        gap: 8px;
+        padding: 12px 4px !important;
+        margin: 0 !important;
     }
 
-    /* Wrap the right-side buttons so they group together */
+    /* --- TOP RIGHT: Name, ID, Variation --- */
+    #builderTable td:nth-child(2) {
+        width: calc(100% - 40px) !important; /* Fill the rest of the top row */
+        display: flex !important; 
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+        padding: 12px 10px 10px 0 !important; /* No left padding so it sits flush to the checkbox */
+    }
+    #builderTable td:nth-child(2) > div:first-child {
+        display: block !important;
+        line-height: 1.3 !important;
+        margin-bottom: 0 !important;
+        width: 100%;
+    }
+    #builderTable td:nth-child(2) > div:nth-child(2) {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+        width: 100%;
+        gap: 8px !important;
+    }
+    .b-id {
+        flex-shrink: 0;
+        width: 48px !important;
+        text-align: center;
+    }
+    .b-var {
+        flex: 1 !important;
+        width: auto !important;
+        max-width: none !important;
+        margin: 0 !important;
+    }
+
+    /* --- BOTTOM LEFT: Metadata (Tiers, Category, Sides) --- */
+    #builderTable td:nth-child(3) {
+        display: flex !important;
+        flex: 1 !important; /* Grows to take available space on the bottom left */
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 4px;
+        padding: 8px 10px !important;
+        border-top: 1px solid #f0f0f0 !important; /* Horizontal divider line */
+        min-width: 140px; /* Prevent it from getting crushed by buttons */
+    }
+    /* Let the tier buttons sit horizontally */
+    #builderTable td:nth-child(3) > div {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    /* --- BOTTOM RIGHT: Controls --- */
+    #builderTable td:last-child {
+        width: auto !important; /* Hugs the buttons */
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px !important;
+        border-top: 1px solid #f0f0f0 !important; /* Matches divider line */
+        overflow-x: auto;
+    }
+    
     #builderTable td:last-child > *:not(#durationDialWrap) {
         display: flex;
         gap: 4px;
     }
 
-    /* Target the exact classes from builder.js and ensure they all display inline */
     #builderTableBody button.tiny {
         display: inline-flex !important;
         align-items: center;
@@ -1442,12 +1461,11 @@ body.modal-open {
         height: 34px !important;
         padding: 4px !important;
         font-size: 0.95rem !important;
-        flex-shrink: 0; /* Prevent buttons from squishing */
+        flex-shrink: 0;
         visibility: visible !important;
         opacity: 1 !important;
     }
 
-    /* NUKE OVERRIDE: Guarantee every single move button is visible */
     #builderTable td:last-child button,
     #builderTableBody .b-move-top,
     #builderTableBody .b-move-bot,
@@ -1459,35 +1477,66 @@ body.modal-open {
         visibility: visible !important;
         opacity: 1 !important;
     }
-    
-    .b-var {
-        width: 100% !important;
-        max-width: 100% !important;
-        margin-left: 0 !important;
-        margin-top: 6px !important;
-    }
 
-    /* Injection badges: force text wrapping on mobile so it doesn't break the layout */
     #builderTableBody span[title] {
         font-size: 0.65rem !important;
         padding: 3px 6px !important;
-        white-space: normal !important; /* <-- This overrides the nowrap! */
+        white-space: normal !important; /* Allows long badges to wrap safely */
         line-height: 1.3;
         display: inline-block !important;
         max-width: 100%; 
         box-sizing: border-box;
     }
-
-    /* --- 6. Hide Metadata Column on Mobile --- */
-    .builder-info-cell { display: none; }
-    th.builder-info-th { display: none; }
-}
+} /* <--- END OF 600px MEDIA BLOCK */
 
 /* --- EXTREMELY NARROW PHONES (Max Width: 400px) --- */
 @media (max-width: 400px) {
-    /* Hide the 'Jump to Top / Bottom' buttons to save space, keeping only Up/Down */
+    /* 1. Hide the Category Chip completely */
+    .binfo-cat {
+        display: none !important;
+    }
+
+    /* 2. Hide the 'Jump to Top / Bottom' buttons to save space */
     #builderTableBody .b-move-top,
     #builderTableBody .b-move-bot {
         display: none !important;
     }
-}
+
+    /* 3. Drastically shrink the remaining Move and Delete buttons */
+    #builderTableBody button.tiny {
+        min-width: 28px !important;
+        height: 28px !important;
+        padding: 2px !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* 4. Tighten the gaps between the buttons on the bottom row */
+    #builderTable td:last-child {
+        gap: 3px !important;
+        padding: 6px !important; 
+    }
+    
+    #builderTable td:last-child > *:not(#durationDialWrap) {
+        gap: 2px !important; 
+    }
+
+    /* 5. Allow the left side (Metadata) to shrink a bit more */
+    #builderTable td:nth-child(3) {
+        padding: 6px !important;
+        min-width: 100px !important; 
+    }
+
+    /* 6. Hide the Order Number and shrink the Checkbox column */
+    #builderTable td:first-child {
+        font-size: 0 !important; /* Hides the plain text number */
+        width: 32px !important;  /* Shrink the column slightly */
+    }
+    #builderTable td:first-child br {
+        display: none !important; /* Removes the line break space */
+    }
+    
+    /* Expand the Middle Name/ID column to use the newly reclaimed space */
+    #builderTable td:nth-child(2) {
+        width: calc(100% - 32px) !important;
+    }
+}   /* <--- END OF 400px MEDIA BLOCK */

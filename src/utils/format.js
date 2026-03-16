@@ -124,3 +124,7 @@ export function formatTechniqueText(text) {
     
     return clean;
 }
+export function formatCategory(rawCat) {
+   if (!rawCat) return "Uncategorized";
+   return String(rawCat).trim().replace(/^\d+_/, "").replace(/_/g, " ");
+}

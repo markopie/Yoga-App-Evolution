@@ -2,10 +2,9 @@ import { $, safeListen, normaliseText } from "../utils/dom.js";
 import { parseHoldTimes, parseSequenceText, buildHoldString } from "../utils/parsing.js";
 import { normalizePlate } from "../services/dataAdapter.js";
 import { supabase } from "../services/supabaseClient.js";
-import { formatHMS, displayName } from "../utils/format.js";
 import { parseSemicolonCommand } from "../utils/builderParser.js";
 import { setupBuilderSearch } from "./builderSearch.js";
-
+import { formatHMS, displayName, formatCategory } from "../utils/format.js";
 const getEffectiveTime = (id, time) => window.getEffectiveTime ? window.getEffectiveTime(id, time) : time;
 const getAsanaIndex = () => {
     return Object.values(window.asanaLibrary || {}).filter(Boolean);
@@ -232,8 +231,9 @@ function builderRender() {
             const rawCat = (asana?.category || '').trim();
             let catChipHTML = '';
             if (rawCat) {
-                const catKey = rawCat.toLowerCase().split(/[\s/]/)[0];
-                catChipHTML = `<span class="binfo-cat" data-cat="${catKey}">${rawCat}</span>`;
+                const displayCat = formatCategory(rawCat);
+                const catKey = displayCat.toLowerCase().split(/[\s/]/)[0];
+                catChipHTML = `<span class="binfo-cat" data-cat="${catKey}">${displayCat}</span>`;
             }
 
             const sidesHTML = (asana?.requiresSides)
