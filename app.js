@@ -4,7 +4,6 @@
    ========================================================================== */
 
 import {
-    MANIFEST_URL,
     ASANA_LIBRARY_URL,
     LIBRARY_URL,
     ID_ALIASES_URL,
@@ -317,24 +316,7 @@ function showResumePrompt(state) {
 /* ==========================================================================
    APP INITIALIZATION (Controller)
    ========================================================================== */
-   async function loadManifestAndPopulateLists() {
-// console.log("Fetching manifest from:", MANIFEST_URL); // Debug 1
-    const manifest = await loadJSON(MANIFEST_URL, null);
-
-    if (!manifest) {
-// console.warn("❌ Manifest failed to load (404 or Invalid JSON)");
-        return;
-    }
-
-    // Debug 2: See exactly what keys exist. 
-    // If you see "Images" (capital I) instead of "images", that's the bug.
-// console.log("Raw Manifest Data:", manifest); 
-
-    // Robust check for lowercase OR uppercase keys
-    window.serverAudioFiles = manifest.audio || manifest.Audio || [];
-
-// console.log(`Manifest loaded: ${window.serverAudioFiles.length} audio files`);
-}
+  
 async function init() {
     window.appInitialized = true; // Prevents the fallback from running twice
     try {

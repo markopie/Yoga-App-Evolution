@@ -1,7 +1,6 @@
 const BASE_RAW_URL = "https://raw.githubusercontent.com/markopie/Yoga-App-Evolution/main/";
 
 const COURSES_URL = `${BASE_RAW_URL}courses.json`;
-const MANIFEST_URL = `${BASE_RAW_URL}manifest.json`;
 const ASANA_LIBRARY_URL = `${BASE_RAW_URL}asana_library.json`;
 const LIBRARY_URL = ASANA_LIBRARY_URL;
 const ID_ALIASES_URL = `${BASE_RAW_URL}id_aliases.json`;
@@ -21,7 +20,6 @@ const BRIDGE_SKIP_PROBABILITY = 0.5;
 export {
   BASE_RAW_URL,
   COURSES_URL,
-  MANIFEST_URL,
   ASANA_LIBRARY_URL,
   LIBRARY_URL,
   ID_ALIASES_URL,

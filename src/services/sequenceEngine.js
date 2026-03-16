@@ -168,6 +168,59 @@ export function getExpandedPoses(sequence) {
         recovIds.forEach(id => { const rp = createInjectedPose(id,  "Recovery Action");    if (rp) withInjected.push(rp); });
     });
 
+    // ────────────────────────────────────────────────────────────────────────
+    // 4. THE ROOT INTERCEPTOR: Enforce Priority Rules
+    // Permanently overwrite the authored sequence duration (p[1]) with the 
+    // strictly enforced hierarchy before any UI component can read it.
+    // ────────────────────────────────────────────────────────────────────────
+    const lib = window.asanaLibrary || {};
+    
+    withInjected.forEach(p => {
+        const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
+        const strId = String(rawId || "");
+        
+        // Skip structural markers and auto-injected poses
+        if (strId.startsWith("MACRO") || strId.startsWith("LOOP") || strId === "GROUP_END") return;
+        if (p[6] === "Preparatory Action" || p[6] === "Recovery Action") return;
+
+        const idNum = parseInt(strId.replace(/\D/g, ''), 10);
+        const key = strId.trim().replace(/^0+/, "").padStart(3, "0");
+        const asana = lib[key];
+        
+        if (!asana) return;
+
+        const hj = window.getHoldTimes ? window.getHoldTimes(asana) : {};
+        const libStandard = (hj && hj.standard != null) ? Number(hj.standard) : 30;
+
+        const note = p[4] || "";
+        const tierMatch = note.match(/\btier:(S|L|STD)\b/i);
+        const tier = tierMatch ? tierMatch[1].toUpperCase() : "";
+
+        // Pranayama Protection Zone (Asana IDs 203-230)
+        const isPranayama = idNum >= 203 && idNum <= 230;
+
+        // RULE 1: Pranayama Protection or Explicit Tier
+        if (isPranayama || tier) {
+            if (tier) {
+                let tierDur = libStandard;
+                if (tier === 'S' && hj.short != null) tierDur = Number(hj.short);
+                if (tier === 'L' && hj.long != null) tierDur = Number(hj.long);
+                if (tier === 'STD' && hj.standard != null) tierDur = Number(hj.standard);
+                
+                // Valid tier overwrites authored time, else falls back to authored time
+                p[1] = tierDur ?? Number(p[1]) ?? libStandard;
+            } else {
+                // Pranayama without tier -> Respect the authored sequence time
+                p[1] = Number(p[1]) || libStandard;
+            }
+        } 
+        // RULE 2: Global Default
+        else {
+            // 🛑 DESTROY authored sequence time, FORCE Library Standard
+            p[1] = libStandard;
+        }
+    });
+
     return withInjected;
 }
 
