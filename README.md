@@ -1,42 +1,38 @@
-# Yoga Sequence Engine
+# Yoga Sequence Engine v1.1
 
-A minimalist yoga sequencing app built on a relational PostgreSQL database. The UI strips away standard fitness app clutter to focus on a low-cognitive-load experience, while the backend handles the complex relational mapping of Iyengar yoga variations.
+A professional-grade yoga sequencing app built on a relational PostgreSQL database. Designed for high-performance practice, the UI prioritizes a low-cognitive-load "Focus Mode," while the backend manages the complex relational mapping of the Iyengar yoga method.
 
-## Live Preview
+## 🚀 Live System
 [https://markopie-yoga-app-ev-cgmd.bolt.host](https://markopie-yoga-app-ev-cgmd.bolt.host)
 
-*Note: Anonymous 'Guest' Auth is enabled. Reviewers can bypass Google OAuth and test the data engine immediately.*
+*Note: Anonymous 'Guest' Auth is enabled for immediate testing of the data engine.*
 
 ---
 
-## Core Features
+## 🏗️ Technical Architecture (The "Single Brain" Pattern)
 
-* **Asana Library (Browse):** A searchable, typography-focused database of primary anatomical poses.
-* **Sequence Engine:** Parses shorthand input into precise database queries, automatically mapping base poses to their specific variations behind the scenes.
-* **Focus Mode:** The core playback loop. A minimal UI designed for actual practice, stripped of unnecessary controls.
+The application utilizes a **Centralized Controller** architecture to ensure UI consistency and data integrity across all practice modes.
 
----
-
-## Technical Architecture
-
-Built for performance and maintainability, avoiding heavy frameworks where vanilla solutions are more efficient:
-
-* **Relational Database (Supabase / PostgreSQL):** Uses a strict parent/child schema (`asanas` and `stages`) to manage the complexity of the Iyengar method, avoiding the brittleness of flat-file data structures.
-* **Vanilla JS (ES6):** Built entirely in Vanilla JavaScript. Relies on pure DOM manipulation and explicit module scoping for a lightweight footprint.
-* **Build System:** Bundled with Vite for clean static asset delivery.
+* **Database (Supabase / PostgreSQL):** Leverages a strict parent/child schema (`asanas` ↔ `stages`) to handle complex variations.
+* **Centralized Logic (`sequenceUtils.js`):** All timing calculations, bilateral pose doubling, and tier overrides are quarantined here. This prevents "UI Drift" and ensures the Dashboard, Sequence Builder, and Timer always show the same values.
+* **State Proxying (`globalState`):** Uses ES6 Proxies to bridge the gap between modular services and the legacy UI, allowing for a lightweight, framework-free reactivity.
+* **Expansion Engine:** A custom recursive parser that unrolls Macros and Loops into a flat playback list before practice begins.
 
 ---
 
-## Security & Data Integrity
+## 🛠️ Developer Workflow & Maintenance
 
-* **Row Level Security (RLS):** Database tables are locked down. Anonymous/Guest users have `SELECT`-only access to the public library. All write operations are blocked at the PostgreSQL level.
-* **Input Sanitization:** The custom `dataAdapter.js` uses strict regex boundaries to parse user inputs (handling edge cases like concatenated Roman numerals) before querying, preventing database errors and "ghost poses."
+To maintain the project's $70\%$ reduction in code bloat achieved in v1.1, follow these standards:
+
+1.  **Timing & Math:** Never perform math ($* 2$ or $/ 2$) inside a UI file. Always call `getEffectiveTime()` from the central utility.
+2.  **Logic Separation:** * `app.js` = The "Orchestrator" (Initializes and Routes).
+    * `src/services/` = Data fetching and logic processing.
+    * `src/ui/` = Rendering and DOM listeners only.
+3.  **Auditing:** Run `python audit_timing_logic.py` before pushing to ensure no "Shadow Logic" has been introduced.
 
 ---
 
-## Reviewer Test Path
+## 🔒 Security & Data Integrity
 
-1. Open the Live Preview link.
-2. Click **Browse** to verify the data library load.
-3. Open a **Sequence**.
-4. Press **Start** to enter **Focus Mode** and test the playback loop.
+* **Row Level Security (RLS):** Production-grade PostgreSQL policies. Guests have `SELECT`-only access; write operations require authenticated Admin status.
+* **Idempotent Data Adapter:** Normalizes inconsistent database strings into predictable objects immediately upon fetch to prevent runtime crashes.

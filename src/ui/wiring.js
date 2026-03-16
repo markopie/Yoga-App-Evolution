@@ -136,7 +136,7 @@ safeListen("lastCompletedPill", "click", () => {
 
 safeListen("historyLink", "click", (e) => {
     e.preventDefault();
-    if (typeof toggleHistoryPanel === 'function') toggleHistoryPanel();
+    if (typeof toggleHistoryPanel === 'function') window.toggleHistoryPanel();
 });
 
 

@@ -772,7 +772,7 @@ async function builderSave() {
             if (savedId) builderEditingSupabaseId = savedId;
         }
 
-        await loadCourses(); 
+        await window.loadCourses(); 
         
         const sel = document.getElementById("sequenceSelect");
         if (sel) {

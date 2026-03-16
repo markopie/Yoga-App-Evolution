@@ -226,7 +226,7 @@ if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
                     }
                     
                     matchedVariationKey = vKey;
-                    foundVariation = true;
+                   
                     break;
                 }
             }

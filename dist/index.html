@@ -4,9 +4,7 @@
   <link rel="icon" href="data:,">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Yoga Sequences</title>
-  <link rel="stylesheet" href="styles/style.css">
-  <link rel="stylesheet" href="styles/theme.css">
+  <title>Yoga Sequences</title>
   <style>
     #builderCategory {
         width: 180px;
@@ -34,6 +32,8 @@
         background:#f5f5f7; border:1px solid #d2d2d7; border-radius:16px; padding:20px; color:#1d1d1f; width:140px; cursor:pointer; transition:all 0.2s ease; display:flex; flex-direction:column; align-items:center;
     }
   </style>
+  <script type="module" crossorigin src="/assets/index-CA3ynna4.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-pE9DCm24.css">
 </head>
 <body>
 
@@ -199,19 +199,15 @@
            </select>
            
           <div id="durationDialWrap" title="Adjust hold pace — double-click to reset">
-            <div id="durationDialHeader">
-              <span id="durationDialLabel">Default</span>
-              <span id="durationDialEst"></span>
-            </div>
-            <div id="durationDialTrackWrap">
-              <input type="range" id="durationDial" min="0" max="100" step="1" value="50">
-              <div id="durationDialLabels">
-                <span>Shortest</span>
-                <span style="opacity: 0.6; font-size: 0.8rem;">Default</span>
-                <span>Longest</span>
-            </div>
+          <div id="durationDialTrackWrap">
+            <input type="range" id="durationDial" min="0" max="100" step="1" value="50">
+            <div id="durationDialLabels">
+              <span>Shortest</span>
+              <span style="opacity: 0.6; font-size: 0.8rem;">Default</span>
+              <span>Longest</span>
             </div>
           </div>
+        </div>
          
          <button id="browseBtn" type="button" title="Browse / search asanas">Browse</button>
           
@@ -516,12 +512,9 @@
 
   </div>
 </div>
-  
-<script type="module" src="src/services/supabaseClient.js"></script>
-
-<script type="module" src="src/services/dataAdapter.js?v=29"></script>
-
-<script type="module" src="app.js?v=29"></script>
+  
+
+
 
 </body>
 </html>

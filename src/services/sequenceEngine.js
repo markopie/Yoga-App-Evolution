@@ -244,8 +244,7 @@ export function getExpandedPoses(sequence) {
                 if (tier === 'STD' && hj.standard != null) tierDur = Number(hj.standard);
                 
                 // Valid tier overwrites authored time, else falls back to authored time
-                p[1] = tierDur ?? Number(p[1]) ?? libStandard;
-            } else {
+                p[1] = tierDur ?? (Number(p[1]) || libStandard);            } else {
                 // Pranayama without tier -> Respect the authored sequence time
                 p[1] = Number(p[1]) || libStandard;
             }

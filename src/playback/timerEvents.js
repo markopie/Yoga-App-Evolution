@@ -158,9 +158,9 @@ window.playbackEngine.onTransitionStart = (secs) => {
     }
 
     const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) ? window.activePlaybackList : (window.currentSequence?.poses || []);
-    let previewName = "";
-    let mainMsg = "Release from the pose and prepare";
-    
+    // Change lines 161-162 to:
+    let previewName;
+    let mainMsg;
     const formatTransitionPose = (rawId) => {
         if (!rawId) return "";
         const cleanId = String(rawId).trim().replace(/\|/g, "").replace(/\s+/g, "");

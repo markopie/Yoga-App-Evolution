@@ -320,7 +320,7 @@ function startBrowseAsana(asma) {
    const plates = (asma.finalPlates && asma.finalPlates.length) ? asma.finalPlates : asma.interPlates;
    if (!plates || !plates.length) return;
 
-   stopTimer();
+   window.stopTimer();
    /* running = false */;
    $("startStopBtn").textContent = "Start";
 
@@ -333,7 +333,7 @@ function startBrowseAsana(asma) {
       poses: [[plates, 60, fullName]]
    };
    window.currentIndex = 0;
-   setPose(0);
+   window.setPose(0);
    closeBrowse();
 }
 async function showAsanaDetail(asana, highlightStageKey = null) {
