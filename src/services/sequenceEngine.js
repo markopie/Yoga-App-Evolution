@@ -169,7 +169,8 @@ export function getExpandedPoses(sequence) {
     });
 
     // ────────────────────────────────────────────────────────────────────────
-    // 4. THE ROOT INTERCEPTOR: Enforce Priority Rules
+   // ────────────────────────────────────────────────────────────────────────
+    // 4. THE ROOT INTERCEPTOR: Enforce Priority Rules (STAGE-AWARE)
     // Permanently overwrite the authored sequence duration (p[1]) with the 
     // strictly enforced hierarchy before any UI component can read it.
     // ────────────────────────────────────────────────────────────────────────
@@ -189,9 +190,44 @@ export function getExpandedPoses(sequence) {
         
         if (!asana) return;
 
-        const hj = window.getHoldTimes ? window.getHoldTimes(asana) : {};
-        const libStandard = (hj && hj.standard != null) ? Number(hj.standard) : 30;
+        // --- 🛑 NEW: RESOLVE SPECIFIC STAGE/VARIATION ---
+        let targetForHold = asana;
+        let varKey = p[3]; // The parsing script extracts the Roman numeral to p[3]
+        
+        // Fallback: Check the note column just in case
+        if (!varKey && p[4]) {
+            const match = p[4].match(/\[.*?\b([IVX]+)([a-z]?)\b.*?\]/i);
+            if (match) varKey = match[1].toUpperCase() + (match[2] ? match[2].toLowerCase() : "");
+        }
 
+        if (varKey && asana.variations) {
+            // Check direct match
+            if (asana.variations[varKey]) {
+                targetForHold = asana.variations[varKey];
+            } else {
+                // Check fuzzy match (e.g. "I" vs "Stage I")
+                const normVar = varKey.toLowerCase().replace(/\s+/g, "");
+                for (const [vk, vd] of Object.entries(asana.variations)) {
+                    const title = (vd && typeof vd === 'object' && (vd.title || vd.Title)) || "";
+                    if (vk.toLowerCase() === normVar || title.toLowerCase().replace(/\s+/g, "").includes(normVar)) {
+                        targetForHold = vd;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Get the hold time from the STAGE (if found) or the BASE ASANA
+        const hj = window.getHoldTimes ? window.getHoldTimes(targetForHold) : {};
+        
+        // If the specific stage lacks a hold time, fallback to the base asana's standard
+        let libStandard = (hj && hj.standard != null) ? Number(hj.standard) : null;
+        if (libStandard == null) {
+            const baseHj = window.getHoldTimes ? window.getHoldTimes(asana) : {};
+            libStandard = (baseHj && baseHj.standard != null) ? Number(baseHj.standard) : 30;
+        }
+
+        // --- ENFORCE TIMING RULES ---
         const note = p[4] || "";
         const tierMatch = note.match(/\btier:(S|L|STD)\b/i);
         const tier = tierMatch ? tierMatch[1].toUpperCase() : "";
@@ -216,7 +252,7 @@ export function getExpandedPoses(sequence) {
         } 
         // RULE 2: Global Default
         else {
-            // 🛑 DESTROY authored sequence time, FORCE Library Standard
+            // 🛑 DESTROY authored sequence time, FORCE STAGE/LIBRARY Standard
             p[1] = libStandard;
         }
     });

@@ -118,7 +118,7 @@ const tier = tierMatch ? tierMatch[1].toUpperCase() : null;
 
 // Call the global helper to get the "true" base seconds before the dial
 let baseSeconds = typeof window.getEffectiveTime === "function" 
-    ? window.getEffectiveTime(lookupId, currentPose[1], tier)
+    ? window.getEffectiveTime(lookupId, currentPose[1], tier, currentPose[3], currentPose[4]) // <--- Added args here
     : Number(currentPose[1]);
 
 // If it's bilateral and we are doing one side, halve it for the timer
