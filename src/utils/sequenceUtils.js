@@ -17,64 +17,69 @@ function resolveTierDuration(target, tier) {
     return null;
 }
 
-export function getEffectiveTime(id, dur, tier, varKey, note) {
+/**
+ * Returns the canonical effective duration (in seconds) for a single pose entry.
+ * @param {string}  id           - Asana ID
+ * @param {number}  dur          - Authored duration
+ * @param {string}  [tier]       - 'S' | 'L' | 'STD'
+ * @param {string}  [varKey]     - Specific variation key
+ * @param {string}  [note]       - Note string containing potential tier/stage info
+ * @param {boolean} [returnPerSide=false] - If true, returns halved time for bilateral poses.
+ */
+
+export function getEffectiveTime(id, dur, tier, varKey, note, returnPerSide = false) {
     let rawId = id;
     if (Array.isArray(rawId)) rawId = rawId[0];
-    if (Array.isArray(rawId)) rawId = rawId[0]; 
-
     const strId = String(rawId || "");
-    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP_END") || strId.startsWith("LOOP_START")) return 0;
+
+    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP")) return 0;
 
     const lib = window.asanaLibrary || {};
     const key = strId.trim().replace(/^0+/, "").padStart(3, "0");
     const asana = lib[key];
 
+    if (!asana) {
+        if (strId) console.warn(`⚠️ Timing Logic: ID ${strId} not found.`);
+        return Number(dur) || 30;
+    }
+
     let targetForHold = asana;
     let variation = varKey;
-    
     if (!variation && note) {
         const match = note.match(/\[.*?\b([IVX]+)([a-z]?)\b.*?\]/i);
         if (match) variation = match[1].toUpperCase() + (match[2] ? match[2].toLowerCase() : "");
     }
-
-    if (variation && asana.variations) {
-        if (asana.variations[variation]) {
-            targetForHold = asana.variations[variation];
-        } else {
-            const normVar = variation.toLowerCase().replace(/\s+/g, "");
-            for (const [vk, vd] of Object.entries(asana.variations)) {
-                const title = (vd && typeof vd === 'object' && (vd.title || vd.Title)) || "";
-                if (vk.toLowerCase() === normVar || title.toLowerCase().replace(/\s+/g, "").includes(normVar)) {
-                    targetForHold = vd;
-                    break;
-                }
-            }
-        }
+    if (variation && asana.variations && asana.variations[variation]) {
+        targetForHold = asana.variations[variation];
     }
 
+    // --- START OF THE "BRAIN" LOGIC ---
     let duration = Number(dur) || 0;
 
-    // RULE 1: Explicit Tier Overrides ALWAYS win (dynamic library lookup)
+    // RULE 1: Explicit Tiers (S/L/STD) override everything.
     if (tier && targetForHold) {
         const tierDur = resolveTierDuration(targetForHold, tier);
-        if (tierDur != null) duration = tierDur;
-    } 
-    // RULE 2: If duration is missing/0, fallback to library
-    else if (duration === 0) {
-        const hj = getHoldTimes(targetForHold);
-        let libStandard = (hj && hj.standard != null) ? Number(hj.standard) : null;
-        if (libStandard == null) {
-            const baseHj = getHoldTimes(asana);
-            libStandard = (baseHj && baseHj.standard != null) ? Number(baseHj.standard) : 30;
+        if (tierDur != null) {
+            return returnPerSide ? tierDur : (asana.requiresSides || asana.requires_sides ? tierDur * 2 : tierDur);
         }
-        duration = libStandard;
-    }
-    // RULE 3: Otherwise, TRUST THE WRITTEN SEQUENCE TEXT (600, 180, etc.)
+    } 
 
-    if (asana && (asana.requiresSides || asana.requires_sides)) return duration * 2;
+    // RULE 2: Fallback to Library ONLY if duration is 0.
+    if (duration === 0) {
+        const hj = getHoldTimes(targetForHold);
+        duration = (hj && hj.standard != null) ? Number(hj.standard) : 30;
+    }
+
+    // RULE 3: TRUST THE AUTHOR (This is why 42m works).
+    // If we have an authored duration (like your 600s), we use it.
+    
+    const isBilateral = asana.requiresSides || asana.requires_sides;
+    if (isBilateral) {
+        return returnPerSide ? duration : (duration * 2);
+    }
+
     return duration;
 }
-
 export function calculateTotalSequenceTime(seq) {
     if (!seq || !seq.poses) return 0;
     const expanded = typeof window.getExpandedPoses === "function" ? window.getExpandedPoses(seq) : seq.poses;

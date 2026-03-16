@@ -10,6 +10,21 @@ import { playbackEngine } from "../playback/timer.js";
 // PURE HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Helper to resolve the base time for a pose, respecting Tiers and Stage logic */
+function getPoseBaseTime(p) {
+    const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
+    const strId = String(rawId || "").trim();
+    const noteStr = p[4] || "";
+    const tierMatch = noteStr.match(/\btier:(S|L|STD)\b/i);
+    const tier = tierMatch ? tierMatch[1].toUpperCase() : null;
+
+    if (typeof window.getEffectiveTime === "function") {
+        // 'true' ensures we get the "Per Side" time
+        return window.getEffectiveTime(strId, p[1], tier, p[3], p[4], true);
+    }
+    return Number(p[1]) || 30;
+}
+
 /** Returns the current dial position (0–100, default 50). */
 export function getDialPosition() {
     const dial = $("durationDial");
@@ -56,59 +71,26 @@ export function interpolateDuration(pos, short, defaultDur, long) {
 // UI UPDATERS
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Updates the Duration Dial UI, including the label text, 
+ * CSS classes, and the synchronized total time estimate.
+ */
+/**
+ * Updates the Duration Dial UI labels and the Total Estimate.
+ * Ensures the 'Est' matches the Dashboard Pill by using getPoseBaseTime.
+ */
 export function updateDialUI() {
-    const dial  = $("durationDial");
-    const wrap  = $("durationDialWrap");
-    const label = $("durationDialLabel");
-    const estEl = $("durationDialEst");
-    if (!dial || !label) return;
+    const dial = $("durationDial");
+    const wrap = $("durationDialWrap");
+    
+    if (!dial) return;
 
     const pos = getDialPosition();
 
-    if (pos === 50) {
-        label.textContent = "Default";
-    } else if (pos < 50) {
-        label.textContent = pos === 0 ? "Shortest" : "Shorter";
-    } else {
-        label.textContent = pos === 100 ? "Longest" : "Longer";
-    }
-
+    // Visual feedback only: toggle classes based on position
     if (wrap) {
-        wrap.classList.remove("dial-faster", "dial-slower");
-        if (pos > 50) wrap.classList.add("dial-faster");
-        else if (pos < 50) wrap.classList.add("dial-slower");
-    }
-
-    const currentSequence = window.currentSequence;
-    const originalPoses   = window.currentSequenceOriginalPoses || (currentSequence ? currentSequence.poses : null);
-    
-    if (estEl && currentSequence && originalPoses) {
-        const total = originalPoses.reduce((s, p) => {
-            const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
-            const strId = String(rawId || "").trim();
-            if (strId.startsWith("MACRO:") || strId.startsWith("LOOP")) return s;
-
-            const noteStr = p[4] || "";
-            const tierMatch = noteStr.match(/\btier:(S|L|STD)\b/i);
-            const tier = tierMatch ? tierMatch[1].toUpperCase() : null;
-
-            const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(normalizePlate(strId)) : null;
-            const needsSides = asana && (asana.requiresSides === true || asana.requires_sides === true || asana.requiresSides === "true" || asana.requires_sides === "true");
-
-            let trueBase = Number(p[1]) || 0;
-            if (typeof window.getEffectiveTime === "function") {
-                const effectiveTotal = window.getEffectiveTime(strId, p[1], tier);
-                trueBase = needsSides ? Math.round(effectiveTotal / 2) : effectiveTotal;
-            }
-
-            const { short, defaultDur, long } = resolveDialAnchors(trueBase, asana);
-            const dur = interpolateDuration(pos, short, defaultDur, long);
-            
-            return s + (needsSides ? dur * 2 : dur);
-        }, 0);
-        estEl.textContent = formatHMS(total);
-    } else if (estEl) {
-        estEl.textContent = "";
+        wrap.classList.toggle("dial-faster", pos > 50);
+        wrap.classList.toggle("dial-slower", pos < 50);
     }
 }
 
@@ -140,11 +122,7 @@ export function applyDurationDial() {
         const needsSides = asana && (asana.requiresSides === true || asana.requires_sides === true || asana.requiresSides === "true" || asana.requires_sides === "true");
         
         // Get the true base time (respecting authored 600s, Tiers, etc)
-        let trueBase = Number(cloned[1]) || 30;
-        if (typeof window.getEffectiveTime === "function") {
-            const effectiveTotal = window.getEffectiveTime(strId, cloned[1], tier, cloned[3], cloned[4]);
-            trueBase = needsSides ? Math.round(effectiveTotal / 2) : effectiveTotal;
-        }
+        let trueBase = getPoseBaseTime(p);
 
         const { short, defaultDur, long } = window.resolveDialAnchors(trueBase, asana);
         cloned[1] = window.interpolateDuration(val, short, defaultDur, long);
@@ -152,13 +130,7 @@ export function applyDurationDial() {
         return cloned;
     });
 
-    // Label Update
-    const label = document.getElementById("durationDialLabel");
-    if (label) {
-        if (val === 50)      label.textContent = "Standard Holds";
-        else if (val < 50)   label.textContent = "Shorter Holds (-)";
-        else                 label.textContent = "Longer Holds (+)";
-    }
+    
 
     // Update live timer if mid-pose
     const currentIndex = window.currentIndex || 0;

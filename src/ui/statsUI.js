@@ -39,3 +39,29 @@ export function updateTotalAndLastUI() {
 }
 
 window.updateTotalAndLastUI = updateTotalAndLastUI;
+
+/**
+ * Synchronizes all timing-related UI elements across the app.
+ * Call this whenever the duration dial moves or the sequence changes.
+ */
+export function refreshAllTimingUI() {
+    if (typeof window.updateTotalAndLastUI === "function") {
+        window.updateTotalAndLastUI();
+    }
+    // 🌟 This ensures the "Est: 35:00" updates!
+    if (typeof window.updateDialUI === "function") {
+        window.updateDialUI();
+    }
+
+    // 3. Update the Builder Modal stats (if it's currently open)
+    // This is the key fix for the 25m vs 42m discrepancy.
+    const builderModal = document.getElementById("editCourseBackdrop");
+    if (builderModal && builderModal.style.display !== "none") {
+        if (typeof window.builderRender === "function") {
+            window.builderRender();
+        }
+    }
+}
+
+// Alias to window so it can be called from durationDial.js and wiring.js
+window.refreshAllTimingUI = refreshAllTimingUI;
