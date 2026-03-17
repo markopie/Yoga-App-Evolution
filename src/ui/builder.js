@@ -131,7 +131,8 @@ function builderRender() {
     let totalSec = 0;
     const libraryArray = Object.values(window.asanaLibrary || {});
     const libMap = window.asanaLibrary || {};
-    const currentCategory = (document.getElementById("builderCategory")?.value || "").toLowerCase(); 
+    const catElement = document.getElementById("builderCategory");
+    const currentCategory = (catElement ? (catElement.textContent || catElement.value || "") : "").toLowerCase(); 
     const isFlow = currentCategory.includes("flow");
  
     builderPoses.forEach((pose, idx) => {
@@ -160,7 +161,6 @@ function builderRender() {
             totalSec += getEffectiveTime(idStr, activeTime);
         }
 
-        // Pulls actual Devanagari field explicitly (requires dataAdapter update if not mapped)
         const devanagari = asana?.devanagari || asana?.name || ""; 
         const iast = asana?.iast || "";
     
@@ -232,14 +232,32 @@ function builderRender() {
         }
 
         // --- 4. INJECT HTML ---
+        
         tr.innerHTML = `
-           <td style="padding:8px; text-align:center; vertical-align: top;">
-              <input type="checkbox" class="b-row-select" data-idx="${idx}" style="margin-bottom: 4px;" ${isSpecial ? 'disabled' : ''}><br>
-              <div style="font-weight:bold; color:var(--color-accent-primary);">${idx + 1}</div>
-              <div style="font-size:0.7rem; color:var(--color-text-muted);">${idStrNumeric}</div>
-              <div style="font-size:1.35rem; margin-top:4px; color:#2c3e50; font-family:'Noto Sans Devanagari', sans-serif; text-shadow: 0px 1px 1px rgba(0,0,0,0.15); letter-spacing: 0.02em;">${devanagari}</div>
-           </td>
-           <td style="padding:8px; vertical-align: top;">
+        <td style="padding: 12px 4px 12px 12px; text-align: center; width: 85px; min-width: 85px; vertical-align: top; border-bottom: 1px solid #eee;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%;">
+                
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <input type="checkbox" class="b-row-select" data-idx="${idx}" ${isSpecial ? 'disabled' : ''} style="margin: 0; width: 14px; height: 14px;">
+                    <span style="font-weight: 800; color: #007aff; font-size: 0.9rem;">${idx + 1}</span>
+                </div>
+                
+                <div style="font-size: 0.65rem; color: #aaa; letter-spacing: 0.05em;">ID ${idStrNumeric}</div>
+                
+                <div style="
+                    font-size: 1.5rem; 
+                    line-height: 1.2; 
+                    color: #1a1a1a; 
+                    font-family: 'Noto Sans Devanagari', sans-serif; 
+                    margin-top: 6px;
+                    white-space: normal; 
+                    word-wrap: break-word; 
+                    text-align: center;
+                    width: 100%;
+                ">${devanagari}</div>
+            </div>
+        </td>
+           <td style="padding:12px 8px; vertical-align: top; border-bottom: 1px solid #eee;">
               <div style="font-weight:700; font-size:1.1rem; line-height: 1.2; display:flex; align-items:center; flex-wrap:wrap;">
                  <span>${isSpecial ? (pose.name || 'Unknown') : builderPoseName(asana, pose.name)}</span>
                  ${generateVariationSelectHTML(asana, pose, idx)}
@@ -256,7 +274,7 @@ function builderRender() {
               ${roundsHTML}
            </td>
            ${generateInfoCellHTML(asana, pose, idx, isSpecial)}
-           <td style="padding:8px; text-align:center; white-space:nowrap;">
+           <td style="padding:12px 8px; text-align:center; white-space:nowrap; vertical-align: top; border-bottom: 1px solid #eee;">
               <button class="tiny b-move-top" data-idx="${idx}" title="Move to Top" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤒</button>
               <button class="tiny b-move-bot" data-idx="${idx}" title="Move to Bottom" ${idx === builderPoses.length - 1 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤓</button>
               <button class="tiny b-move-up" data-idx="${idx}">▲</button>
@@ -292,6 +310,13 @@ function builderRender() {
             setTimeout(() => { tr.style.transition = "background 1s"; tr.style.backgroundColor = ""; }, 100);
         }
     }); 
+
+    // 🌟 SPACER ROW: Fixes bottom cut-off by extending scroll area safely past footer
+    if (builderPoses.length > 0) {
+        const spacer = document.createElement("tr");
+        spacer.innerHTML = `<td colspan="4" style="height: 80px; border: none; background: transparent; padding: 0;"></td>`;
+        tbody.appendChild(spacer);
+    }
  
     // --- 5. LISTENERS ---
     const qS = (sel) => tbody.querySelectorAll(sel);
@@ -520,35 +545,50 @@ function updateBuilderModeUI() {
     const saveBtn = document.getElementById("editCourseSaveBtn");
     const cancelBtn = document.getElementById("editCourseCancelBtn");
     const printBtn = document.getElementById("builderPrintBtn");
+    const topCloseBtn = document.getElementById("editCourseCloseBtn"); 
     
     const viewHeader = document.getElementById("viewModeHeader");
     const editHeader = document.getElementById("editModeHeader");
-
-    const displayCategory = document.getElementById("displayCategory");
-    const displayTitle = document.getElementById("displayTitle");
     
-    const inputCategory = document.getElementById("builderCategory"); // This is the span
-    const inputTitle = document.getElementById("builderTitle");       // This is the input
+    const displayTitle = document.getElementById("displayTitle");
+    const displayCategory = document.getElementById("displayCategory"); 
+    const inputCategory = document.getElementById("builderCategory"); 
+    const inputTitle = document.getElementById("builderTitle");       
+
+    if (topCloseBtn) topCloseBtn.style.display = "none";
 
     if (isViewMode) {
         backdrop.classList.add("builder-view-mode");
         
-        // 1. Sync data: From Editable Span/Input -> To View Spans
         if (displayTitle && inputTitle) {
             displayTitle.textContent = inputTitle.value.trim() || "Untitled Sequence";
         }
+        
+        // 🌟 BREADCRUMB LOGIC: Split the raw input by '>' and render separate pills
         if (displayCategory && inputCategory) {
-            const catVal = inputCategory.textContent.trim();
-            displayCategory.textContent = catVal;
-            // Hide the blue pill entirely if there is no category text
-            displayCategory.style.display = catVal ? "inline-block" : "none";
+            const rawVal = inputCategory.value.trim();
+            if (!rawVal) {
+                displayCategory.style.display = "none";
+                displayCategory.innerHTML = "";
+            } else {
+                displayCategory.style.display = "flex";
+                
+                // Split the string and clean up spaces
+                const parts = rawVal.split('>').map(p => p.trim()).filter(Boolean);
+                
+                // Generate the HTML for each pill
+                displayCategory.innerHTML = parts.map((p, i) => {
+                    const isLast = i === parts.length - 1;
+                    const pill = `<span style="background:#e3f2fd; color:#005580; padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; white-space:normal; word-break:break-word; text-align:left;">${p}</span>`;
+                    const sep = !isLast ? `<span style="color:#86868b; font-weight:bold; font-size:1.1rem; margin-top:-2px;">›</span>` : '';
+                    return pill + (sep ? ` ${sep} ` : '');
+                }).join('');
+            }
         }
 
-        // 2. Swap Headers
         if (editHeader) editHeader.style.display = "none";
         if (viewHeader) viewHeader.style.display = "flex";
 
-        // 3. Update Buttons for View Mode
         if (toggleBtn) {
             toggleBtn.innerHTML = "✏️ Edit";
             toggleBtn.style.background = "#f5f5f7";
@@ -567,17 +607,14 @@ function updateBuilderModeUI() {
     } else {
         backdrop.classList.remove("builder-view-mode");
         
-        // 1. Ensure editable span has the current text when entering edit mode
-        if (inputCategory && displayCategory) {
-        inputCategory.innerText = displayCategory.textContent.trim();        }
+        // Notice: We deleted the line that copied View -> Input.
+        // The Input is the single source of truth and safely holds the raw ">" string.
 
-        // 2. Swap Headers
         if (viewHeader) viewHeader.style.display = "none";
         if (editHeader) editHeader.style.display = "flex";
         
-        // 3. Update Buttons for Edit Mode
         if (toggleBtn) {
-            toggleBtn.innerHTML = "✓ Done"; 
+            toggleBtn.innerHTML = "👁️ View"; 
             toggleBtn.style.background = "#007aff";
             toggleBtn.style.color = "#fff";
             toggleBtn.style.borderColor = "#007aff";
@@ -616,18 +653,15 @@ function builderOpen(mode, seq) {
     }
 
     if (catInput && datalist) {
-        const allCats = [...new Set(window.courses.map(c => c.category).filter(Boolean))].sort();
-        datalist.innerHTML = allCats.map(c => `<option value="${c}"></option>`).join("");
-        
-        let tempVal = "";
-        catInput.onfocus = () => { 
-            tempVal = catInput.textContent; 
-            catInput.textContent = ""; 
-        };
-        catInput.onblur = () => { 
-            if (catInput.textContent.trim() === "") catInput.textContent = tempVal; 
-        };
-    }
+    // 1. Get all unique categories from the global courses array
+    const existingCategories = [...new Set(window.courses.map(c => c.category).filter(Boolean))].sort();
+    
+    // 2. Clear and repopulate the datalist
+    datalist.innerHTML = existingCategories.map(cat => `<option value="${cat}">`).join("");
+    
+    // 3. UX Trick: Clear field on double-click to see full list
+    catInput.ondblclick = () => { catInput.value = ''; };
+}
 
     builderEditingSupabaseId = targetId;
     document.body.classList.add("modal-open");
@@ -663,16 +697,19 @@ function builderOpen(mode, seq) {
     if (mode === "new") {
        if (modeLabel) modeLabel.textContent = "New Sequence";
        if (titleEl) titleEl.value = "";
-       if (catInput) catInput.textContent = ""; 
+       if (catInput) catInput.value = ""; // ✅ CORRECT
+       
+       
+       if (displayCategory) displayCategory.style.display = "none";
     } else {
        if (!seq) return;
        if (modeLabel) modeLabel.textContent = "Sequence Review";
        if (titleEl) titleEl.value = seq.title || "";
-       if (catInput) catInput.textContent = seq.category || "";
-       
+       if (catInput) catInput.value = seq.category || "";       
        const libraryArray = Object.values(window.asanaLibrary || {});
        const rawPoses = (window.currentSequenceOriginalPoses && seq === window.currentSequence) ? window.currentSequenceOriginalPoses : (seq.poses || []);
-       
+       const displayCategory = document.getElementById("displayCategory");
+        if (displayCategory) displayCategory.textContent = seq.category || "";
        rawPoses.forEach(p => {
              const rawId = Array.isArray(p[0]) ? p[0][0] : p[0] || "";
              const idStr = String(rawId);
@@ -768,10 +805,9 @@ function builderCompileSequenceText() {
 
 function builderGetTitle() { return ($("builderTitle")?.value || "").trim(); }
 function builderGetCategory() { 
-    const el = $("builderCategory");
+    const el = document.getElementById("builderCategory");
     if (!el) return "";
-    // Grab textContent for the span, or fallback to .value if it's an input
-    return (el.textContent || el.value || "").trim(); 
+    return el.value.trim(); // ✅ It's an input now, so just use .value
 }
 async function saveOrUpdateCourse(payload, knownId = null) {
     if (knownId) {
@@ -801,10 +837,15 @@ async function saveOrUpdateCourse(payload, knownId = null) {
 
 async function builderSave() {
     const title = builderGetTitle();
-    if (!title) return alert("Please enter a title.");
-    
-    const sequenceText = builderCompileSequenceText();
     const category = builderGetCategory();
+    
+    // Find the original sequence to compare
+    const originalSeq = window.courses.find(c => c.id === builderEditingSupabaseId);
+    
+    if (originalSeq && originalSeq.category !== category) {
+        const confirmMove = confirm(`Moving sequence from "${originalSeq.category || 'Uncategorized'}" to "${category}". \n\nContinue?`);
+        if (!confirmMove) return;
+    }
     
     try {
         if (!supabase) return;

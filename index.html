@@ -144,22 +144,37 @@
         
         <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
           
-          <div id="viewModeHeader" style="display:flex; flex-direction:column; align-items:flex-start; gap:6px;">
-             <span id="displayCategory" style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:#005580; background:#e3f2fd; padding:6px 12px; border-radius:12px; display:inline-block; line-height:1.2;"></span>
-             <h2 id="displayTitle" style="margin:0; font-size:1.6rem; font-weight:700; color:#1d1d1f; line-height:1.2; letter-spacing:-0.02em; word-wrap:break-word;"></h2>
-          </div>
+        <div id="viewModeHeader" style="display:flex; flex-direction:column; align-items:flex-start; gap:6px;">
+          <div id="displayCategory" style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;"></div>
+          <h2 id="displayTitle" style="margin:0; font-size:1.6rem; font-weight:700; color:#1d1d1f; line-height:1.2; letter-spacing:-0.02em; word-wrap:break-word;"></h2>
+        </div>
 
-          <div id="editModeHeader" style="display:none; flex-direction:column; align-items:flex-start; gap:8px; width:100%;">
+          <div id="editModeHeader" style="display:none; width:100%; flex-direction:column; gap:10px;">
     
-    <span id="builderCategory" 
-          contenteditable="true" 
-          role="textbox"
-          style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:#005580; background:#e3f2fd; border:2px solid #007aff; padding:6px 12px; border-radius:12px; display:table; line-height:1.2; outline:none; min-width:120px; width:auto; max-width:100%; white-space:nowrap;"></span>
+    <div style="width: 100%; display: block; margin-bottom: 8px;">
+    <input id="builderCategory" 
+           type="text" 
+           list="builderCategoryList" 
+           placeholder="Category (e.g., Course > Subcourse)" 
+           style="
+               display: block; 
+               width: 100% !important; 
+               box-sizing: border-box; 
+               padding: 10px 12px; 
+               border: 2px solid #007aff; 
+               border-radius: 8px; 
+               font-size: 0.95rem; 
+               font-weight: 600; 
+               color: #005580; 
+               background: #f0f7ff; 
+               outline: none;
+           ">
+</div>
     
     <datalist id="builderCategoryList"></datalist>
     
     <input id="builderTitle" type="text" placeholder="Untitled Sequence" 
-           style="width:100%; padding:8px 12px; border:1px solid #d2d2d7; border-radius:8px; font-size:1.4rem; font-weight:700; color:#1d1d1f; outline:none; box-sizing:border-box;">
+           style="width:100%; padding:10px 12px; border:1px solid #d2d2d7; border-radius:8px; font-size:1.4rem; font-weight:700; color:#1d1d1f; outline:none; box-sizing:border-box; display: block;">
 </div>
         </div>
 

@@ -1647,16 +1647,39 @@ body.modal-open {
     display: none !important;
 }
 
-/* Remove Pointless Bottom Space */
+
+
+/* --- Builder View Mode (Jobbsian Aesthetic) --- */
+
+/* 1. Modal Container: Allow it to be tall but not overflow the screen */
 .builder-view-mode .modal {
-    height: auto !important;
-    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    height: 95dvh !important; /* Use dynamic viewport height for mobile safety */
+    max-height: 95dvh;
+    margin: 10px auto;
 }
 
+/* 2. Modal Body: Use calc to subtract header (~80px) and footer (~60px) */
 .builder-view-mode .modal-body {
-    max-height: 75vh !important;
-    overflow-y: auto;
-    flex: none; /* Allow it to shrink */
+    /* flex: 1 tells the body to expand to fill all space NOT taken by header/footer */
+    flex: 1 1 auto !important; 
+    
+    /* Ensure scrolling is active */
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    
+    /* This safeguard prevents the bottom row from being hidden behind the footer */
+    padding-bottom: 20px !important; 
+    
+    /* Remove the hard max-height that was cutting you off */
+    max-height: none !important; 
+}
+
+/* 3. Ensure the table doesn't collapse weirdly */
+.builder-view-mode #builderTable {
+    width: 100%;
+    margin-bottom: 0;
 }
 
 /* --- Builder Smart Variation Display --- */
@@ -1723,15 +1746,11 @@ body.modal-open {
 .builder-view-mode .jobbsian-category {
     pointer-events: none !important;
 }
-
 /* ==========================================================================
-   PRINT / PDF EXPORT STYLES
-   ========================================================================== */
-/* ==========================================================================
-   PRINT / PDF EXPORT STYLES (Bulletproof Pagination)
+   PRINT / PDF EXPORT STYLES (Militant Refactor)
    ========================================================================== */
 @media print {
-    /* 1. Free the document from screen-height constraints */
+    /* 1. Reset Physics: Free the document from screen-height and scroll constraints */
     html, body, body.modal-open {
         height: auto !important;
         min-height: auto !important;
@@ -1741,65 +1760,112 @@ body.modal-open {
         background: #fff !important;
     }
 
-    /* 2. Hide the main app behind the modal */
+    /* 2. Isolation: Hide the main app behind the modal */
     body > *:not(#editCourseBackdrop) { 
         display: none !important; 
     }
     
-    /* 3. Destroy the Flexbox layout just for printing (Flexbox kills pagination) */
+    /* 3. Layout: Destroy Flexbox (Flexbox kills multi-page print pagination) */
     #editCourseBackdrop {
-        position: absolute !important; /* Pulls it out of normal flow */
+        position: absolute !important;
         top: 0 !important;
         left: 0 !important;
-        display: block !important; /* Flexbox is the enemy of print pagination */
+        display: block !important;
         background: #fff !important;
         padding: 0 !important;
         height: auto !important;
+        width: 100% !important;
         overflow: visible !important;
     }
     
     .modal {
-        box-shadow: none !important;
+        position: relative !important;
+        display: block !important;
         width: 100% !important;
         max-width: none !important;
         border: none !important;
         margin: 0 !important;
         padding: 0 !important;
-        display: block !important; /* Remove flex */
+        box-shadow: none !important;
         height: auto !important;
         overflow: visible !important;
     }
 
-    /* 4. Let the table container grow infinitely */
+    /* 4. Body Expansion: Let the table grow infinitely across pages */
     .modal-body {
+        display: block !important;
         overflow: visible !important;
         max-height: none !important;
         height: auto !important;
-        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
 
-    /* 5. Hide UI Buttons, Toolbars, Checkboxes, and the Order column */
-    #builderModeToggleBtn, #editCourseCloseBtn, #builderPrintBtn, 
-    .modal-footer, .builder-toolbar-primary, .builder-tools-panel,
-    #builderTable th:last-child, #builderTable td:last-child,
-    #builderTable input[type="checkbox"] {
+    /* 5. UI Cleanup: Hide all navigation, buttons, and row controls */
+    .modal-header button,
+    .modal-footer,
+    #builderModeToggleBtn, 
+    #builderPrintBtn, 
+    #editCourseCancelBtn,
+    #editCourseSaveBtn,
+    #editCourseCloseBtn,
+    .builder-toolbar-primary,
+    .builder-tools-panel,
+    .edit-only-inline,
+    .b-row-search-btn,
+    .b-move-top, .b-move-bot, .b-move-up, .b-move-dn, .b-remove,
+    input[type="checkbox"].b-row-select,
+    #builderTable th:last-child, 
+    #builderTable td:last-child {
         display: none !important;
     }
 
-    /* 6. Clean up the table for paper */
+    /* 6. The Table "Proper" Fix: Prevent right-edge clipping */
     #builderTable { 
-        width: 100% !important; 
+        width: 98.5% !important; /* Tucked in by 1.5% to ensure the right border prints */
+        margin: 0 auto !important; /* Centers the tucked table */
         border-collapse: collapse !important; 
-        margin-top: 20px !important;
+        border-right: 1px solid #ddd !important; /* Force right-line visibility */
+        table-layout: auto !important;
     }
     
-    /* 7. Prevent page breaks from cutting poses in half */
+    /* 7. Typography & Sanskrit: Ensure alignment persists */
+    #builderTable td {
+        border: 1px solid #eee !important;
+        padding: 10px 8px !important;
+        vertical-align: top !important;
+        word-wrap: break-word !important;
+    }
+
+    /* Devanagari specific safety */
+    #builderTable td div {
+        overflow: visible !important;
+        white-space: normal !important;
+    }
+
+    /* 8. Pagination: Prevent cutting poses or headers in half */
     #builderTable tr { 
         page-break-inside: avoid !important; 
-        break-inside: avoid !important; /* Modern syntax */
-        border-bottom: 1px solid #ddd !important; 
+        break-inside: avoid !important;
+    }
+
+    thead {
+        display: table-header-group !important; /* Repeat header on every page */
     }
 }
+
+/* Safeguard: Ensure the app is ALWAYS scrollable unless a modal is explicitly active */
+#mainAppContainer {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Force body scroll back if no active overlays are visible */
+body:not(.modal-open) {
+    overflow: auto !important;
+    height: auto !important;
+}
+
 
 /* --- EXTREMELY NARROW PHONES (Max Width: 400px) --- */
 @media (max-width: 400px) {

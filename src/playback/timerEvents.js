@@ -60,6 +60,8 @@ window.playbackEngine.onStop = () => {
     const transOverlay = document.getElementById("transitionOverlay");
     if (transOverlay) transOverlay.style.display = "none";
 
+    document.body.classList.remove("modal-open");
+
     if (typeof window.updateTotalAndLastUI === "function") window.updateTotalAndLastUI(); 
 
     const btn = document.getElementById("startStopBtn");
@@ -70,7 +72,6 @@ window.playbackEngine.onStop = () => {
 
     if (typeof window.disableWakeLock === "function") window.disableWakeLock();
 };
-
 window.playbackEngine.onTick = (remaining, currentPoseSeconds) => {
     window.updateTimerUI(remaining, currentPoseSeconds);
 };
