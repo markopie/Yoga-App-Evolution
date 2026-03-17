@@ -5,35 +5,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yoga Sequences</title>
-  <style>
-    #builderCategory {
-        width: 180px;
-        padding: 6px 10px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        font-size: 0.9rem;
-        background: #fff;
-        text-overflow: ellipsis;
-    }
-    #builderCategory:focus {
-        border-color: #007aff;
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(0,122,255,0.1);
-    }
-    .search-result-item:hover {
-        background: #f0f7ff !important;
-    }
-    .rating-btn:hover {
-        background: #e8e8ed !important;
-        border-color: #86868b !important;
-        transform: translateY(-2px);
-    }
-    .rating-btn {
-        background:#f5f5f7; border:1px solid #d2d2d7; border-radius:16px; padding:20px; color:#1d1d1f; width:140px; cursor:pointer; transition:all 0.2s ease; display:flex; flex-direction:column; align-items:center;
-    }
-  </style>
-  <script type="module" crossorigin src="/assets/index-yqEJhJJ9.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-C-8ftYM4.css">
+  <script type="module" crossorigin src="/assets/index-u3YdqADi.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DRnhnHpr.css">
 </head>
 <body>
 
@@ -53,7 +26,6 @@
         Sign in with Google
       </button>
 
-      <!-- Guest mode: anonymous Supabase session, read-only library access -->
       <button id="guestSignInBtn" style="
           margin-top: 10px;
           background: transparent;
@@ -73,109 +45,6 @@
     </div>
   </div>
 
-  <div class="modal-backdrop" id="asanaEditorBackdrop" aria-hidden="true" style="display:none; z-index:3000;">
-    <div class="modal" role="dialog" aria-modal="true" style="max-width:800px; width:95vw;">
-      <div class="modal-header">
-        <h2 id="asanaEditorTitle" style="margin:0; font-size: 1.2rem;">Edit Asana</h2>
-        <button id="asanaEditorCloseBtn" type="button" class="tiny warn">Close</button>
-      </div>
-      <div class="modal-body" style="padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:15px;">
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
-          <div>
-            <label class="muted" style="font-size:0.8rem;">ID (Locked)</label>
-            <input type="text" id="editAsanaId" style="width:100%; padding:6px; font-weight:bold; background:#f0f0f0;" disabled>
-          </div>
-          <div>
-            <label class="muted" style="font-size:0.8rem;">Category</label>
-            <select id="editAsanaCategory" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
-              <option value="">-- Select category --</option>
-            </select>
-            <input type="text" id="editAsanaCategoryCustom" placeholder="Type new category name…"
-              style="display:none; margin-top:4px; width:100%; padding:6px; border:1px solid #f57f17; border-radius:4px; box-sizing:border-box;">
-          </div>
-          <div>
-            <label class="muted" style="font-size:0.8rem;">Hold Times (seconds)</label>
-            <div style="display: flex; gap: 10px; margin-top: 4px;">
-              <label style="font-size:0.8rem; flex: 1;">Standard:
-                <input type="number" id="editAsanaHoldStandard" value="30" style="width: 100%; padding:6px; box-sizing: border-box;">
-              </label>
-              <label style="font-size:0.8rem; flex: 1;">Short:
-                <input type="number" id="editAsanaHoldShort" value="15" style="width: 100%; padding:6px; box-sizing: border-box;">
-              </label>
-              <label style="font-size:0.8rem; flex: 1;">Long:
-                <input type="number" id="editAsanaHoldLong" value="60" style="width: 100%; padding:6px; box-sizing: border-box;">
-              </label>
-            </div>
-          </div>
-          <div>
-            <label class="muted" style="font-size:0.8rem;">Name (Sanskrit)</label>
-            <input type="text" id="editAsanaName" style="width:100%; padding:6px;">
-          </div>
-          <div>
-            <label class="muted" style="font-size:0.8rem;">IAST</label>
-            <input type="text" id="editAsanaIAST" style="width:100%; padding:6px;">
-          </div>
-          <div>
-            <label class="muted" style="font-size:0.8rem;">English Name</label>
-            <input type="text" id="editAsanaEnglish" style="width:100%; padding:6px;">
-          </div>
-          <div>
-            <label class="muted" style="font-size:0.8rem;">Plate Numbers (e.g. Final: 1, 2)</label>
-            <input type="text" id="editAsanaPlates" style="width:100%; padding:6px;">
-          </div>
-          <div>
-            <label class="muted" style="font-size:0.8rem;">Page 2001</label>
-            <input type="text" id="editAsanaPage2001" style="width:100%; padding:6px;">
-          </div>
-          <div>
-            <label class="muted" style="font-size:0.8rem;">Page 2015</label>
-            <input type="text" id="editAsanaPage2015" style="width:100%; padding:6px;">
-          </div>
-          <div>
-            <label class="muted" style="font-size:0.8rem;">Intensity</label>
-            <input type="text" id="editAsanaIntensity" style="width:100%; padding:6px;">
-          </div>
-          <div style="display:flex; align-items:flex-end; padding-bottom: 6px;">
-            <label style="display:flex; gap:8px; align-items:center; cursor:pointer;">
-              <input type="checkbox" id="editAsanaRequiresSides">
-              <span class="muted" style="font-size:0.85rem; color:#111; font-weight:bold;">Requires Sides (Audio Left/Right)</span>
-            </label>
-          </div>
-        </div>
-
-        <div>
-          <label class="muted" style="font-size:0.8rem;">Note</label>
-          <input type="text" id="editAsanaNote" style="width:100%; padding:6px;">
-        </div>
-        
-        <div>
-          <label class="muted" style="font-size:0.8rem;">Description (Markdown supported)</label>
-          <textarea id="editAsanaDescription" style="height:80px; padding:6px; font-family:inherit;"></textarea>
-        </div>
-
-        <div>
-          <label class="muted" style="font-size:0.8rem;">Technique</label>
-          <textarea id="editAsanaTechnique" style="height:120px; padding:6px; font-family:inherit;"></textarea>
-        </div>
-
-        <div style="border-top: 2px solid #eee; padding-top: 15px; margin-top: 10px;">
-           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <h3 style="margin:0; font-size:1rem; color:#555; font-weight:600; letter-spacing:0.01em;">Stages / Variations</h3>
-              <div style="display:flex; gap:6px;">
-                <button type="button" class="tiny" id="addStageBtn">+ Add Stage</button>
-                <button type="button" class="tiny" id="cloneFromBaseBtn" title="Create a new stage pre-filled with this asana's technique and hold times">📋 Clone from Base</button>
-              </div>
-           </div>
-           <div id="stagesContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
-        </div>
-
-      </div>
-      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
-        <div id="asanaEditorStatus" style="color:green; font-weight:bold; font-size:0.9rem;"></div>
-        <button id="asanaEditorSaveBtn" style="background:#2e7d32; color:white; padding:8px 16px;">Save Asana</button>
-      </div>
-    </div>
-  </div>
   <div id="mainAppContainer" style="display:none;">
     <header>
        <div class="row" style="display:flex; justify-content:space-between; align-items:center;">
@@ -268,23 +137,39 @@
      </main>
   </div>
 
-  <!-- Sequence Builder Modal -->
   <div class="modal-backdrop" id="editCourseBackdrop" style="display:none;">
     <div class="modal" role="dialog" aria-modal="true" style="max-width:960px; width:95vw;">
-      <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
-          <strong id="builderModeLabel" style="white-space:nowrap;">Sequence Builder</strong>
-          <input id="builderTitle" type="text" placeholder="Sequence title…"
-            style="flex:1;min-width:0;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:0.95rem;font-weight:600;">
+      
+      <div class="modal-header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding: 16px 20px;">
+        
+        <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
+          
+          <div id="viewModeHeader" style="display:flex; flex-direction:column; align-items:flex-start; gap:6px;">
+             <span id="displayCategory" style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:#005580; background:#e3f2fd; padding:6px 12px; border-radius:12px; display:inline-block; line-height:1.2;"></span>
+             <h2 id="displayTitle" style="margin:0; font-size:1.6rem; font-weight:700; color:#1d1d1f; line-height:1.2; letter-spacing:-0.02em; word-wrap:break-word;"></h2>
+          </div>
+
+          <div id="editModeHeader" style="display:none; flex-direction:column; align-items:flex-start; gap:8px; width:100%;">
+    
+    <span id="builderCategory" 
+          contenteditable="true" 
+          role="textbox"
+          style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:#005580; background:#e3f2fd; border:2px solid #007aff; padding:6px 12px; border-radius:12px; display:table; line-height:1.2; outline:none; min-width:120px; width:auto; max-width:100%; white-space:nowrap;"></span>
+    
+    <datalist id="builderCategoryList"></datalist>
+    
+    <input id="builderTitle" type="text" placeholder="Untitled Sequence" 
+           style="width:100%; padding:8px 12px; border:1px solid #d2d2d7; border-radius:8px; font-size:1.4rem; font-weight:700; color:#1d1d1f; outline:none; box-sizing:border-box;">
+</div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
-          <input id="builderCategory" type="text" placeholder="Category…" list="builderCategoryList">
-          <datalist id="builderCategoryList"></datalist>
-          <button id="editCourseCloseBtn" type="button" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#666;" title="Close">✕</button>
+
+        <div style="display:flex; gap:10px; align-items:center; flex-shrink:0; padding-top:4px;">
+          <button id="builderPrintBtn" type="button" class="tiny" style="display:none; background:transparent; color:#007aff; border:1px solid #007aff; font-weight:600; padding:6px 14px; border-radius:16px;" title="Print / Save as PDF">🖨️ Print</button>
+          <button id="builderModeToggleBtn" type="button" class="tiny" style="background:#f5f5f7; color:#1d1d1f; border:1px solid #d2d2d7; font-weight:600; padding:6px 14px; border-radius:16px;">✏️ Edit</button>
+          <button id="editCourseCloseBtn" type="button" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#86868b; padding:0 4px;" title="Close">✕</button>
         </div>
       </div>
 
-      <!-- Builder toolbar: primary row (search always visible) -->
       <div class="builder-toolbar-primary">
         <textarea id="builderSearch"
                   placeholder="Search by name or ID — or batch: Title; Category; IDs…"
@@ -293,12 +178,7 @@
         <button id="builderToolsToggle" type="button" class="tiny builder-tools-toggle-btn" title="Toggle tools">⚙️</button>
       </div>
 
-      <!-- Builder toolbar: secondary tools panel (collapsible on mobile) -->
       <div id="builderToolsPanel" class="builder-tools-panel">
-        <select id="builderIdSource" style="padding:7px 8px; border:1px solid #ccc; border-radius:6px; font-size:0.85rem; background:#fff; min-height:36px;">
-          <option value="loy">LOY IDs</option>
-          <option value="mehta">Mehta IDs</option>
-        </select>
         <button id="builderAddBlank" class="tiny" style="white-space:nowrap;">+ Blank</button>
         <button id="btnOpenLinkModal" type="button" class="tiny secondary">🔗 Link</button>
         <button id="btnGroupRepeat" type="button" class="tiny secondary">🔁 Repeat</button>
@@ -335,6 +215,118 @@
           <button id="editCourseSaveBtn" type="button" style="background:#007AFF;color:white;">Save Sequence</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="asanaEditorBackdrop" aria-hidden="true" style="display:none; z-index:3000;">
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:850px; width:95vw;">
+      
+      <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between; padding: 16px 20px;">
+        <h2 id="asanaEditorTitle" style="margin:0; font-size:1.4rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">Edit Asana</h2>
+        <button id="asanaEditorCloseBtn" type="button" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#86868b; padding:0 4px;" title="Close">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:20px;">
+        
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">ID (Locked)</label>
+            <input type="text" id="editAsanaId" disabled style="width:100%; padding:10px; background:#f5f5f7; border:1px solid #d2d2d7; border-radius:8px; font-weight:bold; color:#86868b; box-sizing:border-box;">
+          </div>
+          
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Category</label>
+            <select id="editAsanaCategory" style="width:100%; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
+              <option value="">-- Select category --</option>
+            </select>
+            <input type="text" id="editAsanaCategoryCustom" placeholder="Type new category name…" style="display:none; margin-top:8px; width:100%; padding:10px; border:1px solid #f57f17; border-radius:8px; box-sizing:border-box;">
+          </div>
+          
+          <div style="grid-column: 1 / -1;">
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Hold Times (seconds)</label>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap:10px;">
+              <label style="font-size:0.8rem; color:#444;">Standard:<input type="number" id="editAsanaHoldStandard" value="30" style="width:100%; padding:8px; margin-top:4px; border:1px solid #d2d2d7; border-radius:6px; box-sizing:border-box;"></label>
+              <label style="font-size:0.8rem; color:#444;">Short:<input type="number" id="editAsanaHoldShort" value="15" style="width:100%; padding:8px; margin-top:4px; border:1px solid #d2d2d7; border-radius:6px; box-sizing:border-box;"></label>
+              <label style="font-size:0.8rem; color:#444;">Long:<input type="number" id="editAsanaHoldLong" value="60" style="width:100%; padding:8px; margin-top:4px; border:1px solid #d2d2d7; border-radius:6px; box-sizing:border-box;"></label>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Devanagari (Sanskrit)</label>
+            <input type="text" id="editAsanaName" style="width:100%; padding:10px; border:1px solid #d2d2d7; border-radius:8px; font-family:'Noto Sans Devanagari', sans-serif; font-size:1.1rem; box-sizing:border-box;">
+          </div>
+          
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">IAST</label>
+            <input type="text" id="editAsanaIAST" style="width:100%; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
+          </div>
+          
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">English Name</label>
+            <input type="text" id="editAsanaEnglish" style="width:100%; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
+          </div>
+          
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Plate Numbers (e.g. Final: 1, 2)</label>
+            <input type="text" id="editAsanaPlates" style="width:100%; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
+          </div>
+          
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Page 2001</label>
+            <input type="text" id="editAsanaPage2001" style="width:100%; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
+          </div>
+          
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Page 2015</label>
+            <input type="text" id="editAsanaPage2015" style="width:100%; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
+          </div>
+          
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Intensity</label>
+            <input type="text" id="editAsanaIntensity" style="width:100%; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
+          </div>
+          
+          <div style="display:flex; align-items:center; padding-bottom: 6px;">
+            <label style="display:flex; gap:8px; align-items:center; cursor:pointer;">
+              <input type="checkbox" id="editAsanaRequiresSides" style="width:18px; height:18px;">
+              <span style="font-size:0.9rem; color:#1d1d1f; font-weight:600;">Requires Sides (Audio L/R)</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Note</label>
+          <input type="text" id="editAsanaNote" style="width:100%; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
+        </div>
+        
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Description (Markdown supported)</label>
+          <textarea id="editAsanaDescription" style="height:90px; padding:10px; border:1px solid #d2d2d7; border-radius:8px; font-family:monospace; font-size:0.9rem; box-sizing:border-box;"></textarea>
+        </div>
+
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Technique</label>
+          <textarea id="editAsanaTechnique" style="height:140px; padding:10px; border:1px solid #d2d2d7; border-radius:8px; font-family:monospace; font-size:0.9rem; box-sizing:border-box;"></textarea>
+        </div>
+
+        <div style="border-top: 1px solid #e8e8e8; padding-top: 20px; margin-top: 10px;">
+           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <h3 style="margin:0; font-size:1.1rem; color:#1d1d1f; font-weight:700; letter-spacing:-0.01em;">Stages / Variations</h3>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="tiny" id="addStageBtn" style="padding:6px 12px; border-radius:6px;">+ Add Stage</button>
+                <button type="button" class="tiny" id="cloneFromBaseBtn" title="Create a new stage pre-filled with this asana's technique and hold times" style="padding:6px 12px; border-radius:6px; background:#f5f5f7;">📋 Clone from Base</button>
+              </div>
+           </div>
+           <div id="stagesContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+
+      </div>
+      
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; padding: 16px 20px;">
+        <div id="asanaEditorStatus" style="color:#2e7d32; font-weight:600; font-size:0.9rem;"></div>
+        <button id="asanaEditorSaveBtn" style="background:#007aff; color:white; padding:10px 24px; border:none; border-radius:8px; font-weight:600; font-size:1rem; cursor:pointer;">Save Asana</button>
+      </div>
+      
     </div>
   </div>
 
@@ -428,6 +420,7 @@
    <button id="focusPauseBtn">PAUSE</button>
    
   </div>
+  
   <div id="linkSequenceOverlay" class="modal-backdrop" style="display:none; z-index: 4000; align-items:center; justify-content:center;">
     <div class="modal" style="max-width: 400px; width: 90vw; padding: 20px; border-radius: 8px; background: #fff;">
         <h3 style="margin-top:0; color:#1976d2; display:flex; align-items:center; gap:8px;">
@@ -475,7 +468,6 @@
   </div>
 </div>
   
-<!-- Post-Practice Rating Overlay -->
 <div id="ratingOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(255, 255, 255, 0.95); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:9999; align-items:center; justify-content:center; flex-direction:column; color:#1d1d1f; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
   <h2 style="font-size: 2rem; margin-bottom: 2.5rem; font-weight: 500; text-align:center; letter-spacing:-0.02em;">How did your body feel?</h2>
   <div style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center; max-width:800px; padding:0 20px;">
@@ -512,8 +504,17 @@
 
   </div>
 </div>
-  
 
+<div id="rowSearchOverlay" class="modal-backdrop" style="display:none; z-index: 5000; align-items:center; justify-content:center;">
+   <div class="modal" style="width:95vw; max-width:400px; padding:20px; border-radius:12px; background:#fff;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
+         <strong style="font-size:1.1rem; color:#1d1d1f;">Search Pose</strong>
+         <button onclick="document.getElementById('rowSearchOverlay').style.display='none'" class="tiny warn" style="border:none; background:#f2f2f2; color:#333; border-radius:50%; width:28px; height:28px;">✕</button>
+      </div>
+      <input type="text" id="rowSearchInput" placeholder="Type name or ID..." style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+      <div id="rowSearchResults" style="max-height:350px; overflow-y:auto; margin-top:15px;"></div>
+   </div>
+</div>  
 
 
 </body>
