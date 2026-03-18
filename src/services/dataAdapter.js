@@ -1,5 +1,4 @@
 import { supabase } from './supabaseClient.js';
-
 import { parseHoldTimes, parseSequenceText } from '../utils/parsing.js';
 
 async function fetchCourses(currentUserId = null) {
@@ -8,21 +7,43 @@ async function fetchCourses(currentUserId = null) {
     try {
         const rawAccumulator = [];
 
-        // 1. System & User Sequences (Now all unified in `courses` table after migration)
-        const { data: coursesData } = await supabase.from('courses').select('*');
+        // 1. Fetch courses WITH their relational parent categories
+        const { data: coursesData, error } = await supabase
+            .from('courses')
+            .select(`
+                *,
+                course_sub_categories (
+                    name,
+                    course_categories ( name )
+                )
+            `);
 
+        if (error) throw error;
 
         if (coursesData) {
             coursesData.forEach(row => {
                 const poses = parseSequenceText(row.sequence_text || '');
+                
                 if (row.title && poses.length > 0) {
+                    
+                    // 🌟 THE FLATTENING: Exclusively use joined relational data
+                    // We assume 'General' if the join somehow fails, but the structure is now the source of truth
+                    const subObj = row.course_sub_categories;
+                    const author = subObj?.course_categories?.name || 'General';
+                    const sub    = subObj?.name || '';
+                    
+                    // Reconstruct the "Author > Course" string for the UI
+                    // If sub is 'General' or empty, we just show the Author name
+                    const categoryString = (sub && sub !== 'General') ? `${author} > ${sub}` : author;
+
                     rawAccumulator.push({ 
                         title: row.title.trim(), 
-                        category: (row.category || '').trim(), 
+                        category: categoryString, 
                         poses, 
-                        isUserSequence: row.category === 'My Sequences',
+                        // Check against the newly constructed string
+                        isUserSequence: categoryString === 'My Sequences',
                         id: String(row.id),
-                        supabaseId: String(row.id)  // explicit alias used by builderOpen
+                        supabaseId: String(row.id)
                     });
                 }
             });
@@ -57,7 +78,14 @@ async function loadAsanaLibrary() {
     }
 
     try {
-        const { data: asanasData, error: asanasError } = await supabase.from('asanas').select('*');
+        // 1. Fetch Asanas WITH their relational category
+        const { data: asanasData, error: asanasError } = await supabase
+            .from('asanas')
+            .select(`
+                *,
+                asana_categories ( name )
+            `);
+            
         if (asanasError) throw asanasError;
 
         const normalized = {};
@@ -69,19 +97,25 @@ async function loadAsanaLibrary() {
                 if (!key) return;
 
                 const rawHoldText = String(row.hold ?? row.Hold ?? '');
+                
+                // 🌟 THE FLATTENING: Use relational category if it exists
+                let asanaCategory = row.category ?? '';
+                if (row.asana_categories) {
+                    asanaCategory = row.asana_categories.name || asanaCategory;
+                }
 
                 normalized[key] = {
                     id: key,
                     name: row.name ?? `Pose ${key}`, // Safety Fallback
                     iast: row.iast ?? '',
-                    // 🌟 CRITICAL FIX: Ensure 'english' is never empty
+                    // CRITICAL FIX: Ensure 'english' is never empty
                     english: row.english_name ?? row.name ?? `Pose ${key}`, 
                     devanagari: row.devanagari ?? '', 
                     audio: row.audio_url ?? '',
                     image_url: row.image_url ?? '',
                     technique: row.technique ?? row.Technique ?? '',
                     description: row.description ?? row.Description ?? '',
-                    category: row.category ?? '',
+                    category: asanaCategory,
                     requiresSides: !!(row.requires_sides ?? row.Requires_Sides ?? false),
                     plates: typeof parsePlates === 'function' ? parsePlates(row.plate_numbers ?? '') : (row.plate_numbers ?? ''),
                     hold: rawHoldText,
@@ -115,7 +149,7 @@ async function loadAsanaLibrary() {
             // User stages naturally overwrite global stages here because they were concatenated last
             normalized[parentKey].variations[stageKey] = {
                 id: stage.id ?? '',
-                // 🛑 CRITICAL FIX: Aggressively check all capitalizations of full_technique and technique
+                // CRITICAL FIX: Aggressively check all capitalizations of full_technique and technique
                 technique: stage.full_technique ?? stage.Full_Technique ?? stage.technique ?? stage.Technique ?? '',
                 full_technique: stage.full_technique ?? stage.Full_Technique ?? stage.technique ?? stage.Technique ?? '',
                 shorthand: stage.Shorthand ?? stage.shorthand ?? '',
@@ -130,8 +164,7 @@ async function loadAsanaLibrary() {
             };
         });
 
-
-window.asanaLibrary = normalized;
+        window.asanaLibrary = normalized;
         return normalized;
 
     } catch (e) {
@@ -142,7 +175,7 @@ window.asanaLibrary = normalized;
     }
 }
 
-// 🌟 ADD THIS: Self-execute so it loads immediately!
+// Self-execute so it loads immediately!
 loadAsanaLibrary();
 
 function normalizeAsana(id, asana) {
@@ -221,17 +254,17 @@ function parsePlates(plateStr) {
 }
 
 function normaliseAsanaId(q){
-if(!q) return null;
+    if(!q) return null;
 
-// extract number + optional suffix
-const m = q.trim().match(/^(\d+)([a-z]?)$/i);
-if(!m) return null;
+    // extract number + optional suffix
+    const m = q.trim().match(/^(\d+)([a-z]?)$/i);
+    if(!m) return null;
 
-let num = m[1];
-let suffix = m[2] || "";
+    let num = m[1];
+    let suffix = m[2] || "";
 
-num = num.padStart(3,"0");   // 1 → 001
-return num + suffix;
+    num = num.padStart(3,"0");   // 1 → 001
+    return num + suffix;
 }
 
 function findAsanaByIdOrPlate(id) {

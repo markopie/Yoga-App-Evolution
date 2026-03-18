@@ -200,13 +200,6 @@ function setupBuilderWiring() {
     safeListen("editCourseCloseBtn", "click", closeBuilderModal);
     safeListen("editCourseCancelBtn", "click", closeBuilderModal);
 
-    safeListen("editCourseSaveBtn", "click", () => {
-       if (!window.asanaLibrary || Object.keys(window.asanaLibrary).length === 0) {
-          return alert("Library is still loading. Please wait."); 
-       }
-       builderSave();
-    });
-
     safeListen("builderAddBlank", "click", () => {
         addPoseToBuilder({ id: "", name: "", englishName: "", duration: 30, variation: "", note: "" });
     });

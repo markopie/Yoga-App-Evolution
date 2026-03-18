@@ -1647,8 +1647,6 @@ body.modal-open {
     display: none !important;
 }
 
-
-
 /* --- Builder View Mode (Jobbsian Aesthetic) --- */
 
 /* 1. Modal Container: Allow it to be tall but not overflow the screen */
@@ -1682,6 +1680,18 @@ body.modal-open {
     margin-bottom: 0;
 }
 
+/* 🌟 4. FREEZE THE TABLE INTERACTIONS IN VIEW MODE 🌟 */
+.builder-view-mode #builderTableBody {
+    pointer-events: none !important; /* Stops clicks on tier buttons, selects, and checkboxes */
+    user-select: none !important;    /* Stops text highlighting */
+}
+
+/* Desaturate the tier buttons slightly so they look locked */
+.builder-view-mode .b-tier {
+    opacity: 0.7;
+    filter: grayscale(0.5);
+}
+
 /* --- Builder Smart Variation Display --- */
 .b-var-view { display: none; } 
 .builder-view-mode .b-var-view { display: inline-block !important; }
@@ -1690,7 +1700,7 @@ body.modal-open {
 .builder-view-mode .edit-only-inline { display: none !important; }
 .builder-view-mode .b-var-edit { display: none !important; }
 
-/* --- VIEW MODE LOCKDOWNS --- */
+/* --- VIEW MODE LOCKDOWNS FOR INPUTS --- */
 .builder-view-mode input.jobbsian-input {
     pointer-events: none !important; /* Stops clicking, hovering, or focusing */
 }
@@ -1746,6 +1756,7 @@ body.modal-open {
 .builder-view-mode .jobbsian-category {
     pointer-events: none !important;
 }
+
 /* ==========================================================================
    PRINT / PDF EXPORT STYLES (Militant Refactor)
    ========================================================================== */
@@ -1865,7 +1876,6 @@ body:not(.modal-open) {
     overflow: auto !important;
     height: auto !important;
 }
-
 
 /* --- EXTREMELY NARROW PHONES (Max Width: 400px) --- */
 @media (max-width: 400px) {
