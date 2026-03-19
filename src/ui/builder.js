@@ -153,12 +153,14 @@ function builderRender() {
               ${roundsHTML}
            </td>
            ${generateInfoCellHTML(asana, pose, idx, isSpecial)}
-           <td style="padding:12px 8px; text-align:center; white-space:nowrap; vertical-align: top; border-bottom: 1px solid #eee;">
-              <button class="tiny b-move-top" data-idx="${idx}" title="Move to Top" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤒</button>
-              <button class="tiny b-move-bot" data-idx="${idx}" title="Move to Bottom" ${idx === builderState.poses.length - 1 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤓</button>
-              <button class="tiny b-move-up" data-idx="${idx}">▲</button>
-              <button class="tiny b-move-dn" data-idx="${idx}">▼</button>
-           </td>`;
+           <td class="builder-order-column">
+  <div class="order-controls-group">
+      <button class="tiny b-move-top" data-idx="${idx}" title="Move to Top" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤒</button>
+      <button class="tiny b-move-up" data-idx="${idx}">▲</button>
+      <button class="tiny b-move-dn" data-idx="${idx}">▼</button>
+      <button class="tiny b-move-bot" data-idx="${idx}" title="Move to Bottom" ${idx === builderState.poses.length - 1 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤓</button>
+  </div>
+</td>`;
            
         tbody.appendChild(tr);
 

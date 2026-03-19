@@ -282,6 +282,30 @@
     .b-note { width: 80px !important; }
 }
 
+/* Lock the Order Column to a safe minimum */
+.builder-order-column {
+    padding: 12px 8px !important;
+    vertical-align: top !important;
+    border-bottom: 1px solid #eee !important;
+    width: 1% !important;        /* Tells table: 'only take what you need' */
+    min-width: 145px !important;  /* Tells table: '...but you need at least this much' */
+}
+
+/* Force buttons to stay in a single, centered row */
+.order-controls-group {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 4px !important;         /* Consistent spacing without manual margins */
+    white-space: nowrap !important;
+}
+
+.order-controls-group button {
+    flex: 0 0 auto !important;   /* Prevents buttons from ever shrinking */
+}
+
+
 @media (max-width: 600px) {
     .builder-tools-toggle-btn { display: flex; align-items: center; justify-content: center; }
     .builder-tools-panel { display: none; flex-direction: column; }
