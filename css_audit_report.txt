@@ -1,0 +1,6 @@
+MISSING SELECTORS CHECKLIST (3 total)
+==================================================
+
+[ ] #mainAppContainer
+[ ] body:not(.modal-open)
+[ ] header .row

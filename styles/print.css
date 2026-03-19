@@ -1,0 +1,107 @@
+/* ==========================================================================
+   PRINT / PDF EXPORT STYLES (Militant Refactor)
+   ========================================================================== */
+@media print {
+    /* 1. Reset Physics: Free the document from screen-height and scroll constraints */
+    html, body, body.modal-open {
+        height: auto !important;
+        min-height: auto !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+    }
+
+    /* 2. Isolation: Hide the main app behind the modal */
+    body > *:not(#editCourseBackdrop) { 
+        display: none !important; 
+    }
+    
+    /* 3. Layout: Destroy Flexbox (Flexbox kills multi-page print pagination) */
+    #editCourseBackdrop {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        display: block !important;
+        background: #fff !important;
+        padding: 0 !important;
+        height: auto !important;
+        width: 100% !important;
+        overflow: visible !important;
+    }
+    
+    .modal {
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    /* 4. Body Expansion: Let the table grow infinitely across pages */
+    .modal-body {
+        display: block !important;
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* 5. UI Cleanup: Hide all navigation, buttons, and row controls */
+    .modal-header button,
+    .modal-footer,
+    #builderModeToggleBtn, 
+    #builderPrintBtn, 
+    #editCourseCancelBtn,
+    #editCourseSaveBtn,
+    #editCourseCloseBtn,
+    .builder-toolbar-primary,
+    .builder-tools-panel,
+    .edit-only-inline,
+    .b-row-search-btn,
+    .b-move-top, .b-move-bot, .b-move-up, .b-move-dn, .b-remove,
+    input[type="checkbox"].b-row-select,
+    #builderTable th:last-child, 
+    #builderTable td:last-child {
+        display: none !important;
+    }
+
+    /* 6. The Table "Proper" Fix: Prevent right-edge clipping */
+    #builderTable { 
+        width: 98.5% !important; /* Tucked in by 1.5% to ensure the right border prints */
+        margin: 0 auto !important; /* Centers the tucked table */
+        border-collapse: collapse !important; 
+        border-right: 1px solid #ddd !important; /* Force right-line visibility */
+        table-layout: auto !important;
+    }
+    
+    /* 7. Typography & Sanskrit: Ensure alignment persists */
+    #builderTable td {
+        border: 1px solid #eee !important;
+        padding: 10px 8px !important;
+        vertical-align: top !important;
+        word-wrap: break-word !important;
+    }
+
+    /* Devanagari specific safety */
+    #builderTable td div {
+        overflow: visible !important;
+        white-space: normal !important;
+    }
+
+    /* 8. Pagination: Prevent cutting poses or headers in half */
+    #builderTable tr { 
+        page-break-inside: avoid !important; 
+        break-inside: avoid !important;
+    }
+
+    thead {
+        display: table-header-group !important; /* Repeat header on every page */
+    }
+}

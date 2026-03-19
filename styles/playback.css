@@ -1,0 +1,236 @@
+/* ==========================================================================
+   PLAYBACK & TIMERS (Active Practice UI)
+   ========================================================================== */
+
+/* --- 1. Standard Timer Displays --- */
+#poseTimer {
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    transition: color 0.3s ease;
+    display: inline-block;
+    min-width: 4.5ch; 
+    text-align: center;
+}
+
+#poseTimer.warning {
+    color: #ff6b35;
+    animation: pulse 1s infinite;
+}
+
+#poseTimer.critical {
+    color: #d32f2f;
+    font-weight: 900;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+#poseName {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    line-height: 1.3;
+    margin: 8px 0;
+}
+
+#poseMeta { font-size: 1rem; color: var(--color-text-secondary); font-weight: 500; }
+#poseCounter { font-size: 1.1rem; font-weight: 600; color: #444; }
+
+#status {
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: #f0f0f0;
+    color: #555;
+    display: inline-block;
+}
+
+/* --- 2. Smart Dashboard (Time Capsule) --- */
+.time-capsule {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 140px; 
+    height: 36px;
+    background: #e0e0e0;
+    border-radius: 18px;
+    overflow: hidden; 
+    vertical-align: middle;
+    margin: 0 5px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+#timeProgressFill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 100%; 
+    background: #c8e6c9; 
+    transition: width 0.3s ease; 
+    z-index: 1;
+}
+
+.time-content {
+    position: relative;
+    z-index: 2;
+    font-family: 'SF Mono', 'Roboto Mono', monospace; 
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    display: flex;
+    gap: 4px;
+}
+
+#timeRemainingDisplay { color: #1b5e20; display: inline-block; min-width: 4.5ch; text-align: center; }
+#timeTotalDisplay { color: #757575; display: inline-block; min-width: 4.5ch; text-align: center; }
+.time-sep { opacity: 0.4; }
+
+/* --- 3. Immersive Focus Overlay --- */
+#focusOverlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: var(--color-bg-surface);
+    z-index: 10000; 
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.focus-header { text-align: center; margin-bottom: 10px; width: 100%; }
+#focusCourseTitle { font-size: 1.1rem; color: var(--color-text-secondary); font-weight: bold; text-transform: uppercase; }
+#focusTotalTime { font-size: 1rem; color: #888; margin-top: 4px; }
+
+#focusTimer {
+    font-size: 5rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--color-text-primary);
+    font-variant-numeric: tabular-nums;
+    margin: 0 auto;
+    min-width: 3.5ch;
+    text-align: center;
+}
+
+#focusPoseName { font-size: 1.8rem; font-weight: 600; margin: 5px 0 15px 0; text-align: center; }
+
+#focusImageWrap {
+    flex: 1; 
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    margin-bottom: 20px;
+    min-height: 0; 
+}
+
+#focusImageWrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+#focusPauseBtn {
+    background-color: #d32f2f;
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    padding: 15px 40px;
+    border-radius: 50px;
+    border: none;
+    box-shadow: 0 4px 15px rgba(211, 47, 47, 0.4);
+    cursor: pointer;
+    min-width: 200px;
+}
+
+#focusPauseBtn:hover { background-color: #b71c1c; transform: scale(1.02); }
+
+/* --- 4. Transition & Pause Overlay --- */
+#transitionOverlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(255,255,255,0.97);
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+#transitionOverlay .transition-msg { font-size: 1.8rem; font-weight: 700; color: var(--color-text-primary); text-align: center; padding: 0 20px; }
+#transitionOverlay .transition-countdown { font-size: 4rem; font-weight: 800; color: #2e7d32; font-variant-numeric: tabular-nums; line-height: 1; }
+#transitionOverlay .transition-next { font-size: 1.1rem; color: var(--color-text-secondary); text-align: center; }
+
+#transitionSkipBtn {
+    background: #333;
+    color: #fff;
+    border: none;
+    padding: 10px 28px;
+    border-radius: 24px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+/* --- 5. Duration Dial (Apple-style Input) --- */
+#durationDialWrap {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 8px 2px;
+    min-width: 148px;
+    vertical-align: middle;
+    user-select: none;
+}
+
+#durationDialHeader { display: flex; align-items: baseline; gap: 5px; }
+#durationDialLabel { font-size: 0.72rem; font-weight: 600; color: #444; white-space: nowrap; transition: color 0.18s; letter-spacing: 0.01em; }
+#durationDialEst { font-size: 0.67rem; color: #999; white-space: nowrap; }
+#durationDialTrackWrap { position: relative; padding-bottom: 14px; }
+
+#durationDial {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    width: 100%;
+    height: 2px;
+    border-radius: 1px;
+    background: #d1d5db;
+    outline: none;
+    border: none;
+    padding: 0;
+    margin: 7px 0 0;
+    cursor: pointer;
+}
+
+#durationDial::-webkit-slider-thumb, 
+#durationDial::-moz-range-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: none;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.13), 0 2px 6px rgba(0,0,0,0.18);
+    cursor: grab;
+    transition: box-shadow 0.12s;
+}
+
+#durationDial::-webkit-slider-thumb:hover { box-shadow: 0 0 0 1px rgba(0,0,0,0.18), 0 3px 10px rgba(0,0,0,0.22); }
+#durationDial::-webkit-slider-thumb:active { cursor: grabbing; box-shadow: 0 0 0 4px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.2); }
+#durationDial::-moz-range-track { height: 2px; background: #d1d5db; border-radius: 1px; }
+
+#durationDialLabels {
+    position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between;
+    font-size: 0.58rem; color: #bbb; pointer-events: auto; line-height: 1; z-index: 10;
+}
+
+#durationDialDefaultMark { font-size: 0.58rem; color: #999; font-weight: 600; }
+#durationDialWrap.dial-slower #durationDialLabel { color: #2563eb; }
+#durationDialWrap.dial-faster #durationDialLabel { color: #d97706; }
+#dialResetBtn { position: relative; z-index: 20; }

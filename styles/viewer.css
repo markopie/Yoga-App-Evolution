@@ -1,0 +1,187 @@
+/* ==========================================================================
+   VIEWER: BROWSE & LIBRARY INTERFACE
+   ========================================================================== */
+
+/* --- 1. Split Pane Layout (Left/Right) --- */
+.browse-left {
+    width: 35%;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--color-border);
+    height: 100%;
+}
+
+.browse-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+}
+
+/* --- 2. List View (Left Pane) --- */
+.browse-list {
+    flex: 1;
+    overflow-y: auto !important;
+    padding: 10px;
+}
+
+.browse-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.browse-item:last-child {
+    border-bottom: none;
+}
+
+.browse-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+    border-bottom: 1px solid var(--color-border);
+    align-items: center;
+}
+
+.browse-filters input,
+.browse-filters select {
+    font-size: 0.9rem;
+    padding: 8px 10px;
+    min-height: 36px;
+}
+
+/* --- 3. Detail View (Right Pane) --- */
+#browseDetail {
+    flex: 1;          
+    overflow-y: auto !important; 
+    padding: 24px;
+    background: var(--color-bg-surface);
+    position: relative;
+}
+
+/* Force collage inside detail to behave normally */
+#browseDetail .collage, 
+#browseDetail #collageWrap {
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+/* --- 4. Tabs & Variations --- */
+.variation-tabs {
+    display: flex !important;
+    gap: 8px;
+    position: sticky !important;
+    top: -24px;              
+    margin: 0 -24px 20px;
+    padding: 12px 24px;
+    background: var(--color-bg-surface) !important;
+    border-bottom: 1px solid var(--color-border);
+    z-index: 1000;
+    overflow-x: auto;
+    white-space: nowrap;
+    box-shadow: 0 2px 5px var(--color-shadow);
+}
+
+.tab-btn {
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    border: 1px solid var(--color-border-input);
+    border-radius: 6px;
+    background: var(--color-bg-main);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.tab-btn.active {
+    background: var(--color-text-primary) !important;
+    color: var(--color-bg-surface) !important;
+    font-weight: bold;
+}
+
+/* --- 5. Content Typography --- */
+#poseDescBody, 
+#poseNoteBody, 
+.desc-text, 
+.tab-pane,
+.technique-text,
+#poseInstructions {
+    font-size: 0.9rem; /* Unified size */
+    line-height: 1.7;
+    padding-top: 10px;
+    white-space: pre-wrap !important; /* Respects newlines / Markdown */
+    word-wrap: break-word;
+    color: #333;
+    max-width: 720px; /* Readability measure */
+}
+
+#poseDescDetails summary, 
+#poseNoteDetails summary {
+    list-style: none;
+    cursor: pointer;
+    font-weight: 650;
+    outline: none;
+}
+
+#poseDescDetails summary::-webkit-details-marker,
+#poseNoteDetails summary::-webkit-details-marker {
+    display: none;
+}
+
+#poseShorthand {
+    font-family: 'Segoe UI', monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #2e7d32;
+    background: #e8f5e9;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 10px 0;
+    border-left: 5px solid #2e7d32;
+    line-height: 1.4;
+}
+
+/* --- 6. Responsive Mobile Logic for Browse --- */
+@media (min-width: 900px) {
+    .grid { grid-template-columns: 1.4fr 0.6fr; }
+    /* Hide the "Back" button on desktop since both panes are visible */
+    #browseDetail button.tiny:not(#playNameBtn) { display: none; }
+}
+
+@media (max-width: 900px) {
+    .browse-left { width: 100%; }
+    
+    /* Mobile Browse Logic: Show ONE pane at a time */
+    .browse-right { display: none; } /* Default: Hidden */
+    
+    /* When Detail Mode is Active (via JS class) */
+    .modal.detail-mode .browse-left { display: none; }
+    .modal.detail-mode .browse-right { display: flex; width: 100%; }
+    
+    /* Show "Back" button on mobile */
+    #browseDetail button.tiny:not(#playNameBtn) { display: block; }
+}
+
+@media (max-width: 600px) {
+    .browse-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .browse-filters input,
+    .browse-filters select {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+/* --- Missing Viewer Additions --- */
+#categoryFilter { background-color: #f0f4f8; border-color: #cbd5e0; cursor: pointer; }
+#categoryFilter:hover { background-color: #e2e8f0; }
+
+@media (max-width: 600px) {
+    #categoryFilter, #sequenceSelect { width: 100%; max-width: 100% !important; }
+    #browseSearch { font-size: 1rem; }
+}

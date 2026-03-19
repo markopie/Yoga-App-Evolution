@@ -1,0 +1,4 @@
+/* --- Missing Layout Additions --- */
+header .row { flex-wrap: wrap; }
+#mainAppContainer { overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+body:not(.modal-open) { overflow: auto !important; height: auto !important; }

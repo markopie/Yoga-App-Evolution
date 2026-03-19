@@ -1,0 +1,94 @@
+/* ==========================================================================
+   LAYOUT & MODAL SKELETON
+   ========================================================================== */
+
+/* --- 1. Main App Skeleton --- */
+header {
+    padding: 14px 18px;
+    background: var(--color-bg-surface);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+header .row {
+    flex-wrap: wrap;
+}
+
+main {
+    padding: 18px;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+#mainAppContainer {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* --- 2. Global Modal Framework --- */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center; 
+    justify-content: center;
+    z-index: 2000;
+    padding: 5mm; 
+    box-sizing: border-box;
+}
+
+.modal {
+    width: 100%; 
+    max-width: 1200px;
+    height: 90vh; 
+    background: var(--color-bg-surface);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    flex-shrink: 0; 
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky; 
+    top: 0; 
+    z-index: 20; 
+    background: var(--color-bg-surface);
+}
+
+.modal-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding: 15px 20px;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg-main);
+    flex-wrap: wrap;
+}
+
+/* --- 3. Scroll Locking Mechanics --- */
+body.modal-open {
+    overflow: hidden;
+    height: 100vh;
+}
+
+body:not(.modal-open) {
+    overflow: auto !important;
+    height: auto !important;
+}

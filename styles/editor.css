@@ -1,0 +1,304 @@
+/* styles/editor.css */
+/* ==========================================================================
+   SEQUENCE BUILDER & EDITOR ISOLATION
+   ========================================================================== */
+
+/* --- 1. Base Builder Table Layout --- */
+#builderTable {
+    width: 100% !important;
+    table-layout: auto !important; /* Reverted to auto so the colspan header doesn't break the grid */
+    border-collapse: collapse;
+}
+
+/* Col 1: Fixed Width for Checkbox & ID */
+#builderTable th:nth-child(1), #builderTable td:nth-child(1) { 
+    width: 85px !important; 
+    min-width: 85px !important;
+    text-align: center; 
+} 
+
+/* Col 2: The Sponge (Absorbs all remaining space) */
+#builderTable th:nth-child(2), #builderTable td:nth-child(2) { 
+    width: 100% !important; 
+} 
+/* Ensure text wraps in Col 2 so it doesn't push the table off-screen */
+#builderTable td:nth-child(2) {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    white-space: normal !important;
+    padding-right: 10px;
+}
+
+/* Col 3, 4, 5: UI Elements (Shrink-wrap tightly around buttons) */
+#builderTable th:nth-child(n+3), #builderTable td:nth-child(n+3) { 
+    width: 1% !important; 
+    white-space: nowrap !important; 
+}
+
+/* Give the button columns minimum breathing room so they never overlap */
+#builderTable td:nth-child(4) { min-width: 90px !important; text-align: center; }
+#builderTable td:nth-child(5) { min-width: 90px !important; text-align: right; padding-right: 10px !important; }
+
+/* ... keep your existing builder-view-mode code below this ... */
+
+/* --- 2. Builder View Mode (Jobbsian Aesthetic) --- */
+.builder-view-mode .builder-tools-panel,
+.builder-view-mode .builder-toolbar-primary {
+    display: none !important;
+}
+
+.builder-view-mode .b-move-top, 
+.builder-view-mode .b-move-bot, 
+.builder-view-mode .b-move-up, 
+.builder-view-mode .b-move-dn, 
+.builder-view-mode .b-remove, 
+.builder-view-mode .b-row-select,
+.builder-view-mode .b-row-search-btn {
+    display: none !important;
+}
+
+.builder-view-mode input.b-id, 
+.builder-view-mode input.b-dur, 
+.builder-view-mode select.b-var {
+    border: none !important; 
+    background: transparent !important; 
+    pointer-events: none !important; 
+    appearance: none; 
+    -webkit-appearance: none; 
+    -moz-appearance: none;
+    color: inherit; 
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+
+/* 1. Only hide the checkbox, NEVER the <th> itself, to keep columns aligned */
+.builder-view-mode td:first-child input[type="checkbox"] {
+    display: none !important;
+}
+
+/* 2. Release the strict Builder grid so View Mode can flow naturally */
+.builder-view-mode #builderTable {
+    table-layout: auto !important;
+}
+
+/* 3. Set perfect reading proportions for the 3 visible columns */
+.builder-view-mode th:nth-child(1), 
+.builder-view-mode td:nth-child(1) {
+    width: 85px !important; /* Match the new wider base width */
+    text-align: center;
+}
+
+.builder-view-mode th:nth-child(2),
+.builder-view-mode td:nth-child(2) {
+    width: 100% !important; /* The Sponge: absorbs all empty space */
+}
+
+.builder-view-mode th:nth-child(3),
+.builder-view-mode td:nth-child(3) {
+    width: 1% !important; /* Hugs the duration badges tightly */
+    white-space: nowrap !important;
+}
+
+/* 4. Kill the ghost columns: Hide column 4 AND everything after it */
+.builder-view-mode th:nth-child(n+4), 
+.builder-view-mode td:nth-child(n+4) {
+    display: none !important;
+}
+
+.builder-view-mode .modal {
+    display: flex;
+    flex-direction: column;
+    height: 95dvh !important; 
+    max-height: 95dvh;
+    margin: 10px auto;
+}
+
+.builder-view-mode .modal-body {
+    flex: 1 1 auto !important; 
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 20px !important; 
+    max-height: none !important; 
+}
+
+/* FREEZE THE TABLE INTERACTIONS IN VIEW MODE */
+.builder-view-mode #builderTableBody {
+    pointer-events: none !important; 
+    user-select: none !important;    
+}
+
+.builder-view-mode .b-tier {
+    opacity: 0.7;
+    filter: grayscale(0.5);
+}
+
+.b-var-view { display: none; } 
+.builder-view-mode .b-var-view { display: inline-block !important; }
+.builder-view-mode .edit-only-inline { display: none !important; }
+.builder-view-mode .b-var-edit { display: none !important; }
+
+/* VIEW MODE LOCKDOWNS FOR INPUTS */
+.builder-view-mode input.jobbsian-input {
+    pointer-events: none !important;
+}
+.builder-view-mode input.jobbsian-category:placeholder-shown {
+    display: none !important;
+}
+
+/* --- 3. Seamless Typography Inputs (Unified Formatting) --- */
+.jobbsian-title {
+    font-size: 1.6rem !important;
+    font-weight: 700 !important;
+    color: #1d1d1f !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.02em !important;
+    width: 100% !important;
+    padding: 6px 8px !important;
+    margin-left: -8px !important;
+    background: transparent !important;
+    border: 2px solid transparent !important;
+    border-radius: 8px !important;
+    outline: none !important;
+    transition: all 0.2s ease;
+}
+
+.jobbsian-category {
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    color: #005580 !important;
+    background: #e3f2fd !important;
+    padding: 6px 12px !important;
+    border-radius: 12px !important;
+    border: 2px solid transparent !important;
+    text-overflow: ellipsis;
+    outline: none !important;
+    transition: all 0.2s ease;
+}
+
+.jobbsian-title:hover:not(:disabled) { background: #f5f5f7 !important; }
+.jobbsian-title:focus { background: #fff !important; border-color: #007aff !important; box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15) !important; }
+.jobbsian-category:hover:not(:disabled) { background: #cce4f7 !important; }
+.jobbsian-category:focus { background: #fff !important; border-color: #007aff !important; box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15) !important; color: #1d1d1f !important; }
+
+.builder-view-mode .jobbsian-title,
+.builder-view-mode .jobbsian-category {
+    pointer-events: none !important;
+}
+
+/* --- 4. Mobile Table Resets (Extremely Narrow Phones) --- */
+@media (max-width: 400px) {
+    .binfo-cat { display: none !important; }
+
+    #builderTableBody .b-move-top,
+    #builderTableBody .b-move-bot {
+        display: none !important;
+    }
+
+    #builderTableBody button.tiny {
+        min-width: 28px !important;
+        height: 28px !important;
+        padding: 2px !important;
+        font-size: 0.85rem !important;
+    }
+
+    #builderTable td:last-child {
+        gap: 3px !important;
+        padding: 6px !important;
+    }
+
+    #builderTable td:nth-child(3) {
+        padding: 6px !important;
+        min-width: 100px !important;
+    }
+
+    #builderTable td:first-child {
+        font-size: 0 !important; 
+        width: 32px !important;  
+    }
+
+    #builderTable td:first-child br {
+        display: none !important;
+    }
+
+    #builderTable td:nth-child(2) {
+        width: calc(100% - 32px) !important;
+    }
+}
+
+/* --- Missing Editor Additions --- */
+
+/* 1. Editor Search & Toolbar */
+#builderSearch { width: 100%; box-sizing: border-box; border: 1px solid var(--color-border); border-radius: 8px; font-size: 16px; line-height: 1.4; transition: height 0.2s ease; }
+#builderSearch:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(0,122,255,0.2); }
+.builder-toolbar-primary #builderSearch { flex: 1; border-radius: 6px; min-height: 42px !important; max-height: 80px; padding: 8px 10px; resize: vertical; }
+.builder-tools-toggle-btn { display: none; padding: 8px 10px; font-size: 1rem; min-width: 40px; min-height: 40px; flex-shrink: 0; }
+
+/* 2. Builder Category Input Dropdown */
+#builderCategory { width: 280px !important; min-width: 280px; flex: none !important; appearance: none; -moz-appearance: none; -webkit-appearance: none; }
+#builderCategory::-webkit-calendar-picker-indicator { display: none !important; }
+#builderCategoryList { background-color: white; border: 1px solid var(--color-border); }
+
+/* 3. Sequence Loops & Macro Rows */
+.builder-macro-row { background-color: #e3f2fd !important; border-left: 4px solid #1976d2 !important; }
+.builder-loop-row { background-color: #fdfae3 !important; border-left: 4px solid #fbc02d !important; }
+.builder-macro-row td, .builder-loop-row td { font-style: italic; color: #333; }
+.macro-title-badge { display: inline-block; background-color: #1976d2; color: white; font-size: 0.75rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-right: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* 4. Builder Info Cells (The non-editable metadata) */
+.builder-info-cell { padding: 8px 10px; vertical-align: top; width: 170px; min-width: 140px; }
+.builder-info-special { color: #ccc; font-size: 0.85rem; text-align: center; vertical-align: middle; }
+.binfo-dur { display: inline-flex; align-items: center; gap: 3px; background: #e8f0fe; color: #1a56db; border: 1px solid #c5d8fd; border-radius: 10px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+.binfo-range { display: block; font-size: 0.68rem; color: #999; margin-top: 3px; white-space: nowrap; }
+.binfo-sides { display: inline-flex; align-items: center; gap: 3px; margin-top: 5px; font-size: 0.68rem; color: #2e7d32; font-weight: 600; white-space: nowrap; }
+
+/* Category Chip Colors */
+.binfo-cat { display: inline-block; margin-top: 5px; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; background: #f3f4f6; color: #555; border: 1px solid #e5e7eb; }
+.binfo-cat[data-cat="standing"] { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+.binfo-cat[data-cat="seated"] { background:#ede9fe; color:#5b21b6; border-color:#c4b5fd; }
+.binfo-cat[data-cat="supine"] { background:#d1fae5; color:#065f46; border-color:#6ee7b7; }
+.binfo-cat[data-cat="prone"] { background:#fce7f3; color:#9d174d; border-color:#f9a8d4; }
+.binfo-cat[data-cat="inversion"] { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+.binfo-cat[data-cat="balance"] { background:#fff7ed; color:#9a3412; border-color:#fdba74; }
+.binfo-cat[data-cat="twists"] { background:#ecfeff; color:#164e63; border-color:#67e8f9; }
+.binfo-cat[data-cat="backbend"] { background:#fef9c3; color:#713f12; border-color:#fde047; }
+.binfo-cat[data-cat="forward"] { background:#f0fdf4; color:#166534; border-color:#86efac; }
+.binfo-cat[data-cat="restorative"] { background:#f0f9ff; color:#0c4a6e; border-color:#7dd3fc; }
+
+/* 5. Missing View Mode Tweak */
+.builder-view-mode #builderTable { width: 100%; margin-bottom: 0; }
+
+/* 6. Deep Mobile Responsive Rules (Max-Width 700px & 600px) */
+@media (max-width: 700px) {
+    #editCourseBackdrop .modal { width: 100%; height: 100vh; max-width: 100%; margin: 0; border-radius: 0; display: flex; flex-direction: column; }
+    #editCourseBackdrop .modal-body { flex: 1 !important; overflow-x: auto; overflow-y: auto; max-height: calc(100dvh - 190px) !important; -webkit-overflow-scrolling: touch; }
+    #editCourseBackdrop .modal-header { flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 12px; }
+    #editCourseBackdrop .modal-header > div, #builderTitle { width: 100%; }
+    #editCourseBackdrop .modal-footer { flex-direction: column; gap: 8px; padding: 10px 12px; }
+    #editCourseBackdrop .modal-footer > div { width: 100%; display: flex; gap: 6px; flex-wrap: wrap; }
+    #editCourseBackdrop .modal-footer button { flex: 1; min-width: 80px; font-size: 0.82rem; padding: 8px 6px; }
+    .b-note { width: 80px !important; }
+}
+
+@media (max-width: 600px) {
+    .builder-tools-toggle-btn { display: flex; align-items: center; justify-content: center; }
+    .builder-tools-panel { display: none; flex-direction: column; }
+    .builder-tools-panel.show { display: flex !important; }
+    #editCourseBackdrop .modal { height: 100dvh; max-height: 100dvh; padding-bottom: env(safe-area-inset-bottom, 12px); }
+    #editCourseBackdrop .modal-header input { padding: 6px 8px !important; font-size: 0.85rem !important; min-height: 36px !important; }
+    
+    #builderTable thead { display: none; }
+    #builderTable th { display: none; }
+    #builderTable td:first-child { width: 40px !important; display: flex; flex-direction: column; align-items: center; padding: 12px 4px !important; }
+    #builderTable td:nth-child(2) > div:first-child { display: block !important; line-height: 1.3 !important; width: 100%; }
+    #builderTable td:nth-child(2) > div:nth-child(2) { display: flex !important; flex-direction: row !important; align-items: center !important; width: 100%; gap: 8px !important; }
+    .b-id { flex-shrink: 0; width: 48px !important; text-align: center; }
+    .b-var { flex: 1 !important; width: auto !important; max-width: none !important; margin: 0 !important; }
+    #builderTable td:nth-child(3) > div { display: flex; flex-wrap: wrap; gap: 4px; }
+    #builderTable td:last-child > *:not(#durationDialWrap) { display: flex; gap: 2px !important; }
+    #builderTable td:last-child button { display: inline-flex !important; }
+    #builderTableBody .b-move-up, #builderTableBody .b-move-dn { display: inline-flex !important; align-items: center; justify-content: center; visibility: visible !important; opacity: 1 !important; }
+    #builderTableBody span[title] { font-size: 0.65rem !important; padding: 3px 6px !important; white-space: normal !important; line-height: 1.3; display: inline-block !important; }
+}
