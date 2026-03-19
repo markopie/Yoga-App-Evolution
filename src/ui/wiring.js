@@ -17,6 +17,14 @@ import { openHistoryModal, switchHistoryTab, renderGlobalHistory } from './histo
 import { builderRender, builderSave, openEditCourse, builderOpen, addPoseToBuilder, processSemicolonCommand, openLinkSequenceModal, createRepeatGroup } from './builder.js?v=29';
 
 // ── Application State Aliases ────────────────────────────────────────────────
+// ── UI Constants ─────────────────────────────────────────────────────────────
+const EMPTY_STATE_HTML = `
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 60px 20px; text-align:center; color:#86868b;">
+        <div style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;">🧘</div>
+        <h3 style="margin: 0 0 8px 0; color:#1d1d1f; font-weight: 600;">Ready for Practice</h3>
+        <p style="margin: 0; font-size: 0.9rem; max-width: 250px;">Choose a sequence from the dropdown above to begin.</p>
+    </div>
+`;
 const getActivePlaybackList = () => window.activePlaybackList;
 const getCurrentSequence = () => window.currentSequence;
 const getAsanaIndex = () => Object.values(window.asanaLibrary || {}).filter(Boolean);
@@ -101,8 +109,8 @@ function setupSequenceSelector() {
         seqSelect.parentNode.insertBefore(editBtn, seqSelect.nextSibling);
         
         editBtn.onclick = () => {
-            if (!getCurrentSequence()) return alert("Select a sequence first.");
-            openEditCourse(); // Opens in View Mode
+            if (!getCurrentSequence()) return showError("Please select a sequence first.");
+            openEditCourse(); 
         };
 
         const newBtn = document.createElement("button");
@@ -127,20 +135,68 @@ function setupPlaybackControls() {
     });
     
     safeListen("resetBtn", "click", () => {
-        window.stopTimer();
-        localStorage.removeItem("lastPlayedSequence");
-        localStorage.removeItem("currentPoseIndex");
-        localStorage.removeItem("timeLeft");
-        
-        const dropdown = $("sequenceSelect");
-        if (dropdown) dropdown.value = ""; 
-        window.currentSequence = null;
-        window.currentIndex = 0;
-        
-        if ($("poseName")) $("poseName").innerText = "Select a sequence";
-        if ($("poseTimer")) $("poseTimer").innerText = "–";
-        if ($("statusText")) $("statusText").textContent = "Session Reset";
-    });
+        // 1. Stop the clock to freeze the Timer Pill
+        if (typeof window.stopTimer === 'function') {
+            window.stopTimer();
+        }
+
+        // 2. The UI Manifest (Verified against index.html)
+        // Format: "ID": ["Default Value", "Insertion Method"]
+        const uiResetManifest = {
+            "poseCounter":          ["–", "text"],
+            "poseTimer":            ["–", "text"],
+            "timeRemainingDisplay": ["--:--", "text"],
+            "timeTotalDisplay":     ["--:--", "text"],
+            "statusText":           ["Session Reset", "text"],
+            "poseName":             ["", "text"],
+            "poseLabel":            ["", "text"], 
+            "poseShorthand":        ["", "html"],
+            "glossaryArea":         ["", "html"],
+            "poseMeta":             ["", "html"],
+            "debugSmall":           ["", "html"],
+            "poseInstructions":     ["", "html"],
+            "activeCategoryTitle":  ["", "html"],
+            "poseAsanaDescDetails": ["none", "style.display"],
+            "poseTechniqueDetails": ["none", "style.display"],
+            "poseAsanaDescBody": ["", "html"],
+            "poseTechniqueBody": ["", "html"]
+        };
+
+        // 3. Execution Loop
+        Object.entries(uiResetManifest).forEach(([id, [value, type]]) => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (type === "text") el.textContent = value;
+                else el.innerHTML = value;
+                
+                // Hide specific elements that shouldn't be visible when empty
+                if (["poseLabel", "poseShorthand", "glossaryArea", "activeCategoryTitle"].includes(id)) {
+                    el.style.display = "none";
+                }
+            }
+        });
+
+        // 4. Reset Structural Elements to their exact index.html defaults
+        const descDetails = $("poseAsanaDescDetails");
+        if (descDetails) {
+            descDetails.style.display = "none"; 
+            descDetails.removeAttribute("open");
+        }
+
+        const collageWrap = $("collageWrap");
+        if (collageWrap) {
+            // Re-use the single source of truth
+            collageWrap.innerHTML = EMPTY_STATE_HTML;
+        }
+
+        // Reset the green progress bar
+        const progressFill = $("timeProgressFill");
+        if (progressFill) progressFill.style.width = "0%";
+
+        // Reset the sequence dropdown
+        const seqSelect = $("sequenceSelect");
+        if (seqSelect) seqSelect.value = "";
+    }); // <-- Missing closing parenthesis and brace for the safeListen block were added here.
 
     // Mobile Duration Dial Reset
     const resetText = document.getElementById("dialResetBtn");
@@ -156,23 +212,24 @@ function setupPlaybackControls() {
         resetText.addEventListener("touchend", performReset, { passive: false });
         resetText.addEventListener("click", performReset);
     }
-}
+} // <-- MISSING BRACE RESTORED HERE!
+
 
 // ── 3. Builder Modal Wiring ──────────────────────────────────────────────────
 function setupBuilderWiring() {
     safeListen("btnOpenLinkModal", "click", openLinkSequenceModal);
     
     safeListen("btnConfirmLink", "click", () => {
-        const input = document.getElementById('linkSequenceInput');
-        const repsInp = document.getElementById('linkSequenceReps');
-        const overlay = document.getElementById('linkSequenceOverlay');
+        const input = $('linkSequenceInput');
+        const repsInp = $('linkSequenceReps');
+        const overlay = $('linkSequenceOverlay');
         const title = (input?.value || '').trim();
         const reps = parseInt(repsInp?.value || '1', 10) || 1;
         
-        if (!title) return alert('Please select or type a sequence name.'); 
+        if (!title) return showError('Please select or type a sequence name.'); 
         
         const exists = (window.courses || []).find(c => c.title.trim().toLowerCase() === title.toLowerCase());
-        if (!exists) return alert('Sequence not found. Choose from the list.'); 
+        if (!exists) return showError('Sequence not found. Choose from the list.'); 
         
         addPoseToBuilder({
             id: `MACRO:${exists.title}`,
@@ -226,6 +283,13 @@ function setupUIExtras() {
 // ── 5. Auth & Initialization ─────────────────────────────────────────────────
 function showApp() {
     document.getElementById("loginScreen").style.display = "none";
+    
+    // Inject the empty state once before showing the app
+    const collageWrap = $("collageWrap");
+    if (collageWrap && !collageWrap.innerHTML.trim()) {
+        collageWrap.innerHTML = EMPTY_STATE_HTML;
+    }
+
     document.getElementById("mainAppContainer").style.display = "";
     if (!window.appInitialized && window.init) window.init();
 }
@@ -270,12 +334,21 @@ function setupAuthListeners() {
         };
     }
 
+    // Auth Fix: Error Handling for Sign Out
     if (signOutBtn) {
         signOutBtn.onclick = async () => {
-            const emailSpan = document.getElementById('userEmailDisplay');
-            if (emailSpan) { emailSpan.textContent = ''; emailSpan.style.display = 'none'; }
-            window.isGuestMode = false;
-            await supabase.auth.signOut();
+            try {
+                const emailSpan = $('userEmailDisplay');
+                if (emailSpan) { emailSpan.textContent = ''; emailSpan.style.display = 'none'; }
+                window.isGuestMode = false;
+                
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+                
+            } catch (err) {
+                console.error("Sign out failed:", err.message);
+                showError("Sign out failed. Please refresh the page.");
+            }
         };
     }
 
@@ -305,6 +378,8 @@ function setupAuthListeners() {
         }
     });
 }
+
+
 
 // ── Global Bootstrapper ──────────────────────────────────────────────────────
 function initWiring() {

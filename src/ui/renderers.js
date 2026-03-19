@@ -21,25 +21,60 @@ export function updatePoseNote(note) {
    body.innerHTML = renderMarkdownMinimal(text);
 }
 
-export function updatePoseAsanaDescription(asana) {
-   const details = document.getElementById("poseAsanaDescDetails");
-   const body = document.getElementById("poseAsanaDescBody");
-   if (!details || !body) return;
+export function updatePoseAsanaDescription(asana, matchedTechnique = "") {
+    const descDetails = document.getElementById("poseAsanaDescDetails");
+    const descBody = document.getElementById("poseAsanaDescBody");
+    const techDetails = document.getElementById("poseTechniqueDetails");
+    const techBody = document.getElementById("poseTechniqueBody");
 
-   let text = (asana?.description || asana?.Description || "").toString().trim();
-   if (!text) {
-      details.style.display = "none";
-      details.open = false;
-      body.innerHTML = "";
-      return;
-   }
+    if (!descDetails || !techDetails) return;
 
-   // Convert literal \n escape sequences from the DB into real newlines
-   text = text.replace(/\\n/g, '\n');
+    // 1. Handle Description
+    const descText = (asana?.description || asana?.Description || "").toString().trim();
+    if (descText) {
+        descDetails.style.display = "block";
+        descDetails.open = false; // Always start closed for minimalism
+        descBody.innerHTML = renderMarkdownMinimal(descText.replace(/\\n/g, '\n'));
+    } else {
+        descDetails.style.display = "none";
+    }
 
-   details.style.display = "block";
-   details.open = false;
-   body.innerHTML = renderMarkdownMinimal(text);
+    // 2. Handle Technique
+    const finalTech = matchedTechnique || asana?.full_technique || asana?.technique || asana?.Technique || "";
+    if (finalTech && finalTech.trim()) {
+        techDetails.style.display = "block";
+        techDetails.open = false; // Always start closed
+        techBody.innerHTML = renderMarkdownMinimal(finalTech.toString().replace(/\\n/g, '\n'));
+    } else {
+        techDetails.style.display = "none";
+    }
+}
+
+export function getContentForPose(asana, fullLabel) {
+    if (!asana) return { description: "", technique: "" };
+
+    let description = (asana.description || asana.Description || "").trim();
+    let technique = (asana.full_technique || asana.technique || asana.Technique || "").trim();
+
+    // Stage logic (Matches your existing pattern)
+    const stageMatch = (fullLabel || "").match(/\s([IVXLCDM]+[a-b]?)$/i);
+    if (stageMatch) {
+        let stageKey = stageMatch[1].toUpperCase().replace(/([A-B])$/, (m) => m.toLowerCase());
+        
+        // If a specific stage description exists (e.g. asana["IIb"])
+        if (asana[stageKey]) {
+            description = asana[stageKey].trim();
+        }
+        
+        // If a specific stage technique exists (e.g. asana["Technique_IIb"])
+        const stageTechKey = `Technique_${stageKey}`;
+        const stageFullTechKey = `full_technique_${stageKey}`;
+        
+        if (asana[stageFullTechKey]) technique = asana[stageFullTechKey].trim();
+        else if (asana[stageTechKey]) technique = asana[stageTechKey].trim();
+    }
+
+    return { description, technique };
 }
 
 export function updatePoseDescription(idField, label) { 

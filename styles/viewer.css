@@ -144,6 +144,69 @@
     line-height: 1.4;
 }
 
+/* --- 5a. Content Typography & Accordions --- */
+
+.pose-details-stack {
+    margin-top: 24px;
+    border-top: 1px solid var(--color-border);
+}
+
+/* Base Details / Summary Reset */
+.pose-details-stack details {
+    border-bottom: 1px solid var(--color-border);
+    background: transparent;
+}
+
+.pose-details-stack summary {
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--color-text-primary);
+    user-select: none;
+    outline: none;
+}
+
+/* Chevron Icon */
+.pose-details-stack summary::after {
+    content: "〉"; 
+    font-size: 0.75rem;
+    font-weight: 300;
+    opacity: 0.4;
+    transition: transform 0.2s ease;
+}
+
+.pose-details-stack details[open] summary::after {
+    transform: rotate(90deg);
+}
+
+/* Hide default markers */
+.pose-details-stack summary::-webkit-details-marker { display: none; }
+
+/* Content Body */
+#poseAsanaDescBody, 
+#poseTechniqueBody,
+#poseNoteBody,
+#poseInstructions {
+    font-size: 0.94rem;
+    line-height: 1.7;
+    padding: 0 0 20px 0; /* Space at bottom of open accordion */
+    color: #48484a;
+    max-width: 720px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Hover effect for that "Interactive" feel */
+.pose-details-stack summary:hover {
+    color: #0071e3; /* Subtle Apple Blue */
+}
+
+
 /* --- 6. Responsive Mobile Logic for Browse --- */
 @media (min-width: 900px) {
     .grid { grid-template-columns: 1.4fr 0.6fr; }

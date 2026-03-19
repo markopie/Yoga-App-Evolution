@@ -287,17 +287,15 @@ if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
         window.renderSmartGlossary(displayShorthand);
     }
 
-    // 7. TECHNIQUE UI
+    // 7. TECHNIQUE UI (Main Display)
     const textContainer = document.getElementById("poseInstructions");
     if (textContainer) {
         if (displayTechnique && typeof window.formatTechniqueText === 'function') {
             textContainer.style.display = "block";
-            
             let techniqueHTML = window.formatTechniqueText(displayTechnique);
             if (variationTitle) {
                 techniqueHTML = `<div style="font-weight:600; color:#333; margin-bottom:8px; padding-bottom:5px; border-bottom:1px solid #ddd;">${variationTitle} Instructions:</div>` + techniqueHTML;
             }
-
             textContainer.innerHTML = techniqueHTML;
         } else {
             textContainer.style.display = "none";
@@ -305,10 +303,20 @@ if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
         }
     }
 
-    // 8. NOTES UI
-    if (typeof window.updatePoseNote === "function") window.updatePoseNote(actualNote);
-    if (typeof window.updatePoseAsanaDescription === "function") window.updatePoseAsanaDescription(asana);
-    if (typeof window.loadUserPersonalNote === "function") window.loadUserPersonalNote(lookupId);
+    // 8. NOTES & ASANA DETAILS (Accordions)
+    if (typeof window.updatePoseNote === "function") {
+        window.updatePoseNote(actualNote);
+    }
+
+    // NEW: Passing both asana AND the specifically matched technique to the renderer
+    if (typeof window.updatePoseAsanaDescription === "function") {
+        // We pass displayTechnique so the renderer doesn't have to guess
+        window.updatePoseAsanaDescription(asana, displayTechnique);
+    }
+
+    if (typeof window.loadUserPersonalNote === "function") {
+        window.loadUserPersonalNote(lookupId);
+    }
 
     // 9. META UI & AUDIO BUTTON
     const metaContainer = document.getElementById("poseMeta");
