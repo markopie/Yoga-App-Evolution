@@ -158,7 +158,6 @@ function builderRender() {
               <button class="tiny b-move-bot" data-idx="${idx}" title="Move to Bottom" ${idx === builderState.poses.length - 1 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤓</button>
               <button class="tiny b-move-up" data-idx="${idx}">▲</button>
               <button class="tiny b-move-dn" data-idx="${idx}">▼</button>
-              <button class="tiny warn b-remove" data-idx="${idx}">✕</button>
            </td>`;
            
         tbody.appendChild(tr);
@@ -242,7 +241,6 @@ function builderRender() {
 
     qS('.b-move-up').forEach(el => el.onclick = () => { movePose(parseInt(el.dataset.idx), -1); builderRender(); });
     qS('.b-move-dn').forEach(el => el.onclick = () => { movePose(parseInt(el.dataset.idx), 1); builderRender(); });
-    qS('.b-remove').forEach(el => el.onclick = () => { removePose(parseInt(el.dataset.idx)); builderRender(); });
 
     qS('.b-amb-keep').forEach(el => el.onclick = () => {
         const i = parseInt(el.dataset.idx);
@@ -640,6 +638,34 @@ function createRepeatGroup() {
 }
 
 function wireBuilderGlobals() {
+    // BULK DELETE LOGIC
+    const btnDeleteSelected = document.getElementById("btnDeleteSelected");
+    if (btnDeleteSelected) {
+        btnDeleteSelected.onclick = (e) => {
+            e.preventDefault();
+            const checkboxes = document.querySelectorAll('.b-row-select:checked');
+            
+            if (checkboxes.length === 0) {
+                return alert("Please check the box next to the poses you want to delete.");
+            }
+
+            if (!confirm(`Are you sure you want to remove ${checkboxes.length} selected pose(s)?`)) {
+                return;
+            }
+
+            // 🌟 CRITICAL: Sort indices in descending order before removing!
+            // If we remove index 2 first, the old index 5 becomes index 4. 
+            // Going backwards prevents this shifting bug.
+            const idxs = Array.from(checkboxes)
+                .map(c => parseInt(c.dataset.idx))
+                .sort((a, b) => b - a);
+
+            idxs.forEach(idx => removePose(idx));
+            
+            // Re-render the table to reflect deletions and uncheck all boxes
+            builderRender();
+        };
+    }
     // SINGLE SOURCE OF TRUTH FOR SAVE BUTTON
     const btnSaveEl = document.getElementById("editCourseSaveBtn");
     if (btnSaveEl) {

@@ -107,3 +107,34 @@ export async function saveSequence(payload, knownId = null) {
     
     return { id: inserted.id };
 }
+
+/**
+ * Safely finds or creates an Asana Category and returns its ID.
+ */
+export async function getOrCreateAsanaCategoryId(categoryName) {
+    if (!categoryName) return null;
+    const cleanName = categoryName.trim();
+
+    // 1. Try to find existing category
+    let { data: cat, error: catErr } = await supabase
+        .from('asana_categories')
+        .select('id')
+        .eq('name', cleanName)
+        .maybeSingle();
+
+    if (catErr) throw new Error(`Asana category lookup failed: ${catErr.message}`);
+
+    // 2. If it doesn't exist, create it
+    if (!cat) {
+        const { data: newCat, error: insErr } = await supabase
+            .from('asana_categories')
+            .insert({ name: cleanName })
+            .select()
+            .single();
+            
+        if (insErr) throw new Error(`Failed to create asana category: ${insErr.message}`);
+        cat = newCat;
+    }
+
+    return cat.id;
+}

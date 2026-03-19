@@ -5,7 +5,7 @@ import { $ } from "../utils/dom.js";
 import { normalizePlate } from "../services/dataAdapter.js";
 import { supabase } from "../services/supabaseClient.js";
 import { parseHoldTimes, buildHoldString } from "../utils/parsing.js";
-
+import { getOrCreateAsanaCategoryId } from "../services/persistence.js";
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -69,9 +69,10 @@ async function getNextRomanNumeral() {
 
     if (supabase && asanaId) {
         try {
-            const { data: s1 } = await supabase.from("stages").select('"Stage_Name", stage_name').eq("asana_id", asanaId);
+            // 🌟 FIX: Only query the actual lowercase column
+            const { data: s1 } = await supabase.from("stages").select('stage_name').eq("asana_id", asanaId);
             (s1 || []).forEach(r => {
-                const name = r.Stage_Name || r.stage_name;
+                const name = r.stage_name;
                 if (name) taken.add(String(name).toUpperCase());
             });
         } catch (e) {
@@ -323,17 +324,25 @@ window.openAsanaEditor = async function (id) {
             });
         }
 
-        // Load stages from DB
+        // Load stages from DB and sync IDs
         try {
             const paddedId = String(id).padStart(3, "0");
             const { data: stages } = await supabase
                 .from("stages")
-                .select("*")
+                .select("id, stage_name, title, shorthand, full_technique, hold")
                 .eq("asana_id", paddedId);
+                
             if (stages && stages.length > 0) {
                 stages.forEach(stage => {
                     const stageKey = stage.stage_name || "";
-                    if (!$("stagesContainer").querySelector(`input.stage-key[value="${stageKey}"]`)) {
+                    const existingDomRow = $("stagesContainer").querySelector(`input.stage-key[value="${stageKey}"]`);
+                    
+                    if (existingDomRow) {
+                        // 🌟 FIX: Inject the REAL database ID so Save knows to UPDATE
+                        const rowDiv = existingDomRow.closest('.stage-row');
+                        if (rowDiv) rowDiv.dataset.dbId = stage.id;
+                    } else {
+                        // If it doesn't exist in the UI yet, add it
                         window.addStageToEditor(stageKey, {
                             id: stage.id,
                             stage_name: stageKey,
@@ -346,7 +355,7 @@ window.openAsanaEditor = async function (id) {
                 });
             }
         } catch (e) {
-            // Non-critical — ignore
+            console.warn("Failed to load stages from DB:", e);
         }
     } else {
         // ADDING NEW
@@ -394,15 +403,24 @@ window.openAsanaEditor = async function (id) {
 // SAVE LOGIC (wired on DOMContentLoaded)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SAVE LOGIC (wired on DOMContentLoaded)
+// ─────────────────────────────────────────────────────────────────────────────
+
 function wireEditorSave() {
     if ($("asanaEditorCloseBtn")) {
-        $("asanaEditorCloseBtn").onclick = () => ($("asanaEditorBackdrop").style.display = "none");
+        $("asanaEditorCloseBtn").onclick = () => {
+            // 👇 These must be INSIDE the curly braces of the arrow function
+            document.activeElement?.blur(); 
+            $("asanaEditorBackdrop").style.display = "none";
+        };
     }
+    
     if ($("addStageBtn")) {
         $("addStageBtn").onclick = () => window.addStageToEditor();
     }
+    
 
-    // Clone from Base: pre-fill technique + hold times from the base asana form
     if ($("cloneFromBaseBtn")) {
         $("cloneFromBaseBtn").onclick = () => {
             const cloneHold = buildHoldString(
@@ -425,59 +443,36 @@ function wireEditorSave() {
         if (!rawId) return alert("ID is required.");
         const id = rawId.padStart(3, "0");
 
-        // Change detection
-        const snap = window._asanaEditorSnapshot;
-        if (snap) {
-            const currentStageCount = $("stagesContainer").querySelectorAll(".stage-row").length;
-            const current = {
-                name:          $("editAsanaName").value,
-                iast:          $("editAsanaIAST").value,
-                english_name:  $("editAsanaEnglish").value,
-                technique:     $("editAsanaTechnique").value,
-                plate_numbers: $("editAsanaPlates").value,
-                requires_sides: $("editAsanaRequiresSides").checked,
-                page_2001:     $("editAsanaPage2001").value,
-                page_2015:     $("editAsanaPage2015").value,
-                intensity:     $("editAsanaIntensity").value,
-                note:          $("editAsanaNote").value,
-                category:      $("editAsanaCategory").value,
-                description:   $("editAsanaDescription").value,
-                holdStd:       $("editAsanaHoldStandard")?.value,
-                holdShort:     $("editAsanaHoldShort")?.value,
-                holdLong:      $("editAsanaHoldLong")?.value,
-                stageCount:    currentStageCount
-            };
-
-            const stageCountChanged = currentStageCount !== (window._asanaEditorOriginalStageCount ?? snap.stageCount);
-            const currentStageData = Array.from($("stagesContainer").querySelectorAll(".stage-row")).map(div => ({
-                key:          div.querySelector(".stage-key")?.value || "",
-                short:        div.querySelector(".stage-short")?.value || "",
-                tech:         div.querySelector(".stage-tech")?.value || "",
-                holdStandard: div.querySelector(".stage-hold-standard")?.value || "",
-                holdShort:    div.querySelector(".stage-hold-short")?.value || "",
-                holdLong:     div.querySelector(".stage-hold-long")?.value || ""
-            }));
-            const originalStageData = window._asanaEditorOriginalStageData || [];
-            const stageDataChanged = JSON.stringify(currentStageData) !== JSON.stringify(originalStageData);
-            const fieldsUnchanged = Object.keys(snap).every(k => snap[k] === current[k]);
-
-            if (!stageCountChanged && !stageDataChanged && fieldsUnchanged) {
-                $("asanaEditorStatus").textContent = "No changes made.";
-                $("asanaEditorStatus").style.color = "#888";
-                setTimeout(() => { $("asanaEditorStatus").textContent = ""; }, 2500);
-                return;
-            }
-        }
-
         saveBtn.disabled = true;
         saveBtn.textContent = "Saving...";
 
-        let userId = null;
+        let userEmail = null;
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            userId = user?.id;
+            userEmail = user?.email;
         } catch (e) {
-            console.warn("User ID fetch failed:", e.message);
+            console.warn("User fetch failed:", e.message);
+        }
+
+        const isAdmin = userEmail === 'mark.opie@gmail.com';
+
+        // 🌟 NEW RELATIONAL LOGIC: Resolve Category ID
+        const _catSel = $("editAsanaCategory");
+        const _catCustom = $("editAsanaCategoryCustom");
+        const rawCategoryText = (_catSel && _catSel.value === "__NEW__" && _catCustom)
+            ? _catCustom.value.trim()
+            : (_catSel ? _catSel.value.trim() : "");
+            
+        const finalCategoryText = formatCategoryName(rawCategoryText);
+        let categoryId = null;
+        
+        try {
+            categoryId = await getOrCreateAsanaCategoryId(finalCategoryText);
+        } catch (catError) {
+            alert(catError.message);
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Save Asana";
+            return;
         }
 
         const asanaHoldStr = buildHoldString(
@@ -489,13 +484,7 @@ function wireEditorSave() {
         const lib = window.asanaLibrary || {};
         const baseAsana = lib[id] || {};
 
-
-        // Get category value: if __NEW__ selected, use custom input
-        const _catSel = $("editAsanaCategory");
-        const _catCustom = $("editAsanaCategoryCustom");
-        const _rawCat = (_catSel && _catSel.value === "__NEW__" && _catCustom)
-            ? _catCustom.value.trim()
-            : (_catSel ? _catSel.value.trim() : "");
+        // 🌟 CLEAN PAYLOAD: Only columns that actually exist in the 'asanas' table
         const asanaData = {
             id,
             name:          $("editAsanaName").value.trim(),
@@ -504,95 +493,111 @@ function wireEditorSave() {
             technique:     $("editAsanaTechnique").value.trim(),
             plate_numbers: $("editAsanaPlates").value.trim(),
             requires_sides: $("editAsanaRequiresSides").checked,
-            page_2001:     $("editAsanaPage2001").value.trim() || null,
-            page_2015:     $("editAsanaPage2015").value.trim() || null,
-            intensity:     $("editAsanaIntensity").value.trim() || null,
-            note:          $("editAsanaNote").value.trim(),
-            category:      formatCategoryName(_rawCat),
-            description:   $("editAsanaDescription").value.trim(),
-            image_url:     baseAsana.image_url || null,
-            hold:          asanaHoldStr
+            page_2001:     parseInt($("editAsanaPage2001").value) || null,
+            page_2015:     parseInt($("editAsanaPage2015").value) || null,
+            category_id:   categoryId, // 👈 Relational Link!
+            image_url:     baseAsana.image_url || null
         };
 
         try {
-            if (supabase && userId) {
-                const { error: asanaErr } = await supabase
-                    .from("asanas")
-                    .upsert(asanaData, { onConflict: "id" });
-                if (asanaErr) throw new Error(asanaErr.message);
-
-                // Process variation/stage rows
-                const stageDivs = $("stagesContainer").querySelectorAll(".stage-row");
-                const localVariations = {};
-
-                for (const div of stageDivs) {
-                    const key = div.querySelector(".stage-key").value.trim();
-                    if (!key) continue;
-
-                    const pfx = div.querySelector(".stage-prefix")?.value.trim() || "Modified";
-                    const sfx = div.querySelector(".stage-suffix")?.value.trim() || "";
-                    const holdStr = buildHoldString(
-                        parseInt(div.querySelector(".stage-hold-standard")?.value || "30", 10),
-                        parseInt(div.querySelector(".stage-hold-short")?.value    || "15", 10),
-                        parseInt(div.querySelector(".stage-hold-long")?.value     || "60", 10)
-                    );
-                    const dbId = div.dataset.dbId || "";
-                    const baseVariation = (baseAsana.variations && baseAsana.variations[key]) ? baseAsana.variations[key] : {};
-
-                    const payload = {
-                        asana_id:       id,
-                        stage_name:     key,
-                        title:          sfx ? `${pfx} ${key} ${sfx}` : `${pfx} ${key}`,
-                        full_technique: div.querySelector(".stage-tech")?.value.trim()        || null,
-                        shorthand:      div.querySelector(".stage-short")?.value.trim()       || null,
-                        image_url:      baseVariation.image_url                               || null,
-                        audio_url:      div.querySelector(".stage-audio-url")?.value.trim()   || null,
-                        audio_title:    div.querySelector(".stage-audio-title")?.value.trim() || null,
-                        hold:           holdStr
-                    };
-
-                    if (dbId && dbId.includes("-")) {
-                        await supabase.from("stages").update(payload).eq("id", dbId);
-                    } else {
-                        const { data: newRow } = await supabase.from("stages").insert(payload).select().single();
-                        if (newRow) div.dataset.dbId = newRow.id;
-                    }
-
-                    localVariations[key] = {
-                        title:          payload.title,
-                        shorthand:      payload.shorthand,
-                        full_technique: payload.full_technique,
-                        hold:           holdStr,
-                        isCustom:       true
-                    };
-                }
-
-                // Update in-memory library
-                if (window.asanaLibrary) {
-                    window.asanaLibrary[id] = {
-                        ...window.asanaLibrary[id],
-                        ...asanaData,
-                        english:    asanaData.english_name,
-                        variations: { ...(window.asanaLibrary[id]?.variations || {}), ...localVariations },
-                        isCustom:   true
-                    };
-                }
-
-                $("asanaEditorStatus").textContent = "✓ Saved Successfully!";
-                setTimeout(() => {
-                    $("asanaEditorBackdrop").style.display = "none";
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = "Save Asana";
-                    if (window.showAsanaDetail) window.showAsanaDetail(window.asanaLibrary[id]);
-                }, 1000);
+            if (!supabase) throw new Error("Database connection missing.");
+            
+            // Note: If you aren't an admin, we should technically be saving to 'user_asanas'.
+            // For now, we assume you are saving as admin to the core library.
+            if (!isAdmin) {
+                throw new Error("Only admins can edit the global library. (User Asanas table integration pending)");
             }
+
+            const { error: asanaErr } = await supabase
+                .from("asanas")
+                .upsert(asanaData, { onConflict: "id" });
+                
+            if (asanaErr) throw new Error(`Asana Save Error: ${asanaErr.message}`);
+
+            // Process variation/stage rows
+            const stageDivs = $("stagesContainer").querySelectorAll(".stage-row");
+            const localVariations = {};
+
+            for (const div of stageDivs) {
+                const key = div.querySelector(".stage-key").value.trim();
+                if (!key) continue;
+
+                const pfx = div.querySelector(".stage-prefix")?.value.trim() || "Modified";
+                const sfx = div.querySelector(".stage-suffix")?.value.trim() || "";
+                const holdStr = buildHoldString(
+                    parseInt(div.querySelector(".stage-hold-standard")?.value || "30", 10),
+                    parseInt(div.querySelector(".stage-hold-short")?.value    || "15", 10),
+                    parseInt(div.querySelector(".stage-hold-long")?.value     || "60", 10)
+                );
+                
+                const dbId = div.dataset.dbId || "";
+                const baseVariation = (baseAsana.variations && baseAsana.variations[key]) ? baseAsana.variations[key] : {};
+
+                const payload = {
+                    asana_id:       id,
+                    stage_name:     key,
+                    title:          sfx ? `${pfx} ${key} ${sfx}` : `${pfx} ${key}`,
+                    full_technique: div.querySelector(".stage-tech")?.value.trim()       || null,
+                    shorthand:      div.querySelector(".stage-short")?.value.trim()       || null,
+                    image_url:      baseVariation.image_url                               || null,
+                    audio_url:      div.querySelector(".stage-audio-url")?.value.trim()   || null,
+                    audio_title:    div.querySelector(".stage-audio-title")?.value.trim() || null,
+                    hold:           holdStr
+                };
+
+                // 🌟 FIX: dbId is now a BigInt, not a UUID string. 
+                // So we just check if it has a valid length/value.
+                if (dbId && String(dbId).length > 0 && dbId !== "undefined") {
+                    const { error: stageUpdErr } = await supabase.from("stages").update(payload).eq("id", parseInt(dbId));
+                    if (stageUpdErr) throw new Error(`Stage Update Error: ${stageUpdErr.message}`);
+                } else {
+                    const { data: newRow, error: stageInsErr } = await supabase.from("stages").insert(payload).select('id').single();
+                    if (stageInsErr) throw new Error(`Stage Insert Error: ${stageInsErr.message}`);
+                    if (newRow) div.dataset.dbId = newRow.id;
+                }
+
+                localVariations[key] = {
+                    title:          payload.title,
+                    shorthand:      payload.shorthand,
+                    full_technique: payload.full_technique,
+                    hold:           holdStr,
+                    isCustom:       false // System stage
+                };
+            }
+
+            // Update in-memory library
+            if (window.asanaLibrary) {
+                window.asanaLibrary[id] = {
+                    ...window.asanaLibrary[id],
+                    ...asanaData,
+                    category: finalCategoryText, // Reconstruct for UI cache
+                    english:  asanaData.english_name,
+                    variations: { ...(window.asanaLibrary[id]?.variations || {}), ...localVariations }
+                };
+            }
+
+            $("asanaEditorStatus").textContent = "✓ Saved Successfully!";
+            setTimeout(() => {
+                $("asanaEditorBackdrop").style.display = "none";
+                saveBtn.disabled = false;
+                saveBtn.textContent = "Save Asana";
+                if (window.showAsanaDetail) window.showAsanaDetail(window.asanaLibrary[id]);
+            }, 1000);
+            
         } catch (e) {
             console.error(e);
-            alert("Error saving: " + e.message);
+            alert(e.message);
             saveBtn.disabled = false;
             saveBtn.textContent = "Save Asana";
         }
     };
+}
+
+// Wire on DOMContentLoaded (or immediately if DOM is ready)
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", wireEditorSave);
+} else {
+    wireEditorSave();
 }
 
 // Wire on DOMContentLoaded (or immediately if DOM is ready)

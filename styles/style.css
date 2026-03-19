@@ -1877,6 +1877,33 @@ body:not(.modal-open) {
     height: auto !important;
 }
 
+/* Ensure the table doesn't force itself to be wider than its container unless necessary */
+#builderTable {
+    width: 100%;
+    table-layout: auto;
+}
+
+/* --- Builder Table Spacing Fix --- */
+#builderTable {
+    width: 100%;
+    table-layout: auto;
+}
+
+/* Make the 'Pose' column (2nd column) absorb all leftover horizontal space */
+#builderTable th:nth-child(2),
+#builderTable td:nth-child(2) {
+    width: 100%; 
+}
+
+/* Force the 'Info' (3rd) and 'Order' (4th) columns to tightly hug their content */
+#builderTable th:nth-child(3),
+#builderTable td:nth-child(3),
+#builderTable th:nth-child(4),
+#builderTable td:nth-child(4) {
+    white-space: nowrap;
+    width: 1%; 
+}
+
 /* --- EXTREMELY NARROW PHONES (Max Width: 400px) --- */
 @media (max-width: 400px) {
     .binfo-cat { display: none !important; }
