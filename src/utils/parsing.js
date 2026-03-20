@@ -90,14 +90,27 @@ function parseSequenceText(sequenceText) {
 export { parseHoldTimes, secsToMSS, buildHoldString, parseSequenceText, getHoldTimes };
 
 /**
- * Returns the parsed hold-times object { short, standard, long } for any
- * asana or stage object. Reads the `hold` text column — the single source of truth.
- * @param {object} obj - asana or stage object from asanaLibrary
+ * Returns the parsed hold-times object { short, standard, long }.
+ * If a variationKey is provided, it prioritizes that variation's data.
+ * @param {object} asana - The base asana object.
+ * @param {string} variationKey - Optional key (e.g., "IIb", "III").
  */
-function getHoldTimes(obj) {
-    return parseHoldTimes((obj && (obj.hold || obj.Hold)) || '');
+function getHoldTimes(asana, variationKey = null) {
+    if (!asana) return { standard: 30, short: 15, long: 60 };
+
+    let source = asana;
+
+    // Check if the specific variation has its own timing override
+    if (variationKey && asana.variations && asana.variations[variationKey]) {
+        const v = asana.variations[variationKey];
+        // Only switch source if the variation actually has a hold string
+        if (v.hold || v.Hold) {
+            source = v;
+        }
+    }
+
+    return parseHoldTimes((source && (source.hold || source.Hold)) || '');
 }
 
-// Expose globally so files that can't use ES6 imports (posePlayer, sequenceEngine, etc.)
-// can also call it without needing window.parseHoldTimes + a separate argument.
+// Update the global exposure
 window.getHoldTimes = getHoldTimes;

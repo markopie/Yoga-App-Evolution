@@ -335,105 +335,101 @@ function startBrowseAsana(asma) {
    closeBrowse();
 }
 async function showAsanaDetail(asana, highlightStageKey = null) {
-// console.log("showAsanaDetail called with:", asana);
     const d = document.getElementById('browseDetail');
-// console.log("browseDetail element found:", d);
-    if (!d) {
-        console.error("browseDetail element not found!");
-        return;
-    }
+    if (!d) return;
 
     d.innerHTML = "";
-// console.log("browseDetail cleared");
 
+    // 1. Header Logic
     const titleEl = document.createElement("h2");
     titleEl.style.margin = "0 0 10px 0";
     titleEl.textContent = displayName(asana);
     d.appendChild(titleEl);
-// console.log("Title appended");
 
     const editBtn = document.createElement("button");
     editBtn.textContent = "✏️ Edit Asana";
     editBtn.className = "edit-asana-btn";
     editBtn.style.cssText = "background: #2196f3; color: white; padding: 6px 12px; cursor: pointer; margin-bottom: 10px; font-weight: bold; border: none; border-radius: 6px;";
-    editBtn.onclick = () => {
-// console.log("Edit button onclick fired");
-// console.log("Edit button clicked, asana.id:", asana.id, "asana.asanaNo:", asana.asanaNo);
-        window.openAsanaEditor(asana.id || asana.asanaNo);
-    };
+    editBtn.onclick = () => window.openAsanaEditor(asana.id || asana.asanaNo);
     d.appendChild(editBtn);
-// console.log("Edit button appended:", editBtn);
-// console.log("Edit button onclick property:", editBtn.onclick);
 
-    let rangeText = "";
-    const hj = asana ? window.getHoldTimes(asana) : null;
+   // 🛑 2. DYNAMIC HOLD TIME LOGIC
+    const hj = window.getHoldTimes(asana, highlightStageKey); 
+
+    let rangeDisplay = "";
     if (hj && hj.standard) {
-        rangeText = ` • ${hj.standard}s (Range: ${hj.short}s - ${hj.long}s)`;
+        // Using the elegant en-dash (–) for the range
+        rangeDisplay = ` • ~${hj.standard}s (Range: ${hj.short}s–${hj.long}s)`;
     }
 
-    // 3. Build the rest of the Info via a single HTML string
-    // Use a unique name for this string variable to avoid re-declaration errors
+    // 3. Build the Meta Info (IAST/English + ID Row)
+    // Combined into a single assignment to avoid "already declared" errors
     let detailHTML = `
-      ${
-        asana.iast && prefersIAST() && asana.english
+      ${asana.iast && prefersIAST() && asana.english
           ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;">${asana.english}</div>`
           : asana.iast && !prefersIAST()
           ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;font-style:italic;">${asana.iast}</div>`
           : ''
       }
       <div class="muted">
-         <span id="poseMetaBrowse"><span class="meta-text-only">ID: ${asana.id || asana.asanaNo}${rangeText}</span><button id="playNameBtn" class="tiny" style="margin-left: 10px;" title="Play Audio">🔊</button></span>
+         <span id="poseMetaBrowse">
+            <span class="meta-text-only">ID: ${asana.id || asana.asanaNo}${rangeDisplay}</span>
+            <button id="playNameBtn" class="tiny" style="margin-left: 10px;" title="Play Audio">🔊</button>
+         </span>
       </div>
       <hr>
     `;
 
-    // 4. Append Images
+
+    // 4. Images
     const urls = typeof smartUrlsForPoseId === 'function' ? smartUrlsForPoseId(asana.id || asana.asanaNo) : [];
     if (urls && urls.length > 0) {
-        detailHTML += `<div class="browse-collage">`;
+        detailHTML += `<div class="browse-collage" style="margin-bottom:20px;">`;
         urls.forEach((src) => {
-            detailHTML += `<img src="${src}" style="max-width:100%; border-radius:8px; margin-bottom:10px;">`;
+            detailHTML += `<img src="${src}" style="max-width:100%; border-radius:8px; margin-bottom:10px; display:block;">`;
         });
         detailHTML += `</div>`;
     }
-  
-    // 5. Append Technique (Base Pose)
+
+    // 🛑 5. JOBSIAN ACCORDION STACK (Replacing hardcoded H3s)
+    detailHTML += `<div class="pose-details-stack">`;
+
+    // Technique Accordion
     const baseTech = asana.technique || asana.Technique || "";
     if (baseTech) {
-        detailHTML += `<h3>Base Technique</h3>
-          <div class="technique-text" style="white-space: pre-wrap;">${
-            typeof formatTechniqueText === 'function' ? formatTechniqueText(baseTech) : baseTech
-          }</div>`;
+        detailHTML += `
+            <details>
+                <summary>Base Technique</summary>
+                <div class="technique-text">${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseTech) : baseTech}</div>
+            </details>`;
     }
 
-    // 5.5. Append Description
+    // Description Accordion
     const baseDesc = asana.description || asana.Description || "";
     if (baseDesc) {
-        detailHTML += `<details style="margin-top:12px; max-width:720px;">
-          <summary style="cursor:pointer; font-weight:650">Description</summary>
-          <div class="desc-text" style="padding-top:8px; color:#111; white-space: pre-wrap;">${
-            typeof formatTechniqueText === 'function' ? formatTechniqueText(baseDesc) : baseDesc
-          }</div>
-        </details>`;
+        detailHTML += `
+            <details>
+                <summary>Description</summary>
+                <div class="desc-text">${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseDesc) : baseDesc}</div>
+            </details>`;
     }
 
-    // Safely append the gathered HTML string to the existing native elements
+    detailHTML += `</div>`; // Close stack
+
     d.insertAdjacentHTML('beforeend', detailHTML);
-  
-    // --- REPLACE YOUR SECTION 6 (Variations Loop) WITH THIS ---
+
+    // 6. Variations & Stages (Kept separate for visual distinction)
     if (asana.variations && Object.keys(asana.variations).length > 0) {
         const varSection = document.createElement('div');
-        // We can just use one heading now since they are merged
-        varSection.innerHTML = '<hr><h3>Variations & Stages</h3>';
+        varSection.innerHTML = '<div style="margin-top:30px; margin-bottom:15px; font-weight:700; font-size:1.1rem; color:#86868b; text-transform:uppercase; letter-spacing:0.05em;">Variations & Stages</div>';
 
         const sortedKeys = Object.keys(asana.variations).sort();
         sortedKeys.forEach(key => {
             const val = asana.variations[key];
-            let techText = '';
-            let shortText = '';
-            let holdText = val.hold || '';
-            let titleText = `Stage ${key}`;
-            let isCustom = !!val.isCustom;
+            let techText = '', shortText = '', titleText = `Stage ${key}`, isCustom = !!val.isCustom;
+            
+            // Extract Variation Hold Time (New)
+            let varHold = (val && typeof val === 'object') ? (val.standard || val.Standard || val.hold) : '';
 
             if (typeof val === 'string') {
                 techText = val;
@@ -445,31 +441,23 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
 
             const wrapper = document.createElement('div');
             wrapper.className = isCustom ? 'user-variation-block' : 'variation-block';
-            
-            // STYLE OVERRIDE: If it's custom, give it the blue theme. Otherwise, the grey theme.
             wrapper.style.cssText = isCustom 
-                ? 'background:#f0f7ff; padding:12px; margin-bottom:12px; border-radius:8px; border: 2px solid #2196f3;'
-                : 'background:#f9f9f9; padding:12px; margin-bottom:12px; border-radius:8px; border: 1px solid #eee;';
+                ? 'background:#f0f7ff; padding:16px; margin-bottom:12px; border-radius:10px; border: 1px solid #0071e3;'
+                : 'background:#f5f5f7; padding:16px; margin-bottom:12px; border-radius:10px; border: 1px solid #d2d2d7;';
 
-            let html = `<h4 style="margin-top:0; margin-bottom:8px; color:${isCustom ? '#1976d2' : '#333'}; font-size:1.1rem;">${titleText}</h4>`;
-            
-            if (shortText) html += `<div style="color:${isCustom ? '#1565c0' : '#2e7d32'}; font-weight:bold; margin-bottom:8px; font-family:monospace; font-size:1rem;">${shortText}</div>`;
-            
-            if (holdText) html += `<div style="color:${isCustom ? '#0d47a1' : '#666'}; margin-bottom:8px; font-weight:600; font-size:0.95rem;">Hold: ${holdText}</div>`;
+            let html = `<h4 style="margin:0 0 6px 0; color:#1d1d1f; font-size:1rem;">${titleText}</h4>`;
+            if (shortText) html += `<div style="color:#0071e3; font-weight:600; margin-bottom:8px; font-family:monospace;">${shortText}</div>`;
+            if (varHold) html += `<div style="color:#86868b; margin-bottom:8px; font-size:0.85rem; font-weight:600;">Hold: ${varHold}s</div>`;
 
             if (techText) {
-                const formattedTech = typeof formatTechniqueText === 'function' ? formatTechniqueText(techText) : techText;
-                html += `<div class="technique-text" style="white-space: pre-wrap; font-size:0.95rem; color:#444;">${formattedTech}</div>`;
-            } else {
-                html += `<div class="muted" style="font-size:0.85rem;">No specific instructions provided.</div>`;
+                html += `<div class="technique-text" style="font-size:0.9rem; color:#48484a;">${typeof formatTechniqueText === 'function' ? formatTechniqueText(techText) : techText}</div>`;
             }
 
             wrapper.innerHTML = html;
 
-            // If we arrived here from a stage-search result, highlight this variation
             if (highlightStageKey && key === highlightStageKey) {
-                wrapper.style.border = '2px solid #00695c';
-                wrapper.style.background = '#e0f2f1';
+                wrapper.style.border = '2px solid #ff9500'; // Apple Gold/Orange highlight
+                wrapper.style.background = '#fff9f0';
                 wrapper.dataset.highlighted = 'true';
             }
 
@@ -477,19 +465,16 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
         });
         d.appendChild(varSection);
 
-        // Auto-scroll to the highlighted stage wrapper (after paint)
         if (highlightStageKey) {
             requestAnimationFrame(() => {
                 const highlighted = varSection.querySelector('[data-highlighted="true"]');
-                if (highlighted) highlighted.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                if (highlighted) highlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
             });
         }
     }
 
-    // 7. Bind Audio Button
     const playBtn = document.getElementById('playNameBtn');
-    if (playBtn) playBtn.onclick = () => playAsanaAudio(asana, null, true);
-  
+    if (playBtn) playBtn.onclick = () => playAsanaAudio(asana, null, true, null, highlightStageKey);
 }
 
 

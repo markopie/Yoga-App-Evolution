@@ -171,6 +171,44 @@
     outline: none;
 }
 
+/* --- Jobsian Accordion Polish --- */
+.pose-details-stack {
+    margin-top: 24px;
+    border-top: 1px solid #efeff4;
+}
+
+.pose-details-stack details {
+    border-bottom: 1px solid #efeff4;
+}
+
+.pose-details-stack summary {
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+/* Custom Chevron */
+.pose-details-stack summary::after {
+    content: "〉"; 
+    font-size: 0.7rem;
+    opacity: 0.3;
+    transition: transform 0.2s ease;
+}
+
+.pose-details-stack details[open] summary::after {
+    transform: rotate(90deg);
+}
+
+.pose-details-stack summary::-webkit-details-marker {
+    display: none;
+}
+
 /* Chevron Icon */
 .pose-details-stack summary::after {
     content: "〉"; 
@@ -199,6 +237,15 @@
     max-width: 720px;
     white-space: pre-wrap;
     word-wrap: break-word;
+}
+
+#browseDetail .pose-details-stack {
+    margin-top: 30px;
+    border-top: 1px solid var(--color-border);
+    /* Subtle background to distinguish from the main white pane */
+    background: rgba(0,0,0,0.01); 
+    padding: 0 15px;
+    border-radius: 8px;
 }
 
 /* Hover effect for that "Interactive" feel */

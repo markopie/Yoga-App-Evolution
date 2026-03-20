@@ -319,38 +319,44 @@ if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
     }
 
     // 9. META UI & AUDIO BUTTON
-    const metaContainer = document.getElementById("poseMeta");
-    if (metaContainer) {
-        metaContainer.innerHTML = ""; 
+const metaContainer = document.getElementById("poseMeta");
+if (metaContainer) {
+    metaContainer.innerHTML = ""; 
 
-        const infoSpan = document.createElement("span");
-        infoSpan.className = "meta-text-only"; 
+    const infoSpan = document.createElement("span");
+    infoSpan.className = "meta-text-only"; 
 
-        const hj = asana ? window.getHoldTimes(asana) : null;
-        let rangeText = "";
-        if (hj && hj.short && hj.long) {
-            rangeText = `Range: ${hj.short}s\u2013${hj.long}s`;
-        } else if (hj && hj.standard) {
-            rangeText = `~${hj.standard}s`;
-        }
-
-        infoSpan.textContent = rangeText 
-            ? `ID: ${lookupId} \u2022 ${rangeText}` 
-            : `ID: ${lookupId}`;
-        metaContainer.appendChild(infoSpan);
-
-        if (asana) {
-            const btn = document.createElement("button");
-            btn.className = "tiny"; 
-            btn.innerHTML = "🔊";   
-            btn.style.marginLeft = "10px";
-            btn.onclick = (e) => { 
-                e.stopPropagation(); 
-                window.playAsanaAudio(asana, null, true, null, matchedVariationKey); 
-            };
-            metaContainer.appendChild(btn);
-        }
+    // ✅ Pass matchedVariationKey so Stage-specific times appear in the UI
+    const hj = asana ? window.getHoldTimes(asana, matchedVariationKey) : null;
+    
+    let rangeText = "";
+    if (hj && hj.short && hj.long) {
+        // Using \u2013 for the elegant en-dash
+        rangeText = `Range: ${hj.short}s\u2013${hj.long}s`;
+    } else if (hj && hj.standard) {
+        rangeText = `~${hj.standard}s`;
     }
+
+    // Standard Apple-style separator: ID • Timing
+    infoSpan.textContent = rangeText 
+        ? `ID: ${lookupId} \u2022 ${rangeText}` 
+        : `ID: ${lookupId}`;
+    metaContainer.appendChild(infoSpan);
+
+    if (asana) {
+        const btn = document.createElement("button");
+        btn.className = "tiny"; 
+        btn.innerHTML = "🔊";   
+        btn.style.marginLeft = "12px"; // Slightly more whitespace for that premium feel
+        btn.style.opacity = "0.7";     // Subtly lighter until hovered
+        btn.onclick = (e) => { 
+            e.stopPropagation(); 
+            // Correctly passes the variation key to the audio engine
+            window.playAsanaAudio(asana, null, true, null, matchedVariationKey); 
+        };
+        metaContainer.appendChild(btn);
+    }
+}
 
     // 10. TIMER & IMAGE LOGIC
     window.playbackEngine.setPoseTime(seconds);
