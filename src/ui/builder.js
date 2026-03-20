@@ -424,12 +424,10 @@ function builderOpen(mode, seq) {
     if (nameToggleBtn) {
         nameToggleBtn.style.background = builderState.showSanskrit ? '#f9a825' : '#fff8e1';
         nameToggleBtn.style.color      = builderState.showSanskrit ? '#fff'    : '#6d4c00';
-        nameToggleBtn.textContent      = builderState.showSanskrit ? 'अ SA' : 'अ EN';
         nameToggleBtn.onclick = () => {
             builderState.showSanskrit = !builderState.showSanskrit;
             nameToggleBtn.style.background = builderState.showSanskrit ? '#f9a825' : '#fff8e1';
             nameToggleBtn.style.color      = builderState.showSanskrit ? '#fff'    : '#6d4c00';
-            nameToggleBtn.textContent      = builderState.showSanskrit ? 'अ SA' : 'अ EN';
             builderRender();
         };
     }

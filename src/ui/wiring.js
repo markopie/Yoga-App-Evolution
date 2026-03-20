@@ -45,6 +45,7 @@ window.updateNextBtnText = function updateNextBtnText() {
 // ── 1. Sequence Selection & Dynamic Buttons ──────────────────────────────────
 function setupSequenceSelector() {
     const seqSelect = $("sequenceSelect");
+    
     if (!seqSelect) return;
 
     seqSelect.addEventListener("change", () => {
@@ -139,15 +140,19 @@ function setupPlaybackControls() {
         if (typeof window.stopTimer === 'function') {
             window.stopTimer();
         }
+        const seqSelect = document.getElementById("sequenceSelect");
+    if (seqSelect) {
+        seqSelect.value = ""; // Visually clears the dropdown
+        seqSelect.dispatchEvent(new Event('change')); // Triggers app-wide reset logic
+    }
 
         // 2. The UI Manifest (Verified against index.html)
-        // Format: "ID": ["Default Value", "Insertion Method"]
         const uiResetManifest = {
             "poseCounter":          ["–", "text"],
             "poseTimer":            ["–", "text"],
             "timeRemainingDisplay": ["--:--", "text"],
             "timeTotalDisplay":     ["--:--", "text"],
-            "statusText":           ["Session Reset", "text"],
+            "statusText":           ["Ready to Start", "text"], // Changed from Session Reset for better UX
             "poseName":             ["", "text"],
             "poseLabel":            ["", "text"], 
             "poseShorthand":        ["", "html"],
@@ -156,10 +161,8 @@ function setupPlaybackControls() {
             "debugSmall":           ["", "html"],
             "poseInstructions":     ["", "html"],
             "activeCategoryTitle":  ["", "html"],
-            "poseAsanaDescDetails": ["none", "style.display"],
-            "poseTechniqueDetails": ["none", "style.display"],
-            "poseAsanaDescBody": ["", "html"],
-            "poseTechniqueBody": ["", "html"]
+            "poseAsanaDescBody":    ["", "html"],
+            "poseTechniqueBody":    ["", "html"]
         };
 
         // 3. Execution Loop
@@ -176,27 +179,42 @@ function setupPlaybackControls() {
             }
         });
 
-        // 4. Reset Structural Elements to their exact index.html defaults
-        const descDetails = $("poseAsanaDescDetails");
+        // 4. Clean up "Jobsian" Accordions & Wrappers
+        const infoStack = document.getElementById("poseInfoStack");
+        const descDetails = document.getElementById("poseAsanaDescDetails");
+        const techDetails = document.getElementById("poseTechniqueDetails");
+        
+        if (infoStack) infoStack.style.display = "none";
+        
         if (descDetails) {
             descDetails.style.display = "none"; 
-            descDetails.removeAttribute("open");
+            descDetails.open = false; // Reset state
+        }
+        if (techDetails) {
+            techDetails.style.display = "none";
+            techDetails.open = false; // Reset state
         }
 
-        const collageWrap = $("collageWrap");
+        // 5. Clean up Images and Progress
+        const collageWrap = document.getElementById("collageWrap");
         if (collageWrap) {
-            // Re-use the single source of truth
-            collageWrap.innerHTML = EMPTY_STATE_HTML;
+            // Restore your "Ready for Practice" screen
+            collageWrap.innerHTML = typeof EMPTY_STATE_HTML !== "undefined" ? EMPTY_STATE_HTML : "";
         }
 
-        // Reset the green progress bar
-        const progressFill = $("timeProgressFill");
-        if (progressFill) progressFill.style.width = "0%";
-
-        // Reset the sequence dropdown
-        const seqSelect = $("sequenceSelect");
-        if (seqSelect) seqSelect.value = "";
-    }); // <-- Missing closing parenthesis and brace for the safeListen block were added here.
+        // 🛑 6. THE ENGINE FLUSH (Fixes the "Lock Up" bug)
+        // This ensures the next sequence you select doesn't collide with the old one
+        window.activePlaybackList = null;
+        window.currentSequence = null;
+        window.currentIndex = 0;
+        window.needsSecondSide = false;
+        
+        // Reset the start button text
+        const startBtn = document.getElementById("startStopBtn");
+        if (startBtn) startBtn.textContent = "Start";
+        
+        console.log("Session Reset Complete: Engine Flushed");
+    });
 
     // Mobile Duration Dial Reset
     const resetText = document.getElementById("dialResetBtn");
@@ -212,7 +230,7 @@ function setupPlaybackControls() {
         resetText.addEventListener("touchend", performReset, { passive: false });
         resetText.addEventListener("click", performReset);
     }
-} // <-- MISSING BRACE RESTORED HERE!
+} 
 
 
 // ── 3. Builder Modal Wiring ──────────────────────────────────────────────────

@@ -14,12 +14,12 @@ export function generateVariationSelectHTML(asana, pose, idx) {
     if (pose.variation && variations[pose.variation]) {
         viewText = `(${variations[pose.variation].title || `Stage ${pose.variation}`})`;
     }
-    const viewSpan = viewText ? `<span class="b-var-view" style="font-weight:600; color:#005580; font-size:0.85rem; margin-left:4px;">${viewText}</span>` : '';
+    const viewSpan = viewText ? `<span class="b-var-view">${viewText}</span>` : '';
 
     if (!hasVariations) return viewSpan;
 
     const selectHtml = `
-       <select class="b-var b-var-edit" data-idx="${idx}" style="margin-left:8px; padding:2px 4px; border:1px solid #1976d2; border-radius:4px; font-size:0.75rem; background:#e3f2fd; color:#005580; max-width: 160px;">
+       <select class="b-var b-var-edit" data-idx="${idx}">
           <option value="">Base Pose</option>
           ${Object.entries(variations).map(([vKey, vData]) => {
               const optionTitle = vData.title || `Stage ${vKey}`;

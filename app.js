@@ -34,7 +34,6 @@ import {
     updatePoseNote, 
     updatePoseAsanaDescription, 
     updatePoseDescription, 
-    loadUserPersonalNote, 
     descriptionForPose 
 } from "./src/ui/renderers.js?v=29";
 
@@ -66,7 +65,6 @@ Object.assign(window, {
     updatePoseNote,
     updatePoseAsanaDescription,
     updatePoseDescription,
-    loadUserPersonalNote,
     descriptionForPose,
     openHistoryModal,
     switchHistoryTab,

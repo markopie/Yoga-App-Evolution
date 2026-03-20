@@ -3,10 +3,10 @@
    SEQUENCE BUILDER & EDITOR ISOLATION
    ========================================================================== */
 
-/* --- 1. Base Builder Table Layout --- */
+/* --- 1. Base Builder Table Layout (STRICT STRUCTURE) --- */
 #builderTable {
     width: 100% !important;
-    table-layout: auto !important; /* Reverted to auto so the colspan header doesn't break the grid */
+    table-layout: auto !important; 
     border-collapse: collapse;
 }
 
@@ -20,13 +20,38 @@
 /* Col 2: The Sponge (Absorbs all remaining space) */
 #builderTable th:nth-child(2), #builderTable td:nth-child(2) { 
     width: 100% !important; 
+    vertical-align: middle; /* Keeps text and dropdown aligned */
 } 
-/* Ensure text wraps in Col 2 so it doesn't push the table off-screen */
+
 #builderTable td:nth-child(2) {
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
     white-space: normal !important;
     padding-right: 10px;
+}
+
+/* --- THE BLUE DROPDOWN (Inside Col 2) --- */
+.b-var {
+    display: inline-block;
+    margin-left: 8px; 
+    padding: 2px 4px; 
+    border: 1px solid #1976d2; 
+    border-radius: 4px; 
+    font-size: 0.75rem; 
+    background: #e3f2fd; 
+    color: #005580;
+    max-width: 160px; /* Prevents the 'Sponge' from getting too wide */
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    vertical-align: middle;
+    padding: 2px 4px !important; /* Forces the padding to shrink from 14px */
+    min-height: 0 !important;      /* Removes the 44px height restriction */
+    height: 24px !important;     /* Sets a clean, standard height */
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    box-sizing: border-box !important;   /* Ensures padding doesn't add to width */
+    width: auto !important;              /* Allows it to shrink to text size */
 }
 
 /* Col 3, 4, 5: UI Elements (Shrink-wrap tightly around buttons) */
@@ -35,11 +60,43 @@
     white-space: nowrap !important; 
 }
 
+/* Info Cell (Col 3) internal styling */
+.builder-info-cell {
+    min-width: 170px !important; /* Adjusted to fit S/STD/L buttons comfortably */
+    padding: 8px 10px;
+}
+
+#builderTable td:nth-child(4) { min-width: 90px !important; text-align: center; }
+#builderTable td:nth-child(5) { min-width: 90px !important; text-align: right; padding-right: 10px !important; }
+
+/* --- TIER BUTTONS (Inside Col 3) --- */
+.b-tier-group { display: flex; gap: 3px; margin-bottom: 4px; }
+
+.b-tier {
+    border: 1px solid #d2d2d7; 
+    border-radius: 4px; 
+    padding: 2px 6px; 
+    font-size: 0.7rem; 
+    cursor: pointer; 
+    min-width: 32px;
+    background: #f5f5f7;
+    color: #555;
+    transition: all 0.2s ease;
+}
+
+.b-tier[data-active="true"] { 
+    background: #1976d2 !important; 
+    color: #fff !important; 
+    border-color: #1976d2 !important; 
+    font-weight: 700; 
+}
+
+.b-tier-sec { font-size: 0.62rem; margin-top: 1px; }
+
 /* Give the button columns minimum breathing room so they never overlap */
 #builderTable td:nth-child(4) { min-width: 90px !important; text-align: center; }
 #builderTable td:nth-child(5) { min-width: 90px !important; text-align: right; padding-right: 10px !important; }
 
-/* ... keep your existing builder-view-mode code below this ... */
 
 /* --- 2. Builder View Mode (Jobbsian Aesthetic) --- */
 .builder-view-mode .builder-tools-panel,
@@ -224,7 +281,9 @@
     }
 
     #builderTable td:nth-child(2) {
-        width: calc(100% - 32px) !important;
+    display: flex !important;
+    align-items: center !important; /* Centers the name and dropdown vertically */
+    gap: 10px !important;           /* Creates exact spacing between them */
     }
 }
 
@@ -291,20 +350,38 @@
     min-width: 145px !important;  /* Tells table: '...but you need at least this much' */
 }
 
-/* Force buttons to stay in a single, centered row */
+/* Ensure the buttons inside the Order column don't wrap */
 .order-controls-group {
     display: flex !important;
-    flex-direction: row !important;
-    justify-content: center !important;
-    align-items: center !important;
-    gap: 4px !important;         /* Consistent spacing without manual margins */
-    white-space: nowrap !important;
+    gap: 2px !important;
+    justify-content: flex-end !important;
 }
 
 .order-controls-group button {
     flex: 0 0 auto !important;   /* Prevents buttons from ever shrinking */
 }
 
+#builderTable td:nth-child(2) {
+    width: auto !important; /* Remove the 100% so it doesn't 'bully' the others */
+    max-width: 300px !important; /* Prevents it from getting too wide */
+    overflow: hidden;
+}
+/* Tighten the Info Column (Col 3) */
+.builder-info-th, 
+#builderTable td:nth-child(3) {
+    width: 145px !important; /* Reduced from 170px to save 25px */
+    min-width: 145px !important;
+    padding: 8px 4px !important;
+}
+
+/* Fix the Order Column (Col 4) */
+#builderTable th:nth-child(4), 
+#builderTable td:nth-child(4) {
+    width: 110px !important; /* Increased from 64px to actually fit 3 buttons */
+    min-width: 110px !important;
+    text-align: right !important;
+    padding-right: 10px !important;
+}
 
 @media (max-width: 600px) {
     .builder-tools-toggle-btn { display: flex; align-items: center; justify-content: center; }
@@ -325,4 +402,4 @@
     #builderTable td:last-child button { display: inline-flex !important; }
     #builderTableBody .b-move-up, #builderTableBody .b-move-dn { display: inline-flex !important; align-items: center; justify-content: center; visibility: visible !important; opacity: 1 !important; }
     #builderTableBody span[title] { font-size: 0.65rem !important; padding: 3px 6px !important; white-space: normal !important; line-height: 1.3; display: inline-block !important; }
-}
+}z

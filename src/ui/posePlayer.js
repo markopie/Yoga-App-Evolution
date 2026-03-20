@@ -314,9 +314,7 @@ if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
         window.updatePoseAsanaDescription(asana, displayTechnique);
     }
 
-    if (typeof window.loadUserPersonalNote === "function") {
-        window.loadUserPersonalNote(lookupId);
-    }
+    
 
     // 9. META UI & AUDIO BUTTON
 const metaContainer = document.getElementById("poseMeta");

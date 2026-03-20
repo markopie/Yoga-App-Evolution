@@ -5,8 +5,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yoga Sequences</title>
-  <link rel="stylesheet" href="styles/main.css">
-  <link rel="stylesheet" href="styles/theme.css">
+  <link rel="stylesheet" href="styles/main.css?v=30">
+  <link rel="stylesheet" href="styles/theme.css?v=30">
 </head>
 <body>
 
@@ -59,12 +59,14 @@
        </div>
        
        <div class="row" style="margin-top:10px; gap: 8px;">
-         <select id="categoryFilter" style="max-width: 160px; font-weight:bold; color:#444;">
-            <option value="ALL">📂 All Collections</option>
+         <select id="categoryFilter" style="max-width: 240px; font-weight:bold; color:#444;">
+            
+          <option value="ALL">📂 All Collections</option>
             </select>
-
             <select id="sequenceSelect" style="flex:1; min-width: 200px;">
+
               <option value="">Select a course</option>
+
            </select>
            
           <div id="durationDialWrap" title="Adjust hold pace — double-click to reset">
@@ -127,10 +129,10 @@
 
              <div id="poseInstructions" class="muted" style="margin-top:15px; padding-top:10px; border-top:1px solid #eee; white-space: pre-wrap;"></div>
 
-          <div class="pose-details-stack">
-    <details id="poseAsanaDescDetails" style="display:none;">
+<div id="poseInfoStack" class="pose-details-stack" style="display:none;">
+      <details id="poseAsanaDescDetails" style="display:none;">
         <summary>Description</summary>
-        <div id="poseAsanaDescBody" class="details-content"></div>
+        <div id="poseAsanaDescBody" style="display:none;" class="details-content"></div>
     </details>
 
     <details id="poseTechniqueDetails" style="display:none;">
@@ -206,26 +208,21 @@
         <button id="btnOpenLinkModal" type="button" class="tiny secondary">🔗 Link</button>
         <button id="btnGroupRepeat" type="button" class="tiny secondary">🔁 Repeat</button>
         <button id="btnDeleteSelected" class="tiny warn" style="margin-left: 4px;">🗑️ Delete</button>
-        <button id="builderNameToggle" type="button" title="Toggle Sanskrit / English pose names"
-          style="white-space:nowrap; padding:6px 10px; border-radius:6px;
-                 background:#fff8e1; border:1px solid #f9a825; color:#6d4c00; font-size:0.8rem;
-                 cursor:pointer; transition:background 0.15s;">
-          अ EN
-        </button>
+        
       </div>
 
       <div class="modal-body" style="max-height:55vh; overflow-y:auto; padding:0;">
-        <table style="width:100%;border-collapse:collapse;font-size:0.88rem;" id="builderTable">
-          <thead style="position:sticky;top:0;z-index:1;background:#f5f5f5;">
+    <table style="width:100%; border-collapse:collapse; font-size:0.88rem;" id="builderTable">
+        <thead style="position:sticky;top:0;z-index:1;background:#f5f5f5;">
             <tr style="border-bottom:2px solid #e0e0e0;">
-              <th style="padding:8px 6px;width:32px;text-align:center;color:#999;">#</th>
-              <th style="padding:8px 6px;text-align:left;">Pose</th>
-              <th class="builder-info-th" style="padding:8px 6px;width:170px;text-align:left;color:#999;">Info</th>
-              <th style="padding:8px 6px;width:64px;text-align:center;">Order</th>
+                <th style="padding:8px 6px; text-align:center; color:#999;">#</th>
+                <th style="padding:8px 6px; text-align:left;">Pose</th>
+                <th class="builder-info-th" style="padding:8px 6px; text-align:left; color:#999;">Info</th>
+                <th style="padding:8px 6px; text-align:center;">Order</th>
             </tr>
-          </thead>
-          <tbody id="builderTableBody"></tbody>
-        </table>
+        </thead>
+        <tbody id="builderTableBody"></tbody>
+    </table>
         <div id="builderEmptyMsg" style="padding:32px;text-align:center;color:#999;display:none;">
           No poses yet — search above or add a blank row.
         </div>

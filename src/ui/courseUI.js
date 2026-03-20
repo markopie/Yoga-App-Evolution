@@ -256,14 +256,21 @@ export function renderCourseUI() {
         grouped[cat].push({ course, idx });
     });
 
+    // Inside renderCourseUI()
     Object.keys(grouped).sort().forEach(catName => {
         const groupEl   = document.createElement("optgroup");
         groupEl.label   = catName;
 
         grouped[catName].forEach(item => {
-            const opt       = document.createElement("option");
-            opt.value       = String(item.idx);
-            opt.textContent = item.course.title || `Course ${item.idx + 1}`;
+            const opt = document.createElement("option");
+            opt.value = String(item.idx);
+            
+            const title = item.course.title || `Course ${item.idx + 1}`;
+            const courseId = item.course.id || item.course.supabaseId; 
+            
+            // Format: "104 — Core Flow" (Using an em-dash for elegance)
+            opt.textContent = courseId ? `${courseId} — ${title}` : title;
+            
             groupEl.appendChild(opt);
         });
         sel.appendChild(groupEl);
