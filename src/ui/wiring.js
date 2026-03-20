@@ -274,8 +274,17 @@ function setupBuilderWiring() {
         builderRender();
         
         // 3. (Optional) Scroll to the bottom so the user sees it
-        const tbody = document.getElementById("builderTableBody");
-        if (tbody) tbody.scrollTop = tbody.scrollHeight;
+        // 3. Scroll to the newly added row
+        setTimeout(() => {
+            const tbody = document.getElementById("builderTableBody");
+            // Find the very last <tr> inside the table body
+            if (tbody && tbody.lastElementChild) {
+                tbody.lastElementChild.scrollIntoView({ 
+                    behavior: "smooth", 
+                    block: "nearest" 
+                });
+            }
+        }, 50); // A tiny 50ms delay gives the browser time to finish drawing the new row first
         
         console.log("Blank row added successfully.");
     });

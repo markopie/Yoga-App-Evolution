@@ -14,7 +14,7 @@ This project has moved to Supabase for data and storage concerns. The next refac
 - Extracted generic JSON fetch helper into `src/services/http.js`.
 - Kept `app.js` behavior stable by swapping to imports only.
 - **Completed Data Adapters:** Extracted course/asana fetch and transform logic into `src/services/dataAdapter.js`, ensuring a single Supabase source of truth and stripping out old CSV/JSON/Airtable compatibility paths.
-- **Completed Playback Engine:** Extracted timer, audio, and state transitions into `src/playback/timer.js` and `src/playback/audio.js`.
+- **Completed Playback Engine:** Extracted timer, audio, and state transitions into `src/playback/timer.js` and `src/playback/audioEngine.js`.
 - **Completed Legacy Cleanup Pass:** Removed dead legacy globals (e.g., `imageOverrides`, `audioOverrides`, legacy GitHub JSON sync tools, and the old admin editor). Adjusted the UI to rely strictly on Google Auth state rather than legacy admin toggles.
 - **Completed UI rendering split:** Extracted modal, list, history, and builder rendering into `src/ui/` files (`browse.js`, `builder.js`, `historyModal.js`, `wiring.js`).
 - **Completed Component/View Architecture:** Extracted specific views (Browse, Focus, Builder) and fully wired the external Playback Engine to `app.js` to eliminate legacy global timer states.
@@ -122,8 +122,6 @@ But the **live pill** (`updateTimerUI` in `app.js`) works off `activePlaybackLis
 
 **Rule**: The pill must read `p[1]` directly and only apply bilateral doubling from the library lookup. Never call `getEffectiveTime()` for the live timer pill.
 
-### 10. Extracted Files Are Currently Orphaned (Incomplete Refactor)
-`src/ui/posePlayer.js` and `src/playback/timerEvents.js` were created as extracted versions of inline `app.js` code, but **they are not loaded anywhere** (not in `index.html`, not imported by any loaded module). The canonical code running in production is inline in `app.js`.
 
 **Status**: The checked-off items in "Next Targets" above were checked off prematurely — the extraction was done but never wired in.
 

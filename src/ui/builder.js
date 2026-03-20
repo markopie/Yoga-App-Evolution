@@ -7,7 +7,7 @@ import { parseSemicolonCommand } from "../utils/builderParser.js";
 import { setupBuilderSearch } from "./builderSearch.js";
 import { formatHMS, displayName, formatCategory } from "../utils/format.js";
 import { builderPoseName, generateVariationSelectHTML, generateInfoCellHTML, resolvePoseInfo } from "./builderTemplates.js";
-import { builderState, movePose, movePoseToIndex, removePose, addPoseToBuilder } from "./builderState.js";
+import { builderState, movePose, movePoseToIndex, removePose, addPoseToBuilder } from '../store/builderState.js';
 import { updateBuilderModeUI, openLinkSequenceModal } from "./builderUI.js";
 
 const getEffectiveTime = (id, time) => window.getEffectiveTime ? window.getEffectiveTime(id, time) : time;
@@ -743,4 +743,4 @@ export {
     builderRender, processSemicolonCommand, openEditCourse, builderOpen, builderSave, createRepeatGroup,
     openLinkSequenceModal // Correctly exported
 };
-export { movePose, removePose, addPoseToBuilder } from "./builderState.js";
+export { movePose, removePose, addPoseToBuilder } from "../store/builderState.js";

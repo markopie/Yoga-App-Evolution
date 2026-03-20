@@ -1,4 +1,4 @@
-import { builderState } from './builderState.js';
+import { builderState } from '../store/builderState.js';
 
 export function updateBuilderModeUI() {
     const backdrop = document.getElementById("editCourseBackdrop");

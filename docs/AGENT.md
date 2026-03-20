@@ -13,7 +13,7 @@
 | Browse / asana list | `src/ui/browse.js` |
 | Auth (Google login, sign out) | `src/ui/wiring.js` → `setupAuthListeners()` |
 | Timer / playback | `src/playback/timer.js` (playbackEngine) |
-| Audio playback | `src/playback/audio.js` |
+| Audio playback | `src/playback/audioEngine.js` |
 | Sequence expansion (MACRO/LOOP/inject) | `src/services/sequenceEngine.js` → `getExpandedPoses()` |
 | Timing calculations | `src/utils/sequenceUtils.js` → `getEffectiveTime()`, `calculateTotalSequenceTime()` |
 | DB data fetching / normalisation | `src/services/dataAdapter.js` → `fetchCourses()`, `loadAsanaLibrary()` |

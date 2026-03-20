@@ -1,6 +1,6 @@
 import { $, enterBrowseDetailMode, exitBrowseDetailMode } from "../utils/dom.js";
 import { isBrowseMobile, mobileVariantUrl, smartUrlsForPoseId } from "../utils/helpers.js";
-import { playAsanaAudio } from "../playback/audio.js";
+import { playAsanaAudio } from "../playback/audioEngine.js";
 import { normalizePlate } from "../services/dataAdapter.js";
 import { displayName, prefersIAST, formatTechniqueText, formatCategory } from "../utils/format.js";
 // Access global variables that app.js sets
