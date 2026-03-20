@@ -260,6 +260,26 @@ function setupBuilderWiring() {
         if (overlay) overlay.style.display = 'none';
     });
 
+    safeListen("builderAddBlank", "click", () => {
+        // 1. Push the blank object to the state
+        addPoseToBuilder({
+            id: "", 
+            asana_id: null,
+            duration: 30,
+            variation: "",
+            metadata: {}
+        });
+        
+        // 2. Call the exact render function you imported at the top of wiring.js
+        builderRender();
+        
+        // 3. (Optional) Scroll to the bottom so the user sees it
+        const tbody = document.getElementById("builderTableBody");
+        if (tbody) tbody.scrollTop = tbody.scrollHeight;
+        
+        console.log("Blank row added successfully.");
+    });
+
     safeListen("btnGroupRepeat", "click", (e) => {
         e.preventDefault();
         createRepeatGroup();
@@ -275,9 +295,7 @@ function setupBuilderWiring() {
     safeListen("editCourseCloseBtn", "click", closeBuilderModal);
     safeListen("editCourseCancelBtn", "click", closeBuilderModal);
 
-    safeListen("builderAddBlank", "click", () => {
-        addPoseToBuilder({ id: "", name: "", englishName: "", duration: 30, variation: "", note: "" });
-    });
+    
 }
 
 // ── 4. UI Extras (IAST, History) ─────────────────────────────────────────────
