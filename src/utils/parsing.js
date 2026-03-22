@@ -56,15 +56,20 @@ function parseSequenceText(sequenceText) {
       variationKey = roman + suffix; // Properly reconstructs "VIIa" instead of "VIIA"
     }
 
+    // MACRO: rows (e.g. "MACRO:Surya Namaskar A") are expected linked-sequence
+    // markers and must round-trip through persistence intact.
+    if (/^MACRO:/i.test(id)) {
+      poses.push([id, duration, '', '', note]);
+      return;
+    }
+
     const numericPart = id.match(/^(\d+)/);
     const suffix = id.replace(/^\d+/, '');
     const normalizedId = numericPart
       ? numericPart[1].replace(/^0+/, '').padStart(3, '0') + suffix
       : id;
 
-    // MACRO: rows (e.g. "MACRO:Surya Namaskar A") are expected linked-sequence
-    // markers — not actually malformed. Skip them silently.
-    if (/^MACRO:/i.test(id)) return;
+    
 
     if (/\s+/.test(suffix) || /^[IVX]{2,}/i.test(suffix)) {
       console.warn(

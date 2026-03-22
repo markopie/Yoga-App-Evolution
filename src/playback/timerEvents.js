@@ -162,6 +162,30 @@ window.playbackEngine.onTransitionStart = (secs) => {
     // Change lines 161-162 to:
     let previewName;
     let mainMsg;
+     const getPoseVariationInfo = (pose, asanaObj) => {
+        if (!pose || !asanaObj || !asanaObj.variations) return { key: "", title: "" };
+
+        const noteBits = [pose[2], pose[3], pose[4]].filter(Boolean).join(" ").trim();
+        const bracketMatch = noteBits.match(/\[(.*?)\]/);
+        const requestedKey = bracketMatch ? bracketMatch[1].trim() : (pose[3] || "");
+        const cleanRequestedKey = String(requestedKey || "").trim();
+        if (!cleanRequestedKey) return { key: "", title: "" };
+
+        for (const [vk, vd] of Object.entries(asanaObj.variations)) {
+            const vtitle = String(vd?.title || vd?.Title || "").trim();
+            if (vk.toLowerCase() === cleanRequestedKey.toLowerCase() || vtitle.toLowerCase() === cleanRequestedKey.toLowerCase()) {
+                return { key: vk, title: vtitle || `Stage ${vk}` };
+            }
+        }
+
+        return { key: cleanRequestedKey, title: `Stage ${cleanRequestedKey}` };
+    };
+    const buildPosePreviewName = (pose, asanaObj) => {
+        if (!asanaObj) return "";
+        const baseName = typeof window.displayName === "function" ? window.displayName(asanaObj) : (asanaObj.english || asanaObj.name || "");
+        const variationInfo = getPoseVariationInfo(pose, asanaObj);
+        return variationInfo.title ? `${baseName} — ${variationInfo.title}` : baseName;
+    };
     const formatTransitionPose = (rawId) => {
         if (!rawId) return "";
         const cleanId = String(rawId).trim().replace(/\|/g, "").replace(/\s+/g, "");
@@ -194,8 +218,7 @@ window.playbackEngine.onTransitionStart = (secs) => {
             const id = Array.isArray(np[0]) ? np[0][0] : np[0];
             const asana = typeof window.findAsanaByIdOrPlate === "function" ? window.findAsanaByIdOrPlate(window.normalizePlate(id)) : null;
             
-            previewName = asana ? (typeof window.displayName === "function" ? window.displayName(asana) : (asana.english || asana.name)) : "";
-            
+            previewName = buildPosePreviewName(np, asana);            
             let transitionTarget = null;
             
             const currentP = poses[window.currentIndex];

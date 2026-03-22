@@ -28,8 +28,10 @@ function builderRender() {
     const libraryArray = Object.values(window.asanaLibrary || {});
     const libMap = window.asanaLibrary || {};
     const catElement = document.getElementById("builderCategory");
-    const currentCategory = (catElement ? (catElement.textContent || catElement.value || "") : "").toLowerCase(); 
-    const isFlow = currentCategory.includes("flow");
+    const currentCategory = (catElement ? (catElement.textContent || catElement.value || "") : "").toLowerCase();
+    const isFlow = builderState.currentPlaybackMode === "flow"
+        || (builderState.currentPlaybackMode == null && currentCategory.includes("flow"));
+    const macroDurationCache = new Map();
  
     builderState.poses.forEach((pose, idx) => {
         const idStr = String(pose.id);
@@ -45,8 +47,14 @@ function builderRender() {
             const targetTitle = idStr.replace("MACRO:", "").trim(); 
             const subCourse = window.courses ? window.courses.find(c => c.title === targetTitle) : null;
             if (subCourse && subCourse.poses) {
-                const oneRoundSecs = subCourse.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1]), 0);
-                totalSec += (oneRoundSecs * durOrReps); 
+            const cacheKey = String(subCourse.id || subCourse.supabaseId || subCourse.title || targetTitle);
+                let oneRoundSecs = macroDurationCache.get(cacheKey);
+                if (oneRoundSecs == null) {
+                    oneRoundSecs = typeof window.calculateTotalSequenceTime === "function"
+                        ? window.calculateTotalSequenceTime(subCourse)
+                        : subCourse.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1]), 0);
+                    macroDurationCache.set(cacheKey, oneRoundSecs);
+                }                totalSec += (oneRoundSecs * durOrReps); 
             }
         } else if (!isSpecial) {
             const normId = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
@@ -436,12 +444,14 @@ function builderOpen(mode, seq) {
        if (modeLabel) modeLabel.textContent = "New Sequence";
        if (titleEl) titleEl.value = "";
        if (catInput) catInput.value = ""; 
+        builderState.currentPlaybackMode = null;
        if (displayCategory) displayCategory.style.display = "none";
     } else {
        if (!seq) return;
        if (modeLabel) modeLabel.textContent = "Sequence Review";
        if (titleEl) titleEl.value = seq.title || "";
-       if (catInput) catInput.value = seq.category || "";       
+       if (catInput) catInput.value = seq.category || "";
+       builderState.currentPlaybackMode = seq.playbackMode || (seq.isFlow ? "flow" : "standard");       
        const libraryArray = Object.values(window.asanaLibrary || {});
        const rawPoses = (window.currentSequenceOriginalPoses && seq === window.currentSequence) ? window.currentSequenceOriginalPoses : (seq.poses || []);
        

@@ -9,7 +9,8 @@ export const builderState = {
     editingSupabaseId: null,
     isViewMode: true, 
     activeRowSearchIdx: -1,
-    showSanskrit: false
+    showSanskrit: false,
+    currentPlaybackMode: null
 };
 
 // ==========================================
@@ -23,7 +24,8 @@ export function setBuilderState(mode, targetId = null) {
     builderState.isViewMode = (mode !== "new" && mode !== "edit"); 
     builderState.editingSupabaseId = targetId;
     builderState.editingCourseIndex = -1;
-    builderState.poses = []; 
+    builderState.poses = [];
+    builderState.currentPlaybackMode = null; 
 }
 
 /** Purely for the Drag and Drop logic */
