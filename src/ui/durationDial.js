@@ -97,6 +97,7 @@ export function updateDialUI() {
 export function applyDurationDial() {
     const currentSequence = window.currentSequence;
     if (!currentSequence) return;
+    const isFlowSequence = !!(currentSequence && (currentSequence.playbackMode === 'flow' || currentSequence.isFlow === true));
 
     const dial = document.getElementById("durationDial");
     if (!dial) return;
@@ -131,6 +132,11 @@ export function applyDurationDial() {
         
         if (variation && asana && asana.variations && asana.variations[variation]) {
             targetForHold = asana.variations[variation];
+        }
+
+        if (isFlowSequence) {
+            cloned[1] = Number(p[1]) || Number(window.getHoldTimes?.(targetForHold || asana)?.flow) || 5;
+            return cloned;
         }
 
         // Get the true base time (respecting authored 600s, Tiers, etc)

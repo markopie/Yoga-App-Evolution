@@ -29,6 +29,12 @@ function resolveVariationKey(varKey, note) {
     return match ? match[1].toUpperCase() + (match[2] ? match[2].toLowerCase() : "") : '';
 }
 
+
+function isFlowPlaybackSequence(seq = null) {
+    const targetSeq = seq || window.currentSequence || null;
+    return !!(targetSeq && (targetSeq.playbackMode === 'flow' || targetSeq.isFlow === true));
+}
+
 function resolveTimingTarget(asana, variation) {
     if (!asana) return null;
     if (!variation || !asana.variations) return asana;
@@ -62,7 +68,7 @@ function resolveTierDuration(target, tier) {
 /**
  * The "Brain" Logic for pose timing.
  */
-export function getEffectiveTime(id, dur, tier, varKey, note, returnPerSide = false) {
+export function getEffectiveTime(id, dur, tier, varKey, note, returnPerSide = false, seq = null) {
     const strId = normalizePoseId(id);
 
     // Macros and Loops carry no duration themselves
@@ -83,6 +89,7 @@ export function getEffectiveTime(id, dur, tier, varKey, note, returnPerSide = fa
         ((baseHj && baseHj.standard != null) ? Number(baseHj.standard) : 30);
     const idNum = parseInt(strId.replace(/\D/g, ''), 10);
     const isPranayama = idNum >= 203 && idNum <= 230;
+    const isFlow = isFlowPlaybackSequence(seq);
 
     // RULE 1: Explicit Tiers (S/L/STD) override everything.
     if (tier) {
@@ -98,10 +105,12 @@ export function getEffectiveTime(id, dur, tier, varKey, note, returnPerSide = fa
         return returnPerSide ? pranayamaDuration : (asana.requiresSides || asana.requires_sides ? pranayamaDuration * 2 : pranayamaDuration);
     }
 
-    // RULE 3: Standard asana timing prefers library standard, with authored fallback only if missing.
-    let duration = libStandard;
+    // RULE 3: Flow sequences respect authored flow timing; standard sequences prefer library standard.
+    let duration = isFlow
+        ? (Number(dur) || Number(hj?.flow) || Number(baseHj?.flow) || libStandard || 5)
+        : libStandard;
     if (!(duration > 0)) {
-        duration = Number(dur) || 30;
+        duration = Number(dur) || (isFlow ? 5 : 30);
     }
     
 
@@ -124,7 +133,7 @@ export function calculateTotalSequenceTime(seq) {
         : seq.poses;
         
     return expanded.reduce((acc, p) => {
-        const time = getEffectiveTime(p[0], p[1], extractTier(p[4]), p[3], p[4]);
+        const time = getEffectiveTime(p[0], p[1], extractTier(p[4]), p[3], p[4], false, seq);
         return acc + time;
     }, 0);
 }

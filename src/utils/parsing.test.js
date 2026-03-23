@@ -5,7 +5,7 @@ import { parseHoldTimes, secsToMSS, buildHoldString, parseSequenceText } from '.
 describe('parsing helpers', () => {
   describe('parseHoldTimes', () => {
     test('handles missing or empty hold strings', () => {
-      const expected = { standard: 30, short: 15, long: 60 };
+      const expected = { standard: 30, short: 15, long: 60, flow: 5 };
       assert.deepStrictEqual(parseHoldTimes(''), expected);
       assert.deepStrictEqual(parseHoldTimes(null), expected);
       assert.deepStrictEqual(parseHoldTimes(undefined), expected);
@@ -13,25 +13,32 @@ describe('parsing helpers', () => {
 
     test('parses MM:SS formatted times', () => {
       const input = "Standard: 1:30 | Short: 0:45 | Long: 3:00";
-      const expected = { standard: 90, short: 45, long: 180 };
+      const expected = { standard: 90, short: 45, long: 180, flow: 5 };
       assert.deepStrictEqual(parseHoldTimes(input), expected);
     });
 
     test('parses seconds-only formatted times', () => {
       const input = "Standard: 90 | Short: 45 | Long: 180";
-      const expected = { standard: 90, short: 45, long: 180 };
+      const expected = { standard: 90, short: 45, long: 180, flow: 5 };
       assert.deepStrictEqual(parseHoldTimes(input), expected);
     });
 
     test('handles mixed-case keys and extra whitespace', () => {
       const input = "  sTandArd:   1:00 | SHORT:  30 |   lOnG:2:00  ";
-      const expected = { standard: 60, short: 30, long: 120 };
+      const expected = { standard: 60, short: 30, long: 120, flow: 5 };
       assert.deepStrictEqual(parseHoldTimes(input), expected);
     });
     
+
+    test('parses Flow hold values alongside other tiers', () => {
+      const input = "Standard: 0:45 | Short: 0:15 | Long: 3:00 | Flow: 0:05";
+      const expected = { standard: 45, short: 15, long: 180, flow: 5 };
+      assert.deepStrictEqual(parseHoldTimes(input), expected);
+    });
+
     test('handles malformed input gracefully by retaining defaults for missing parts', () => {
       const input = "Standard: 1:00 | Gibberish | Long: 120";
-      const expected = { standard: 60, short: 15, long: 120 };
+      const expected = { standard: 60, short: 15, long: 120, flow: 5 };
       assert.deepStrictEqual(parseHoldTimes(input), expected);
     });
   });
@@ -54,6 +61,10 @@ describe('parsing helpers', () => {
   describe('buildHoldString', () => {
     test('builds standard hold string', () => {
       assert.strictEqual(buildHoldString(90, 45, 180), "Standard: 1:30 | Short: 0:45 | Long: 3:00");
+    });
+
+    test('optionally includes Flow in built hold strings', () => {
+      assert.strictEqual(buildHoldString(90, 45, 180, 5), "Standard: 1:30 | Short: 0:45 | Long: 3:00 | Flow: 0:05");
     });
   });
 
@@ -97,14 +108,14 @@ describe('parsing helpers', () => {
       // Fix: variationMatch regex uses /i flag so [iia] is captured and uppercased
       const input = '053 | 60 | [iia] supported version';
       const result = parseSequenceText(input);
-      assert.strictEqual(result[0][3], 'IIA', 'lowercase [iia] should map to uppercase "IIA"');
+      assert.strictEqual(result[0][3], 'IIa', 'lowercase [iia] should preserve lowercase suffix as "IIa"');
     });
 
     test('normalises multi-char Roman numerals like IVa and IX', () => {
       const cases = [
-        { line: '001 | 30 | [IVa] chair version', expected: 'IVA' },
+        { line: '001 | 30 | [IVa] chair version', expected: 'IVa' },
         { line: '001 | 30 | [IX]',               expected: 'IX'  },
-        { line: '001 | 30 | [IVb] wall support',  expected: 'IVB' },
+        { line: '001 | 30 | [IVb] wall support',  expected: 'IVb' },
       ];
       for (const { line, expected } of cases) {
         const result = parseSequenceText(line);

@@ -127,6 +127,7 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
     const holdStd   = existingHoldStr ? parsedHold.standard : 30;
     const holdShort = existingHoldStr ? parsedHold.short    : 15;
     const holdLong  = existingHoldStr ? parsedHold.long     : 60;
+    const holdFlow  = existingHoldStr ? parsedHold.flow     : 5;
 
     const suffixes = getVariationSuffixes();
     const datalistId = `stageSuffixList_${Date.now()}`;
@@ -134,6 +135,7 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
     const div = document.createElement("div");
     div.className = "stage-row";
     div.dataset.dbId = existingDbId;
+    div.dataset.flowHold = String(holdFlow);
     div.style.cssText = "border:1px solid #ddd; padding:10px; border-radius:6px; background:#fff; display:grid; gap:8px;";
 
     div.innerHTML = `
@@ -426,7 +428,8 @@ function wireEditorSave() {
             const cloneHold = buildHoldString(
                 parseInt($("editAsanaHoldStandard")?.value || "30", 10),
                 parseInt($("editAsanaHoldShort")?.value    || "15", 10),
-                parseInt($("editAsanaHoldLong")?.value     || "60", 10)
+                parseInt($("editAsanaHoldLong")?.value     || "60", 10),
+                parseHoldTimes(window.asanaLibrary?.[$("editAsanaId")?.value.trim().padStart(3, "0")]?.hold || '').flow
             );
             window.addStageToEditor("", {
                 full_technique: $("editAsanaTechnique")?.value || "",
@@ -475,14 +478,15 @@ function wireEditorSave() {
             return;
         }
 
+        const lib = window.asanaLibrary || {};
+        const baseAsana = lib[id] || {};
+        const existingAsanaFlow = parseHoldTimes(baseAsana.hold || '').flow;
         const asanaHoldStr = buildHoldString(
             parseInt($("editAsanaHoldStandard")?.value || "30", 10),
             parseInt($("editAsanaHoldShort")?.value    || "15", 10),
-            parseInt($("editAsanaHoldLong")?.value     || "60", 10)
+            parseInt($("editAsanaHoldLong")?.value     || "60", 10),
+            existingAsanaFlow
         );
-
-        const lib = window.asanaLibrary || {};
-        const baseAsana = lib[id] || {};
 
         // 🌟 CLEAN PAYLOAD: Only columns that actually exist in the 'asanas' table
         const asanaData = {
@@ -491,6 +495,7 @@ function wireEditorSave() {
             iast:          $("editAsanaIAST").value.trim(),
             english_name:  $("editAsanaEnglish").value.trim(),
             technique:     $("editAsanaTechnique").value.trim(),
+            hold:          asanaHoldStr,
             plate_numbers: $("editAsanaPlates").value.trim(),
             requires_sides: $("editAsanaRequiresSides").checked,
             page_2001:     parseInt($("editAsanaPage2001").value) || null,
@@ -524,14 +529,14 @@ function wireEditorSave() {
 
                 const pfx = div.querySelector(".stage-prefix")?.value.trim() || "Modified";
                 const sfx = div.querySelector(".stage-suffix")?.value.trim() || "";
+                const dbId = div.dataset.dbId || "";
+                const baseVariation = (baseAsana.variations && baseAsana.variations[key]) ? baseAsana.variations[key] : {};
                 const holdStr = buildHoldString(
                     parseInt(div.querySelector(".stage-hold-standard")?.value || "30", 10),
                     parseInt(div.querySelector(".stage-hold-short")?.value    || "15", 10),
-                    parseInt(div.querySelector(".stage-hold-long")?.value     || "60", 10)
+                    parseInt(div.querySelector(".stage-hold-long")?.value     || "60", 10),
+                    parseInt(div.dataset.flowHold || String(parseHoldTimes(baseVariation.hold || '').flow || 5), 10)
                 );
-                
-                const dbId = div.dataset.dbId || "";
-                const baseVariation = (baseAsana.variations && baseAsana.variations[key]) ? baseAsana.variations[key] : {};
 
                 const payload = {
                     asana_id:       id,

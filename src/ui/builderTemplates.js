@@ -31,17 +31,41 @@ export function generateVariationSelectHTML(asana, pose, idx) {
     return viewSpan + selectHtml;
 }
 
-export function generateInfoCellHTML(asana, pose, idx, isSpecial) {
+function formatCompactDuration(seconds = 0) {
+    const total = Math.max(0, Math.round(Number(seconds) || 0));
+    const mins = Math.floor(total / 60);
+    const secs = total % 60;
+    if (mins && secs) return `~${mins}m ${secs}s`;
+    if (mins) return `~${mins}m`;
+    return `~${secs}s`;
+}
+
+export function buildMacroInfoHTML({ oneRoundSecs = 0, rounds = 1, note = '' } = {}) {
+    const safeRounds = Math.max(1, Number(rounds) || 1);
+    const perRound = Math.max(0, Math.round(Number(oneRoundSecs) || 0));
+    const total = perRound * safeRounds;
+    const noteHtml = note ? `<div class="builder-macro-note">${note}</div>` : '';
+
+    return `<td class="builder-info-cell builder-info-macro">
+        <div class="builder-macro-info-line"><strong>${formatCompactDuration(perRound)}</strong> per round</div>
+        <div class="builder-macro-info-line">× ${safeRounds} round${safeRounds !== 1 ? 's' : ''}</div>
+        <div class="builder-macro-info-line"><strong>${formatCompactDuration(total)}</strong> total</div>
+        ${noteHtml}
+    </td>`;
+}
+
+export function generateInfoCellHTML(asana, pose, idx, options = {}) {
+    const { isSpecial = false, isFlow = false } = options;
     if (isSpecial) return `<td class="builder-info-cell builder-info-special">—</td>`;
 
     const activeVar = (pose.variation && asana?.variations?.[pose.variation]) ? asana.variations[pose.variation] : null;
-    const holdSrc = window.getHoldTimes ? window.getHoldTimes(activeVar || asana) : { standard: 30 };
-    const stdSec = holdSrc.standard ?? 30;
+    const holdSrc = window.getHoldTimes ? window.getHoldTimes(activeVar || asana) : { standard: 30, flow: 5 };
     const currentTier = pose.holdTier || 'standard';
+    const currentFlow = Number(pose.flowHoldOverride ?? pose.duration ?? holdSrc.flow ?? holdSrc.standard ?? 5) || 5;
 
     const tierBtn = (tier, label, sec) => {
         const isActive = currentTier === tier;
-        const isDisabled = sec == null || (sec === stdSec && tier !== 'standard');
+        const isDisabled = sec == null || (sec === holdSrc.standard && tier !== 'standard');
         const activeStyle = 'background:#1976d2; color:#fff; border-color:#1976d2; font-weight:700;';
         const normalStyle = 'background:#f5f5f7; color:#555; border-color:#d2d2d7;';
         return `<button class="b-tier" data-idx="${idx}" data-tier="${tier}" ${isDisabled ? 'disabled' : ''}
@@ -50,14 +74,27 @@ export function generateInfoCellHTML(asana, pose, idx, isSpecial) {
         </button>`;
     };
 
-    const rawCat = (asana?.category || '').trim();
     let catChipHTML = '';
+    const rawCat = (asana?.category || '').trim();
     if (rawCat) {
         const displayCat = formatCategory(rawCat);
         const catKey = displayCat.toLowerCase().split(/[\s/]/)[0];
         catChipHTML = `<span class="binfo-cat" data-cat="${catKey}">${displayCat}</span>`;
     }
 
+    if (isFlow) {
+        return `<td class="builder-info-cell builder-info-flow">
+            <div class="builder-flow-info-block">
+                <label class="builder-flow-label" for="flowHold-${idx}">Flow hold</label>
+                <input id="flowHold-${idx}" type="number" min="1" step="1" class="b-flow-hold" data-idx="${idx}" value="${currentFlow}">
+                <span class="builder-flow-unit">sec</span>
+            </div>
+            <div>${catChipHTML}</div>
+            ${(asana?.requiresSides || asana?.requires_sides) ? `<div class="binfo-sides">↔ Both sides</div>` : ''}
+        </td>`;
+    }
+
+    const stdSec = holdSrc.standard ?? 30;
     return `<td class="builder-info-cell">
         <div style="display:flex; gap:3px; margin-bottom:4px;">
             ${tierBtn('short', 'S', holdSrc.short)}
