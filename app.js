@@ -11,7 +11,7 @@ import {
     normalizeAsana, 
     normalizePlate, 
     findAsanaByIdOrPlate 
-} from "./src/services/dataAdapter.js?v=29";
+} from "./src/services/dataAdapter.js";
 
 // 2. UI Framework & Utilities
 import { themeManager } from "./src/ui/themeToggle.js";
@@ -35,20 +35,20 @@ import {
     updatePoseAsanaDescription, 
     updatePoseDescription, 
     descriptionForPose 
-} from "./src/ui/renderers.js?v=29";
+} from "./src/ui/renderers.js";
 
 import { 
     openHistoryModal, 
     switchHistoryTab, 
     renderGlobalHistory 
-} from "./src/ui/historyModal.js?v=29";
+} from "./src/ui/historyModal.js";
 
 // 5. Side-effect imports: these register window-level listeners/functions
-import "./src/ui/browse.js?v=29";
-import "./src/ui/asanaEditor.js?v=29";
+import "./src/ui/browse.js";
+import "./src/ui/asanaEditor.js";
 import "./src/ui/durationDial.js";
 import "./src/ui/courseUI.js";
-import "./src/ui/wiring.js?v=29"; 
+import "./src/ui/wiring.js"; 
 
 /* ==========================================================================
    GLOBAL BINDINGS & PROXIES
@@ -80,7 +80,7 @@ import {
     setCurrentIndex, 
     setCurrentSide, 
     setNeedsSecondSide
-} from "./src/store/state.js?v=29";
+} from "./src/store/state.js";
 
 // Map globalState properties to window for direct access within app.js
 ['courses', 'sequences', 'asanaLibrary', 'activePlaybackList', 'currentSequence', 'currentIndex', 'currentSide', 'needsSecondSide'].forEach(prop => {
@@ -139,7 +139,7 @@ async function disableWakeLock() {
    AUDIO ENGINE
    ========================================================================== */
 
-import { playPoseMainAudio } from "./src/playback/audioEngine.js?v=29";
+import { playPoseMainAudio } from "./src/playback/audioEngine.js";
 
 // Bind system and audio functions to window to satisfy linter and provide global access
 Object.assign(window, {
@@ -256,7 +256,7 @@ import {
     appendServerHistory, 
     seedManualCompletionsOnce,
     updateCompletionRating // Ensure this is imported for the rating buttons
-} from "./src/services/historyService.js?v=29";
+} from "./src/services/historyService.js";
 
 /* ==========================================================================
    RESUME STATE & PROGRESS
@@ -426,7 +426,7 @@ import {
     getActivePlaybackList, 
     getCurrentSide, 
     getCurrentSequence 
-} from "./src/store/state.js?v=29";
+} from "./src/store/state.js";
 
 Object.assign(window, {
     init,

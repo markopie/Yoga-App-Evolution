@@ -85,7 +85,7 @@ window.getCurrentSide       = getCurrentSide;
 Line ~150 of `src/services/dataAdapter.js` has `loadAsanaLibrary();` — intentional eager cache warm. This causes the library to load twice in the console (once per module instance). This is normal and not a bug.
 
 ### 3. Module URL Deduplication
-`dataAdapter.js` and `dataAdapter.js?v=29` are **different URLs = two separate Supabase client instances** in the browser. Minimise the number of distinct import URLs for the same file. Do not add new imports from modules already imported elsewhere if you can avoid it.
+`dataAdapter.js` and `dataAdapter.js` are **different URLs = two separate Supabase client instances** in the browser. Minimise the number of distinct import URLs for the same file. Do not add new imports from modules already imported elsewhere if you can avoid it.
 
 ### 4. `sequenceEngine.js` Must Not Import External Modules
 `src/services/sequenceEngine.js` deliberately has **no imports** — using `window.*` lookups only. Adding imports risks creating duplicate module instances and breaking Supabase auth. Any helper it needs must be accessed via `window.*`.

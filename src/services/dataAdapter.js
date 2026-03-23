@@ -184,8 +184,6 @@ async function loadAsanaLibrary() {
     }
 }
 
-// Self-execute so it loads immediately!
-loadAsanaLibrary();
 
 function normalizeAsana(id, asana) {
     if (!asana) return null;

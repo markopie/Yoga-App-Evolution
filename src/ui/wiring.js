@@ -13,8 +13,8 @@ import { supabase } from '../services/supabaseClient.js';
 import { themeManager } from './themeToggle.js';
 import { normalizePlate } from '../services/dataAdapter.js';
 import { playbackEngine } from '../playback/timer.js';
-import { openHistoryModal, switchHistoryTab, renderGlobalHistory } from './historyModal.js?v=29';
-import { builderRender, builderSave, openEditCourse, builderOpen, addPoseToBuilder, processSemicolonCommand, openLinkSequenceModal, createRepeatGroup } from './builder.js?v=29';
+import { openHistoryModal, switchHistoryTab, renderGlobalHistory } from './historyModal.js';
+import { builderRender, builderSave, openEditCourse, builderOpen, addPoseToBuilder, processSemicolonCommand, openLinkSequenceModal, createRepeatGroup } from './builder.js';
 
 // ── Application State Aliases ────────────────────────────────────────────────
 // ── UI Constants ─────────────────────────────────────────────────────────────
