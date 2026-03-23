@@ -31,7 +31,6 @@ export function generateVariationSelectHTML(asana, pose, idx) {
     return viewSpan + selectHtml;
 }
 
-export function generateInfoCellHTML(asana, pose, idx, isSpecial) {
 function formatCompactDuration(seconds = 0) {
     const total = Math.max(0, Math.round(Number(seconds) || 0));
     const mins = Math.floor(total / 60);
@@ -83,8 +82,7 @@ export function generateInfoCellHTML(asana, pose, idx, options = {}) {
         catChipHTML = `<span class="binfo-cat" data-cat="${catKey}">${displayCat}</span>`;
     }
 
-
-     if (isFlow) {
+    if (isFlow) {
         return `<td class="builder-info-cell builder-info-flow">
             <div class="builder-flow-info-block">
                 <label class="builder-flow-label" for="flowHold-${idx}">Flow hold</label>

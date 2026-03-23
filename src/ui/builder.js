@@ -21,6 +21,11 @@ const resetBusyCursorState = () => {
     document.body.style.cursor = "";
     document.documentElement.style.cursor = "";
 };
+const isFlowBuilderContext = () => {
+    const catElement = document.getElementById("builderCategory");
+    const currentCategory = (catElement ? (catElement.textContent || catElement.value || "") : "").toLowerCase();
+    return isFlowSequence() || (builderState.currentPlaybackMode == null && currentCategory.includes("flow"));
+};
 function builderRender() {
     const tbody = document.getElementById("builderTableBody");
     if (!tbody) return;
@@ -34,8 +39,7 @@ function builderRender() {
     const libMap = window.asanaLibrary || {};
     const catElement = document.getElementById("builderCategory");
     const currentCategory = (catElement ? (catElement.textContent || catElement.value || "") : "").toLowerCase();
-    const isFlow = isFlowSequence()
-         || (builderState.currentPlaybackMode == null && currentCategory.includes("flow"));
+    const isFlow = isFlowBuilderContext();
     const macroDurationCache = new Map();
  
     builderState.poses.forEach((pose, idx) => {
@@ -62,6 +66,7 @@ function builderRender() {
                 }
                 totalSec += (oneRoundSecs * durOrReps);
                 macroInfo = { oneRoundSecs, rounds: durOrReps, note: subCourse.category || pose.note || '' };
+            }
         } else if (!isSpecial) {
             const normId = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
             asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
@@ -395,10 +400,20 @@ async function processSemicolonCommand(commandString) {
     if (validItems.length === 0) return;
 
     validItems.forEach(item => {
-    const holdTimes = (item.asana && window.getHoldTimes) ? window.getHoldTimes(item.asana, item.stageKey || null) : { standard: 30, flow: 5 };
-        const duration = isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30);
+        const holdTimes = (item.asana && window.getHoldTimes) ? window.getHoldTimes(item.asana, item.stageKey || null) : { standard: 30, flow: 5 };
+        const isFlow = isFlowBuilderContext();
+        const duration = isFlow ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30);
         builderState.poses.push({
-        id: item.id, name: item.name, duration, variation: item.stageKey || '', note: item.stageKey ? `[${item.stageKey}]` : '', holdTier: 'standard', flowHoldOverride: isFlowSequence() ? duration : null,            _ambiguous: item._ambiguous || false, _pageNum: item._pageNum || null, _alternatives: item._alternatives || []
+            id: item.id,
+            name: item.name,
+            duration,
+            variation: item.stageKey || '',
+            note: item.stageKey ? `[${item.stageKey}]` : '',
+            holdTier: 'standard',
+            flowHoldOverride: isFlow ? duration : null,
+            _ambiguous: item._ambiguous || false,
+            _pageNum: item._pageNum || null,
+            _alternatives: item._alternatives || []
         });
     });
 
@@ -443,9 +458,10 @@ function builderOpen(mode, seq) {
             addPoseToBuilder({
                 id: asma.id,
                 name: asma.name || asma.english,
-                duration: (() => { const holdTimes = window.getHoldTimes ? window.getHoldTimes(asma) : { standard: 30, flow: 5 }; return isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : ((holdTimes.standard || 30)); })(),                variation: "",
-note: "",
-                flowHoldOverride: (() => { const holdTimes = window.getHoldTimes ? window.getHoldTimes(asma) : { standard: 30, flow: 5 }; return isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : null; })()
+                duration: (() => { const holdTimes = window.getHoldTimes ? window.getHoldTimes(asma) : { standard: 30, flow: 5 }; return isFlowBuilderContext() ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30); })(),
+                variation: "",
+                note: "",
+                flowHoldOverride: (() => { const holdTimes = window.getHoldTimes ? window.getHoldTimes(asma) : { standard: 30, flow: 5 }; return isFlowBuilderContext() ? (holdTimes.flow || holdTimes.standard || 5) : null; })()
             });
             builderRender();
         },
