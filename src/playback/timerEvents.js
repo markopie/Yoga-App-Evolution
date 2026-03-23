@@ -44,7 +44,7 @@ window.playbackEngine.onStart = () => {
             const rawId = Array.isArray(currentPose[0]) ? currentPose[0][0] : currentPose[0];
             const asana = typeof window.findAsanaByIdOrPlate === "function" ? window.findAsanaByIdOrPlate(window.normalizePlate(rawId)) : null;
             
-            if (asana && !isFlowPlaybackPose(currentPose)) {
+            if (asana) {
                 if (window.playbackEngine.remaining === window.playbackEngine.currentPoseSeconds) {
                     if (typeof window.playAsanaAudio === "function") {
                         const side = window.getCurrentSide ? window.getCurrentSide() : null;
@@ -88,17 +88,44 @@ window.playbackEngine.onPoseComplete = (wasLongHold) => {
     const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) ? window.activePlaybackList : (window.currentSequence?.poses || []);
     const currentPose = poses[window.currentIndex] || null;
     const flowPose = isFlowPlaybackPose(currentPose);
+    const advanceAndRestart = () => {
+        const advanced = window.nextPose();
+        if (advanced) window.playbackEngine.start();
+    };
 
     if (wasLongHold && !flowPose && typeof window.playFaintGong === "function") window.playFaintGong();
     
     if (wasLongHold && !flowPose) {
         window.playbackEngine.startTransition(15);
-    } else {
-        const advanced = window.nextPose(); 
-        if (advanced) {
-            window.playbackEngine.start();
+        return;
+    }
+
+    if (flowPose && typeof window.getCurrentAudio === 'function') {
+        const activeAudio = window.getCurrentAudio();
+        if (activeAudio && !activeAudio.paused && !activeAudio.ended) {
+            let finished = false;
+            const cleanup = () => {
+                activeAudio.removeEventListener('ended', handleEnded);
+                clearTimeout(safetyTimer);
+            };
+            const handleEnded = () => {
+                if (finished) return;
+                finished = true;
+                cleanup();
+                advanceAndRestart();
+            };
+            const safetyTimer = setTimeout(() => {
+                if (finished) return;
+                finished = true;
+                cleanup();
+                advanceAndRestart();
+            }, 5000);
+            activeAudio.addEventListener('ended', handleEnded, { once: true });
+            return;
         }
     }
+
+    advanceAndRestart();
 };
 
 function triggerSequenceEnd() {

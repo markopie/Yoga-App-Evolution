@@ -215,3 +215,4 @@ export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, va
 window.playAsanaAudio   = playAsanaAudio;
 window.playFaintGong    = playFaintGong;
 window.playPoseMainAudio = playPoseMainAudio;
+window.getCurrentAudio  = getCurrentAudio;

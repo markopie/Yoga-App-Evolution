@@ -364,14 +364,12 @@ function builderRender() {
         const authoredPoses  = expanded.filter(p => !String(p[4] || "").includes("Auto-Injected"));
         const injectedPoses  = expanded.filter(p =>  String(p[4] || "").includes("Auto-Injected"));
 
-        const extractTierLocal = (note) => { 
-            const m = String(note||'').match(/\btier:(S|L|STD)\b/i); 
-            return m ? m[1].toUpperCase() : ''; 
-        };
+        const poseTime = (p) => (typeof window.getPosePillTime === 'function')
+            ? window.getPosePillTime(p)
+            : Number(p?.[1]) || 0;
 
-        tempSeq.playbackMode = isFlow ? 'flow' : 'standard';
-        const authoredSecs  = authoredPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4]), p[3], p[4], false, tempSeq, p[7] || null), 0);
-        const injectedSecs  = injectedPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4]), p[3], p[4], false, tempSeq, p[7] || null), 0);
+        const authoredSecs  = authoredPoses.reduce((acc, p) => acc + poseTime(p), 0);
+        const injectedSecs  = injectedPoses.reduce((acc, p) => acc + poseTime(p), 0);
 
         const runtimeSecs   = authoredSecs + injectedSecs;
         const fmt = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
