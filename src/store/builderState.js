@@ -13,6 +13,11 @@ export const builderState = {
     currentPlaybackMode: null
 };
 
+export function isFlowSequence() {
+    return builderState.currentPlaybackMode === 'flow';
+}
+
+
 // ==========================================
 // 🛠️ STATE MUTATION METHODS
 // These functions ONLY change data. They do NOT touch the DOM.

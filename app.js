@@ -115,7 +115,7 @@ async function enableWakeLock() {
         if (!wakeLockVisibilityHooked) {
             wakeLockVisibilityHooked = true;
             document.addEventListener("visibilitychange", () => {
-                if (document.visibilityState === "visible" && playbackEngine.running) {
+                if (document-.visibilityState === "visible" && playbackEngine.running) {
                     enableWakeLock();
                 }
             });

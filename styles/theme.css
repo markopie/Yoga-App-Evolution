@@ -362,12 +362,15 @@ table td, table th {
 }
 
 .builder-macro-row {
-  background: var(--color-accent-primary);
-  opacity: 0.1;
+  background: linear-gradient(90deg, rgba(25, 118, 210, 0.14) 0%, rgba(25, 118, 210, 0.05) 100%);
+}
+
+.builder-macro-row:hover {
+  background: linear-gradient(90deg, rgba(25, 118, 210, 0.2) 0%, rgba(25, 118, 210, 0.08) 100%) !important;
 }
 
 [data-theme="dark"] .builder-macro-row {
-  background: #1e3a5f;
+  background: linear-gradient(90deg, rgba(64, 140, 255, 0.24) 0%, rgba(64, 140, 255, 0.12) 100%);
 }
 
 .builder-loop-row {

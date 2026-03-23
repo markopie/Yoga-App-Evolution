@@ -1,18 +1,18 @@
 function parseHoldTimes(holdStr) {
-  const result = { standard: 30, short: 15, long: 60 };
+const result = { standard: 30, short: 15, long: 60, flow: 5 };
   if (!holdStr) return result;
 
   const parts = String(holdStr).split('|').map((s) => s.trim());
   parts.forEach((p) => {
-    const match = p.match(/(Standard|Short|Long):\s*(\d+):(\d+)/i);
-    if (match) {
+    const match = p.match(/(Standard|Short|Long|Flow):\s*(\d+):(\d+)/i);
+        if (match) {
       const key = match[1].toLowerCase();
       result[key] = parseInt(match[2], 10) * 60 + parseInt(match[3], 10);
       return;
     }
 
-    const matchSec = p.match(/(Standard|Short|Long):\s*(\d+)/i);
-    if (matchSec) {
+    const matchSec = p.match(/(Standard|Short|Long|Flow):\s*(\d+)/i);
+        if (matchSec) {
       result[matchSec[1].toLowerCase()] = parseInt(matchSec[2], 10);
     }
   });
@@ -25,8 +25,15 @@ function secsToMSS(secs) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-function buildHoldString(standard, short, long) {
-  return `Standard: ${secsToMSS(standard)} | Short: ${secsToMSS(short)} | Long: ${secsToMSS(long)}`;
+function buildHoldString(standard, short, long, flow = null) {
+  const parts = [
+    `Standard: ${secsToMSS(standard)}`,
+    `Short: ${secsToMSS(short)}`,
+    `Long: ${secsToMSS(long)}`
+  ];
+
+  if (flow != null && flow !== '') parts.push(`Flow: ${secsToMSS(flow)}`);
+  return parts.join(' | ');
 }
 
 function parseSequenceText(sequenceText) {
@@ -95,13 +102,13 @@ function parseSequenceText(sequenceText) {
 export { parseHoldTimes, secsToMSS, buildHoldString, parseSequenceText, getHoldTimes };
 
 /**
- * Returns the parsed hold-times object { short, standard, long }.
+* Returns the parsed hold-times object { short, standard, long, flow }.
  * If a variationKey is provided, it prioritizes that variation's data.
  * @param {object} asana - The base asana object.
  * @param {string} variationKey - Optional key (e.g., "IIb", "III").
  */
 function getHoldTimes(asana, variationKey = null) {
-    if (!asana) return { standard: 30, short: 15, long: 60 };
+    if (!asana) return { standard: 30, short: 15, long: 60, flow: 5 };
 
     let source = asana;
 
@@ -118,4 +125,4 @@ function getHoldTimes(asana, variationKey = null) {
 }
 
 // Update the global exposure
-window.getHoldTimes = getHoldTimes;
+if (typeof window !== 'undefined') window.getHoldTimes = getHoldTimes;

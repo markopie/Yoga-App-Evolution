@@ -6,8 +6,8 @@ import { saveSequence } from "../services/persistence.js";
 import { parseSemicolonCommand } from "../utils/builderParser.js";
 import { setupBuilderSearch } from "./builderSearch.js";
 import { formatHMS, displayName, formatCategory } from "../utils/format.js";
-import { builderPoseName, generateVariationSelectHTML, generateInfoCellHTML, resolvePoseInfo } from "./builderTemplates.js";
-import { builderState, movePose, movePoseToIndex, removePose, addPoseToBuilder } from '../store/builderState.js';
+import { builderPoseName, generateVariationSelectHTML, generateInfoCellHTML, resolvePoseInfo, buildMacroInfoHTML } from "./builderTemplates.js";
+import { builderState, movePose, movePoseToIndex, removePose, addPoseToBuilder, isFlowSequence } from '../store/builderState.js';
 import { updateBuilderModeUI, openLinkSequenceModal } from "./builderUI.js";
 
 const getEffectiveTime = (id, time) => window.getEffectiveTime ? window.getEffectiveTime(id, time) : time;
@@ -34,8 +34,8 @@ function builderRender() {
     const libMap = window.asanaLibrary || {};
     const catElement = document.getElementById("builderCategory");
     const currentCategory = (catElement ? (catElement.textContent || catElement.value || "") : "").toLowerCase();
-    const isFlow = builderState.currentPlaybackMode === "flow"
-        || (builderState.currentPlaybackMode == null && currentCategory.includes("flow"));
+    const isFlow = isFlowSequence()
+         || (builderState.currentPlaybackMode == null && currentCategory.includes("flow"));
     const macroDurationCache = new Map();
  
     builderState.poses.forEach((pose, idx) => {
@@ -48,26 +48,27 @@ function builderRender() {
         const disableRowSelect = isLoopStart || isLoopEnd;
         const idStrNumeric = idStr.match(/^\d+/)?.[0] || idStr;
         let asana = null;
-    
+        let macroInfo = null;
         if (isMacro) {
             const targetTitle = idStr.replace("MACRO:", "").trim(); 
             const subCourse = window.courses ? window.courses.find(c => c.title === targetTitle) : null;
             if (subCourse && subCourse.poses) {
-            const cacheKey = String(subCourse.id || subCourse.supabaseId || subCourse.title || targetTitle);
-                let oneRoundSecs = macroDurationCache.get(cacheKey);
+                const cacheKey = String(subCourse.id || subCourse.supabaseId || subCourse.title || targetTitle);                let oneRoundSecs = macroDurationCache.get(cacheKey);
                 if (oneRoundSecs == null) {
                     oneRoundSecs = typeof window.calculateTotalSequenceTime === "function"
                         ? window.calculateTotalSequenceTime(subCourse)
                         : subCourse.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1]), 0);
                     macroDurationCache.set(cacheKey, oneRoundSecs);
                 }
-                  totalSec += (oneRoundSecs * durOrReps); 
-            }
+                totalSec += (oneRoundSecs * durOrReps);
+                macroInfo = { oneRoundSecs, rounds: durOrReps, note: subCourse.category || pose.note || '' };
         } else if (!isSpecial) {
             const normId = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
             asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
-            const libraryStd = asana ? (window.getHoldTimes(asana).standard || 30) : 30;
-            const activeTime = isFlow ? durOrReps : libraryStd;
+            const holdTimes = asana ? window.getHoldTimes(asana, pose.variation || null) : { standard: 30, flow: 5 };
+            const libraryStd = holdTimes.standard || 30;
+            const flowTime = Number(pose.flowHoldOverride ?? durOrReps ?? holdTimes.flow ?? holdTimes.standard ?? 5) || 5;
+            const activeTime = isFlow ? flowTime : libraryStd;
             totalSec += getEffectiveTime(idStr, activeTime);
         }
 
@@ -144,8 +145,7 @@ function builderRender() {
                 <div style="display: flex; align-items: center; gap: 6px;">
                 <input type="checkbox" class="b-row-select" data-idx="${idx}" ${disableRowSelect ? 'disabled' : ''} style="margin: 0; width: 14px; height: 14px;">                    <span style="font-weight: 800; color: #007aff; font-size: 0.9rem;">${idx + 1}</span>
                 </div>
-                <div style="font-size: 0.65rem; color: #aaa; letter-spacing: 0.05em;">ID ${idStrNumeric}</div>
-                <div style="font-size: 1.5rem; line-height: 1.2; color: #1a1a1a; font-family: 'Noto Sans Devanagari', sans-serif; margin-top: 6px; white-space: normal; word-wrap: break-word; text-align: center; width: 100%;">
+                <div class="builder-row-meta">${isMacro ? "LINKED SEQUENCE" : `ID ${idStrNumeric}`}</div>                <div style="font-size: 1.5rem; line-height: 1.2; color: #1a1a1a; font-family: 'Noto Sans Devanagari', sans-serif; margin-top: 6px; white-space: normal; word-wrap: break-word; text-align: center; width: 100%;">
                     ${devanagari}
                 </div>
             </div>
@@ -166,8 +166,7 @@ function builderRender() {
               ${injectionBadgesHTML}
               ${roundsHTML}
            </td>
-           ${generateInfoCellHTML(asana, pose, idx, isSpecial)}
-           <td class="builder-order-column">
+           ${isMacro ? buildMacroInfoHTML(macroInfo || { rounds: durOrReps, note: pose.note || "" }) : generateInfoCellHTML(asana, pose, idx, { isSpecial, isFlow })}           <td class="builder-order-column">
   <div class="order-controls-group">
       <button class="tiny b-move-top" data-idx="${idx}" title="Move to Top" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤒</button>
       <button class="tiny b-move-up" data-idx="${idx}">▲</button>
@@ -229,9 +228,14 @@ function builderRender() {
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
         if (asanaMatch) {
             builderState.poses[i].name = asanaMatch.name;
-            if (asanaMatch && window.getHoldTimes) { const ah = window.getHoldTimes(asanaMatch); if (ah.standard) builderState.poses[i].duration = ah.standard; }
-        }
-        builderRender();
+        if (asanaMatch && window.getHoldTimes) {
+                        const ah = window.getHoldTimes(asanaMatch, builderState.poses[i].variation || null);
+                        const nextDuration = isFlow ? (ah.flow || ah.standard || 5) : (ah.standard || 30);
+                        builderState.poses[i].duration = nextDuration;
+                        builderState.poses[i].flowHoldOverride = isFlow ? nextDuration : null;
+                    }
+                }
+                builderRender();
     });
 
     qS('.b-var').forEach(el => el.onchange = (e) => {
@@ -239,14 +243,25 @@ function builderRender() {
         builderState.poses[i].variation = e.target.value;
         const normId = typeof normalizePlate === "function" ? normalizePlate(builderState.poses[i].id) : builderState.poses[i].id;
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
-        const vHold = asanaMatch?.variations?.[e.target.value]?.hold;
-        if (vHold) { 
-            const hd = parseHoldTimes(vHold); 
-            if(hd.standard) builderState.poses[i].duration = hd.standard; 
+       const holdSource = asanaMatch?.variations?.[e.target.value]?.hold || asanaMatch?.hold || '';
+        if (holdSource) { 
+            const hd = parseHoldTimes(holdSource); 
+            const nextDuration = isFlow ? (hd.flow || hd.standard || 5) : (hd.standard || 30);
+            builderState.poses[i].duration = nextDuration; 
+            builderState.poses[i].flowHoldOverride = isFlow ? nextDuration : null; 
         }
         builderRender();
     });
 
+
+    qS('.b-flow-hold').forEach(el => el.onchange = (e) => {
+        const idx = e.target.dataset.idx;
+        let val = parseInt(e.target.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        builderState.poses[idx].flowHoldOverride = val;
+        builderState.poses[idx].duration = val;
+        builderRender();
+    });
     qS('.b-dur').forEach(el => el.onchange = (e) => {
         const idx = e.target.dataset.idx;
         let val = parseInt(e.target.value);
@@ -380,10 +395,10 @@ async function processSemicolonCommand(commandString) {
     if (validItems.length === 0) return;
 
     validItems.forEach(item => {
-        const duration = (item.asana && window.getHoldTimes) ? (window.getHoldTimes(item.asana).standard || 30) : 30;
+    const holdTimes = (item.asana && window.getHoldTimes) ? window.getHoldTimes(item.asana, item.stageKey || null) : { standard: 30, flow: 5 };
+        const duration = isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30);
         builderState.poses.push({
-            id: item.id, name: item.name, duration, variation: item.stageKey || '', note: item.stageKey ? `[${item.stageKey}]` : '', holdTier: 'standard',
-            _ambiguous: item._ambiguous || false, _pageNum: item._pageNum || null, _alternatives: item._alternatives || []
+        id: item.id, name: item.name, duration, variation: item.stageKey || '', note: item.stageKey ? `[${item.stageKey}]` : '', holdTier: 'standard', flowHoldOverride: isFlowSequence() ? duration : null,            _ambiguous: item._ambiguous || false, _pageNum: item._pageNum || null, _alternatives: item._alternatives || []
         });
     });
 
@@ -428,9 +443,9 @@ function builderOpen(mode, seq) {
             addPoseToBuilder({
                 id: asma.id,
                 name: asma.name || asma.english,
-                duration: (window.getHoldTimes ? window.getHoldTimes(asma).standard : null) || 30,
-                variation: "",
-                note: ""
+                duration: (() => { const holdTimes = window.getHoldTimes ? window.getHoldTimes(asma) : { standard: 30, flow: 5 }; return isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : ((holdTimes.standard || 30)); })(),                variation: "",
+note: "",
+                flowHoldOverride: (() => { const holdTimes = window.getHoldTimes ? window.getHoldTimes(asma) : { standard: 30, flow: 5 }; return isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : null; })()
             });
             builderRender();
         },
@@ -461,6 +476,7 @@ function builderOpen(mode, seq) {
        if (titleEl) titleEl.value = seq.title || "";
        if (catInput) catInput.value = seq.category || "";
        builderState.currentPlaybackMode = seq.playbackMode || (seq.isFlow ? "flow" : "standard");       
+        const seqIsFlow = builderState.currentPlaybackMode === "flow";
        const libraryArray = Object.values(window.asanaLibrary || {});
        const rawPoses = (window.currentSequenceOriginalPoses && seq === window.currentSequence) ? window.currentSequenceOriginalPoses : (seq.poses || []);
        
@@ -514,17 +530,18 @@ function builderOpen(mode, seq) {
              if (extractedLabel && !variation) {
                  rawExtras = (extractedLabel + (rawExtras ? " | " + rawExtras : "")).trim();
              }
-    
+             const holdTimes = asana ? (window.getHoldTimes ? window.getHoldTimes(asana, variation || null) : { standard: 30, flow: 5 }) : { standard: 30, flow: 5 };
+             const parsedDuration = Number(p[1]) || (seqIsFlow ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30));
              builderState.poses.push({
                 id: id,
                 name: asana ? (asana.name || displayName(asana)) : id,
-                duration: Number(p[1]) || 30,
-                variation: variation,
+                duration: parsedDuration,                variation: variation,
                 note: rawExtras,
                 holdTier: (() => {
                     const tierMatch = (p[4] || '').match(/\btier:(S|L|STD)\b/i);
                     return tierMatch ? (tierMatch[1].toUpperCase() === 'S' ? 'short' : 'long') : 'standard';
-                })()
+                })(),
+                flowHoldOverride: seqIsFlow ? parsedDuration : null
              });
        });
     }
@@ -545,8 +562,7 @@ function builderCompileSequenceText() {
         }        if (idStr.startsWith("LOOP_")) return `${idStr} | ${p.duration} | [Repetition] ${p.note ? p.note : ''}`;
 
         const id = String(p.id).padStart(3, '0');
-        const dur = p.duration || 30;
-        
+        const dur = p.duration || (isFlowSequence() ? 5 : 30);        
         let cleanNote = (p.note || '').replace(/\[.*?\b([IVX]+)([a-z]?)\b.*?\]/ig, '')
                                       .replace(/\btier:[SL]\b/gi, '')
                                       .replace(/\s+/g, ' ')
