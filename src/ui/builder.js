@@ -15,7 +15,12 @@ const getAsanaIndex = () => Object.values(window.asanaLibrary || {}).filter(Bool
 
 const ADMIN_EMAIL = 'mark.opie@gmail.com';
 const isAdmin = () => window.currentUserEmail === ADMIN_EMAIL;
-
+const resetBusyCursorState = () => {
+    const activeEl = document.activeElement;
+    if (activeEl && typeof activeEl.blur === "function") activeEl.blur();
+    document.body.style.cursor = "";
+    document.documentElement.style.cursor = "";
+};
 function builderRender() {
     const tbody = document.getElementById("builderTableBody");
     if (!tbody) return;
@@ -606,7 +611,12 @@ async function builderSave() {
             }
         }
 
-        document.body.classList.remove("modal-open");        alert(`"${title}" saved!`);
+        builderState.isViewMode = true;
+        if (typeof updateBuilderModeUI === "function") updateBuilderModeUI();
+        document.getElementById("editCourseBackdrop").style.display = "none";
+        document.body.classList.remove("modal-open");
+        resetBusyCursorState();
+        alert(`"${title}" saved!`);
 
     } catch(e) {
         console.error("❌ Save failed:", e);

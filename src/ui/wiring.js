@@ -256,10 +256,14 @@ function setupBuilderWiring() {
             variation: '',
             note: `Linked Sequence: ${reps} Round${reps !== 1 ? 's' : ''}`
         });
-        
-        
+
         builderRender();
+        
         if (overlay) overlay.style.display = 'none';
+        const activeEl = document.activeElement;
+        if (activeEl && typeof activeEl.blur === 'function') activeEl.blur();
+        document.body.style.cursor = '';
+        document.documentElement.style.cursor = '';
     });
 
     safeListen("builderAddBlank", "click", () => {
