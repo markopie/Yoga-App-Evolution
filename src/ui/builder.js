@@ -40,6 +40,7 @@ function builderRender() {
         const isLoopStart = idStr === "LOOP_START";
         const isLoopEnd = idStr === "LOOP_END";
         const isSpecial = isMacro || isLoopStart || isLoopEnd;
+        const disableRowSelect = isLoopStart || isLoopEnd;
         const idStrNumeric = idStr.match(/^\d+/)?.[0] || idStr;
         let asana = null;
     
@@ -54,7 +55,8 @@ function builderRender() {
                         ? window.calculateTotalSequenceTime(subCourse)
                         : subCourse.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1]), 0);
                     macroDurationCache.set(cacheKey, oneRoundSecs);
-                }                totalSec += (oneRoundSecs * durOrReps); 
+                }
+                  totalSec += (oneRoundSecs * durOrReps); 
             }
         } else if (!isSpecial) {
             const normId = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
@@ -135,8 +137,7 @@ function builderRender() {
         <td style="padding: 12px 4px 12px 12px; text-align: center; width: 85px; min-width: 85px; vertical-align: top; border-bottom: 1px solid #eee;">
             <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%;">
                 <div style="display: flex; align-items: center; gap: 6px;">
-                    <input type="checkbox" class="b-row-select" data-idx="${idx}" ${isSpecial ? 'disabled' : ''} style="margin: 0; width: 14px; height: 14px;">
-                    <span style="font-weight: 800; color: #007aff; font-size: 0.9rem;">${idx + 1}</span>
+                <input type="checkbox" class="b-row-select" data-idx="${idx}" ${disableRowSelect ? 'disabled' : ''} style="margin: 0; width: 14px; height: 14px;">                    <span style="font-weight: 800; color: #007aff; font-size: 0.9rem;">${idx + 1}</span>
                 </div>
                 <div style="font-size: 0.65rem; color: #aaa; letter-spacing: 0.05em;">ID ${idStrNumeric}</div>
                 <div style="font-size: 1.5rem; line-height: 1.2; color: #1a1a1a; font-family: 'Noto Sans Devanagari', sans-serif; margin-top: 6px; white-space: normal; word-wrap: break-word; text-align: center; width: 100%;">
@@ -246,6 +247,9 @@ function builderRender() {
         let val = parseInt(e.target.value);
         if (isNaN(val) || val < 1) val = 1;
         builderState.poses[idx].duration = val;
+         if (String(builderState.poses[idx].id || "").startsWith("MACRO:")) {
+            builderState.poses[idx].note = `Linked Sequence: ${val} Round${val !== 1 ? 's' : ''}`;
+        }
         builderRender(); 
     });
 
@@ -530,8 +534,10 @@ function builderOpen(mode, seq) {
 function builderCompileSequenceText() {
     return builderState.poses.map(p => {
         const idStr = String(p.id);
-        if (idStr.startsWith("MACRO:")) return `${idStr} | ${p.duration} | [Sequence Link] ${p.note ? p.note : ''}`;
-        if (idStr.startsWith("LOOP_")) return `${idStr} | ${p.duration} | [Repetition] ${p.note ? p.note : ''}`;
+    if (idStr.startsWith("MACRO:")) {
+            const rounds = Math.max(1, Number(p.duration) || 1);
+            return `${idStr} | ${rounds} | [Sequence Link] Linked Sequence: ${rounds} Round${rounds !== 1 ? 's' : ''}`;
+        }        if (idStr.startsWith("LOOP_")) return `${idStr} | ${p.duration} | [Repetition] ${p.note ? p.note : ''}`;
 
         const id = String(p.id).padStart(3, '0');
         const dur = p.duration || 30;
@@ -600,8 +606,7 @@ async function builderSave() {
             }
         }
 
-        document.getElementById("editCourseBackdrop").style.display = "none";
-        alert(`"${title}" saved!`);
+        document.body.classList.remove("modal-open");        alert(`"${title}" saved!`);
 
     } catch(e) {
         console.error("❌ Save failed:", e);

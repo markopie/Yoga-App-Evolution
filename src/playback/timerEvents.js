@@ -162,7 +162,7 @@ window.playbackEngine.onTransitionStart = (secs) => {
     // Change lines 161-162 to:
     let previewName;
     let mainMsg;
-     const getPoseVariationInfo = (pose, asanaObj) => {
+      const getPoseVariationInfo = (pose, asanaObj) => {
         if (!pose || !asanaObj || !asanaObj.variations) return { key: "", title: "" };
 
         const noteBits = [pose[2], pose[3], pose[4]].filter(Boolean).join(" ").trim();
