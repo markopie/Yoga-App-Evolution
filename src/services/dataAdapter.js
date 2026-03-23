@@ -13,8 +13,10 @@ async function fetchCourses(currentUserId = null) {
             .select(`
                 *,
                 course_sub_categories (
+                    id,
                     name,
-                    course_categories ( name )
+                    category_id,
+                    course_categories ( id, name )
                 )
             `);
 
@@ -31,16 +33,23 @@ async function fetchCourses(currentUserId = null) {
                     const subObj = row.course_sub_categories;
                     const author = subObj?.course_categories?.name || 'General';
                     const sub    = subObj?.name || '';
-                    
+                    const categoryId = subObj?.course_categories?.id ?? null;
+                    const subCategoryId = subObj?.id ?? row.sub_category_id ?? null;
+                    const isFlow = Number(categoryId) === 55 || String(author).trim().toLowerCase() === 'flow';
+
                     // Reconstruct the "Author > Course" string for the UI
-                    // If sub is 'General' or empty, we just show the Author name
                     const categoryString = (sub && sub !== 'General') ? `${author} > ${sub}` : author;
 
-                    rawAccumulator.push({ 
-                        title: row.title.trim(), 
-                        category: categoryString, 
-                        poses, 
-                        // Check against the newly constructed string
+                    rawAccumulator.push({
+                        title: row.title.trim(),
+                        category: categoryString,
+                        categoryId,
+                        subCategoryId,
+                        categoryName: author,
+                        subCategoryName: sub,
+                        playbackMode: isFlow ? 'flow' : 'standard',
+                        isFlow,
+                        poses,
                         isUserSequence: categoryString === 'My Sequences',
                         id: String(row.id),
                         supabaseId: String(row.id)
@@ -157,7 +166,7 @@ async function loadAsanaLibrary() {
                 hold: holdStr,
                 image_url: stage.image_url ?? '',
                 audio: stage.audio_url ?? stage.Audio_URL ?? '',
-                recovery_pose_id: stage.recovery_pose_id ?? null,
+                recovery_pose_id: stage.recovery_pose_id ?? stage.recover_pose_id ?? null,
                 preparatory_pose_id: stage.preparatory_pose_id ?? null,
                 page_primary: stage.page_primary ?? null,  
                 isCustom: !!stage.user_id 
@@ -208,7 +217,7 @@ function normalizeAsanaRow(row, existingData = {}) {
         category: row.category ?? existingData.category,
         hold: rawHoldText,
         yoga_the_iyengar_way_id: row.yoga_the_iyengar_way_id ?? existingData.yoga_the_iyengar_way_id ?? '',
-        recovery_pose_id: row.recovery_pose_id ?? existingData.recovery_pose_id ?? null,
+        recovery_pose_id: row.recovery_pose_id ?? row.recover_pose_id ?? existingData.recovery_pose_id ?? null,
         preparatory_pose_id: row.preparatory_pose_id ?? existingData.preparatory_pose_id ?? null,
         standard_seconds: parseHoldTimes(rawHoldText).standard || 30,
         isCustom: !!row.is_custom || false

@@ -257,6 +257,8 @@ function setupBuilderWiring() {
             note: `Linked Sequence: ${reps} Round${reps !== 1 ? 's' : ''}`
         });
         
+        
+        builderRender();
         if (overlay) overlay.style.display = 'none';
     });
 
