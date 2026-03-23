@@ -68,7 +68,7 @@ function resolveTierDuration(target, tier) {
 /**
  * The "Brain" Logic for pose timing.
  */
-export function getEffectiveTime(id, dur, tier, varKey, note, returnPerSide = false, seq = null) {
+export function getEffectiveTime(id, dur, tier, varKey, note, returnPerSide = false, seq = null, poseMeta = null) {
     const strId = normalizePoseId(id);
 
     // Macros and Loops carry no duration themselves
@@ -89,7 +89,7 @@ export function getEffectiveTime(id, dur, tier, varKey, note, returnPerSide = fa
         ((baseHj && baseHj.standard != null) ? Number(baseHj.standard) : 30);
     const idNum = parseInt(strId.replace(/\D/g, ''), 10);
     const isPranayama = idNum >= 203 && idNum <= 230;
-    const isFlow = isFlowPlaybackSequence(seq);
+    const isFlow = !!(poseMeta && poseMeta.flowSegment) || isFlowPlaybackSequence(seq);
 
     // RULE 1: Explicit Tiers (S/L/STD) override everything.
     if (tier) {
@@ -133,7 +133,7 @@ export function calculateTotalSequenceTime(seq) {
         : seq.poses;
         
     return expanded.reduce((acc, p) => {
-        const time = getEffectiveTime(p[0], p[1], extractTier(p[4]), p[3], p[4], false, seq);
+        const time = getEffectiveTime(p[0], p[1], extractTier(p[4]), p[3], p[4], false, seq, p[7] || null);
         return acc + time;
     }, 0);
 }

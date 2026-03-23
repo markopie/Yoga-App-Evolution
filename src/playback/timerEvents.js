@@ -11,6 +11,13 @@
 window.startTimer = () => window.playbackEngine.start();
 window.stopTimer = () => window.playbackEngine.stop();
 
+
+function isFlowPlaybackPose(pose = null) {
+    const poseMeta = pose?.[7] || null;
+    return !!(poseMeta?.flowSegment || window.currentSequence?.playbackMode === 'flow' || window.currentSequence?.isFlow);
+}
+
+
 window.playbackEngine.onStart = () => {
     if (typeof window.enableWakeLock === "function") window.enableWakeLock();
 
@@ -33,10 +40,11 @@ window.playbackEngine.onStart = () => {
             ? window.activePlaybackList : (window.currentSequence?.poses || []);
             
         if (poses[window.currentIndex]) {
-            const rawId = Array.isArray(poses[window.currentIndex][0]) ? poses[window.currentIndex][0][0] : poses[window.currentIndex][0];
+            const currentPose = poses[window.currentIndex];
+            const rawId = Array.isArray(currentPose[0]) ? currentPose[0][0] : currentPose[0];
             const asana = typeof window.findAsanaByIdOrPlate === "function" ? window.findAsanaByIdOrPlate(window.normalizePlate(rawId)) : null;
             
-            if (asana) {
+            if (asana && !isFlowPlaybackPose(currentPose)) {
                 if (window.playbackEngine.remaining === window.playbackEngine.currentPoseSeconds) {
                     if (typeof window.playAsanaAudio === "function") {
                         const side = window.getCurrentSide ? window.getCurrentSide() : null;
@@ -77,9 +85,13 @@ window.playbackEngine.onTick = (remaining, currentPoseSeconds) => {
 };
 
 window.playbackEngine.onPoseComplete = (wasLongHold) => {
-    if (wasLongHold && typeof window.playFaintGong === "function") window.playFaintGong();
+    const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) ? window.activePlaybackList : (window.currentSequence?.poses || []);
+    const currentPose = poses[window.currentIndex] || null;
+    const flowPose = isFlowPlaybackPose(currentPose);
+
+    if (wasLongHold && !flowPose && typeof window.playFaintGong === "function") window.playFaintGong();
     
-    if (wasLongHold) {
+    if (wasLongHold && !flowPose) {
         window.playbackEngine.startTransition(15);
     } else {
         const advanced = window.nextPose(); 
@@ -204,8 +216,13 @@ window.playbackEngine.onTransitionStart = (secs) => {
         return baseName;
     };
 
+    const currentPose = poses[window.currentIndex] || null;
+    const nextPose = poses[window.currentIndex + 1] || null;
+    const currentFlowPose = isFlowPlaybackPose(currentPose);
+    const nextFlowPose = isFlowPlaybackPose(nextPose);
+
     if (typeof window.needsSecondSide !== "undefined" && window.needsSecondSide) {
-        mainMsg = "Release from the pose and prepare for the other side";
+        mainMsg = currentFlowPose ? "Release from the pose and continue flowing" : "Release from the pose and prepare for the other side";
         if (nextPoseEl) nextPoseEl.textContent = "Next: the other side";
     } else {
         const nextIdx = window.currentIndex + 1;
@@ -221,12 +238,12 @@ window.playbackEngine.onTransitionStart = (secs) => {
             previewName = buildPosePreviewName(np, asana);            
             let transitionTarget = null;
             
-            const currentP = poses[window.currentIndex];
+            const currentP = currentPose;
             const currId = Array.isArray(currentP[0]) ? currentP[0][0] : currentP[0];
             const currAsana = typeof window.findAsanaByIdOrPlate === "function" ? window.findAsanaByIdOrPlate(window.normalizePlate(currId)) : null;
             const currKey = window.currentVariationKey;
             
-            if (currAsana) {
+            if (currAsana && !currentFlowPose) {
                 let recovery = currAsana.recovery_pose_id;
                 if (currKey && currAsana.variations && currAsana.variations[currKey] && currAsana.variations[currKey].recovery_pose_id) {
                     recovery = currAsana.variations[currKey].recovery_pose_id;
@@ -236,7 +253,7 @@ window.playbackEngine.onTransitionStart = (secs) => {
                 }
             }
             
-            if (!transitionTarget && asana) {
+            if (!transitionTarget && asana && !nextFlowPose) {
                 let prep = asana.preparatory_pose_id;
                 
                 let nextKeyMatch = [np[2], np[3], np[4]].filter(Boolean).join(" ").trim().match(/\[(.*?)\]/);
@@ -258,7 +275,10 @@ window.playbackEngine.onTransitionStart = (secs) => {
                 }
             }
             
-            if (transitionTarget) {
+            if (currentFlowPose || nextFlowPose) {
+                mainMsg = 'Release from the pose and continue flowing';
+                if (nextPoseEl) nextPoseEl.textContent = previewName ? `Next: ${previewName}` : 'Next pose';
+            } else if (transitionTarget) {
                 mainMsg = `Release from the pose and prepare for ${transitionTarget}`;
                 if (nextPoseEl) nextPoseEl.textContent = `Next: ${previewName}`;
             } else {

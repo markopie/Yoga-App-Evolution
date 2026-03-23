@@ -84,6 +84,8 @@ function setPose(idx, keepSamePose = false) {
 
     // 2. DATA EXTRACTION
 const currentPose = poses[idx];
+const currentPoseMeta = currentPose?.[7] || null;
+const isFlowPose = !!(currentPoseMeta?.flowSegment || window.currentSequence?.playbackMode === 'flow' || window.currentSequence?.isFlow);
 const originalRowIndex = (currentPose && currentPose[5] !== undefined) 
                         ? currentPose[5] 
                         : idx;
@@ -403,7 +405,7 @@ if (metaContainer) {
 
     // 11. AUDIO TRIGGER
     window.currentVariationKey = matchedVariationKey;
-    if (window.playbackEngine.running && asana) {
+    if (window.playbackEngine.running && asana && !isFlowPose) {
         const isSecondSide = window.getCurrentSide() === "left" && !!(asana.requiresSides || asana.requires_sides);
         window.playAsanaAudio(asana, baseOverrideName, false, window.getCurrentSide(), matchedVariationKey, isSecondSide);
     }

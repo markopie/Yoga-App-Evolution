@@ -117,6 +117,7 @@ export function applyDurationDial() {
         const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(window.normalizePlate(strId)) : null;
         
         const noteStr = cloned[4] || "";
+        const poseMeta = cloned[7] || null;
         const tierMatch = noteStr.match(/\btier:(S|L|STD)\b/i);
         const tier = tierMatch ? tierMatch[1].toUpperCase() : null;
 
@@ -134,7 +135,7 @@ export function applyDurationDial() {
             targetForHold = asana.variations[variation];
         }
 
-        if (isFlowSequence) {
+        if (isFlowSequence || poseMeta?.flowSegment) {
             cloned[1] = Number(p[1]) || Number(window.getHoldTimes?.(targetForHold || asana)?.flow) || 5;
             return cloned;
         }

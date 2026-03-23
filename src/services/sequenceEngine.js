@@ -21,6 +21,9 @@ export function getExpandedPoses(sequence, ctx = {}) {
     const depth = Number(ctx.depth) || 0;
     const maxDepth = Number(ctx.maxDepth) || 12;
     const seqTitle = String(sequence.title || '').trim();
+    const seqIsFlow = !!(sequence && (sequence.playbackMode === 'flow' || sequence.isFlow === true));
+    const inheritedFlow = !!ctx.flowSegment;
+    const flowSegment = inheritedFlow || seqIsFlow;
 
     if (depth > maxDepth) {
         console.warn(`⚠️ getExpandedPoses: max macro depth (${maxDepth}) exceeded for "${seqTitle || 'Untitled Sequence'}".`);
@@ -54,19 +57,23 @@ export function getExpandedPoses(sequence, ctx = {}) {
                 visitedTitles: Array.from(visitedTitles),
                 stack,
                 depth: depth + 1,
-                maxDepth
+                maxDepth,
+                flowSegment
             });
 
             for (let i = 0; i < durOrReps; i++) {
                 subExpanded.forEach(sp => {
                     let cloned = [...sp];
                     cloned[5] = originalIdx;
+                    const meta = { ...(cloned[7] || {}), flowSegment: !!(cloned[7]?.flowSegment || flowSegment) };
+                    cloned[7] = meta;
                     expanded.push(cloned);
                 });
             }
         } else {
             let cloned = [...p];
             cloned[5] = originalIdx;
+            cloned[7] = { ...(cloned[7] || {}), flowSegment };
             expanded.push(cloned);
         }
     });
@@ -121,7 +128,13 @@ export function getExpandedPoses(sequence, ctx = {}) {
     let withInjected = [];
     finalExpanded.forEach(p => {
         const idStr = String(p[0] || "");
+        const poseMeta = p[7] || {};
         if (idStr.startsWith("MACRO") || idStr.startsWith("LOOP_") || idStr === "GROUP_END") {
+            withInjected.push(p);
+            return;
+        }
+
+        if (poseMeta.flowSegment) {
             withInjected.push(p);
             return;
         }
@@ -186,7 +199,7 @@ export function getExpandedPoses(sequence, ctx = {}) {
                 }
             }
 
-            return [numId, duration, null, varSuffix || null, `* ${label} (Auto-Injected) *`, p[5] || null, label];
+            return [numId, duration, null, varSuffix || null, `* ${label} (Auto-Injected) *`, p[5] || null, label, { ...(poseMeta || {}), flowSegment: false }];
         };
 
         prepIds.forEach(id  => { const pp = createInjectedPose(id,  "Preparatory Action"); if (pp) withInjected.push(pp); });

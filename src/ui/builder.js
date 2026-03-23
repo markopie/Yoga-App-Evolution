@@ -59,7 +59,7 @@ function builderRender() {
                 if (oneRoundSecs == null) {
                     oneRoundSecs = typeof window.calculateTotalSequenceTime === "function"
                         ? window.calculateTotalSequenceTime(subCourse)
-                        : subCourse.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1], '', sp[3], sp[4], false, subCourse), 0);
+                        : subCourse.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1], '', sp[3], sp[4], false, subCourse, sp[7] || null), 0);
                     macroDurationCache.set(cacheKey, oneRoundSecs);
                 }
                 totalSec += (oneRoundSecs * durOrReps);
@@ -370,8 +370,8 @@ function builderRender() {
         };
 
         tempSeq.playbackMode = isFlow ? 'flow' : 'standard';
-        const authoredSecs  = authoredPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4]), p[3], p[4], false, tempSeq), 0);
-        const injectedSecs  = injectedPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4]), p[3], p[4], false, tempSeq), 0);
+        const authoredSecs  = authoredPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4]), p[3], p[4], false, tempSeq, p[7] || null), 0);
+        const injectedSecs  = injectedPoses.reduce((acc, p) => acc + getEffectiveTime(p[0], p[1], extractTierLocal(p[4]), p[3], p[4], false, tempSeq, p[7] || null), 0);
 
         const runtimeSecs   = authoredSecs + injectedSecs;
         const fmt = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
