@@ -1,4 +1,38 @@
 // progressSummaryUI.js
+
+// ── Internal State (Closure) ─────────────────────────────────────────────────
+let completionTracker = {};
+
+/** Returns a copy of the current tracker state. */
+export function getCompletionTracker() {
+    return { ...completionTracker };
+}
+
+/** Wipes the tracker state. */
+export function resetCompletionTracker() {
+    completionTracker = {};
+}
+
+/** Restores the tracker state (e.g. from Resume). */
+export function setCompletionTracker(data) {
+    completionTracker = { ...data };
+}
+
+/** Called by the timer engine active tick to accumulate seconds for a pose. */
+export function updateNodeCompletion(idx, seconds = 1) {
+    if (idx === null || idx === undefined) return;
+    if (!completionTracker[idx]) completionTracker[idx] = 0;
+    completionTracker[idx] += seconds;
+}
+
+// Expose to window immediately for other modules
+Object.assign(window, {
+    getCompletionTracker,
+    resetCompletionTracker,
+    setCompletionTracker,
+    updateNodeCompletion
+});
+
 export function setupProgressSummary() {
     const progressFillContainer = document.getElementById('timeDashboard');
     if (!progressFillContainer) return;

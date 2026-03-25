@@ -52,6 +52,9 @@ function setupSequenceSelector() {
         const idx = seqSelect.value;
         if (typeof window.stopTimer === "function") window.stopTimer(); 
         
+        // Reset granular progress so we don't carry over completion data to the new sequence
+        if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
+
         if (!idx) {
             window.currentSequence = null;
             window.activePlaybackList = [];

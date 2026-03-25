@@ -266,17 +266,32 @@ const RESUME_STATE_KEY = "yoga_resume_state_v2";
 
 /** Saves current sequence and pose index for session recovery. */
 function saveCurrentProgress() {
-    // Note: currentSequence and currentIndex are managed via the window proxy in Region 1
     if (!window.currentSequence) return;
     
+    // 1. Fetch the active tracker data
+    const trackerData = typeof window.getCompletionTracker === 'function' 
+        ? window.getCompletionTracker() 
+        : (window.completionTracker || {});
+
+    // 2. Fetch the new active millisecond tracker
+    const activeMs = window.playbackEngine 
+        ? (window.playbackEngine._activePracticeMs || (window.playbackEngine.activePracticeSeconds * 1000) || 0)
+        : 0;
+    
     const state = {
-        sequenceIdx: $("sequenceSelect")?.value || "",
+        sequenceIdx: document.getElementById("sequenceSelect")?.value || "",
         poseIdx: window.currentIndex,
         sequenceTitle: window.currentSequence.title,
-        focusDuration: playbackEngine.totalFocusSeconds || 0,
+        focusDuration: activeMs,          // Updated to new engine property
+        completionTracker: trackerData,   // 👈 NEW: Saves the actual seconds completed!
         timestamp: Date.now()
     };
-    safeSetLocalStorage(RESUME_STATE_KEY, state);
+    
+    if (typeof safeSetLocalStorage === 'function') {
+        safeSetLocalStorage(RESUME_STATE_KEY, state);
+    } else {
+        try { localStorage.setItem(RESUME_STATE_KEY, JSON.stringify(state)); } catch(e){}
+    }
 }
 
 /** Wipes the saved progress. */
@@ -306,12 +321,12 @@ function showResumePrompt(state) {
     
     let poseName = `pose ${state.poseIdx + 1}`;
     if (seq?.poses) {
-        const poses = typeof getExpandedPoses === "function" ? getExpandedPoses(seq) : seq.poses;
+        const poses = typeof window.getExpandedPoses === "function" ? window.getExpandedPoses(seq) : seq.poses;
         const targetPose = poses[state.poseIdx];
         if (targetPose) {
             const rawId = Array.isArray(targetPose[0]) ? targetPose[0][0] : targetPose[0];
-            const asana = typeof findAsanaByIdOrPlate === "function" ? findAsanaByIdOrPlate(normalizePlate(rawId)) : null;
-            if (asana) poseName = displayName(asana);
+            const asana = typeof window.findAsanaByIdOrPlate === "function" ? window.findAsanaByIdOrPlate(window.normalizePlate(rawId)) : null;
+            if (asana) poseName = typeof window.displayName === "function" ? window.displayName(asana) : (asana.english || asana.name);
         }
     }
     
@@ -324,20 +339,31 @@ function showResumePrompt(state) {
     document.body.appendChild(banner);
 
     banner.querySelector("#resumeYes").onclick = () => {
-        const sel = $("sequenceSelect");
+        const sel = document.getElementById("sequenceSelect");
         if (sel) {
             sel.value = state.sequenceIdx;
             sel.dispatchEvent(new Event('change'));
             
             setTimeout(() => {
                 if (window.currentSequence && typeof window.setPose === "function") {
-                    if (state.focusDuration) playbackEngine.totalFocusSeconds = state.focusDuration;
                     
-                    // 👉 NEW: Restore the completion tracker state into memory
+                    // 1. Restore overall practice time
+                    if (state.focusDuration && window.playbackEngine) {
+                        // Restore internal state
+                        window.playbackEngine._activePracticeMs = state.focusDuration;
+                        // Ensure public getter is synced if necessary (depending on engine implementation)
+                        if (typeof window.playbackEngine.syncTimer === 'function') window.playbackEngine.syncTimer();
+                    }
+                    
+                    // 2. Restore individual pose completion seconds!
                     if (state.completionTracker) {
+                        // Override the internal memory object
                         window.completionTracker = state.completionTracker;
-                    } else {
-                        if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
+                        
+                        // If there is a dedicated setter in your state.js, call it too
+                        if (typeof window.setCompletionTracker === 'function') {
+                            window.setCompletionTracker(state.completionTracker);
+                        }
                     }
                     
                     window.setPose(state.poseIdx);
@@ -348,12 +374,13 @@ function showResumePrompt(state) {
     };
 
     banner.querySelector("#resumeNo").onclick = () => {
-        // 👉 NEW: Ensure the tracker is wiped if they choose to restart
+        if (typeof window.clearProgress === 'function') window.clearProgress();
         if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
-        clearProgress();
+        window.completionTracker = {}; 
         banner.remove();
     };
 }
+
 
 // Global exports
 Object.assign(window, {
