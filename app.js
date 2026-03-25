@@ -287,6 +287,8 @@ function saveCurrentProgress() {
         timestamp: Date.now()
     };
     
+    console.log("[Resume] 💾 Saving State:", state); // Debug tracking
+
     if (typeof safeSetLocalStorage === 'function') {
         safeSetLocalStorage(RESUME_STATE_KEY, state);
     } else {
@@ -298,6 +300,7 @@ function saveCurrentProgress() {
 function clearProgress() {
     try {
         localStorage.removeItem(RESUME_STATE_KEY);
+        console.log("[Resume] 🧹 Progress cleared");
     } catch (_err) {
         // Linter-friendly catch
     }
@@ -339,6 +342,7 @@ function showResumePrompt(state) {
     document.body.appendChild(banner);
 
     banner.querySelector("#resumeYes").onclick = () => {
+        console.log("[Resume] 🟢 User accepted resume");
         const sel = document.getElementById("sequenceSelect");
         if (sel) {
             sel.value = state.sequenceIdx;
@@ -349,6 +353,7 @@ function showResumePrompt(state) {
                     
                     // 1. Restore overall practice time
                     if (state.focusDuration && window.playbackEngine) {
+                        console.log("[Resume] ⏱ Restoring active duration:", state.focusDuration);
                         // Restore internal state
                         window.playbackEngine._activePracticeMs = state.focusDuration;
                         // Ensure public getter is synced if necessary (depending on engine implementation)
@@ -357,6 +362,7 @@ function showResumePrompt(state) {
                     
                     // 2. Restore individual pose completion seconds!
                     if (state.completionTracker) {
+                        console.log("[Resume] 📊 Restoring tracker data:", state.completionTracker);
                         // Override the internal memory object
                         window.completionTracker = state.completionTracker;
                         
@@ -392,6 +398,15 @@ Object.assign(window, {
     updateCompletionRating,
     seedManualCompletionsOnce
 });
+
+// ⚡️ AUTO-SAVE TRIGGERS
+// This ensures the save actually happens when you close tabs, refresh, or switch apps.
+window.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+        saveCurrentProgress();
+    }
+});
+window.addEventListener("pagehide", saveCurrentProgress);
 
 // #endregion
 // #region 6. CORE PLAYER LOGIC
