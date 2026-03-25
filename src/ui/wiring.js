@@ -148,7 +148,6 @@ function setupPlaybackControls() {
 
         // 2. The UI Manifest (Verified against index.html)
         const uiResetManifest = {
-            "poseCounter":          ["–", "text"],
             "poseTimer":            ["–", "text"],
             "timeRemainingDisplay": ["--:--", "text"],
             "timeTotalDisplay":     ["--:--", "text"],

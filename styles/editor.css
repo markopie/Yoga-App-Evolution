@@ -28,13 +28,15 @@
     overflow-wrap: break-word !important;
     white-space: normal !important;
     padding-right: 10px;
+    max-width: 300px !important; /* Prevents it from getting too wide */
+    overflow: hidden;
 }
 
 /* --- THE BLUE DROPDOWN (Inside Col 2) --- */
 .b-var {
     display: inline-block;
     margin-left: 8px; 
-    padding: 2px 4px; 
+    padding: 2px 4px !important; 
     border: 1px solid #1976d2; 
     border-radius: 4px; 
     font-size: 0.75rem; 
@@ -45,19 +47,19 @@
     white-space: nowrap;
     overflow: hidden;
     vertical-align: middle;
-    padding: 2px 4px !important; /* Forces the padding to shrink from 14px */
-    min-height: 0 !important;      /* Removes the 44px height restriction */
-    height: 24px !important;     /* Sets a clean, standard height */
+    min-height: 0 !important;
+    height: 24px !important;
     appearance: none !important;
     -webkit-appearance: none !important;
-    box-sizing: border-box !important;   /* Ensures padding doesn't add to width */
-    width: auto !important;              /* Allows it to shrink to text size */
+    box-sizing: border-box !important;
+    width: auto !important;
 }
 
 /* Col 3, 4, 5: UI Elements (Shrink-wrap tightly around buttons) */
 #builderTable th:nth-child(n+3), #builderTable td:nth-child(n+3) { 
-    width: 1% !important; 
+    width: auto !important; 
     white-space: nowrap !important; 
+    padding: 8px 12px;
 }
 
 /* Info Cell (Col 3) internal styling */
@@ -65,9 +67,27 @@
     min-width: 170px !important; /* Adjusted to fit S/STD/L buttons comfortably */
     padding: 8px 10px;
 }
+.builder-info-th, 
+#builderTable td:nth-child(3) {
+    width: 145px !important;
+    min-width: 145px !important;
+    padding: 8px 4px !important;
+}
 
-#builderTable td:nth-child(4) { min-width: 90px !important; text-align: center; }
-#builderTable td:nth-child(5) { min-width: 90px !important; text-align: right; padding-right: 10px !important; }
+/* Col 4 (Order) & Col 5 (Action) */
+#builderTable th:nth-child(4), #builderTable td:nth-child(4) { 
+    width: 110px !important; 
+    min-width: 110px !important;
+    text-align: right !important;
+    padding-right: 10px !important;
+}
+
+#builderTable td:nth-child(5) { 
+    min-width: 90px !important; 
+    text-align: right; 
+    padding-right: 10px !important; 
+}
+
 
 /* --- TIER BUTTONS (Inside Col 3) --- */
 .b-tier-group { display: flex; gap: 3px; margin-bottom: 4px; }
@@ -92,10 +112,6 @@
 }
 
 .b-tier-sec { font-size: 0.62rem; margin-top: 1px; }
-
-/* Give the button columns minimum breathing room so they never overlap */
-#builderTable td:nth-child(4) { min-width: 90px !important; text-align: center; }
-#builderTable td:nth-child(5) { min-width: 90px !important; text-align: right; padding-right: 10px !important; }
 
 
 /* --- 2. Builder View Mode (Jobbsian Aesthetic) --- */
@@ -129,35 +145,36 @@
     box-shadow: none !important;
 }
 
-/* 1. Only hide the checkbox, NEVER the <th> itself, to keep columns aligned */
+/* Hide checkbox in view mode */
 .builder-view-mode td:first-child input[type="checkbox"] {
     display: none !important;
 }
 
-/* 2. Release the strict Builder grid so View Mode can flow naturally */
+/* View Mode Table Fixes */
 .builder-view-mode #builderTable {
     table-layout: auto !important;
+    width: 100%; 
+    margin-bottom: 0;
 }
 
-/* 3. Set perfect reading proportions for the 3 visible columns */
 .builder-view-mode th:nth-child(1), 
 .builder-view-mode td:nth-child(1) {
-    width: 85px !important; /* Match the new wider base width */
+    width: 85px !important; 
     text-align: center;
 }
 
 .builder-view-mode th:nth-child(2),
 .builder-view-mode td:nth-child(2) {
-    width: 100% !important; /* The Sponge: absorbs all empty space */
+    width: 100% !important; 
 }
 
 .builder-view-mode th:nth-child(3),
 .builder-view-mode td:nth-child(3) {
-    width: 1% !important; /* Hugs the duration badges tightly */
+    width: 1% !important; 
     white-space: nowrap !important;
 }
 
-/* 4. Kill the ghost columns: Hide column 4 AND everything after it */
+/* Hide action columns in view mode */
 .builder-view-mode th:nth-child(n+4), 
 .builder-view-mode td:nth-child(n+4) {
     display: none !important;
@@ -179,7 +196,7 @@
     max-height: none !important; 
 }
 
-/* FREEZE THE TABLE INTERACTIONS IN VIEW MODE */
+/* FREEZE TABLE INTERACTIONS IN VIEW MODE */
 .builder-view-mode #builderTableBody {
     pointer-events: none !important; 
     user-select: none !important;    
@@ -196,12 +213,9 @@
 .builder-view-mode .b-var-edit { display: none !important; }
 
 /* VIEW MODE LOCKDOWNS FOR INPUTS */
-.builder-view-mode input.jobbsian-input {
-    pointer-events: none !important;
-}
-.builder-view-mode input.jobbsian-category:placeholder-shown {
-    display: none !important;
-}
+.builder-view-mode input.jobbsian-input { pointer-events: none !important; }
+.builder-view-mode input.jobbsian-category:placeholder-shown { display: none !important; }
+
 
 /* --- 3. Seamless Typography Inputs (Unified Formatting) --- */
 .jobbsian-title {
@@ -245,68 +259,31 @@
     pointer-events: none !important;
 }
 
-/* --- 4. Mobile Table Resets (Extremely Narrow Phones) --- */
-@media (max-width: 400px) {
-    .binfo-cat { display: none !important; }
 
-    #builderTableBody .b-move-top,
-    #builderTableBody .b-move-bot {
-        display: none !important;
-    }
-
-    #builderTableBody button.tiny {
-        min-width: 28px !important;
-        height: 28px !important;
-        padding: 2px !important;
-        font-size: 0.85rem !important;
-    }
-
-    #builderTable td:last-child {
-        gap: 3px !important;
-        padding: 6px !important;
-    }
-
-    #builderTable td:nth-child(3) {
-        padding: 6px !important;
-        min-width: 100px !important;
-    }
-
-    #builderTable td:first-child {
-        font-size: 0 !important; 
-        width: 32px !important;  
-    }
-
-    #builderTable td:first-child br {
-        display: none !important;
-    }
-
-    #builderTable td:nth-child(2) {
-    display: flex !important;
-    align-items: center !important; /* Centers the name and dropdown vertically */
-    gap: 10px !important;           /* Creates exact spacing between them */
-    }
-}
-
-/* --- Missing Editor Additions --- */
-
-/* 1. Editor Search & Toolbar */
+/* --- 4. Editor Search & Toolbar --- */
 #builderSearch { width: 100%; box-sizing: border-box; border: 1px solid var(--color-border); border-radius: 8px; font-size: 16px; line-height: 1.4; transition: height 0.2s ease; }
 #builderSearch:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(0,122,255,0.2); }
 .builder-toolbar-primary #builderSearch { flex: 1; border-radius: 6px; min-height: 42px !important; max-height: 80px; padding: 8px 10px; resize: vertical; }
-.builder-tools-toggle-btn { display: none; padding: 8px 10px; font-size: 1rem; min-width: 40px; min-height: 40px; flex-shrink: 0; }
 
-/* 2. Builder Category Input Dropdown */
+
+/* --- 5. Builder Category Input Dropdown --- */
 #builderCategory { width: 280px !important; min-width: 280px; flex: none !important; appearance: none; -moz-appearance: none; -webkit-appearance: none; }
 #builderCategory::-webkit-calendar-picker-indicator { display: none !important; }
 #builderCategoryList { background-color: white; border: 1px solid var(--color-border); }
 
-/* 3. Sequence Loops & Macro Rows */
-.builder-macro-row { background-color: #e3f2fd !important; border-left: 4px solid #1976d2 !important; }
+
+/* --- 6. Sequence Loops & Macro Rows --- */
+.builder-macro-row { background: linear-gradient(90deg, #eef6ff 0%, #f8fbff 100%) !important; border-left: 4px solid #1565c0 !important; }
 .builder-loop-row { background-color: #fdfae3 !important; border-left: 4px solid #fbc02d !important; }
-.builder-macro-row td, .builder-loop-row td { font-style: italic; color: #333; }
+.builder-macro-row td, .builder-loop-row td { font-style: normal; color: #12324a; }
 .macro-title-badge { display: inline-block; background-color: #1976d2; color: white; font-size: 0.75rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-right: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* 4. Builder Info Cells (The non-editable metadata) */
+.builder-info-macro { min-width: 185px !important; }
+.builder-macro-info-line { font-size: 0.8rem; line-height: 1.35; color: #16324f; }
+.builder-macro-note { margin-top: 6px; font-size: 0.72rem; color: #4b5563; white-space: normal; }
+
+
+/* --- 7. Builder Info Cells (Non-editable metadata) --- */
 .builder-info-cell { padding: 8px 10px; vertical-align: top; width: 170px; min-width: 140px; }
 .builder-info-special { color: #ccc; font-size: 0.85rem; text-align: center; vertical-align: middle; }
 .binfo-dur { display: inline-flex; align-items: center; gap: 3px; background: #e8f0fe; color: #1a56db; border: 1px solid #c5d8fd; border-radius: 10px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
@@ -326,10 +303,39 @@
 .binfo-cat[data-cat="forward"] { background:#f0fdf4; color:#166534; border-color:#86efac; }
 .binfo-cat[data-cat="restorative"] { background:#f0f9ff; color:#0c4a6e; border-color:#7dd3fc; }
 
-/* 5. Missing View Mode Tweak */
-.builder-view-mode #builderTable { width: 100%; margin-bottom: 0; }
+.builder-row-meta { font-size: 0.65rem; color: #6b7280; letter-spacing: 0.06em; font-weight: 700; }
+.builder-info-flow { min-width: 190px !important; }
+.builder-flow-info-block { display: grid; grid-template-columns: auto minmax(58px, 72px) auto; align-items: center; gap: 6px; margin-bottom: 6px; }
+.builder-flow-label { font-size: 0.72rem; font-weight: 700; color: #0f3d75; text-transform: uppercase; letter-spacing: 0.04em; }
+.b-flow-hold { width: 100%; padding: 4px 6px; border: 1px solid #90caf9; border-radius: 6px; background: #fff; color: #0f172a; font-weight: 700; text-align: right; }
+.builder-flow-unit { font-size: 0.72rem; color: #475569; }
 
-/* 6. Deep Mobile Responsive Rules (Max-Width 700px & 600px) */
+
+/* Lock the Order Column to a safe minimum */
+.builder-order-column {
+    padding: 12px 8px !important;
+    vertical-align: top !important;
+    border-bottom: 1px solid #eee !important;
+    width: 1% !important;        
+    min-width: 145px !important;  
+}
+
+.order-controls-group {
+    display: flex !important;
+    gap: 2px !important;
+    justify-content: flex-end !important;
+}
+
+.order-controls-group button {
+    flex: 0 0 auto !important;   
+}
+
+
+/* ==========================================================================
+   8. MOBILE RESPONSIVE BLOCKS (Card Layout)
+   ========================================================================== */
+
+/* Tablet Optimization (Max-Width 700px) */
 @media (max-width: 700px) {
     #editCourseBackdrop .modal { width: 100%; height: 100vh; max-width: 100%; margin: 0; border-radius: 0; display: flex; flex-direction: column; }
     #editCourseBackdrop .modal-body { flex: 1 !important; overflow-x: auto; overflow-y: auto; max-height: calc(100dvh - 190px) !important; -webkit-overflow-scrolling: touch; }
@@ -341,135 +347,153 @@
     .b-note { width: 80px !important; }
 }
 
-/* Lock the Order Column to a safe minimum */
-.builder-order-column {
-    padding: 12px 8px !important;
-    vertical-align: top !important;
-    border-bottom: 1px solid #eee !important;
-    width: 1% !important;        /* Tells table: 'only take what you need' */
-    min-width: 145px !important;  /* Tells table: '...but you need at least this much' */
-}
-
-/* Ensure the buttons inside the Order column don't wrap */
-.order-controls-group {
-    display: flex !important;
-    gap: 2px !important;
-    justify-content: flex-end !important;
-}
-
-.order-controls-group button {
-    flex: 0 0 auto !important;   /* Prevents buttons from ever shrinking */
-}
-
-#builderTable td:nth-child(2) {
-    width: auto !important; /* Remove the 100% so it doesn't 'bully' the others */
-    max-width: 300px !important; /* Prevents it from getting too wide */
-    overflow: hidden;
-}
-/* Tighten the Info Column (Col 3) */
-.builder-info-th, 
-#builderTable td:nth-child(3) {
-    width: 145px !important; /* Reduced from 170px to save 25px */
-    min-width: 145px !important;
-    padding: 8px 4px !important;
-}
-
-/* Fix the Order Column (Col 4) */
-#builderTable th:nth-child(4), 
-#builderTable td:nth-child(4) {
-    width: 110px !important; /* Increased from 64px to actually fit 3 buttons */
-    min-width: 110px !important;
-    text-align: right !important;
-    padding-right: 10px !important;
-}
-
+/* Mobile Phone Optimization (Max-Width 600px) */
 @media (max-width: 600px) {
+    /* Builder Panel & Modal UI */
+    /* --- Fix for the Order Controls (Stop left overflow) --- */
+    #builderTable td.builder-order-column {
+        display: flex !important;
+        width: 100% !important;
+        justify-content: center !important; 
+        padding: 12px 0 4px 0 !important;
+        border-top: 1px dashed #eee !important; /* Visual separator */
+        margin-top: 8px !important;
+    }
+
+    .order-controls-group {
+        display: flex !important;
+        width: 100% !important;
+        justify-content: space-between !important; /* Spread evenly, no left overflow */
+        gap: 8px !important;
+    }
+
+    .order-controls-group button {
+        flex: 1 !important; /* Make all 4 buttons equal width */
+        padding: 10px 0 !important; /* Taller touch targets for thumbs */
+        font-size: 1.2rem !important; /* Bigger arrows */
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        background: #f2f2f7 !important;
+        border: 1px solid #d1d1d6 !important;
+        border-radius: 8px !important;
+    }
+
+    /* Force unhide the top/bottom buttons that older mobile rules were hiding */
+    #builderTableBody .b-move-top, 
+    #builderTableBody .b-move-bot,
+    #builderTableBody .b-move-up, 
+    #builderTableBody .b-move-dn {
+        display: flex !important; 
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    
+    
     .builder-tools-toggle-btn { display: flex; align-items: center; justify-content: center; }
     .builder-tools-panel { display: none; flex-direction: column; }
     .builder-tools-panel.show { display: flex !important; }
-    #editCourseBackdrop .modal { height: 100dvh; max-height: 100dvh; padding-bottom: env(safe-area-inset-bottom, 12px); }
-    #editCourseBackdrop .modal-header input { padding: 6px 8px !important; font-size: 0.85rem !important; min-height: 36px !important; }
     
-    #builderTable thead { display: none; }
-    #builderTable th { display: none; }
-    #builderTable td:first-child { width: 40px !important; display: flex; flex-direction: column; align-items: center; padding: 12px 4px !important; }
-    #builderTable td:nth-child(2) > div:first-child { display: block !important; line-height: 1.3 !important; width: 100%; }
-    #builderTable td:nth-child(2) > div:nth-child(2) { display: flex !important; flex-direction: row !important; align-items: center !important; width: 100%; gap: 8px !important; }
-    .b-id { flex-shrink: 0; width: 48px !important; text-align: center; }
-    .b-var { flex: 1 !important; width: auto !important; max-width: none !important; margin: 0 !important; }
-    #builderTable td:nth-child(3) > div { display: flex; flex-wrap: wrap; gap: 4px; }
-    #builderTable td:last-child > *:not(#durationDialWrap) { display: flex; gap: 2px !important; }
-    #builderTable td:last-child button { display: inline-flex !important; }
-    #builderTableBody .b-move-up, #builderTableBody .b-move-dn { display: inline-flex !important; align-items: center; justify-content: center; visibility: visible !important; opacity: 1 !important; }
-    #builderTableBody span[title] { font-size: 0.65rem !important; padding: 3px 6px !important; white-space: normal !important; line-height: 1.3; display: inline-block !important; }
-}
+    #editCourseBackdrop .modal { 
+        height: 100dvh; 
+        max-height: 100dvh; 
+        padding-bottom: env(safe-area-inset-bottom, 12px); 
+    }
+    
+    #editCourseBackdrop .modal-header input { 
+        padding: 6px 8px !important; 
+        font-size: 0.85rem !important; 
+        min-height: 36px !important; 
+    }
 
-.builder-row-meta {
-    font-size: 0.65rem;
-    color: #6b7280;
-    letter-spacing: 0.06em;
-    font-weight: 700;
-}
+    /* Transform Table to Card Stack */
+    #builderTable, 
+    #builderTable tbody, 
+    #builderTable tr, 
+    #builderTable td {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box;
+    }
 
-.builder-info-flow {
-    min-width: 190px !important;
-}
+    #builderTable thead, #builderTable th { 
+        display: none !important; 
+    }
 
-.builder-flow-info-block {
-    display: grid;
-    grid-template-columns: auto minmax(58px, 72px) auto;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 6px;
-}
+    #builderTable tr {
+        margin-bottom: 16px;
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
 
-.builder-flow-label {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: #0f3d75;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
+    /* Col 1: Controls & Move Buttons (Now Visible & Grouped) */
+    #builderTable td:nth-child(1) {
+        display: flex !important;
+        flex-direction: row !important; 
+        justify-content: flex-start;
+        align-items: center;
+        gap: 8px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 8px !important;
+        width: 100% !important;
+        margin-bottom: 10px;
+    }
 
-.b-flow-hold {
-    width: 100%;
-    padding: 4px 6px;
-    border: 1px solid #90caf9;
-    border-radius: 6px;
-    background: #fff;
-    color: #0f172a;
-    font-weight: 700;
-    text-align: right;
-}
+    /* Col 2: Title & Variations (Filling the White Space) */
+    #builderTable td:nth-child(2) {
+        padding: 4px 8px !important;
+        font-size: 1.1rem;
+        max-width: 100% !important; /* Override desktop strict width */
+    }
 
-.builder-flow-unit {
-    font-size: 0.72rem;
-    color: #475569;
-}
+    #builderTable td:nth-child(2) > div:first-child { 
+        display: block !important; 
+        line-height: 1.3 !important; 
+    }
 
-.builder-macro-row {
-    background: linear-gradient(90deg, #eef6ff 0%, #f8fbff 100%) !important;
-    border-left: 4px solid #1565c0 !important;
-}
+    /* The Blue Dropdown: Full width on mobile */
+    .b-var {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        margin: 8px 0 0 0 !important;
+        height: 32px !important; 
+    }
 
-.builder-macro-row td {
-    color: #12324a;
-    font-style: normal;
-}
+    /* Col 3: Time Dials & Info */
+    #builderTable td:nth-child(3) {
+        border-top: 1px dashed #eee !important;
+        margin-top: 10px;
+        padding: 10px 8px !important;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
 
-.builder-info-macro {
-    min-width: 185px !important;
-}
+    /* Ensure remaining tool buttons (Remove/Search) are contained */
+    #builderTable td:nth-child(4),
+    #builderTable td:nth-child(5) {
+        display: flex !important;
+        justify-content: flex-end !important;
+        gap: 8px !important;
+        padding: 8px 0 0 0 !important;
+    }
 
-.builder-macro-info-line {
-    font-size: 0.8rem;
-    line-height: 1.35;
-    color: #16324f;
-}
-
-.builder-macro-note {
-    margin-top: 6px;
-    font-size: 0.72rem;
-    color: #4b5563;
-    white-space: normal;
+    /* Syncing your existing logic for mobile specific visibility */
+    #builderTableBody .b-move-up, 
+    #builderTableBody .b-move-dn { 
+        display: inline-flex !important; 
+        visibility: visible !important; 
+        opacity: 1 !important; 
+    }
+    
+    #builderTableBody span[title] { 
+        font-size: 0.65rem !important; 
+        padding: 3px 6px !important; 
+        display: inline-block !important; 
+    }
 }

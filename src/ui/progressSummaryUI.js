@@ -1,16 +1,9 @@
-import { $ } from '../utils/dom.js'; // Assuming $ is your document.querySelector wrapper
-
-
 export function setupProgressSummary() {
     const progressFillContainer = document.getElementById('timeDashboard');
     if (!progressFillContainer) return;
 
-    progressFillContainer.style.cursor = 'pointer';
-    
-    // Bind the click event to render the modal
-    progressFillContainer.addEventListener('click', () => {
-        renderProgressSummaryModal();
-    });
+    progressFillContainer.style.cursor = 'pointer'; // Safe single inline style for a dynamic interaction trigger
+    progressFillContainer.addEventListener('click', renderProgressSummaryModal);
 }
 
 function renderProgressSummaryModal() {
@@ -20,23 +13,34 @@ function renderProgressSummaryModal() {
     if (!activeList || activeList.length === 0) return;
 
     // 1. Create Modal Container
+    const backdrop = document.createElement('div');
+    backdrop.className = 'progress-summary-backdrop';
+
     const modal = document.createElement('div');
-    modal.id = 'progressSummaryModal';
-    modal.style.cssText = `
-        position: fixed; top: 10%; left: 10%; width: 80%; max-height: 80vh;
-        background: white; z-index: 9999; overflow-y: auto; padding: 20px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; color: #333;
+    modal.className = 'progress-summary-modal';
+
+    // 2. Header
+    const header = document.createElement('div');
+    header.className = 'progress-summary-header';
+    header.innerHTML = `
+        <h2>Practice Summary</h2>
+        <button id="closeSummaryBtnTop" class="progress-summary-close-top">&times;</button>
     `;
 
-    // 2. Build Table
-    let html = `<h2>Practice Summary</h2>
-                <table style="width: 100%; text-align: left; border-collapse: collapse;">
-                <tr style="border-bottom: 2px solid #ccc;">
-                    <th style="padding: 8px 0;">Asana</th>
-                    <th>Allocated</th>
-                    <th>Completed</th>
-                    <th>Left</th>
-                </tr>`;
+    // 3. Body
+    const body = document.createElement('div');
+    body.className = 'progress-summary-body';
+
+    let html = `
+        <table class="progress-summary-table">
+        <thead>
+            <tr>
+                <th>Asana</th>
+                <th style="text-align: right;">Progress</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
 
     activeList.forEach((node, index) => {
         if (!Array.isArray(node)) return;
@@ -50,69 +54,71 @@ function renderProgressSummaryModal() {
         const isSkipType = note.includes("recovery") || poseNameStr.includes("recovery") || 
                            note.includes("preparat") || poseNameStr.includes("preparat");
         
-        // --- NEW: ASANA DATA RESOLUTION ---
         const rawId = Array.isArray(node[0]) ? node[0][0] : node[0];
-        let displayNameHtml = node[6] || `Pose ${rawId}`; // Fallback
+        let displayNameHtml = `<span class="progress-asana-name">${node[6] || `Pose ${rawId}`}</span>`;
 
-        // Safely look up the actual asana object using existing utility functions
         if (typeof window.findAsanaByIdOrPlate === 'function' && typeof window.normalizePlate === 'function') {
             const asana = window.findAsanaByIdOrPlate(window.normalizePlate(rawId));
             if (asana) {
                 const english = asana.english_name || asana.english || asana.name || "";
                 const iast = asana.iast || "";
                 
-                // Format nicely: English on top (bold), IAST underneath (italic/grey)
                 if (english && iast) {
-                    displayNameHtml = `<strong>${english}</strong><br><span style="font-size:0.85em; color:#666;"><em>${iast}</em></span>`;
+                    displayNameHtml = `<span class="progress-asana-name">${english}</span><span class="progress-asana-iast">${iast}</span>`;
                 } else if (english || iast) {
-                    displayNameHtml = `<strong>${english || iast}</strong>`;
+                    displayNameHtml = `<span class="progress-asana-name">${english || iast}</span>`;
                 }
             }
         }
-        // ----------------------------------
         
-        // Highlight rows that haven't hit the 90% threshold (if not a skipped type)
-        const rowStyle = (!isSkipType && allocated > 0 && (completed/allocated < 0.9)) 
-            ? 'color: #d32f2f;' // Red
-            : 'color: #388e3c;'; // Green
+        const statusClass = (!isSkipType && allocated > 0 && (completed/allocated < 0.9)) 
+            ? 'status-incomplete' 
+            : 'status-complete';
 
-        html += `<tr style="${rowStyle} cursor: pointer; border-bottom: 1px solid #eee;" data-index="${index}">
-                    <td style="padding: 10px 0; line-height: 1.4;">
+        const timeFormatted = typeof window.formatHMS === 'function' ? window.formatHMS(allocated) : allocated + 's';
+
+        html += `<tr class="progress-summary-row ${statusClass}" data-index="${index}">
+                    <td class="progress-cell-left">
                         ${displayNameHtml}
-                        ${isSkipType ? '<br><span style="font-size:0.75em; background:#eee; padding:2px 4px; border-radius:4px; color:#666; display:inline-block; margin-top:4px;">(Skip Allow)</span>' : ''}
+                        ${isSkipType ? '<div><span class="progress-skip-tag">Skip Allowed</span></div>' : ''}
                     </td>
-                    <td>${typeof window.formatHMS === 'function' ? window.formatHMS(allocated) : allocated + 's'}</td>
-                    <td>${completed}s</td>
-                    <td>${left}s</td>
+                    <td class="progress-cell-right">
+                        <div class="progress-time-fraction">${completed}s <span class="progress-time-total">/ ${timeFormatted}</span></div>
+                        <div class="progress-time-left">${left > 0 ? left + 's left' : '<span class="progress-time-done">Done ✓</span>'}</div>
+                    </td>
                  </tr>`;
     });
 
-    html += `</table><button id="closeSummaryModal" style="margin-top: 15px; padding: 8px 16px; cursor: pointer;">Close</button>`;
-    modal.innerHTML = html;
+    html += `</tbody></table>`;
+    body.innerHTML = html;
 
-    // 3. Attach to DOM
-    document.body.appendChild(modal);
+    // 4. Footer
+    const footer = document.createElement('div');
+    footer.className = 'progress-summary-footer';
+    footer.innerHTML = `<button id="closeSummaryBtnBottom" class="progress-summary-close-btn">Close</button>`;
 
-    // 4. Bind Events
-    document.getElementById('closeSummaryModal').addEventListener('click', () => {
-        modal.remove();
-    });
+    // Assemble
+    modal.appendChild(header);
+    modal.appendChild(body);
+    modal.appendChild(footer);
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    // 5. Bind Events
+    const closeModals = () => backdrop.remove();
+    
+    document.getElementById('closeSummaryBtnTop').addEventListener('click', closeModals);
+    document.getElementById('closeSummaryBtnBottom').addEventListener('click', closeModals);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModals(); });
 
     modal.querySelectorAll('tr[data-index]').forEach(row => {
         row.addEventListener('click', (e) => {
             const targetIndex = parseInt(e.currentTarget.getAttribute('data-index'), 10);
-            
-            // 1. Update the state's index
             if (typeof window.setCurrentIndex === 'function') window.setCurrentIndex(targetIndex);
             
-            // 2. Close the summary modal
-            modal.remove();
+            closeModals();
             
-            // 3. Pause the timer to prevent auto-starting a mid-sequence jump
             if (typeof window.stopTimer === 'function') window.stopTimer();
-            
-            // 4. Trigger the UI to render the new pose
-            // 👉 CHANGE THIS to window.loadPoseAtIndex if that is your app's actual function name!
             if (typeof window.setPose === 'function') {
                 window.setPose(targetIndex); 
             } else if (typeof window.loadPoseAtIndex === 'function') {
@@ -122,5 +128,5 @@ function renderProgressSummaryModal() {
     });
 }
 
-// CRITICAL: Expose to window so init() can call it
+// Expose to window
 window.setupProgressSummary = setupProgressSummary;
