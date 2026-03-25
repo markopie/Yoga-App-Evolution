@@ -305,10 +305,16 @@
 
 .builder-row-meta { font-size: 0.65rem; color: #6b7280; letter-spacing: 0.06em; font-weight: 700; }
 .builder-info-flow { min-width: 190px !important; }
-.builder-flow-info-block { display: grid; grid-template-columns: auto minmax(58px, 72px) auto; align-items: center; gap: 6px; margin-bottom: 6px; }
+.builder-flow-info-block {
+    display: flex;
+    align-items: center; /* Vertically centers the text with the input */
+    gap: 8px;            /* Adds a nice breathing space between elements */
+    white-space: nowrap; /* Prevents "secs" from wrapping to a new line */
+}
 .builder-flow-label { font-size: 0.72rem; font-weight: 700; color: #0f3d75; text-transform: uppercase; letter-spacing: 0.04em; }
-.b-flow-hold { width: 100%; padding: 4px 6px; border: 1px solid #90caf9; border-radius: 6px; background: #fff; color: #0f172a; font-weight: 700; text-align: right; }
-.builder-flow-unit { font-size: 0.72rem; color: #475569; }
+.b-flow-hold {
+    width: 60px;         /* Give the input a fixed width so it doesn't hog space */
+}.builder-flow-unit { font-size: 0.72rem; color: #475569; }
 
 
 /* Lock the Order Column to a safe minimum */

@@ -87,7 +87,7 @@ export function generateInfoCellHTML(asana, pose, idx, options = {}) {
             <div class="builder-flow-info-block">
                 <label class="builder-flow-label" for="flowHold-${idx}">Flow hold</label>
                 <input id="flowHold-${idx}" type="number" min="1" step="1" class="b-flow-hold" data-idx="${idx}" value="${currentFlow}">
-                <span class="builder-flow-unit">sec</span>
+                <span class="builder-flow-unit">secs</span>
             </div>
             <div>${catChipHTML}</div>
             ${(asana?.requiresSides || asana?.requires_sides) ? `<div class="binfo-sides">↔ Both sides</div>` : ''}
