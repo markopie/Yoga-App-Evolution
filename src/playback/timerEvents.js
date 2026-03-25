@@ -42,13 +42,11 @@ window.playbackEngine.onStart = () => {
         if (poses[window.currentIndex]) {
             const currentPose = poses[window.currentIndex];
             
-            // --- UPDATED SKIP BUTTON LOGIC (Array-Based) ---
+            // --- SKIP BUTTON LOGIC ---
             const activeSkipBtn = document.getElementById("activePoseSkipBtn"); 
             if (activeSkipBtn) {
-                // Check indices 4 and 6 for 'recovery' or 'preparat' (preparatory/preparation)
                 const note = String(currentPose[4] || "").toLowerCase();
                 const poseName = String(currentPose[6] || "").toLowerCase();
-                
                 const isSkipType = note.includes("recovery") || poseName.includes("recovery") || 
                                    note.includes("preparat") || poseName.includes("preparat");
                 
@@ -63,13 +61,71 @@ window.playbackEngine.onStart = () => {
                     activeSkipBtn.style.display = "none";
                 }
             }
-            // ------------------------------------------------
 
             const rawId = Array.isArray(currentPose[0]) ? currentPose[0][0] : currentPose[0];
             const asana = typeof window.findAsanaByIdOrPlate === "function" ? window.findAsanaByIdOrPlate(window.normalizePlate(rawId)) : null;
             
             if (asana) {
                 if (window.playbackEngine.remaining === window.playbackEngine.currentPoseSeconds) {
+                    
+                    // --- BOUNDARY AUDIO INTERCEPTOR ---
+                    const idx = window.currentIndex;
+                    
+                    if (window._lastBoundaryIdx !== idx) {
+                        window._lastBoundaryIdx = idx;
+
+                        const prevPose = idx > 0 ? poses[idx - 1] : null;
+                        const prevMeta = prevPose ? (prevPose[7] || {}) : {};
+                        const currMeta = currentPose[7] || {};
+
+                        let boundaryPromise = null;
+
+                        // A. Macro Detection
+                        if (currMeta.macroTitle && currMeta.macroTitle !== prevMeta.macroTitle) {
+                            const cleanTitle = currMeta.macroTitle.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+                            if (typeof window.playSystemAudio === 'function') boundaryPromise = window.playSystemAudio(`macro_start_${cleanTitle}`);
+                        } else if (prevMeta.macroTitle && !currMeta.macroTitle) {
+                            if (typeof window.playSystemAudio === 'function') boundaryPromise = window.playSystemAudio("macro_end");
+                        } 
+                        // B. Repetition/Round Detection
+                        else if (currMeta.loopCurrent) {
+                            const isNewRound = prevMeta.loopCurrent && currMeta.loopCurrent !== prevMeta.loopCurrent;
+                            const isFirstRoundStart = !prevMeta.loopCurrent && currMeta.loopCurrent === 1;
+
+                            if (isFirstRoundStart && !currMeta.macroTitle) {
+                                if (typeof window.playSystemAudio === 'function') boundaryPromise = window.playSystemAudio("loop_start");
+                            } else if (isNewRound) {
+                                if (typeof window.speakRound === 'function') boundaryPromise = window.speakRound(currMeta.loopCurrent);
+                            }
+                        } else if (prevMeta.loopCurrent && !currMeta.loopCurrent) {
+                            if (!prevMeta.macroTitle) {
+                                if (typeof window.playSystemAudio === 'function') boundaryPromise = window.playSystemAudio("loop_end");
+                            }
+                        }
+
+                        // Execute Sequentially
+                        if (boundaryPromise) {
+                            window.playbackEngine.suspend(); // ⏸️ Pause countdown safely
+                            
+                            boundaryPromise.then(() => {
+                                // Ensure user hasn't skipped or hard stopped during audio
+                                if (window.currentIndex === idx && window.playbackEngine.running) {
+                                    window.playbackEngine.resume(); // ▶️ Restart countdown
+                                    
+                                    // Trigger Asana Audio now that boundary audio is done
+                                    if (typeof window.playAsanaAudio === "function") {
+                                        const side = window.getCurrentSide ? window.getCurrentSide() : null;
+                                        const isSecondSide = side === "left" && !!(asana.requiresSides || asana.requires_sides);
+                                        window.playAsanaAudio(asana, poses[window.currentIndex][4] || "", false, side, window.currentVariationKey || null, isSecondSide);
+                                    }
+                                }
+                            });
+                            return; // 🛑 Exit to wait for promise
+                        }
+                    }
+                    // --- END BOUNDARY INTERCEPTOR ---
+
+                    // Play standard Asana instruction immediately if no boundary audio
                     if (typeof window.playAsanaAudio === "function") {
                         const side = window.getCurrentSide ? window.getCurrentSide() : null;
                         const isSecondSide = side === "left" && !!(asana.requiresSides || asana.requires_sides);
@@ -167,36 +223,44 @@ function triggerSequenceEnd() {
     const focusOverlay = document.getElementById("focusOverlay");
     if (focusOverlay) focusOverlay.style.display = "none";
 
-    // 90% completion gate (Revised for Exclusions)
+    // --- RE-EVALUATE SUCCESS BASED ON THE DASHBOARD TRACKER ---
     const activeList = typeof window.getActivePlaybackList === 'function' ? window.getActivePlaybackList() : [];
+    const tracker = typeof window.getCompletionTracker === 'function' ? window.getCompletionTracker() : {};
     
-    // Calculate required time based on active list (excluding recovery/prep). 
-    // Fallback to total sequence time if activeList isn't populated.
-    const requiredSeqTime = activeList.length > 0 
-        ? window.calculateRequiredSequenceTime(activeList)
-        : window.calculateTotalSequenceTime(window.currentSequence);
+    let totalSections = 0;
+    let completedSections = 0;
 
-    const focusDuration = window.playbackEngine.activePracticeSeconds || 0;
-    
-    if (focusDuration < 5) { // If less than 5 seconds practiced
-        alert("This session was too short to record. Keep practicing to save your progress!");
-        window.playbackEngine.stop(); // Ensure everything is reset
-    return;
-}
-    
-    const completionRatio = requiredSeqTime > 0 ? focusDuration / requiredSeqTime : 1;
-    
-    if (completionRatio < 0.9 && requiredSeqTime > 60) {
-        const pct = Math.round(completionRatio * 100);
-        const needed = Math.round(requiredSeqTime * 0.9);
-        const got = Math.round(focusDuration);
-        const needMore = needed - got;
-        const mm = Math.floor(needMore / 60);
-        const ss = needMore % 60;
-        const timeStr = mm > 0 ? `${mm}m ${ss}s` : `${ss}s`;
+    if (activeList && activeList.length > 0) {
+        const groupMap = {};
         
-        const msg = `You've completed ${pct}% of this sequence's timed practice.\n\n` +
-            `Keep going — ${timeStr} more to reach 90% to record this session.`;
+        // Group and sum the active time vs allocated time exactly like the UI does
+        activeList.forEach((node, playbackIdx) => {
+            const origIdx = (node[5] !== undefined && node[5] !== null) ? node[5] : `p-${playbackIdx}`;
+            if (!groupMap[origIdx]) {
+                groupMap[origIdx] = { totalAllocated: 0, totalCompleted: 0 };
+                totalSections++;
+            }
+            groupMap[origIdx].totalAllocated += Number(node[1] || 0);
+            groupMap[origIdx].totalCompleted += Number(tracker[playbackIdx] || 0);
+        });
+
+        // Tally how many sections crossed the 90% threshold
+        Object.values(groupMap).forEach(g => {
+            const ratio = g.totalAllocated > 0 ? (g.totalCompleted / g.totalAllocated) : 0;
+            if (ratio >= 0.9) completedSections++; 
+        });
+    }
+
+    const completionRatio = totalSections > 0 ? (completedSections / totalSections) : 0;
+    const isSuccess = completionRatio >= 0.9;
+    // -----------------------------------------------------------
+
+    const focusDuration = window.playbackEngine ? window.playbackEngine.activePracticeSeconds : 0;
+    
+    // Gatekeeper: If they didn't effectively practice 90% of the sequence blocks, block the save.
+    if (!isSuccess) { 
+        const displayPercent = Math.round(completionRatio * 100);
+        const msg = `You've completed ${displayPercent}% of the sequence blocks.\n\nYou need to hold the poses a bit longer to log this session to your history!`;
         
         setTimeout(() => alert(msg), 100);
         return;
@@ -212,9 +276,8 @@ function triggerSequenceEnd() {
         ratingOverlay.dataset.sessionId = "";
         
         if (typeof window.appendServerHistory === "function") {
-            const finalDuration = window.playbackEngine.activePracticeSeconds || 0;
-            console.log(`📊 Practice duration: ${finalDuration}s (active play only, paused time excluded)`);
-            window.appendServerHistory(title, new Date(), category, finalDuration).then(resultId => {
+            console.log(`📊 Practice duration saved: ${focusDuration}s (active play only, paused time excluded)`);
+            window.appendServerHistory(title, new Date(), category, focusDuration).then(resultId => {
                 if (resultId && resultId !== true && typeof resultId !== "boolean") {
                     ratingOverlay.dataset.sessionId = resultId;
                 }
@@ -235,10 +298,11 @@ window.playbackEngine.onTransitionStart = (secs) => {
     }
 
     const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) ? window.activePlaybackList : (window.currentSequence?.poses || []);
-    // Change lines 161-162 to:
+    
     let previewName;
     let mainMsg;
-      const getPoseVariationInfo = (pose, asanaObj) => {
+    
+    const getPoseVariationInfo = (pose, asanaObj) => {
         if (!pose || !asanaObj || !asanaObj.variations) return { key: "", title: "" };
 
         const noteBits = [pose[2], pose[3], pose[4]].filter(Boolean).join(" ").trim();
@@ -256,12 +320,14 @@ window.playbackEngine.onTransitionStart = (secs) => {
 
         return { key: cleanRequestedKey, title: `Stage ${cleanRequestedKey}` };
     };
+    
     const buildPosePreviewName = (pose, asanaObj) => {
         if (!asanaObj) return "";
         const baseName = typeof window.displayName === "function" ? window.displayName(asanaObj) : (asanaObj.english || asanaObj.name || "");
         const variationInfo = getPoseVariationInfo(pose, asanaObj);
         return variationInfo.title ? `${baseName} — ${variationInfo.title}` : baseName;
     };
+    
     const formatTransitionPose = (rawId) => {
         if (!rawId) return "";
         const cleanId = String(rawId).trim().replace(/\|/g, "").replace(/\s+/g, "");
@@ -339,16 +405,57 @@ window.playbackEngine.onTransitionStart = (secs) => {
                 }
             }
             
-            if (currentFlowPose || nextFlowPose) {
-                mainMsg = 'Release from the pose and continue flowing';
-                if (nextPoseEl) nextPoseEl.textContent = previewName ? `Next: ${previewName}` : 'Next pose';
-            } else if (transitionTarget) {
-                mainMsg = `Release from the pose and prepare for ${transitionTarget}`;
-                if (nextPoseEl) nextPoseEl.textContent = `Next: ${previewName}`;
-            } else {
-                mainMsg = `Release from the pose and prepare for ${previewName}`;
-                if (nextPoseEl) nextPoseEl.textContent = `Next: ${previewName}`;
+            // --- SMART ROUTING LOGIC: Macros and Loops ---
+            const currMeta = currentPose ? (currentPose[7] || {}) : {};
+            const nextMeta = np ? (np[7] || {}) : {};
+            
+            // 1. Entering a New Macro
+            if (nextMeta.macroTitle && nextMeta.macroTitle !== currMeta.macroTitle) {
+                mainMsg = `Prepare for ${nextMeta.macroTitle}`;
+                if (nextPoseEl) {
+                    const startLabel = transitionTarget ? transitionTarget : previewName;
+                    nextPoseEl.textContent = `Starting with: ${startLabel}`;
+                }
             }
+            // 2. Entering or Incrementing a Loop/Round
+            else if (nextMeta.loopCurrent && nextMeta.loopCurrent !== currMeta.loopCurrent) {
+                const isFirstRound = nextMeta.loopCurrent === 1;
+                const roundText = isFirstRound ? 'Repetitions' : `Round ${nextMeta.loopCurrent}`;
+                
+                // Prevent redundant label like "Repetitions (Repetition)"
+                let loopContext = '';
+                if (nextMeta.loopLabel) {
+                    const cleanLabel = nextMeta.loopLabel.trim().toLowerCase();
+                    if (cleanLabel !== 'repetition' && cleanLabel !== 'repetitions') {
+                        loopContext = ` (${nextMeta.loopLabel})`;
+                    }
+                }
+                
+                mainMsg = `Prepare for ${roundText}${loopContext}`;
+                if (nextPoseEl) {
+                    const startLabel = transitionTarget ? transitionTarget : previewName;
+                    nextPoseEl.textContent = `Starting with: ${startLabel}`;
+                }
+            }
+            // 3. Exiting a Macro
+            else if (currMeta.macroTitle && !nextMeta.macroTitle) {
+                mainMsg = `Sequence complete. Release and prepare for next pose.`;
+                if (nextPoseEl) nextPoseEl.textContent = transitionTarget ? `Next: ${transitionTarget}` : `Next: ${previewName}`;
+            }
+            // 4. Standard Behavior (Flows & Normal Poses)
+            else {
+                if (currentFlowPose || nextFlowPose) {
+                    mainMsg = 'Release from the pose and continue flowing';
+                    if (nextPoseEl) nextPoseEl.textContent = previewName ? `Next: ${previewName}` : 'Next pose';
+                } else if (transitionTarget) {
+                    mainMsg = `Release from the pose and prepare for ${transitionTarget}`;
+                    if (nextPoseEl) nextPoseEl.textContent = `Next: ${previewName}`;
+                } else {
+                    mainMsg = `Release from the pose and prepare for ${previewName}`;
+                    if (nextPoseEl) nextPoseEl.textContent = `Next: ${previewName}`;
+                }
+            }
+            // ----------------------------------------------
         }
     }
     

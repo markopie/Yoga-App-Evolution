@@ -329,3 +329,24 @@
     border-radius: 10px; font-weight: 600; font-size: 1rem; cursor: pointer; 
     width: 100%; box-shadow: 0 2px 4px rgba(0,122,255,0.2);
 }
+
+.progress-status-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.progress-status-badge.done {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+}
+.progress-status-badge.partial {
+    background: rgba(255, 193, 7, 0.2);
+    color: #b08d05;
+}
+.progress-time-total {
+    font-size: 0.9rem;
+    font-weight: 500;
+    opacity: 0.8;
+}

@@ -39,6 +39,7 @@ export function getExpandedPoses(sequence, ctx = {}) {
         visitedTitles.add(seqTitle);
         stack.push(seqTitle);
     }
+    
     // 1. Unpack Macros
     sequence.poses.forEach((p, originalIdx) => {
         const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
@@ -48,6 +49,7 @@ export function getExpandedPoses(sequence, ctx = {}) {
         if (idStr.startsWith("MACRO:")) {
             const targetTitle = idStr.replace("MACRO:", "").trim();
             const sub = allCourses.find(c => c.title === targetTitle);
+            
             if (!sub || !sub.poses) {
                 console.warn(`⚠️ getExpandedPoses: linked sequence "${targetTitle}" was not found.`);
                 return;
@@ -65,7 +67,18 @@ export function getExpandedPoses(sequence, ctx = {}) {
                 subExpanded.forEach(sp => {
                     let cloned = [...sp];
                     cloned[5] = originalIdx;
-                    const meta = { ...(cloned[7] || {}), flowSegment: !!(cloned[7]?.flowSegment || flowSegment) };
+                    
+                    const meta = { 
+                        ...(cloned[7] || {}), 
+                        macroTitle: targetTitle, // NEW: Contextual Label for Summary/Title UI
+                        flowSegment: !!(cloned[7]?.flowSegment || flowSegment) 
+                    };
+                    
+                    if (durOrReps > 1) {
+                        meta.loopCurrent = i + 1;
+                        meta.loopTotal = durOrReps;
+                    }
+                    
                     cloned[7] = meta;
                     expanded.push(cloned);
                 });
@@ -83,23 +96,34 @@ export function getExpandedPoses(sequence, ctx = {}) {
     let loopBuffer = [];
     let inLoop = false;
     let loopCount = 1;
+    let loopLabel = ""; // NEW: Capture note from LOOP_START
 
     expanded.forEach(p => {
         const idStr = String(p[0]);
         if (idStr === "LOOP_START") {
             if (inLoop) {
                 for (let i = 0; i < loopCount; i++) {
-                    finalExpanded.push(...loopBuffer.map(bp => [...bp]));
+                    finalExpanded.push(...loopBuffer.map(bp => {
+                        let newBp = [...bp];
+                        newBp[7] = { ...(newBp[7] || {}), loopCurrent: i + 1, loopTotal: loopCount, loopLabel };
+                        return newBp;
+                    }));
                 }
             }
             inLoop = true;
             loopCount = Number(p[1]) || 1;
+            // Capture the note (index 4) and strip brackets if present, e.g., "[Warmup]" -> "Warmup"
+            loopLabel = p[4] ? p[4].replace(/[\[\]]/g, "").trim() : ""; 
             loopBuffer = [];
         } else if (idStr === "LOOP_END") {
             if (inLoop) {
                 inLoop = false;
                 for (let i = 0; i < loopCount; i++) {
-                    finalExpanded.push(...loopBuffer.map(bp => [...bp]));
+                    finalExpanded.push(...loopBuffer.map(bp => {
+                        let newBp = [...bp];
+                        newBp[7] = { ...(newBp[7] || {}), loopCurrent: i + 1, loopTotal: loopCount, loopLabel };
+                        return newBp;
+                    }));
                 }
                 loopBuffer = [];
             }
@@ -114,7 +138,11 @@ export function getExpandedPoses(sequence, ctx = {}) {
 
     if (inLoop) {
         for (let i = 0; i < loopCount; i++) {
-            finalExpanded.push(...loopBuffer.map(bp => [...bp]));
+            finalExpanded.push(...loopBuffer.map(bp => {
+                let newBp = [...bp];
+                newBp[7] = { ...(newBp[7] || {}), loopCurrent: i + 1, loopTotal: loopCount, loopLabel };
+                return newBp;
+            }));
         }
     }
 

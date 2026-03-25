@@ -1,8 +1,9 @@
+// progressSummaryUI.js
 export function setupProgressSummary() {
     const progressFillContainer = document.getElementById('timeDashboard');
     if (!progressFillContainer) return;
 
-    progressFillContainer.style.cursor = 'pointer'; // Safe single inline style for a dynamic interaction trigger
+    progressFillContainer.style.cursor = 'pointer'; 
     progressFillContainer.addEventListener('click', renderProgressSummaryModal);
 }
 
@@ -12,92 +13,126 @@ function renderProgressSummaryModal() {
     
     if (!activeList || activeList.length === 0) return;
 
-    // 1. Create Modal Container
-    const backdrop = document.createElement('div');
-    backdrop.className = 'progress-summary-backdrop';
+    // 1. Group the active list by its original source index (node[5])
+    const groups = [];
+    const groupMap = {}; 
 
-    const modal = document.createElement('div');
-    modal.className = 'progress-summary-modal';
-
-    // 2. Header
-    const header = document.createElement('div');
-    header.className = 'progress-summary-header';
-    header.innerHTML = `
-        <h2>Practice Summary</h2>
-        <button id="closeSummaryBtnTop" class="progress-summary-close-top">&times;</button>
-    `;
-
-    // 3. Body
-    const body = document.createElement('div');
-    body.className = 'progress-summary-body';
-
-    let html = `
-        <table class="progress-summary-table">
-        <thead>
-            <tr>
-                <th>Asana</th>
-                <th style="text-align: right;">Progress</th>
-            </tr>
-        </thead>
-        <tbody>
-    `;
-
-    activeList.forEach((node, index) => {
-        if (!Array.isArray(node)) return;
-
-        const allocated = Number(node[1] || 0);
-        const completed = Number(tracker[index] || 0);
-        const left = Math.max(0, allocated - completed);
-        
-        const note = String(node[4] || "").toLowerCase();
-        const poseNameStr = String(node[6] || "").toLowerCase();
-        const isSkipType = note.includes("recovery") || poseNameStr.includes("recovery") || 
-                           note.includes("preparat") || poseNameStr.includes("preparat");
-        
-        const rawId = Array.isArray(node[0]) ? node[0][0] : node[0];
-        let displayNameHtml = `<span class="progress-asana-name">${node[6] || `Pose ${rawId}`}</span>`;
-
-        if (typeof window.findAsanaByIdOrPlate === 'function' && typeof window.normalizePlate === 'function') {
-            const asana = window.findAsanaByIdOrPlate(window.normalizePlate(rawId));
-            if (asana) {
-                const english = asana.english_name || asana.english || asana.name || "";
-                const iast = asana.iast || "";
-                
-                if (english && iast) {
-                    displayNameHtml = `<span class="progress-asana-name">${english}</span><span class="progress-asana-iast">${iast}</span>`;
-                } else if (english || iast) {
-                    displayNameHtml = `<span class="progress-asana-name">${english || iast}</span>`;
-                }
-            }
+    activeList.forEach((node, playbackIdx) => {
+        const origIdx = (node[5] !== undefined && node[5] !== null) ? node[5] : `p-${playbackIdx}`;
+        if (!groupMap[origIdx]) {
+            groupMap[origIdx] = {
+                firstPlaybackIndex: playbackIdx,
+                macroTitle: node[7]?.macroTitle || null,
+                label: node[6] || null, 
+                rawId: Array.isArray(node[0]) ? node[0][0] : node[0],
+                totalAllocated: 0,
+                totalCompleted: 0,
+                loopTotal: node[7]?.loopTotal || 1 
+            };
+            groups.push(groupMap[origIdx]);
         }
-        
-        const statusClass = (!isSkipType && allocated > 0 && (completed/allocated < 0.9)) 
-            ? 'status-incomplete' 
-            : 'status-complete';
-
-        const timeFormatted = typeof window.formatHMS === 'function' ? window.formatHMS(allocated) : allocated + 's';
-
-        html += `<tr class="progress-summary-row ${statusClass}" data-index="${index}">
-                    <td class="progress-cell-left">
-                        ${displayNameHtml}
-                        ${isSkipType ? '<div><span class="progress-skip-tag">Skip Allowed</span></div>' : ''}
-                    </td>
-                    <td class="progress-cell-right">
-                        <div class="progress-time-fraction">${completed}s <span class="progress-time-total">/ ${timeFormatted}</span></div>
-                        <div class="progress-time-left">${left > 0 ? left + 's left' : '<span class="progress-time-done">Done ✓</span>'}</div>
-                    </td>
-                 </tr>`;
+        const g = groupMap[origIdx];
+        g.totalAllocated += Number(node[1] || 0);
+        g.totalCompleted += Number(tracker[playbackIdx] || 0);
     });
 
-    html += `</tbody></table>`;
-    body.innerHTML = html;
+    // --- NEW: Dashboard Calculations ---
+    const totalSections = groups.length;
+    let completedSections = 0;
 
-    // 4. Footer
+    groups.forEach(g => {
+        const ratio = g.totalAllocated > 0 ? (g.totalCompleted / g.totalAllocated) : 0;
+        if (ratio >= 0.9) completedSections++; // 90% threshold for an individual section
+    });
+
+    const completionRatio = totalSections > 0 ? (completedSections / totalSections) : 0;
+    // The Hidden 90% Rule applied to the overall score:
+    const isSuccess = completionRatio >= 0.9; 
+    const displayPercent = isSuccess ? 100 : Math.round(completionRatio * 100);
+    
+    const activeSeconds = window.playbackEngine ? window.playbackEngine.activePracticeSeconds : 0;
+    const durationStr = typeof window.formatHMS === 'function' ? window.formatHMS(activeSeconds) : activeSeconds + 's';
+
+    const dashboardHtml = `
+        <div style="display: flex; justify-content: space-around; background: rgba(0,0,0,0.03); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: ${isSuccess ? '#28a745' : 'inherit'};">${displayPercent}%</div>
+                <div style="font-size: 0.7rem; text-transform: uppercase; opacity: 0.6;">Completion</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold;">${durationStr}</div>
+                <div style="font-size: 0.7rem; text-transform: uppercase; opacity: 0.6;">Active Time</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold;">${completedSections} <span style="font-size: 1rem; opacity: 0.5;">/ ${totalSections}</span></div>
+                <div style="font-size: 0.7rem; text-transform: uppercase; opacity: 0.6;">Sections Done</div>
+            </div>
+        </div>
+    `;
+    // -----------------------------------
+
+    // 2. Create Modal Containers
+    const backdrop = document.createElement('div');
+    backdrop.className = 'progress-summary-backdrop';
+    const modal = document.createElement('div');
+    modal.className = 'progress-summary-modal';
+    const header = document.createElement('div');
+    header.className = 'progress-summary-header';
+    header.innerHTML = `<h2>Practice Summary</h2><button id="closeSummaryBtnTop" class="progress-summary-close-top">&times;</button>`;
+    const body = document.createElement('div');
+    body.className = 'progress-summary-body';
     const footer = document.createElement('div');
     footer.className = 'progress-summary-footer';
     footer.innerHTML = `<button id="closeSummaryBtnBottom" class="progress-summary-close-btn">Close</button>`;
 
-    // Assemble
+    // 3. Render Groups into the Body
+    let html = `<table class="progress-summary-table">
+                <thead><tr><th>Asana / Section</th><th style="text-align: right;">Status</th></tr></thead>
+                <tbody>`;
+
+    groups.forEach(g => {
+        const ratio = g.totalAllocated > 0 ? (g.totalCompleted / g.totalAllocated) : 0;
+        const isEffectivelyDone = ratio >= 0.9;
+        const statusClass = isEffectivelyDone ? 'status-complete' : 'status-incomplete';
+
+        let nameDisplay = "";
+        if (g.macroTitle) {
+            nameDisplay = `<span class="progress-asana-name" style="color:var(--accent-color); font-weight:600;">📦 ${g.macroTitle}</span>`;
+        } else {
+            const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(window.normalizePlate(g.rawId)) : null;
+            if (asana) {
+                const english = asana.english_name || asana.english || asana.name || "";
+                nameDisplay = `<span class="progress-asana-name">${english}</span>`;
+            } else {
+                nameDisplay = `<span class="progress-asana-name">${g.label || `Pose ${g.rawId}`}</span>`;
+            }
+        }
+
+        if (g.loopTotal > 1 && !g.macroTitle) {
+            nameDisplay += `<div style="font-size:0.75rem; opacity:0.6; margin-top:2px;">${g.loopTotal} Rounds</div>`;
+        }
+
+        const timeTotalStr = typeof window.formatHMS === 'function' ? window.formatHMS(g.totalAllocated) : g.totalAllocated + 's';
+        const statusIndicator = isEffectivelyDone 
+            ? '<span class="progress-status-badge done">✓ Done</span>' 
+            : `<span class="progress-status-badge partial">${Math.round(ratio * 100)}%</span>`;
+
+        html += `
+            <tr class="progress-summary-row ${statusClass}" data-index="${g.firstPlaybackIndex}">
+                <td class="progress-cell-left">${nameDisplay}</td>
+                <td class="progress-cell-right" style="text-align: right;">
+                    <div class="progress-time-total">${timeTotalStr}</div>
+                    <div class="progress-status-wrapper" style="margin-top:4px;">${statusIndicator}</div>
+                </td>
+            </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    
+    // Inject the Dashboard ABOVE the table
+    body.innerHTML = dashboardHtml + html;
+
+    // 4. Assemble & Display
     modal.appendChild(header);
     modal.appendChild(body);
     modal.appendChild(footer);
@@ -106,7 +141,6 @@ function renderProgressSummaryModal() {
 
     // 5. Bind Events
     const closeModals = () => backdrop.remove();
-    
     document.getElementById('closeSummaryBtnTop').addEventListener('click', closeModals);
     document.getElementById('closeSummaryBtnBottom').addEventListener('click', closeModals);
     backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModals(); });
@@ -114,16 +148,10 @@ function renderProgressSummaryModal() {
     modal.querySelectorAll('tr[data-index]').forEach(row => {
         row.addEventListener('click', (e) => {
             const targetIndex = parseInt(e.currentTarget.getAttribute('data-index'), 10);
-            if (typeof window.setCurrentIndex === 'function') window.setCurrentIndex(targetIndex);
-            
             closeModals();
-            
+            if (typeof window.setCurrentIndex === 'function') window.setCurrentIndex(targetIndex);
             if (typeof window.stopTimer === 'function') window.stopTimer();
-            if (typeof window.setPose === 'function') {
-                window.setPose(targetIndex); 
-            } else if (typeof window.loadPoseAtIndex === 'function') {
-                window.loadPoseAtIndex(targetIndex);
-            }
+            if (typeof window.setPose === 'function') window.setPose(targetIndex);
         });
     });
 }

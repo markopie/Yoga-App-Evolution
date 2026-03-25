@@ -83,30 +83,30 @@ function setPose(idx, keepSamePose = false) {
     }
 
     // 2. DATA EXTRACTION
-const currentPose = poses[idx];
-const originalRowIndex = (currentPose && currentPose[5] !== undefined) 
-                        ? currentPose[5] 
-                        : idx;
+    const currentPose = poses[idx];
+    const originalRowIndex = (currentPose && currentPose[5] !== undefined) 
+                            ? currentPose[5] 
+                            : idx;
 
-const displayTotal = window.currentSequence.poses ? window.currentSequence.poses.length : poses.length;
+    const displayTotal = window.currentSequence.poses ? window.currentSequence.poses.length : poses.length;
 
-const focusCounter = document.getElementById("focusPoseCounter");
-if (focusCounter) {
-    focusCounter.textContent = `${originalRowIndex + 1} / ${displayTotal}`;
-}
+    const focusCounter = document.getElementById("focusPoseCounter");
+    if (focusCounter) {
+        focusCounter.textContent = `${originalRowIndex + 1} / ${displayTotal}`;
+    }
 
-const rawIdField = currentPose[0];
-let lookupId = Array.isArray(rawIdField) ? rawIdField[0] : rawIdField;
-lookupId = window.normalizePlate(lookupId);
+    const rawIdField = currentPose[0];
+    let lookupId = Array.isArray(rawIdField) ? rawIdField[0] : rawIdField;
+    lookupId = window.normalizePlate(lookupId);
 
-// ALIAS RESOLUTION
-if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
-    let aliasVal = window.idAliases[lookupId];
-    if (aliasVal.includes("|")) aliasVal = aliasVal.split("|")[0];
-    lookupId = window.normalizePlate(aliasVal);
-}
+    // ALIAS RESOLUTION
+    if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
+        let aliasVal = window.idAliases[lookupId];
+        if (aliasVal.includes("|")) aliasVal = aliasVal.split("|")[0];
+        lookupId = window.normalizePlate(aliasVal);
+    }
 
-// 3. SMART LOOKUP
+    // 3. SMART LOOKUP
     const asana = window.findAsanaByIdOrPlate(lookupId);
     const storedVarKey = currentPose[3]; 
 
@@ -122,7 +122,7 @@ if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
     }
 
 
-// VARIATION & NOTE EXTRACTION
+    // VARIATION & NOTE EXTRACTION
     let noteField = currentPose[4] || "";
     let variationTitle = currentPose[3] || ""; 
     let actualNote = noteField;
@@ -272,6 +272,19 @@ if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
             finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.8em; vertical-align: middle;">• ${sideMarker}</span>`;
         }
         
+        // REFINED: Repeat Indicator with Context Label
+        const poseMeta = currentPose[7] || {};
+        if (poseMeta.loopCurrent && poseMeta.loopTotal > 1) {
+            // Priority: macroTitle > loopLabel
+            const contextLabel = poseMeta.macroTitle || poseMeta.loopLabel || "";
+            const labelDisplay = contextLabel ? ` (${contextLabel})` : "";
+
+            finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.72em; vertical-align: middle; margin-left: 8px;" 
+                                  title="Repeat phase ${poseMeta.loopCurrent} of ${poseMeta.loopTotal}${labelDisplay}">
+                              ↻ ${poseMeta.loopCurrent}/${poseMeta.loopTotal}${labelDisplay}
+                           </span>`;
+        }
+
         nameEl.innerHTML = finalTitle; 
     }
 
@@ -314,47 +327,45 @@ if (typeof window.idAliases !== 'undefined' && window.idAliases[lookupId]) {
         window.updatePoseAsanaDescription(asana, displayTechnique);
     }
 
-    
-
     // 9. META UI & AUDIO BUTTON
-const metaContainer = document.getElementById("poseMeta");
-if (metaContainer) {
-    metaContainer.innerHTML = ""; 
+    const metaContainer = document.getElementById("poseMeta");
+    if (metaContainer) {
+        metaContainer.innerHTML = ""; 
 
-    const infoSpan = document.createElement("span");
-    infoSpan.className = "meta-text-only"; 
+        const infoSpan = document.createElement("span");
+        infoSpan.className = "meta-text-only"; 
 
-    // ✅ Pass matchedVariationKey so Stage-specific times appear in the UI
-    const hj = asana ? window.getHoldTimes(asana, matchedVariationKey) : null;
-    
-    let rangeText = "";
-    if (hj && hj.short && hj.long) {
-        // Using \u2013 for the elegant en-dash
-        rangeText = `Range: ${hj.short}s\u2013${hj.long}s`;
-    } else if (hj && hj.standard) {
-        rangeText = `~${hj.standard}s`;
+        // ✅ Pass matchedVariationKey so Stage-specific times appear in the UI
+        const hj = asana ? window.getHoldTimes(asana, matchedVariationKey) : null;
+        
+        let rangeText = "";
+        if (hj && hj.short && hj.long) {
+            // Using \u2013 for the elegant en-dash
+            rangeText = `Range: ${hj.short}s\u2013${hj.long}s`;
+        } else if (hj && hj.standard) {
+            rangeText = `~${hj.standard}s`;
+        }
+
+        // Standard Apple-style separator: ID • Timing
+        infoSpan.textContent = rangeText 
+            ? `ID: ${lookupId} \u2022 ${rangeText}` 
+            : `ID: ${lookupId}`;
+        metaContainer.appendChild(infoSpan);
+
+        if (asana) {
+            const btn = document.createElement("button");
+            btn.className = "tiny"; 
+            btn.innerHTML = "🔊";   
+            btn.style.marginLeft = "12px"; // Slightly more whitespace for that premium feel
+            btn.style.opacity = "0.7";     // Subtly lighter until hovered
+            btn.onclick = (e) => { 
+                e.stopPropagation(); 
+                // Correctly passes the variation key to the audio engine
+                window.playAsanaAudio(asana, null, true, null, matchedVariationKey); 
+            };
+            metaContainer.appendChild(btn);
+        }
     }
-
-    // Standard Apple-style separator: ID • Timing
-    infoSpan.textContent = rangeText 
-        ? `ID: ${lookupId} \u2022 ${rangeText}` 
-        : `ID: ${lookupId}`;
-    metaContainer.appendChild(infoSpan);
-
-    if (asana) {
-        const btn = document.createElement("button");
-        btn.className = "tiny"; 
-        btn.innerHTML = "🔊";   
-        btn.style.marginLeft = "12px"; // Slightly more whitespace for that premium feel
-        btn.style.opacity = "0.7";     // Subtly lighter until hovered
-        btn.onclick = (e) => { 
-            e.stopPropagation(); 
-            // Correctly passes the variation key to the audio engine
-            window.playAsanaAudio(asana, null, true, null, matchedVariationKey); 
-        };
-        metaContainer.appendChild(btn);
-    }
-}
 
     // 10. TIMER & IMAGE LOGIC
     window.playbackEngine.setPoseTime(seconds);
@@ -403,10 +414,11 @@ if (metaContainer) {
 
     // 11. AUDIO TRIGGER
     window.currentVariationKey = matchedVariationKey;
-    if (window.playbackEngine.running && asana) {
+    if (window.playbackEngine && window.playbackEngine.running && asana) {
         const isSecondSide = window.getCurrentSide() === "left" && !!(asana.requiresSides || asana.requires_sides);
         window.playAsanaAudio(asana, baseOverrideName, false, window.getCurrentSide(), matchedVariationKey, isSecondSide);
     }
+
     // SKIP BUTTON VISIBILITY (Recovery / Preparatory)
     const activeSkipBtn = document.getElementById("activePoseSkipBtn"); 
     if (activeSkipBtn) {
@@ -437,7 +449,6 @@ if (metaContainer) {
             activeSkipBtn.style.display = "none";
         }
     }
-
 }
 
 // Export for Wiring

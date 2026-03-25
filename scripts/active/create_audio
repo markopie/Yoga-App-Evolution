@@ -1,0 +1,83 @@
+import os
+import re
+import subprocess
+import tempfile
+from pathlib import Path
+from dotenv import load_dotenv
+from workbench import supabase
+from elevenlabs import VoiceSettings
+from elevenlabs.client import ElevenLabs
+
+# Assuming your environment already has 'supabase' defined from your workbench
+
+# --- CONFIGURATION ---
+load_dotenv()  # This looks for the .env file in your root
+API_KEY = os.getenv("ELEVENLABS_API_KEY")
+VOICE_ID = "ZUrEGyu8GFMwnHbvLhv2"
+MODEL_ID = "eleven_multilingual_v2"
+OUTPUT_FOLDER = "yoga_stage_audio"
+SIDE_CUE_SILENCE_MS = 300
+
+client = ElevenLabs(api_key=API_KEY)
+
+TASKS = [
+    # Side cues
+    ("left_side.mp3", "left side.", SIDE_CUE_SILENCE_MS),
+    ("right_side.mp3", "right side.", SIDE_CUE_SILENCE_MS),
+    
+    # Generic System Transitions
+    ("macro_start.mp3", "Starting linked sequence.", 0),
+    ("macro_end.mp3", "Sequence complete.", 0),
+    ("loop_start.mp3", "Beginning repetitions.", 0),
+    ("loop_end.mp3", "Repetitions finished.", 0),
+
+    # Specific Flow Starts (Formatted for JS lookup)
+    # 4: Surya Namaskar (Classical)
+    ("macro_start_surya_namaskar_classical.mp3", "Starting Surya Namaskar, Classical style.", 0),
+    # 5: Surya Namaskar (A)
+    ("macro_start_surya_namaskar_a.mp3", "Starting Surya Namaskar A.", 0),
+    # 6: Surya Namaskar (B)
+    ("macro_start_surya_namaskar_b.mp3", "Starting Surya Namaskar B.", 0),
+    # 182: Sarvangasana through to Forward Bend (Vinyasa)
+    ("macro_start_sarvangasana_through_to_forward_bend_vinyasa.mp3", "Starting Sarvangasana to Forward Bend Vinyasa.", 0),
+
+    # Bridge connector phrase variants
+    ("bridge_stage_2.mp3", "now,", 0),
+    ("bridge_stage_3.mp3", "moving into,", 0),
+]
+
+if not os.path.exists(OUTPUT_FOLDER):
+    os.makedirs(OUTPUT_FOLDER)
+
+    def generate_audio():
+    print(f"🎙️ Generating audio for {len(TASKS)} tasks...")
+    Path(OUTPUT_FOLDER).mkdir(exist_ok=True)
+
+    for filename, text, silence_ms in TASKS:
+        filepath = os.path.join(OUTPUT_FOLDER, filename)
+        print(f"\n🔊 {filename}  →  say: {text!r}  silence: {silence_ms}ms")
+        try:
+            audio_generator = client.text_to_speech.convert(
+                text=text,
+                voice_id=VOICE_ID,
+                model_id=MODEL_ID,
+                voice_settings=VoiceSettings(
+                    stability=0.5,
+                    similarity_boost=0.75,
+                    style=0.0,
+                    use_speaker_boost=True,
+                    speed=0.80,  # slightly slower for Sanskrit clarity
+                ),
+            )
+            raw = b"".join(chunk for chunk in audio_generator)
+            mp3 = prepend_silence(raw, silence_ms)
+            Path(filepath).write_bytes(mp3)
+            print(f"   ✅ Saved  →  {filepath}")
+        except Exception as e:
+            print(f"   ❌ Error: {e}")
+
+    print(f"\n✨ Done! Files in /{OUTPUT_FOLDER}")
+
+
+if __name__ == "__main__":
+    generate_audio()

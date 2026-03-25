@@ -3,14 +3,13 @@ export class PlaybackEngine {
         this.timer = null;
         this.transitionTimer = null;
         this.running = false;
+        this.isSuspended = false; // NEW: Tracks deliberate audio pauses
         this.remaining = 0;
         this.currentPoseSeconds = 0;
         
         // ── Active practice duration tracking ────────────────────────────────
-        // We track wall-clock intervals rather than counting ticks so that
-        // paused time, browsing time, and tab-switch gaps are excluded.
-        this._activePracticeMs = 0;     // accumulated ms across completed play intervals
-        this._playStartWallMs  = null;  // wall-clock timestamp of last "Start" press
+        this._activePracticeMs = 0;     
+        this._playStartWallMs  = null;  
         
         // Hooks
         this.onStart = () => {};
@@ -23,17 +22,14 @@ export class PlaybackEngine {
         this.onStop = () => {};
     }
 
-    // ── Public getter: active seconds elapsed (paused time excluded) ─────────
     get activePracticeSeconds() {
         let ms = this._activePracticeMs;
-        // If currently playing, add the in-progress interval too
-        if (this.running && this._playStartWallMs !== null) {
+        if (this.running && !this.isSuspended && this._playStartWallMs !== null) {
             ms += (Date.now() - this._playStartWallMs);
         }
         return Math.round(ms / 1000);
     }
 
-    // ── Reset all duration tracking (call when a new sequence is selected) ───
     resetPracticeTimer() {
         this._activePracticeMs = 0;
         this._playStartWallMs  = null;
@@ -42,7 +38,12 @@ export class PlaybackEngine {
     setPoseTime(seconds) {
         this.currentPoseSeconds = parseInt(seconds, 10) || 0;
         this.remaining = this.currentPoseSeconds;
-        this.onTick(this.remaining, this.currentPoseSeconds); // Ensure UI updates instantly on set
+        this.onTick(this.remaining, this.currentPoseSeconds); 
+        
+        // Auto-resume if running, BUT protect the suspended state
+        if (this.running && !this.timer && !this.isSuspended) {
+            this.resume();
+        }
     }
 
     start() {
@@ -52,8 +53,36 @@ export class PlaybackEngine {
         }
 
         this.running = true;
-        this._playStartWallMs = Date.now(); // ← record wall-clock start
-        this.onStart();
+        this.isSuspended = false;
+        this._playStartWallMs = Date.now(); 
+        
+        this.onStart(); // Interceptor runs here and might call suspend()
+
+        // Only resume if onStart() didn't intentionally suspend it
+        if (!this.isSuspended) {
+            this.resume(); 
+        }
+    }
+
+    suspend() {
+        this.isSuspended = true;
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+        }
+        // Pause wall-clock tracking so audio prompts don't inflate practice time
+        if (this._playStartWallMs !== null) {
+            this._activePracticeMs += (Date.now() - this._playStartWallMs);
+            this._playStartWallMs = null;
+        }
+    }
+
+    resume() {
+        if (!this.running) return;
+        this.isSuspended = false;
+        if (this.timer) return; // Already ticking
+
+        this._playStartWallMs = Date.now(); // Restart wall-clock
 
         this.timer = setInterval(() => {
             if (this.remaining > 0) {
@@ -65,7 +94,6 @@ export class PlaybackEngine {
             if (this.remaining <= 0) {
                 clearInterval(this.timer);
                 this.timer = null;
-                // Accumulate this play interval before marking as stopped
                 if (this._playStartWallMs !== null) {
                     this._activePracticeMs += (Date.now() - this._playStartWallMs);
                     this._playStartWallMs = null;
@@ -84,12 +112,13 @@ export class PlaybackEngine {
         if (this.transitionTimer) clearInterval(this.transitionTimer);
         this.transitionTimer = null;
         
-        // Accumulate wall-clock ms for this play interval
         if (this.running && this._playStartWallMs !== null) {
             this._activePracticeMs += (Date.now() - this._playStartWallMs);
             this._playStartWallMs = null;
         }
+        
         this.running = false;
+        this.isSuspended = false; // Reset suspension state
         this.onStop();
     }
 
@@ -97,8 +126,6 @@ export class PlaybackEngine {
         let transitionSecs = secs;
         this.onTransitionStart(transitionSecs);
         
-        // Transition time is NOT counted as active practice (user is recovering/
-        // reading which next pose is coming, not actively holding a pose).
         this.transitionTimer = setInterval(() => {
             transitionSecs--;
             this.onTransitionTick(transitionSecs);
@@ -125,4 +152,3 @@ export class PlaybackEngine {
 }
 
 export const playbackEngine = new PlaybackEngine();
-

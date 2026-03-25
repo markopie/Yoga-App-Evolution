@@ -8,8 +8,6 @@ let currentAudio = null;
 let audioCtx     = null;
 
 // ── Preloaded side-cue files ─────────────────────────────────────────────────
-// Created at module init so they are network-fetched and buffered before first
-// use. This eliminates the ~100ms fetch latency that was clipping "l-eft side".
 const _sideCues = {};
 ["left", "right"].forEach(side => {
     try {
@@ -19,7 +17,6 @@ const _sideCues = {};
     } catch (e) {}
 });
 
-/** Play a preloaded side-cue file, resetting to the beginning each time. */
 function playSideCueFile(side) {
     const a = _sideCues[side];
     if (!a) return;
@@ -85,24 +82,85 @@ export function playSideCue(side) {
     } catch (e) {}
 }
 
-// ── Main orchestrator ─────────────────────────────────────────────────────────
+// ── System & Boundary Audio (Macros / Loops) ─────────────────────────────────
+
 /**
- * Orchestrates the audio playback sequence for a pose.
- *
- * Standard flow:  Main Name → bridge_stage.mp3 (random skip) → Variation → Side cue
- *
- * Special cases:
- *   - `isBrowseContext`: skips all side cues (Browse menu).
- *   - `isSecondSide`: skips name/bridge/stage entirely; plays only the preloaded
- *     side-cue file. Use when a requires_sides asana flips from side 1 → side 2.
- *
- * @param {object}  asana
- * @param {string}  [poseLabel]
- * @param {boolean} [isBrowseContext=false]
- * @param {string}  [currentSide]   'left' | 'right' | null
- * @param {string}  [variationKey]
- * @param {boolean} [isSecondSide=false]
+ * Plays a pre-recorded system audio prompt. Returns a Promise so the next
+ * audio file can be chained to play sequentially without overlapping.
  */
+export function playSystemAudio(fileName) {
+    return new Promise((resolve) => {
+        if (!fileName) return resolve();
+
+        let finalFile = fileName;
+        
+        // Smart fallback: If a specific macro name file isn't on the server, 
+        // fall back to the generic "macro_start.mp3"
+        if (fileName.startsWith('macro_start_')) {
+            const allFiles = window.serverAudioFiles || [];
+            if (!allFiles.includes(`${fileName}.mp3`)) {
+                finalFile = 'macro_start';
+            }
+        }
+
+        if (currentAudio) {
+            try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
+        }
+
+        const src = `${AUDIO_BASE}${finalFile}.mp3`;
+        const a = new Audio(src);
+        currentAudio = a;
+
+        a.onended = resolve;
+        a.onerror = () => {
+            console.warn(`System audio failed/missing: ${src}`);
+            resolve();
+        };
+
+        a.play().catch(() => resolve());
+    });
+}
+
+/**
+ * Uses the Web Speech API to announce the round number. 
+ * Returns a Promise to allow sequential chaining.
+ */
+export function speakRound(roundNum) {
+    return new Promise((resolve) => {
+        if (!('speechSynthesis' in window)) return resolve();
+        
+        window.speechSynthesis.cancel(); // Clear existing speech queue
+
+        const utterance = new SpeechSynthesisUtterance(`Round ${roundNum}`);
+        utterance.rate = 0.9;
+        utterance.pitch = 1.1; // Slightly higher pitch often sounds more natural/feminine
+        utterance.volume = 0.7;
+
+        // Attempt to find a female voice
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+            // Look for voices explicitly labeled 'female' or known female voice names (macOS/iOS)
+            const femaleVoice = voices.find(v => {
+                const name = v.name.toLowerCase();
+                return name.includes('female') || 
+                       ['samantha', 'victoria', 'karen', 'tessa', 'moira', 'matilda'].some(n => name.includes(n));
+            });
+            
+            // If we found one, apply it. Otherwise, it falls back to the system default.
+            if (femaleVoice) {
+                utterance.voice = femaleVoice;
+            }
+        }
+
+        utterance.onend = resolve;
+        utterance.onerror = resolve;
+
+        window.speechSynthesis.speak(utterance);
+    });
+}
+
+
+// ── Main orchestrator ─────────────────────────────────────────────────────────
 export function playAsanaAudio(
     asana,
     poseLabel       = null,
@@ -113,21 +171,16 @@ export function playAsanaAudio(
 ) {
     if (!asana) return;
 
-    // Stop whatever was playing
     if (currentAudio) {
         try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
         currentAudio = null;
     }
 
-    // ── Second-side shortcut ─────────────────────────────────────────────────
-    // For requires_sides asanas transitioning to the second side: play only the
-    // preloaded side-cue file (preloaded = no network latency = no cutoff).
     if (isSecondSide && asana.requiresSides && currentSide && !isBrowseContext) {
         playSideCueFile(currentSide);
         return;
     }
 
-    // ── Standard flow ────────────────────────────────────────────────────────
     const onMainAudioEnded = () => {
         if (isBrowseContext) return;
         if (asana.requiresSides && currentSide) {
@@ -138,19 +191,7 @@ export function playAsanaAudio(
     playPoseMainAudio(asana, poseLabel, onMainAudioEnded, variationKey);
 }
 
-/**
- * Plays the main audio chain: Name → Bridge (random skip) → Variation.
- *
- * Bridge skip rule: each call independently rolls Math.random() against
- * BRIDGE_SKIP_PROBABILITY. No cross-pose state needed — stateless and robust.
- *
- * @param {object}   asana
- * @param {string}   [poseLabel]
- * @param {Function} [onComplete]
- * @param {string}   [variationKey]
- */
 export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, variationKey = null) {
-    // Label-based side cue for non-requires_sides poses (sound FX only)
     if (poseLabel && !asana.requiresSides) {
         const side = detectSide(poseLabel);
         if (side) setTimeout(() => playSideCue(side), 100);
@@ -173,20 +214,17 @@ export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, va
     const varAudio = (variationKey && asana.variations && asana.variations[variationKey]?.audio)
         ? asana.variations[variationKey].audio : null;
 
-    // STEP 3: Variation audio
     const step3_Variation = () => {
         if (varAudio) playSrcInQueue(varAudio, onComplete);
         else if (onComplete) onComplete();
     };
 
-    // STEP 2: Bridge audio — stateless random skip + multi-file variety
     const step2_Bridge = () => {
         if (!varAudio) { if (onComplete) onComplete(); return; }
         if (Math.random() < BRIDGE_SKIP_PROBABILITY) {
             step3_Variation();
             return;
         }
-        // Pick randomly from however many bridge files exist in the manifest
         const allFiles   = window.serverAudioFiles || [];
         const bridges    = ["bridge_stage.mp3", "bridge_stage_2.mp3", "bridge_stage_3.mp3"]
                             .filter(f => allFiles.includes(f) || f === "bridge_stage.mp3");
@@ -194,7 +232,6 @@ export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, va
         playSrcInQueue(AUDIO_BASE + bridgeFile, step3_Variation);
     };
 
-    // STEP 1: Main asana name audio
     const step1_Main = () => {
         let src = asana.audio;
         if (!src) {
@@ -216,3 +253,5 @@ window.playAsanaAudio   = playAsanaAudio;
 window.playFaintGong    = playFaintGong;
 window.playPoseMainAudio = playPoseMainAudio;
 window.getCurrentAudio  = getCurrentAudio;
+window.playSystemAudio  = playSystemAudio;
+window.speakRound       = speakRound;
