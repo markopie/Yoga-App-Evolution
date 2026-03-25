@@ -430,7 +430,43 @@ function setupAuthListeners() {
     });
 }
 
+// Add to wiring.js
+const mainResetBtn = document.getElementById('resetBtn');
+if (mainResetBtn) {
+    mainResetBtn.addEventListener('click', () => {
+        // 1. Log incomplete session (if > 5 secs)
+        const focusDuration = window.playbackEngine?.activePracticeSeconds || 0;
+        if (focusDuration > 5 && typeof window.appendServerHistory === "function") {
+            const title = window.currentSequence?.title || "Unknown Sequence";
+            const category = window.currentSequence?.category || null;
+            window.appendServerHistory(title, new Date(), category, focusDuration, 'incomplete').catch(console.error);
+        }
 
+        // 2. Wipe the granular completion tracker 
+        if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
+        
+        // 3. Reset the engine's active wall-clock timer
+        if (window.playbackEngine && typeof window.playbackEngine.resetPracticeTimer === 'function') {
+            window.playbackEngine.resetPracticeTimer();
+        }
+        
+        // 4. Stop playback
+        if (typeof window.stopTimer === 'function') window.stopTimer();
+        
+        // 5. Instantly flush the UI progress bar
+        const bar = document.getElementById("timeProgressFill");
+        if (bar) {
+            bar.style.width = "0%";
+            bar.style.backgroundColor = "#ffccbc";
+        }
+        const remDisp = document.getElementById("timeRemainingDisplay");
+        if (remDisp) remDisp.textContent = "--:--";
+        
+        // 6. Reset UI to Pose 0 using your exact render function
+        if (typeof window.setPose === 'function') window.setPose(0);
+        if (typeof window.updateNextBtnText === 'function') window.updateNextBtnText();
+    });
+}
 
 // ── Global Bootstrapper ──────────────────────────────────────────────────────
 function initWiring() {

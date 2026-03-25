@@ -407,6 +407,37 @@ if (metaContainer) {
         const isSecondSide = window.getCurrentSide() === "left" && !!(asana.requiresSides || asana.requires_sides);
         window.playAsanaAudio(asana, baseOverrideName, false, window.getCurrentSide(), matchedVariationKey, isSecondSide);
     }
+    // SKIP BUTTON VISIBILITY (Recovery / Preparatory)
+    const activeSkipBtn = document.getElementById("activePoseSkipBtn"); 
+    if (activeSkipBtn) {
+        // Stringify the currentPose array to easily catch 'recovery' or 'preparatory' 
+        // whether it's in the note (index 4), the name (index 6), or meta (index 7)
+        const poseDataString = JSON.stringify(currentPose).toLowerCase();
+        
+        const isSkipType = poseDataString.includes("recovery") || 
+                           poseDataString.includes("preparat") || 
+                           poseDataString.includes("preparation");
+        
+        if (isSkipType) {
+            activeSkipBtn.style.display = "inline-block";
+            activeSkipBtn.onclick = () => {
+                // 1. Stop the current timer
+                if (typeof window.stopTimer === 'function') window.stopTimer();
+                
+                // 2. Advance to the next pose
+                const nextIdx = idx + 1;
+                if (nextIdx < poses.length) {
+                    window.setPose(nextIdx); // Load the UI
+                    if (window.playbackEngine) window.playbackEngine.start(); // Auto-start next
+                } else {
+                    if (typeof window.triggerSequenceEnd === 'function') window.triggerSequenceEnd();
+                }
+            };
+        } else {
+            activeSkipBtn.style.display = "none";
+        }
+    }
+
 }
 
 // Export for Wiring

@@ -15,6 +15,7 @@ export class PlaybackEngine {
         // Hooks
         this.onStart = () => {};
         this.onTick = (remaining, currentPoseSeconds) => {};
+        this.onActiveTick = (secondsElapsed) => {};
         this.onPoseComplete = (wasLongHold) => {};
         this.onTransitionStart = (secs) => {};
         this.onTransitionTick = (secs) => {};
@@ -58,6 +59,7 @@ export class PlaybackEngine {
             if (this.remaining > 0) {
                 this.remaining--;
                 this.onTick(this.remaining, this.currentPoseSeconds);
+                this.onActiveTick(1);
             }
             
             if (this.remaining <= 0) {

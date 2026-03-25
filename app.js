@@ -332,6 +332,14 @@ function showResumePrompt(state) {
             setTimeout(() => {
                 if (window.currentSequence && typeof window.setPose === "function") {
                     if (state.focusDuration) playbackEngine.totalFocusSeconds = state.focusDuration;
+                    
+                    // 👉 NEW: Restore the completion tracker state into memory
+                    if (state.completionTracker) {
+                        window.completionTracker = state.completionTracker;
+                    } else {
+                        if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
+                    }
+                    
                     window.setPose(state.poseIdx);
                 }
                 banner.remove();
@@ -340,6 +348,8 @@ function showResumePrompt(state) {
     };
 
     banner.querySelector("#resumeNo").onclick = () => {
+        // 👉 NEW: Ensure the tracker is wiped if they choose to restart
+        if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
         clearProgress();
         banner.remove();
     };
@@ -387,9 +397,12 @@ async function init() {
         if (statusEl) statusEl.textContent = "Initializing player...";
         await Promise.all([
             import("./src/playback/timerEvents.js"),
-            import("./src/ui/posePlayer.js")
+            import("./src/ui/posePlayer.js"),
+            import("./src/ui/progressSummaryUI.js")
         ]);
-
+        if (typeof window.setupProgressSummary === 'function') {
+            window.setupProgressSummary();
+        }
         if (typeof setupBrowseUI === "function") window.setupBrowseUI();
         if (typeof updateDialUI === 'function') window.updateDialUI();
 

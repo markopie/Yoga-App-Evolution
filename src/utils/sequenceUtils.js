@@ -151,9 +151,35 @@ export function getPosePillTime(p) {
     return (asana && (asana.requiresSides || asana.requires_sides)) ? dur * 2 : dur;
 }
 
+
+/**
+ * Calculates total sequence time, excluding 'recovery' and 'preparatory' poses.
+ */
+export function calculateRequiredSequenceTime(activePlaybackList) {
+    if (!activePlaybackList || !Array.isArray(activePlaybackList)) return 0;
+    
+    return activePlaybackList.reduce((acc, node) => {
+        if (!Array.isArray(node)) return acc; // Safety check
+        
+        const note = String(node[4] || "").toLowerCase();
+        const poseName = String(node[6] || "").toLowerCase();
+        
+        const isSkipType = note.includes("recovery") || poseName.includes("recovery") || 
+                           note.includes("preparat") || poseName.includes("preparat");
+        
+        if (isSkipType) {
+            return acc; // Do not add to required time
+        }
+        
+        const allocatedTime = Number(node[1] || 0); // Index 1 is duration
+        return acc + allocatedTime;
+    }, 0);
+}
+
 // Global Exports
 Object.assign(window, {
     getEffectiveTime,
     calculateTotalSequenceTime,
-    getPosePillTime
+    getPosePillTime, // <-- Added comma here
+    calculateRequiredSequenceTime
 });

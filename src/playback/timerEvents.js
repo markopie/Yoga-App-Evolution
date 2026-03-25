@@ -41,6 +41,30 @@ window.playbackEngine.onStart = () => {
             
         if (poses[window.currentIndex]) {
             const currentPose = poses[window.currentIndex];
+            
+            // --- UPDATED SKIP BUTTON LOGIC (Array-Based) ---
+            const activeSkipBtn = document.getElementById("activePoseSkipBtn"); 
+            if (activeSkipBtn) {
+                // Check indices 4 and 6 for 'recovery' or 'preparat' (preparatory/preparation)
+                const note = String(currentPose[4] || "").toLowerCase();
+                const poseName = String(currentPose[6] || "").toLowerCase();
+                
+                const isSkipType = note.includes("recovery") || poseName.includes("recovery") || 
+                                   note.includes("preparat") || poseName.includes("preparat");
+                
+                if (isSkipType) {
+                    activeSkipBtn.style.display = "inline-block";
+                    activeSkipBtn.onclick = () => {
+                        window.playbackEngine.stop();
+                        const advanced = typeof window.nextPose === "function" ? window.nextPose() : false;
+                        if (advanced) window.playbackEngine.start();
+                    };
+                } else {
+                    activeSkipBtn.style.display = "none";
+                }
+            }
+            // ------------------------------------------------
+
             const rawId = Array.isArray(currentPose[0]) ? currentPose[0][0] : currentPose[0];
             const asana = typeof window.findAsanaByIdOrPlate === "function" ? window.findAsanaByIdOrPlate(window.normalizePlate(rawId)) : null;
             
@@ -82,6 +106,13 @@ window.playbackEngine.onStop = () => {
 };
 window.playbackEngine.onTick = (remaining, currentPoseSeconds) => {
     window.updateTimerUI(remaining, currentPoseSeconds);
+};
+
+// Add the new hook binding right below it
+window.playbackEngine.onActiveTick = (secs) => {
+    if (typeof window.updateNodeCompletion === 'function') {
+        window.updateNodeCompletion(window.getCurrentIndex(), secs);
+    }
 };
 
 window.playbackEngine.onPoseComplete = (wasLongHold) => {
@@ -136,21 +167,28 @@ function triggerSequenceEnd() {
     const focusOverlay = document.getElementById("focusOverlay");
     if (focusOverlay) focusOverlay.style.display = "none";
 
-    // 90% completion gate
-    const totalSeqTime = window.calculateTotalSequenceTime(window.currentSequence);
+    // 90% completion gate (Revised for Exclusions)
+    const activeList = typeof window.getActivePlaybackList === 'function' ? window.getActivePlaybackList() : [];
+    
+    // Calculate required time based on active list (excluding recovery/prep). 
+    // Fallback to total sequence time if activeList isn't populated.
+    const requiredSeqTime = activeList.length > 0 
+        ? window.calculateRequiredSequenceTime(activeList)
+        : window.calculateTotalSequenceTime(window.currentSequence);
+
     const focusDuration = window.playbackEngine.activePracticeSeconds || 0;
     
-    if (focusDuration === 0) {
-        const ratingOverlay = document.getElementById("ratingOverlay");
-        if (ratingOverlay) ratingOverlay.style.display = "none";
-        return;
-    }
+    if (focusDuration < 5) { // If less than 5 seconds practiced
+        alert("This session was too short to record. Keep practicing to save your progress!");
+        window.playbackEngine.stop(); // Ensure everything is reset
+    return;
+}
     
-    const completionRatio = totalSeqTime > 0 ? focusDuration / totalSeqTime : 1;
+    const completionRatio = requiredSeqTime > 0 ? focusDuration / requiredSeqTime : 1;
     
-    if (completionRatio < 0.9 && totalSeqTime > 60) {
+    if (completionRatio < 0.9 && requiredSeqTime > 60) {
         const pct = Math.round(completionRatio * 100);
-        const needed = Math.round(totalSeqTime * 0.9);
+        const needed = Math.round(requiredSeqTime * 0.9);
         const got = Math.round(focusDuration);
         const needMore = needed - got;
         const mm = Math.floor(needMore / 60);
@@ -184,7 +222,6 @@ function triggerSequenceEnd() {
         }
     }
 }
-
 window.playbackEngine.onTransitionStart = (secs) => {
     const overlay = document.getElementById("transitionOverlay");
     const countdownEl = document.getElementById("transitionCountdown");

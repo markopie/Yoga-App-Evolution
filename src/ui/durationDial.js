@@ -220,7 +220,7 @@ function wireDial() {
         });
     }
 
-    // Mobile reset button
+    
     const resetBtn = $("dialResetBtn");
     if (resetBtn) {
         const performReset = (e) => {
