@@ -46,12 +46,19 @@ export function getExpandedPoses(sequence, ctx = {}) {
         const idStr = String(rawId || "");
         const durOrReps = Number(p[1]) || 1;
 
-        if (idStr.startsWith("MACRO:")) {
-            const targetTitle = idStr.replace("MACRO:", "").trim();
-            const sub = allCourses.find(c => c.title === targetTitle);
+        if (/^MACRO:/i.test(idStr)) {
+            const identifier = idStr.replace(/^MACRO:/i, "").trim();
+            const normId = identifier.toLowerCase();
+
+            // Resilient lookup: Try Title (case-insensitive) OR ID match
+            const sub = allCourses.find(c => {
+                const cTitle = String(c.title || "").trim().toLowerCase();
+                const cId = String(c.id || "").trim();
+                return cTitle === normId || cId === identifier;
+            });
             
             if (!sub || !sub.poses) {
-                console.warn(`⚠️ getExpandedPoses: linked sequence "${targetTitle}" was not found.`);
+                console.warn(`⚠️ getExpandedPoses: linked sequence "${identifier}" was not found.`);
                 return;
             }
 
@@ -70,7 +77,7 @@ export function getExpandedPoses(sequence, ctx = {}) {
                     
                     const meta = { 
                         ...(cloned[7] || {}), 
-                        macroTitle: targetTitle, // NEW: Contextual Label for Summary/Title UI
+                        macroTitle: sub.title || identifier, // Prefer human title for UI labels even if linked by ID
                         flowSegment: !!(cloned[7]?.flowSegment || flowSegment) 
                     };
                     

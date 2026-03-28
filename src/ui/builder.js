@@ -45,16 +45,19 @@ function builderRender() {
         const isLoopStart = idStr === "LOOP_START";
         const isLoopEnd = idStr === "LOOP_END";
         const isSpecial = isMacro || isLoopStart || isLoopEnd;
-        const disableRowSelect = isLoopStart || isLoopEnd;
+        const disableRowSelect = false;
         const idStrNumeric = idStr.match(/^\d+/)?.[0] || idStr;
         let asana = null;
     
         let macroInfo = null;
         if (isMacro) {
-            const targetTitle = idStr.replace("MACRO:", "").trim(); 
-            const subCourse = window.courses ? window.courses.find(c => c.title === targetTitle) : null;
+            const identifier = idStr.replace("MACRO:", "").trim(); 
+            const subCourse = window.courses ? window.courses.find(c => 
+                String(c.title || "").trim().toLowerCase() === identifier.toLowerCase() || 
+                String(c.id || "").trim() === identifier
+            ) : null;
             if (subCourse && subCourse.poses) {
-                const cacheKey = String(subCourse.id || subCourse.supabaseId || subCourse.title || targetTitle);
+                const cacheKey = String(subCourse.id || subCourse.supabaseId || subCourse.title || identifier);
                 let oneRoundSecs = macroDurationCache.get(cacheKey);
                 if (oneRoundSecs == null) {
                     oneRoundSecs = typeof window.calculateTotalSequenceTime === "function"
@@ -64,6 +67,7 @@ function builderRender() {
                 }
                 totalSec += (oneRoundSecs * durOrReps);
                 macroInfo = { oneRoundSecs, rounds: durOrReps, note: subCourse.category || pose.note || '' };
+                pose.name = `[Sequence] ${subCourse.title}`; // Ensure UI shows Name even if linked by ID
             }
         } else if (!isSpecial) {
             const normId = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
@@ -164,8 +168,13 @@ function builderRender() {
                  ${iast}
               </div>
               <div class="edit-only-inline" style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; font-size:0.75rem; color:#666;">
-                 ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" ${isSpecial ? 'readonly' : ''} style="width:${isSpecial ? 'auto' : '50px'}; padding:2px; border:1px solid #ccc; border-radius:4px;">
-                 ${!isSpecial ? `<button class="tiny b-row-search-btn" data-idx="${idx}" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer;" title="Search Asana">🔍</button>` : ''}
+                 ${isLoopStart || isLoopEnd ? `<span style="color:#999; font-size:0.65rem; text-transform:uppercase; font-weight:bold; letter-spacing:0.02em;">System Block</span>` : 
+                   (isMacro ? `ID: <span style="font-family:monospace; background:#f0f0f0; padding:2px 6px; border-radius:4px; border:1px solid #ddd; font-size:0.7rem; color:#333;">${pose.id.replace("MACRO:", "")}</span>
+                               <button class="tiny b-macro-swap" data-idx="${idx}" style="padding:2px 8px; border-radius:4px; border:1px solid #007aff; background:#fff; color:#007aff; cursor:pointer; font-weight:600; font-size:0.65rem;" title="Change Linked Sequence">Swap</button>` :
+                              `ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" style="width:50px; padding:2px; border:1px solid #ccc; border-radius:4px;">
+                               <button class="tiny b-row-search-btn" data-idx="${idx}" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer;" title="Search Asana">🔍</button>`
+                   )
+                 }
               </div>
               ${injectionBadgesHTML}
               ${roundsHTML}
@@ -216,6 +225,37 @@ function builderRender() {
  
     const qS = (sel) => tbody.querySelectorAll(sel);
     
+    qS('.b-row-select').forEach(cb => cb.onchange = (e) => {
+        const idx = parseInt(e.target.dataset.idx);
+        const pose = builderState.poses[idx];
+        if (pose && (pose.id === "LOOP_START" || pose.id === "LOOP_END")) {
+            const isChecked = e.target.checked;
+            let pairIdx = -1;
+            if (pose.id === "LOOP_START") {
+                for (let j = idx + 1; j < builderState.poses.length; j++) {
+                    if (builderState.poses[j].id === "LOOP_END") { pairIdx = j; break; }
+                }
+            } else {
+                for (let j = idx - 1; j >= 0; j--) {
+                    if (builderState.poses[j].id === "LOOP_START") { pairIdx = j; break; }
+                }
+            }
+            if (pairIdx !== -1) {
+                const pairCb = tbody.querySelector(`.b-row-select[data-idx="${pairIdx}"]`);
+                if (pairCb) pairCb.checked = isChecked;
+            }
+        }
+    });
+
+    qS('.b-macro-swap').forEach(btn => btn.onclick = (e) => {
+        const idx = parseInt(e.target.dataset.idx);
+        builderState.activeMacroSwapIdx = idx;
+        const overlay = document.getElementById('linkSequenceOverlay');
+        const input = document.getElementById('linkSequenceInput');
+        if (overlay) overlay.style.display = 'flex';
+        if (input) { input.value = ""; input.focus(); }
+    });
+
     qS('.b-row-search-btn').forEach(btn => btn.onclick = (e) => {
         builderState.activeRowSearchIdx = parseInt(e.target.dataset.idx);
         document.getElementById('rowSearchOverlay').style.display = 'flex';
@@ -274,12 +314,46 @@ function builderRender() {
         builderState.poses[idx].duration = val;
          if (String(builderState.poses[idx].id || "").startsWith("MACRO:")) {
             builderState.poses[idx].note = `Linked Sequence: ${val} Round${val !== 1 ? 's' : ''}`;
+        } else if (builderState.poses[idx].id === "LOOP_START") {
+            builderState.poses[idx].name = `🔁 Repeat Block (${val} Rounds)`;
         }
         builderRender(); 
     });
 
-    qS('.b-move-up').forEach(el => el.onclick = () => { movePose(parseInt(el.dataset.idx), -1); builderRender(); });
-    qS('.b-move-dn').forEach(el => el.onclick = () => { movePose(parseInt(el.dataset.idx), 1); builderRender(); });
+    const findLoopRange = (idx) => {
+        const pose = builderState.poses[idx];
+        if (!pose) return null;
+        if (pose.id === "LOOP_START") {
+            for (let j = idx + 1; j < builderState.poses.length; j++) if (builderState.poses[j].id === "LOOP_END") return [idx, j];
+        } else if (pose.id === "LOOP_END") {
+            for (let j = idx - 1; j >= 0; j--) if (builderState.poses[j].id === "LOOP_START") return [j, idx];
+        }
+        return null;
+    };
+
+    const moveBlock = (range, dir) => {
+        const [start, end] = range;
+        if (dir === -1 && start > 0) {
+            const block = builderState.poses.splice(start, end - start + 1);
+            builderState.poses.splice(start - 1, 0, ...block);
+        } else if (dir === 1 && end < builderState.poses.length - 1) {
+            const block = builderState.poses.splice(start, end - start + 1);
+            builderState.poses.splice(start + 1, 0, ...block);
+        }
+    };
+
+    qS('.b-move-up').forEach(el => el.onclick = () => {
+        const idx = parseInt(el.dataset.idx);
+        const range = findLoopRange(idx);
+        if (range) moveBlock(range, -1); else movePose(idx, -1);
+        builderRender();
+    });
+    qS('.b-move-dn').forEach(el => el.onclick = () => {
+        const idx = parseInt(el.dataset.idx);
+        const range = findLoopRange(idx);
+        if (range) moveBlock(range, 1); else movePose(idx, 1);
+        builderRender();
+    });
 
     qS('.b-amb-keep').forEach(el => el.onclick = () => {
         const i = parseInt(el.dataset.idx);
@@ -495,14 +569,20 @@ function builderOpen(mode, seq) {
              if (idStr === "LOOP_START" || idStr === "LOOP_END") {
                 builderState.poses.push({
                     id: idStr,
-                    name: idStr === "LOOP_START" ? `🔁 Loop Starts Here (${p[1]} Rounds)` : "🔁 Loop Ends Here",
+                    name: idStr === "LOOP_START" ? `🔁 Repeat Block (${p[1]} Rounds)` : "🔚 End Repeat Block",
                     duration: idStr === "LOOP_START" ? Number(p[1]) || 2 : 0,
                     variation: "", note: ""
                 });
                 return;
              }
              if (idStr.startsWith("MACRO:")) {
-                builderState.poses.push({ id: idStr, name: `[Sequence] ${idStr.replace("MACRO:", "").trim()}`, duration: Number(p[1]) || 1, variation: "", note: p[4] || "" });
+                const identifier = idStr.replace("MACRO:", "").trim();
+                const subCourse = window.courses?.find(c => 
+                    String(c.title || "").trim().toLowerCase() === identifier.toLowerCase() || 
+                    String(c.id || "").trim() === identifier
+                );
+                const displayTitle = subCourse ? subCourse.title : identifier;
+                builderState.poses.push({ id: idStr, name: `[Sequence] ${displayTitle}`, duration: Number(p[1]) || 1, variation: "", note: p[4] || "" });
                 return;
              }
 
@@ -678,8 +758,8 @@ function createRepeatGroup() {
         if (isNaN(reps) || reps < 2) return alert("Please enter a number of 2 or more.");
 
         overlay.style.display = "none";
-        builderState.poses.splice(endIdx + 1, 0, { id: "LOOP_END", name: "🔁 Loop Ends Here", duration: 0, variation: "", note: "" });
-        builderState.poses.splice(startIdx, 0, { id: "LOOP_START", name: `🔁 Loop Starts Here (${reps} Rounds)`, duration: reps, variation: "", note: "" });
+        builderState.poses.splice(endIdx + 1, 0, { id: "LOOP_END", name: "🔚 End Repeat Block", duration: 0, variation: "", note: "" });
+        builderState.poses.splice(startIdx, 0, { id: "LOOP_START", name: `🔁 Repeat Block (${reps} Rounds)`, duration: reps, variation: "", note: "" });
         
         checkboxes.forEach(c => c.checked = false);
         builderRender();

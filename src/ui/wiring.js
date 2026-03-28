@@ -14,8 +14,7 @@ import { themeManager } from './themeToggle.js';
 import { normalizePlate } from '../services/dataAdapter.js';
 import { playbackEngine } from '../playback/timer.js';
 import { openHistoryModal, switchHistoryTab, renderGlobalHistory } from './historyModal.js';
-import { builderRender, builderSave, openEditCourse, builderOpen, addPoseToBuilder, processSemicolonCommand, openLinkSequenceModal, createRepeatGroup } from './builder.js';
-
+import { builderRender, openEditCourse, builderOpen, addPoseToBuilder, createRepeatGroup, openLinkSequenceModal } from './builder.js';
 // ── Application State Aliases ────────────────────────────────────────────────
 // ── UI Constants ─────────────────────────────────────────────────────────────
 const EMPTY_STATE_HTML = `
@@ -252,13 +251,15 @@ function setupBuilderWiring() {
         const exists = (window.courses || []).find(c => c.title.trim().toLowerCase() === title.toLowerCase());
         if (!exists) return showError('Sequence not found. Choose from the list.'); 
         
-        addPoseToBuilder({
-            id: `MACRO:${exists.title}`,
-            name: `[Sequence] ${exists.title}`,
-            duration: reps,
-            variation: '',
-            note: `Linked Sequence: ${reps} Round${reps !== 1 ? 's' : ''}`
-        });
+        else {
+            addPoseToBuilder({
+                id: `MACRO:${exists.id}`, // Link by ID for stability
+                name: `[Sequence] ${exists.title}`, // Display by Name for the user
+                duration: reps,
+                variation: '',
+                note: `Linked Sequence: ${reps} Round${reps !== 1 ? 's' : ''}`
+            });
+        }
 
         builderRender();
         

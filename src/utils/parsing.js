@@ -66,7 +66,8 @@ function parseSequenceText(sequenceText) {
     // MACRO: rows (e.g. "MACRO:Surya Namaskar A") are expected linked-sequence
     // markers and must round-trip through persistence intact.
     if (/^MACRO:/i.test(id)) {
-      poses.push([id, duration, '', '', note]);
+      const macroTitle = id.replace(/^MACRO:/i, '').trim();
+      poses.push([`MACRO:${macroTitle}`, duration, '', '', note]);
       return;
     }
 
