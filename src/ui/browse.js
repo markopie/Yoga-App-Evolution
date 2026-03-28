@@ -400,7 +400,10 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
         detailHTML += `
             <details>
                 <summary>Base Technique</summary>
-                <div class="technique-text">${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseTech) : baseTech}</div>
+                <div class="technique-text">
+                    <button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${baseTech.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak</button>
+                    ${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseTech) : baseTech}
+                </div>
             </details>`;
     }
 
@@ -410,7 +413,10 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
         detailHTML += `
             <details>
                 <summary>Description</summary>
-                <div class="desc-text">${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseDesc) : baseDesc}</div>
+                <div class="desc-text">
+                    <button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${baseDesc.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak</button>
+                    ${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseDesc) : baseDesc}
+                </div>
             </details>`;
     }
 
@@ -596,4 +602,3 @@ window.showAsanaDetail = showAsanaDetail;
 window.applyBrowseFilters = applyBrowseFilters;
 window.renderBrowseList   = renderBrowseList;
 window.startBrowseAsana   = startBrowseAsana;
-

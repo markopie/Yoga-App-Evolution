@@ -272,16 +272,18 @@ function setPose(idx, keepSamePose = false) {
             finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.8em; vertical-align: middle;">• ${sideMarker}</span>`;
         }
         
-        // REFINED: Repeat Indicator with Context Label
         const poseMeta = currentPose[7] || {};
-        if (poseMeta.loopCurrent && poseMeta.loopTotal > 1) {
-            // Priority: macroTitle > loopLabel
+        const showMacro = poseMeta.macroTitle;
+        const showLoop = poseMeta.loopCurrent && poseMeta.loopTotal > 1;
+
+        if (showMacro || showLoop) {
             const contextLabel = poseMeta.macroTitle || poseMeta.loopLabel || "";
             const labelDisplay = contextLabel ? ` (${contextLabel})` : "";
+            const roundInfo = showLoop ? ` ${poseMeta.loopCurrent}/${poseMeta.loopTotal}` : "";
+            const icon = showLoop ? '↻' : '🔗';
 
-            finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.72em; vertical-align: middle; margin-left: 8px;" 
-                                  title="Repeat phase ${poseMeta.loopCurrent} of ${poseMeta.loopTotal}${labelDisplay}">
-                              ↻ ${poseMeta.loopCurrent}/${poseMeta.loopTotal}${labelDisplay}
+            finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.72em; vertical-align: middle; margin-left: 8px;">
+                              ${icon}${roundInfo}${labelDisplay}
                            </span>`;
         }
 

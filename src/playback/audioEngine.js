@@ -126,27 +126,31 @@ export function playSystemAudio(fileName) {
  * Returns a Promise to allow sequential chaining.
  */
 export function speakRound(roundNum) {
-    return new Promise((resolve) => {
-        if (!('speechSynthesis' in window)) return resolve();
-        
-        window.speechSynthesis.cancel(); // Clear existing speech queue
+    return speakText(`Round ${roundNum}`);
+}
 
-        const utterance = new SpeechSynthesisUtterance(`Round ${roundNum}`);
+/**
+ * General Speech API helper for accessibility.
+ * Includes a 100ms delay to prevent audio clipping on start.
+ */
+export function speakText(text) {
+    return new Promise((resolve) => {
+        if (!('speechSynthesis' in window) || !text) return resolve();
+        
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 0.9;
-        utterance.pitch = 1.1; // Slightly higher pitch often sounds more natural/feminine
+        utterance.pitch = 1.1; 
         utterance.volume = 0.7;
 
-        // Attempt to find a female voice
         const voices = window.speechSynthesis.getVoices();
         if (voices.length > 0) {
-            // Look for voices explicitly labeled 'female' or known female voice names (macOS/iOS)
             const femaleVoice = voices.find(v => {
                 const name = v.name.toLowerCase();
                 return name.includes('female') || 
                        ['samantha', 'victoria', 'karen', 'tessa', 'moira', 'matilda'].some(n => name.includes(n));
             });
-            
-            // If we found one, apply it. Otherwise, it falls back to the system default.
             if (femaleVoice) {
                 utterance.voice = femaleVoice;
             }
@@ -155,7 +159,31 @@ export function speakRound(roundNum) {
         utterance.onend = resolve;
         utterance.onerror = resolve;
 
-        window.speechSynthesis.speak(utterance);
+        // Small delay ensures the engine has fully cleared the previous cancel command
+        setTimeout(() => window.speechSynthesis.speak(utterance), 100);
+    });
+}
+
+export function toggleSpeak(text, btn) {
+    if (window.speechSynthesis.speaking && btn.dataset.speaking === "true") {
+        window.speechSynthesis.cancel();
+        return;
+    }
+
+    // Reset any other buttons currently in "Stop" state
+    document.querySelectorAll('.speak-toggle-btn').forEach(b => {
+        if (b.dataset.originalLabel) b.innerHTML = b.dataset.originalLabel;
+        b.dataset.speaking = "false";
+    });
+
+    btn.dataset.originalLabel = btn.innerHTML;
+    btn.innerHTML = "⏹ Stop";
+    btn.dataset.speaking = "true";
+    btn.classList.add('speak-toggle-btn');
+
+    speakText(text).then(() => {
+        btn.innerHTML = btn.dataset.originalLabel;
+        btn.dataset.speaking = "false";
     });
 }
 
@@ -255,3 +283,5 @@ window.playPoseMainAudio = playPoseMainAudio;
 window.getCurrentAudio  = getCurrentAudio;
 window.playSystemAudio  = playSystemAudio;
 window.speakRound       = speakRound;
+window.speakText        = speakText;
+window.toggleSpeak      = toggleSpeak;

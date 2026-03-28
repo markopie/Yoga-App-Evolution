@@ -745,6 +745,8 @@ th {
     align-items: center;
     padding: 20px;
     box-sizing: border-box;
+    overflow: hidden;
+    touch-action: none;
 }
 
 #builderCategory {

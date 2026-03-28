@@ -78,33 +78,39 @@ window.playbackEngine.onStart = () => {
                         const prevMeta = prevPose ? (prevPose[7] || {}) : {};
                         const currMeta = currentPose[7] || {};
 
-                        let boundaryPromise = null;
+                        let boundaryPromise = Promise.resolve();
+                        let hasBoundary = false;
 
                         // A. Macro Detection
                         if (currMeta.macroTitle && currMeta.macroTitle !== prevMeta.macroTitle) {
+                            hasBoundary = true;
                             const cleanTitle = currMeta.macroTitle.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-                            if (typeof window.playSystemAudio === 'function') boundaryPromise = window.playSystemAudio(`macro_start_${cleanTitle}`);
+                            boundaryPromise = boundaryPromise.then(() => typeof window.playSystemAudio === 'function' ? window.playSystemAudio(`macro_start_${cleanTitle}`) : Promise.resolve());
                         } else if (prevMeta.macroTitle && !currMeta.macroTitle) {
-                            if (typeof window.playSystemAudio === 'function') boundaryPromise = window.playSystemAudio("macro_end");
+                            hasBoundary = true;
+                            boundaryPromise = boundaryPromise.then(() => typeof window.playSystemAudio === 'function' ? window.playSystemAudio("macro_end") : Promise.resolve());
                         } 
-                        // B. Repetition/Round Detection
-                        else if (currMeta.loopCurrent) {
+
+                        // B. Repetition/Round Detection (Now chains after Macro if needed)
+                        if (currMeta.loopCurrent) {
                             const isNewRound = prevMeta.loopCurrent && currMeta.loopCurrent !== prevMeta.loopCurrent;
                             const isFirstRoundStart = !prevMeta.loopCurrent && currMeta.loopCurrent === 1;
 
-                            if (isFirstRoundStart && !currMeta.macroTitle) {
-                                if (typeof window.playSystemAudio === 'function') boundaryPromise = window.playSystemAudio("loop_start");
+                            if (isFirstRoundStart) {
+                                hasBoundary = true;
+                                boundaryPromise = boundaryPromise.then(() => typeof window.playSystemAudio === 'function' ? window.playSystemAudio("loop_start") : Promise.resolve())
+                                                                  .then(() => typeof window.speakRound === 'function' ? window.speakRound(1) : Promise.resolve());
                             } else if (isNewRound) {
-                                if (typeof window.speakRound === 'function') boundaryPromise = window.speakRound(currMeta.loopCurrent);
+                                hasBoundary = true;
+                                boundaryPromise = boundaryPromise.then(() => typeof window.speakRound === 'function' ? window.speakRound(currMeta.loopCurrent) : Promise.resolve());
                             }
                         } else if (prevMeta.loopCurrent && !currMeta.loopCurrent) {
-                            if (!prevMeta.macroTitle) {
-                                if (typeof window.playSystemAudio === 'function') boundaryPromise = window.playSystemAudio("loop_end");
-                            }
+                            hasBoundary = true;
+                            boundaryPromise = boundaryPromise.then(() => typeof window.playSystemAudio === 'function' ? window.playSystemAudio("loop_end") : Promise.resolve());
                         }
 
                         // Execute Sequentially
-                        if (boundaryPromise) {
+                        if (hasBoundary) {
                             window.playbackEngine.suspend(); // ⏸️ Pause countdown safely
                             
                             boundaryPromise.then(() => {
@@ -182,7 +188,14 @@ window.playbackEngine.onPoseComplete = (wasLongHold) => {
 
     if (wasLongHold && !flowPose && typeof window.playFaintGong === "function") window.playFaintGong();
     
-    if (wasLongHold && !flowPose) {
+    // Check if the NEXT pose is a boundary (New Macro or New Round)
+    const nextPose = poses[window.currentIndex + 1] || null;
+    const currMeta = currentPose?.[7] || {};
+    const nextMeta = nextPose?.[7] || {};
+    const isBoundary = (nextMeta.macroTitle && nextMeta.macroTitle !== currMeta.macroTitle) || 
+                       (nextMeta.loopCurrent && nextMeta.loopCurrent !== currMeta.loopCurrent);
+
+    if ((wasLongHold || isBoundary) && !flowPose) {
         window.playbackEngine.startTransition(15);
         return;
     }

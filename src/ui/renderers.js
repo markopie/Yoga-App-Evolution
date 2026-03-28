@@ -18,7 +18,8 @@ export function updatePoseNote(note) {
 
    details.style.display = "block";
    details.open = true;
-   body.innerHTML = renderMarkdownMinimal(text);
+   const speakBtn = `<button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${text.replace(/"/g, "'")}\`, this)">🔊 Speak Note</button>`;
+   body.innerHTML = speakBtn + renderMarkdownMinimal(text);
 }
 
 export function updatePoseAsanaDescription(asana, matchedTechnique = "") {
@@ -38,7 +39,8 @@ export function updatePoseAsanaDescription(asana, matchedTechnique = "") {
         descDetails.style.display = "block";
         descDetails.open = false; // Always start closed for minimalism
         descBody.style.display = "block"; // Override the inline display:none from HTML
-        descBody.innerHTML = renderMarkdownMinimal(descText.replace(/\\n/g, '\n'));
+        const speakBtn = `<button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${descText.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak Description</button>`;
+        descBody.innerHTML = speakBtn + renderMarkdownMinimal(descText.replace(/\\n/g, '\n'));
         hasContent = true;
     } else {
         descDetails.style.display = "none";
@@ -49,7 +51,8 @@ export function updatePoseAsanaDescription(asana, matchedTechnique = "") {
     if (finalTech && finalTech.trim()) {
         techDetails.style.display = "block";
         techDetails.open = false; // Always start closed
-        techBody.innerHTML = renderMarkdownMinimal(finalTech.toString().replace(/\\n/g, '\n'));
+        const speakBtn = `<button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${finalTech.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak Technique</button>`;
+        techBody.innerHTML = speakBtn + renderMarkdownMinimal(finalTech.toString().replace(/\\n/g, '\n'));
         hasContent = true;
     } else {
         techDetails.style.display = "none";

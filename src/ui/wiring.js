@@ -207,6 +207,7 @@ function setupPlaybackControls() {
         // 🛑 6. THE ENGINE FLUSH (Fixes the "Lock Up" bug)
         // This ensures the next sequence you select doesn't collide with the old one
         window.activePlaybackList = null;
+        window._lastBoundaryIdx = -1;
         window.currentSequence = null;
         window.currentIndex = 0;
         window.needsSecondSide = false;
