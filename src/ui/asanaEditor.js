@@ -113,9 +113,12 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
 
     const autoKey = stageKey || (await getNextRomanNumeral());
     const existingTitle = typeof stageData === "object" ? (stageData.title || stageData.Title || "") : "";
-    const prefixMatch = existingTitle.match(/^(Modified|Stage)\s+/i);
-    const prefix = prefixMatch ? prefixMatch[1] : "Modified";
-    const suffix = existingTitle.replace(/^(Modified|Stage)\s+[IVXLCDM]+\s*/i, "").trim();
+    
+    // Clean up old "Modified I (suffix)" titles to keep the editor view tidy,
+    // but default to the full title if it doesn't match the old pattern.
+    let suffix = existingTitle.replace(/^(Modified|Stage)\s+[IVXLCDM]+\b\s*/i, "").trim();
+    if (suffix === "" && existingTitle !== "" && !existingTitle.match(/^(Modified|Stage)/i)) suffix = existingTitle;
+
     const existingShorthand  = typeof stageData === "object" ? (stageData.shorthand   || stageData.Shorthand   || "") : "";
     const existingTech = typeof stageData === "object"
         ? (stageData.full_technique || stageData.Full_Technique || stageData.technique || "")
@@ -144,16 +147,9 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
                <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Key</label>
                <input type="text" class="stage-key" value="${autoKey}" readonly style="width:60px; padding:6px; font-weight:bold; background:#f5f5f5; text-align:center; border:1px solid #ccc; border-radius:4px;">
            </div>
-           <div style="min-width:110px;">
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Prefix</label>
-               <select class="stage-prefix" style="padding:6px; border:1px solid #ccc; border-radius:4px; background:#fff; min-height:unset;">
-                   <option value="Modified" ${prefix === "Modified" ? "selected" : ""}>Modified</option>
-                   <option value="Stage" ${prefix === "Stage" ? "selected" : ""}>Stage</option>
-               </select>
-           </div>
            <div style="flex:2; min-width:140px;">
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Description / Suffix</label>
-               <input type="text" class="stage-suffix" list="${datalistId}" value="${suffix}" placeholder="e.g. (on a bolster)" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Description / Display Title</label>
+               <input type="text" class="stage-suffix" list="${datalistId}" value="${suffix}" placeholder="e.g. I (on a bolster)" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
                <datalist id="${datalistId}">${suffixes.map(s => `<option value="${s}">`).join("")}</datalist>
            </div>
            <div style="min-width:100px;">
@@ -527,7 +523,6 @@ function wireEditorSave() {
                 const key = div.querySelector(".stage-key").value.trim();
                 if (!key) continue;
 
-                const pfx = div.querySelector(".stage-prefix")?.value.trim() || "Modified";
                 const sfx = div.querySelector(".stage-suffix")?.value.trim() || "";
                 const dbId = div.dataset.dbId || "";
                 const baseVariation = (baseAsana.variations && baseAsana.variations[key]) ? baseAsana.variations[key] : {};
@@ -541,7 +536,7 @@ function wireEditorSave() {
                 const payload = {
                     asana_id:       id,
                     stage_name:     key,
-                    title:          sfx ? `${pfx} ${key} ${sfx}` : `${pfx} ${key}`,
+                    title:          sfx || key,
                     full_technique: div.querySelector(".stage-tech")?.value.trim()       || null,
                     shorthand:      div.querySelector(".stage-short")?.value.trim()       || null,
                     image_url:      baseVariation.image_url                               || null,
