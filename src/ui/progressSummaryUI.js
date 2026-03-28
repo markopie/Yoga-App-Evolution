@@ -53,6 +53,14 @@ function renderProgressSummaryModal() {
 
     activeList.forEach((node, playbackIdx) => {
         const origIdx = (node[5] !== undefined && node[5] !== null) ? node[5] : `p-${playbackIdx}`;
+        
+        // Detect if this specific node is an auto-injected transition (Prep/Recovery)
+        const noteText = String(node[4] || "").toLowerCase();
+        const labelText = String(node[6] || "").toLowerCase();
+        const isTransition = noteText.includes("recovery") || labelText.includes("recovery") || 
+                             noteText.includes("preparat") || labelText.includes("preparat") ||
+                             noteText.includes("preparation");
+
         if (!groupMap[origIdx]) {
             groupMap[origIdx] = {
                 firstPlaybackIndex: playbackIdx,
@@ -66,8 +74,17 @@ function renderProgressSummaryModal() {
             groups.push(groupMap[origIdx]);
         }
         const g = groupMap[origIdx];
-        g.totalAllocated += Number(node[1] || 0);
-        g.totalCompleted += Number(tracker[playbackIdx] || 0);
+
+        // If this node is NOT a transition, ensure it "wins" the naming/metadata for the group
+        // and include its duration in the row totals.
+        if (!isTransition) {
+            g.rawId = Array.isArray(node[0]) ? node[0][0] : node[0];
+            if (!g.macroTitle) g.macroTitle = node[7]?.macroTitle || null;
+            g.label = node[6] || null;
+            
+            g.totalAllocated += Number(node[1] || 0);
+            g.totalCompleted += Number(tracker[playbackIdx] || 0);
+        }
     });
 
     // --- NEW: Dashboard Calculations ---
