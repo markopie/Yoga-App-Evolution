@@ -130,7 +130,7 @@ async function copyFile(bucket, srcPath, destPath) {
 // ── JOB 1: Fix shared/borrowed URLs ──────────────────────────────────────────
 async function fixSharedUrls() {
     console.log('\n─────────────────────────────────────────────────────────');
-    console.log(`JOB 1 — Fix ${FIXES.length} borrowed media files`);
+
     console.log(`        Dry run: ${DRY_RUN ? 'YES (no changes)' : 'NO (applying changes)'}`);
     console.log('─────────────────────────────────────────────────────────\n');
 
@@ -143,14 +143,14 @@ async function fixSharedUrls() {
         console.log(`   dest : ${fix.bucket}/${fix.newFilename}`);
 
         if (DRY_RUN) {
-            console.log(`   🔷  DRY RUN — would copy file and update stages.${fix.field}\n`);
+
             fixed++;
             continue;
         }
 
         const newUrl = await copyFile(fix.bucket, fix.srcPath, fix.newFilename);
         if (!newUrl) {
-            console.log(`   ❌  Failed — skipping DB update\n`);
+
             failed++;
             continue;
         }
@@ -161,10 +161,10 @@ async function fixSharedUrls() {
             .eq('id', fix.stageId);
 
         if (dbErr) {
-            console.log(`   ⚠️  File copied but DB update failed: ${dbErr.message}\n`);
+
             failed++;
         } else {
-            console.log(`   ✅  Copied and DB updated → ${newUrl}\n`);
+
             fixed++;
         }
     }
@@ -175,7 +175,7 @@ async function fixSharedUrls() {
 // ── JOB 2: Missing media audit ────────────────────────────────────────────────
 async function auditMissingMedia() {
     console.log('─────────────────────────────────────────────────────────');
-    console.log('JOB 2 — Missing image_url / audio_url audit');
+
     console.log('─────────────────────────────────────────────────────────\n');
 
     const { data: stages, error } = await supabase
@@ -194,9 +194,9 @@ async function auditMissingMedia() {
 
     // ── Missing images ──────────────────────────────────────────────────────
     if (missingImage.length === 0) {
-        console.log('🖼  Images  : ✅  All stage rows have an image_url.\n');
+
     } else {
-        console.log(`🖼  MISSING image_url  (${missingImage.length} rows)\n`);
+\n`);
         console.log('  Stage ID │ Asana ID │ Stage   │ Title');
         console.log('  ─────────┼──────────┼─────────┼──────────────────────────────────────');
         missingImage.forEach(s => {
@@ -209,9 +209,9 @@ async function auditMissingMedia() {
 
     // ── Missing audio ───────────────────────────────────────────────────────
     if (missingAudio.length === 0) {
-        console.log('🔊  Audio   : ✅  All stage rows have an audio_url.\n');
+
     } else {
-        console.log(`🔊  MISSING audio_url  (${missingAudio.length} rows)\n`);
+\n`);
         console.log('  Stage ID │ Asana ID │ Stage   │ Title');
         console.log('  ─────────┼──────────┼─────────┼──────────────────────────────────────');
         missingAudio.forEach(s => {
@@ -224,7 +224,7 @@ async function auditMissingMedia() {
 
     // ── Summary ─────────────────────────────────────────────────────────────
     console.log('─────────────────────────────────────────────────────────');
-    console.log(`📊  Missing media summary  (out of ${stages.length} total stage rows)`);
+`);
     console.log(`   Missing image_url : ${missingImage.length}`);
     console.log(`   Missing audio_url : ${missingAudio.length}`);
     console.log(`   Missing BOTH      : ${missingBoth.length}`);
@@ -238,12 +238,12 @@ async function auditMissingMedia() {
         missingImage: missingImage.map(s => ({ id: s.id, asana_id: s.asana_id, stage_name: s.stage_name, title: s.title })),
         missingAudio: missingAudio.map(s => ({ id: s.id, asana_id: s.asana_id, stage_name: s.stage_name, title: s.title })),
     }, null, 2));
-    console.log(`📄  Missing media report saved to: ${reportPath}\n`);
+
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 async function main() {
-    console.log('\n🧘 Stage Media Fix + Audit');
+
     await fixSharedUrls();
     await auditMissingMedia();
 }

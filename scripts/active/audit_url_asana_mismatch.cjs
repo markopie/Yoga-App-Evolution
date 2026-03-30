@@ -82,7 +82,7 @@ function normaliseId(idStr) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
-    console.log('\n🔍 Stage URL / Asana-ID Mismatch Auditor\n');
+
 
     // Fetch all stages with enough columns to cross-reference
     const { data: stages, error } = await supabase
@@ -91,7 +91,7 @@ async function main() {
         .order('asana_id', { ascending: true });
 
     if (error) throw new Error(`Failed to fetch stages: ${error.message}`);
-    console.log(`📋  Scanning ${stages.length} stage rows...\n`);
+
 
     const imageMismatches = [];
     const audioMismatches = [];
@@ -131,7 +131,7 @@ async function main() {
                     url:        s.image_url,
                 });
             } else if (VERBOSE) {
-                console.log(`  ✅ Image OK  — Stage ${s.id} (${actualId} ${s.stage_name}): ${imgFile}`);
+: ${imgFile}`);
             }
         }
 
@@ -153,16 +153,16 @@ async function main() {
                     url:        s.audio_url,
                 });
             } else if (VERBOSE) {
-                console.log(`  ✅ Audio OK  — Stage ${s.id} (${actualId} ${s.stage_name}): ${audFile}`);
+: ${audFile}`);
             }
         }
     }
 
     // ── Print Image Mismatches ────────────────────────────────────────────────
     if (imageMismatches.length === 0) {
-        console.log('🖼  Images: ✅  No asana_id mismatches found.\n');
+
     } else {
-        console.log(`🖼  IMAGE MISMATCHES  (${imageMismatches.length} rows)\n`);
+\n`);
         console.log('  Stage ID  │ Actual AsanaID │ Embedded AsanaID │ Stage Name     │ Filename');
         console.log('  ──────────┼────────────────┼──────────────────┼────────────────┼──────────────────────────────────────');
         imageMismatches.forEach(r => {
@@ -178,9 +178,9 @@ async function main() {
 
     // ── Print Audio Mismatches ────────────────────────────────────────────────
     if (audioMismatches.length === 0) {
-        console.log('🔊  Audio:  ✅  No asana_id mismatches found.\n');
+
     } else {
-        console.log(`🔊  AUDIO MISMATCHES  (${audioMismatches.length} rows)\n`);
+\n`);
         console.log('  Stage ID  │ Actual AsanaID │ Embedded AsanaID │ Stage Name     │ Filename');
         console.log('  ──────────┼────────────────┼──────────────────┼────────────────┼──────────────────────────────────────');
         audioMismatches.forEach(r => {
@@ -199,7 +199,7 @@ async function main() {
     const sharedAudios = Object.entries(audioUrlIndex).filter(([, ids]) => ids.length > 1);
 
     if (sharedImages.length > 0) {
-        console.log(`⚠️  SHARED IMAGE URLs  (same file used by multiple rows — this IS the cascade risk)\n`);
+\n`);
         sharedImages.forEach(([url, ids]) => {
             const fname = filenameFromUrl(url);
             console.log(`  File: ${fname}`);
@@ -207,11 +207,11 @@ async function main() {
             console.log(`    URL: ${url}\n`);
         });
     } else {
-        console.log('🖼  Shared images: ✅  No file is shared across multiple stage rows.\n');
+
     }
 
     if (sharedAudios.length > 0) {
-        console.log(`⚠️  SHARED AUDIO URLs  (same file used by multiple rows — this IS the cascade risk)\n`);
+\n`);
         sharedAudios.forEach(([url, ids]) => {
             const fname = filenameFromUrl(url);
             console.log(`  File: ${fname}`);
@@ -219,14 +219,14 @@ async function main() {
             console.log(`    URL: ${url}\n`);
         });
     } else {
-        console.log('🔊  Shared audio:  ✅  No file is shared across multiple stage rows.\n');
+
     }
 
     // ── Summary + Recommendation ──────────────────────────────────────────────
     const totalIssues = imageMismatches.length + audioMismatches.length + sharedImages.length + sharedAudios.length;
 
     console.log('─────────────────────────────────────────────────────────');
-    console.log(`📊  Summary`);
+
     console.log(`   Image ID mismatches : ${imageMismatches.length}`);
     console.log(`   Audio ID mismatches : ${audioMismatches.length}`);
     console.log(`   Shared image files  : ${sharedImages.length}`);
@@ -244,7 +244,7 @@ async function main() {
     };
     const reportPath = path.resolve(__dirname, 'url_mismatch_report.json');
     require('fs').writeFileSync(reportPath, JSON.stringify(report, null, 2));
-    console.log(`📄  Full report saved to: ${reportPath}\n`);
+
 }
 
 main().catch(e => {

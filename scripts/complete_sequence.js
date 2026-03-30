@@ -21,7 +21,7 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || FALLBACK_ANON;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 function usage() {
-  console.log(`Usage: node scripts/complete_sequence.js "Sequence Title" [--category "Category"] [--duration seconds] [--dry-run]\n`);
+
   process.exit(1);
 }
 
@@ -71,7 +71,7 @@ function parseArgs(argv) {
 
     if (error) throw error;
     if (data && data.length) {
-      console.log('Inserted completion:', data[0]);
+
       process.exit(0);
     }
     console.log('Insert returned no data but completed successfully.');

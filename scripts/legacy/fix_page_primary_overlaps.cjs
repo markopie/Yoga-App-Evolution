@@ -28,7 +28,7 @@ const supabase = createClient(
 const DRY_RUN = process.argv.includes('--dry-run');
 
 async function main() {
-    console.log(`\n🔢  Page Primary Overlap Fixer`);
+
     console.log(`   Dry run: ${DRY_RUN ? 'YES (no changes)' : 'NO (applying updates)'}\n`);
 
     // 1. Fetch all asana page_primaries
@@ -62,7 +62,7 @@ async function main() {
     const conflictPages = Object.keys(conflicts).map(Number).sort((a, b) => a - b);
 
     if (conflictPages.length === 0) {
-        console.log('✅  No overlapping page_primary values found — nothing to do.');
+
         return;
     }
 
@@ -87,7 +87,7 @@ async function main() {
     }
 
     if (DRY_RUN) {
-        console.log('🔷  DRY RUN — no changes made. Remove --dry-run to apply.\n');
+
         return;
     }
 
@@ -103,14 +103,14 @@ async function main() {
                 console.error(`  ❌  Stage ${stage.id}: ${error.message}`);
                 failed++;
             } else {
-                console.log(`  ✅  Stage ${stage.id}: ${page} → ${stage._newPage}`);
+
                 updated++;
             }
         }
     }
 
     console.log(`\n─────────────────────────────────────────────────────────`);
-    console.log(`✅  Done. ${updated} updated, ${failed} failed.`);
+
     console.log(`─────────────────────────────────────────────────────────\n`);
 }
 

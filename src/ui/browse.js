@@ -395,32 +395,27 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
     detailHTML += `<div class="pose-details-stack">`;
 
     // Technique Accordion
-    const baseTech = asana.technique || asana.Technique || "";
-    if (baseTech) {
-        detailHTML += `
-            <details>
-                <summary>Base Technique</summary>
-                <div class="technique-text">
-                    <button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${baseTech.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak</button>
-                    ${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseTech) : baseTech}
-                </div>
-            </details>`;
-    }
+const baseTech = asana.technique || asana.Technique || "";
+if (baseTech) {
+    detailHTML += `
+        <details>
+            <summary>Base Technique</summary>
+            <div class="technique-text"><button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${baseTech.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak</button>
+${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseTech).trim() : baseTech.trim()}</div>
+        </details>`;
+}
+// Description Accordion
+const baseDesc = asana.description || asana.Description || "";
+if (baseDesc) {
+    detailHTML += `
+        <details>
+            <summary>Description</summary>
+            <div class="desc-text"><button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${baseDesc.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak</button>
+${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseDesc).trim() : baseDesc.trim()}</div>
+        </details>`;
+}
 
-    // Description Accordion
-    const baseDesc = asana.description || asana.Description || "";
-    if (baseDesc) {
-        detailHTML += `
-            <details>
-                <summary>Description</summary>
-                <div class="desc-text">
-                    <button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${baseDesc.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak</button>
-                    ${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseDesc) : baseDesc}
-                </div>
-            </details>`;
-    }
-
-    detailHTML += `</div>`; // Close stack
+detailHTML += `</div>`; // Close stack
 
     d.insertAdjacentHTML('beforeend', detailHTML);
 

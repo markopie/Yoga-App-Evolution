@@ -132,7 +132,7 @@ async function copyStorageFile(bucketName, srcPath, destPath) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
-    console.log(`\n🧘 Stage Storage URL Auditor`);
+
     console.log(`   Dry run: ${DRY_RUN ? 'YES — no changes will be made' : 'NO — changes will be applied'}`);
     console.log(`   Bucket filter: ${BUCKET_FILTER}\n`);
 
@@ -142,7 +142,7 @@ async function main() {
         .select('id, asana_id, stage_name, image_url, audio_url');
 
     if (stErr) throw new Error(`Failed to fetch stages: ${stErr.message}`);
-    console.log(`📋  Found ${stages.length} stage rows.\n`);
+
 
     let imageFixed = 0, audioFixed = 0, imageSkipped = 0, audioSkipped = 0;
 
@@ -165,21 +165,21 @@ async function main() {
                 // Has an image URL but not yet unique → copy to canonical path
                 const srcPath = storagePathFromUrl(image_url, IMAGE_BUCKET);
                 console.log(`${label}`);
-                console.log(`    🖼  image_url mismatch:`);
+
                 console.log(`        current : ${image_url}`);
                 console.log(`        target  : ${targetImageUrl}`);
 
                 if (!srcPath) {
-                    console.log(`    ⚠️  Cannot parse source path from URL — skipping.`);
+
                     imageSkipped++;
                 } else if (DRY_RUN) {
-                    console.log(`    🔷  DRY RUN: would copy ${srcPath} → ${targetImagePath}`);
+
                     imageFixed++;
                 } else {
                     const newUrl = await copyStorageFile(IMAGE_BUCKET, srcPath, targetImagePath);
                     if (newUrl) {
                         await supabase.from('stages').update({ image_url: newUrl }).eq('id', id);
-                        console.log(`    ✅  Copied & updated image_url → ${newUrl}`);
+
                         imageFixed++;
                     } else {
                         imageSkipped++;
@@ -201,21 +201,21 @@ async function main() {
             } else if (audio_url) {
                 const srcPath = storagePathFromUrl(audio_url, AUDIO_BUCKET);
                 console.log(`${label}`);
-                console.log(`    🔊  audio_url mismatch:`);
+
                 console.log(`        current : ${audio_url}`);
                 console.log(`        target  : ${targetAudioUrl}`);
 
                 if (!srcPath) {
-                    console.log(`    ⚠️  Cannot parse source path from URL — skipping.`);
+
                     audioSkipped++;
                 } else if (DRY_RUN) {
-                    console.log(`    🔷  DRY RUN: would copy ${srcPath} → ${targetAudioPath}`);
+
                     audioFixed++;
                 } else {
                     const newUrl = await copyStorageFile(AUDIO_BUCKET, srcPath, targetAudioPath);
                     if (newUrl) {
                         await supabase.from('stages').update({ audio_url: newUrl }).eq('id', id);
-                        console.log(`    ✅  Copied & updated audio_url → ${newUrl}`);
+
                         audioFixed++;
                     } else {
                         audioSkipped++;
@@ -229,7 +229,7 @@ async function main() {
 
     // ── Summary ───────────────────────────────────────────────────────────────
     console.log('\n─────────────────────────────────────────────────────────');
-    console.log(`✅  Done.`);
+
     if (BUCKET_FILTER !== 'audio')  console.log(`   Images  : ${imageFixed} updated, ${imageSkipped} already OK / skipped`);
     if (BUCKET_FILTER !== 'images') console.log(`   Audio   : ${audioFixed} updated, ${audioSkipped} already OK / skipped`);
     if (DRY_RUN) console.log('\n   (Dry run — no changes were applied. Remove --dry-run to apply.)');

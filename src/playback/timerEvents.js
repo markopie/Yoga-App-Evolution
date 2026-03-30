@@ -289,7 +289,6 @@ function triggerSequenceEnd() {
         ratingOverlay.dataset.sessionId = "";
         
         if (typeof window.appendServerHistory === "function") {
-            console.log(`📊 Practice duration saved: ${focusDuration}s (active play only, paused time excluded)`);
             window.appendServerHistory(title, new Date(), category, focusDuration).then(resultId => {
                 if (resultId && resultId !== true && typeof resultId !== "boolean") {
                     ratingOverlay.dataset.sessionId = resultId;
@@ -298,6 +297,7 @@ function triggerSequenceEnd() {
         }
     }
 }
+
 window.playbackEngine.onTransitionStart = (secs) => {
     const overlay = document.getElementById("transitionOverlay");
     const countdownEl = document.getElementById("transitionCountdown");
@@ -528,16 +528,12 @@ function updateTimerUI(remaining, currentPoseSeconds) {
             ? window.activePlaybackList
             : (window.currentSequence.poses || []);
 
-        // Use getPosePillTime — reads p[1] (dial-adjusted), not the library hold standard.
-        // See sequenceUtils.js Lesson #9 comment.
         const poseTime = (p) => window.getPosePillTime(p);
 
         const totalSeconds = poses.reduce((acc, p) => acc + poseTime(p), 0);
 
-        // Remaining = current pose countdown + all future poses
         let secondsLeft = remaining;
 
-        // If second side is pending, add one more full side duration
         if (window.needsSecondSide && poses[window.currentIndex]) {
             secondsLeft += Number(poses[window.currentIndex][1]) || 0;
         }

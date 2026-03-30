@@ -257,8 +257,7 @@
 /* --- 6. Responsive Mobile Logic for Browse --- */
 @media (min-width: 900px) {
     .grid { grid-template-columns: 1.4fr 0.6fr; }
-    /* Hide the "Back" button on desktop since both panes are visible */
-    #browseDetail button.tiny:not(#playNameBtn) { display: none; }
+   
 }
 
 @media (max-width: 900px) {

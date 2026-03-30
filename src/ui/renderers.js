@@ -18,12 +18,13 @@ export function updatePoseNote(note) {
 
    details.style.display = "block";
    details.open = true;
+   // RESTORED: Speak button HTML with 🔊 emoji
    const speakBtn = `<button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${text.replace(/"/g, "'")}\`, this)">🔊 Speak Note</button>`;
    body.innerHTML = speakBtn + renderMarkdownMinimal(text);
 }
 
 export function updatePoseAsanaDescription(asana, matchedTechnique = "") {
-    const stack = document.getElementById("poseInfoStack"); // The wrapper
+    const stack = document.getElementById("poseInfoStack");
     const descDetails = document.getElementById("poseAsanaDescDetails");
     const descBody = document.getElementById("poseAsanaDescBody");
     const techDetails = document.getElementById("poseTechniqueDetails");
@@ -33,12 +34,12 @@ export function updatePoseAsanaDescription(asana, matchedTechnique = "") {
 
     let hasContent = false;
 
-    // 1. Handle Description
     const descText = (asana?.description || asana?.Description || "").toString().trim();
     if (descText) {
         descDetails.style.display = "block";
-        descDetails.open = false; // Always start closed for minimalism
-        descBody.style.display = "block"; // Override the inline display:none from HTML
+        descDetails.open = false;
+        descBody.style.display = "block";
+        // RESTORED: Speak button for Description
         const speakBtn = `<button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${descText.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak Description</button>`;
         descBody.innerHTML = speakBtn + renderMarkdownMinimal(descText.replace(/\\n/g, '\n'));
         hasContent = true;
@@ -46,11 +47,11 @@ export function updatePoseAsanaDescription(asana, matchedTechnique = "") {
         descDetails.style.display = "none";
     }
 
-    // 2. Handle Technique
     const finalTech = matchedTechnique || asana?.full_technique || asana?.technique || asana?.Technique || "";
     if (finalTech && finalTech.trim()) {
         techDetails.style.display = "block";
-        techDetails.open = false; // Always start closed
+        techDetails.open = false;
+        // RESTORED: Speak button for Technique
         const speakBtn = `<button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${finalTech.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak Technique</button>`;
         techBody.innerHTML = speakBtn + renderMarkdownMinimal(finalTech.toString().replace(/\\n/g, '\n'));
         hasContent = true;
@@ -58,10 +59,7 @@ export function updatePoseAsanaDescription(asana, matchedTechnique = "") {
         techDetails.style.display = "none";
     }
 
-    // 3. Control the Wrapper (Only show borders if there is actual content)
-    if (stack) {
-        stack.style.display = hasContent ? "block" : "none";
-    }
+    if (stack) stack.style.display = hasContent ? "block" : "none";
 }
 
 export function getContentForPose(asana, fullLabel) {
