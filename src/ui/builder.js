@@ -861,20 +861,76 @@ function wireBuilderGlobals() {
     const rowResults = document.getElementById("rowSearchResults");
     if (rowInput && rowResults) {
         rowInput.oninput = () => {
-            const q = rowInput.value.trim().toLowerCase();
-            if (q.length < 1) { rowResults.innerHTML = ""; return; }
+            const rawQ = rowInput.value.trim().toLowerCase();
+            if (rawQ.length < 1) { rowResults.innerHTML = ""; return; }
             
+            const q = typeof normaliseText === 'function' ? normaliseText(rawQ) : rawQ;
             const lib = getAsanaIndex();
-            const matches = lib.filter(a => 
-                (String(a.id)||"").toLowerCase().includes(q) || 
-                (a.english||"").toLowerCase().includes(q) || 
-                (a.name||"").toLowerCase().includes(q)
-            ).slice(0, 15);
-            
-            rowResults.innerHTML = matches.map(a => `
-                <div style="padding:12px; border-bottom:1px solid #eee; cursor:pointer; display:flex; gap:10px; align-items:center;" onclick="window.selectRowSearch('${a.id}')">
+
+            const scoredMatches = lib.map(a => {
+                let score = 0;
+                
+                // 1. Normalize strings
+                const id = String(a.id || "").toLowerCase();
+                const eng = typeof normaliseText === 'function' ? normaliseText(a.english || a.name || "").toLowerCase() : (a.english || a.name || "").toLowerCase();
+                const iast = typeof normaliseText === 'function' ? normaliseText(a.iast || "").toLowerCase() : (a.iast || "").toLowerCase();
+
+                // 2. ID Match (Highest Priority: 100-200 pts)
+                if (id === q || id.replace(/^0+/, '') === q) score += 200;
+                else if (id.startsWith(q)) score += 100;
+
+                // 3. Word-Boundary Match (80-100 pts)
+                const engWords = eng.split(/[\s-]/);
+                const iastWords = iast.split(/[\s-]/);
+                
+                if (eng.startsWith(q) || iast.startsWith(q)) {
+                    score += 100; // Exact start of the entire name (e.g. "Sirsa Padasana")
+                } else if (engWords.some(w => w.startsWith(q)) || iastWords.some(w => w.startsWith(q))) {
+                    score += 80;  // Start of a middle word (e.g. "Salamba Sirsasana")
+                } else if (eng.includes(q) || iast.includes(q)) {
+                    score += 30;  // Just contains it somewhere
+                }
+
+                // 4. Iyengar "Base Pose" Boost (+25 pts)
+                // Salamba Sirsasana I, Virabhadrasana I, etc. are the true base poses.
+                if (eng.endsWith(" i") || iast.endsWith(" i")) {
+                    score += 25;
+                }
+
+                // 5. Modifier Penalty (-12 pts per modifier)
+                // This forces complex poses (Eka Pada, Revolved, Stage II) to sink below the base poses
+                const modifierRegex = /\b(parivrtta|parsva|eka|dwi|baddha|mukta|urdhva|pinda|janu|supta|ardha|variation|ii|iii|iv|v|vi)\b/g;
+                const engModifiers = eng.match(modifierRegex) || [];
+                const iastModifiers = iast.match(modifierRegex) || [];
+                
+                score -= ((engModifiers.length + iastModifiers.length) * 12);
+
+                // 6. Light Length Tie-Breaker (Shorter, simpler names win ties)
+                if (score > 0) score -= (eng.length * 0.1);
+
+                return { asana: a, score };
+            });
+
+            // Filter 0s and sort highest to lowest
+            const sortedMatches = scoredMatches
+                .filter(m => m.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 15);
+
+            if (sortedMatches.length === 0) {
+                rowResults.innerHTML = `<div style="padding:20px; color:#999; text-align:center;">No poses found matching "${rawQ}"</div>`;
+                return;
+            }
+
+            rowResults.innerHTML = sortedMatches.map(({ asana: a }) => `
+                <div style="padding:12px; border-bottom:1px solid #eee; cursor:pointer; display:flex; gap:10px; align-items:center;" 
+                     onclick="window.selectRowSearch('${a.id}')">
                     <div style="background:#007aff; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:0.8rem; min-width:28px; text-align:center;">${a.id}</div>
-                    <div><div style="font-weight:600;">${a.english || a.name}</div><div style="font-size:0.75rem; color:#666;">${a.iast || ''}</div></div>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-weight:600; color:#1d1d1f; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.english || a.name}</div>
+                        <div style="font-size:0.75rem; color:#86868b; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.iast || ''}</div>
+                    </div>
+                    <div style="color:#007aff; font-size:0.8rem; font-weight:bold; padding-left:5px;">→</div>
                 </div>
             `).join("");
         };

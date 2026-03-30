@@ -21,11 +21,14 @@ export function generateVariationSelectHTML(asana, pose, idx) {
     const selectHtml = `
        <select class="b-var b-var-edit" data-idx="${idx}">
           <option value="">Base Pose</option>
-          ${Object.entries(variations).map(([vKey, vData]) => {
-              const optionTitle = vData.title || `Stage ${vKey}`;
-              const sel = (pose.variation === vKey) ? 'selected' : '';
-              return `<option value="${vKey}" ${sel}>${optionTitle}</option>`;
-          }).join('')}
+          ${Object.entries(variations)
+              // 🌟 NEW: Sort numerically using our new Supabase column
+              .sort(([, aData], [, bData]) => (aData.sort_order ?? 999) - (bData.sort_order ?? 999))
+              .map(([vKey, vData]) => {
+                  const optionTitle = vData.title || `Stage ${vKey}`;
+                  const sel = (pose.variation === vKey) ? 'selected' : '';
+                  return `<option value="${vKey}" ${sel}>${optionTitle}</option>`;
+              }).join('')}
        </select>`;
 
     return viewSpan + selectHtml;

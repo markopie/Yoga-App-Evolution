@@ -528,13 +528,19 @@
 </div>
 
 <div id="rowSearchOverlay" class="modal-backdrop" style="display:none; z-index: 5000; align-items:center; justify-content:center;">
-   <div class="modal" style="width:95vw; max-width:400px; padding:20px; border-radius:12px; background:#fff;">
-      <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
+   <div class="modal" style="width:95vw; max-width:400px; padding:20px; border-radius:12px; background:#fff; display:flex; flex-direction:column; max-height:85vh; box-sizing:border-box;">
+      
+      <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center; flex-shrink:0;">
          <strong style="font-size:1.1rem; color:#1d1d1f;">Search Pose</strong>
-         <button onclick="document.getElementById('rowSearchOverlay').style.display='none'" class="tiny warn" style="border:none; background:#f2f2f2; color:#333; border-radius:50%; width:28px; height:28px;">✕</button>
+         <button onclick="document.getElementById('rowSearchOverlay').style.display='none'" class="tiny warn" style="border:none; background:#f2f2f2; color:#333; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
       </div>
-      <input type="text" id="rowSearchInput" placeholder="Type name or ID..." style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
-      <div id="rowSearchResults" style="max-height:350px; overflow-y:auto; margin-top:15px;"></div>
+      
+      <div style="flex-shrink:0;">
+          <input type="text" id="rowSearchInput" placeholder="Type name or ID..." style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+      </div>
+      
+      <div id="rowSearchResults" style="flex:1; overflow-y:auto; margin-top:15px; min-height:0;"></div>
+      
    </div>
 </div>  
 

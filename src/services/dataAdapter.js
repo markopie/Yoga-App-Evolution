@@ -171,7 +171,8 @@ async function loadAsanaLibrary() {
                 recovery_pose_id: stage.recovery_pose_id ?? stage.recover_pose_id ?? null,
                 preparatory_pose_id: stage.preparatory_pose_id ?? null,
                 page_primary: stage.page_primary ?? null,  
-                isCustom: !!stage.user_id 
+                isCustom: !!stage.user_id,
+                sort_order: stage.sort_order ?? 999 // 👈 ADD THIS: Pull the new integer from Supabase
             };
         });
 
