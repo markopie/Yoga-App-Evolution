@@ -56,9 +56,20 @@ export function removePose(idx) {
     return false;
 }
 
-export function addPoseToBuilder(poseData) {
+/** * Adds a pose to the builder. 
+ * If atIndex is provided and >= 0, it inserts at that position (above the line).
+ * Otherwise, it appends to the end.
+ */
+export function addPoseToBuilder(poseData, atIndex = -1) {
     if (!poseData.holdTier) poseData.holdTier = 'standard';
-    builderState.poses.push(poseData);
+    
+    if (atIndex >= 0 && atIndex <= builderState.poses.length) {
+        // Insert above the specified index
+        builderState.poses.splice(atIndex, 0, poseData);
+    } else {
+        // Default behavior: add to end
+        builderState.poses.push(poseData);
+    }
 }
 
 export function toggleSanskrit() {

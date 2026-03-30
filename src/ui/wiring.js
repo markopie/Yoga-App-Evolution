@@ -6,7 +6,8 @@
 // 2. Playback/Timer UI Bindings -> src/ui/playbackUI.js
 // 3. Dropdown/Sequence Selection -> src/ui/sequenceSelector.js
 // -----------------------------------------------------------------------------
-
+import { builderState } from '../store/builderState.js';
+import { getTargetInsertionIndex, clearBuilderSelection } from './builder.js';
 import { $, showError, safeListen, normaliseText, setStatus } from '../utils/dom.js';
 import { prefersIAST, setIASTPref, formatHMS, displayName } from '../utils/format.js';
 import { supabase } from '../services/supabaseClient.js';
@@ -251,52 +252,54 @@ function setupBuilderWiring() {
         const exists = (window.courses || []).find(c => c.title.trim().toLowerCase() === title.toLowerCase());
         if (!exists) return showError('Sequence not found. Choose from the list.'); 
         
-        else {
-            addPoseToBuilder({
-                id: `MACRO:${exists.id}`, // Link by ID for stability
-                name: `[Sequence] ${exists.title}`, // Display by Name for the user
-                duration: reps,
-                variation: '',
-                note: `Linked Sequence: ${reps} Round${reps !== 1 ? 's' : ''}`
-            });
+        const newMacro = {
+            id: `MACRO:${exists.id}`,
+            name: `[Sequence] ${exists.title}`, 
+            duration: reps,
+            variation: '',
+            note: `Linked Sequence: ${reps} Round${reps !== 1 ? 's' : ''}`
+        };
+
+        // 🛑 BLIND SPOT 6: Check if we are SWAPPING an existing macro or ADDING a new one
+        const swapIdx = builderState.activeMacroSwapIdx;
+        if (swapIdx !== undefined && swapIdx >= 0) {
+            builderState.poses[swapIdx] = newMacro;
+            builderState.activeMacroSwapIdx = -1; // Reset
+        } else {
+            // Standard Insert
+            const insertAt = getTargetInsertionIndex(); 
+            addPoseToBuilder(newMacro, insertAt);
         }
 
+        clearBuilderSelection(); // 👈 Uncheck boxes
         builderRender();
         
         if (overlay) overlay.style.display = 'none';
         const activeEl = document.activeElement;
         if (activeEl && typeof activeEl.blur === 'function') activeEl.blur();
-        document.body.style.cursor = '';
-        document.documentElement.style.cursor = '';
     });
 
     safeListen("builderAddBlank", "click", () => {
-        // 1. Push the blank object to the state
+        const insertAt = getTargetInsertionIndex();
+        
         addPoseToBuilder({
             id: "", 
             asana_id: null,
             duration: 30,
             variation: "",
             metadata: {}
-        });
+        }, insertAt);
         
-        // 2. Call the exact render function you imported at the top of wiring.js
+        clearBuilderSelection(); // 👈 Uncheck boxes
         builderRender();
         
-        // 3. (Optional) Scroll to the bottom so the user sees it
-        // 3. Scroll to the newly added row
         setTimeout(() => {
             const tbody = document.getElementById("builderTableBody");
-            // Find the very last <tr> inside the table body
-            if (tbody && tbody.lastElementChild) {
-                tbody.lastElementChild.scrollIntoView({ 
-                    behavior: "smooth", 
-                    block: "nearest" 
-                });
-            }
-        }, 50); // A tiny 50ms delay gives the browser time to finish drawing the new row first
-        
-        console.log("Blank row added successfully.");
+            const targetRow = insertAt >= 0 
+                ? tbody.querySelector(`tr[data-idx="${insertAt}"]`) 
+                : tbody.lastElementChild;
+            if (targetRow) targetRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 50);
     });
 
     safeListen("btnGroupRepeat", "click", (e) => {
@@ -313,8 +316,6 @@ function setupBuilderWiring() {
     
     safeListen("editCourseCloseBtn", "click", closeBuilderModal);
     safeListen("editCourseCancelBtn", "click", closeBuilderModal);
-
-    
 }
 
 // ── 4. UI Extras (IAST, History) ─────────────────────────────────────────────

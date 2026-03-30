@@ -21,6 +21,21 @@ const resetBusyCursorState = () => {
     document.body.style.cursor = "";
     document.documentElement.style.cursor = "";
 };
+
+// Add to exports at the bottom of the file later: getTargetInsertionIndex, clearBuilderSelection
+export function getTargetInsertionIndex() {
+    const firstChecked = document.querySelector('.b-row-select:checked');
+    return firstChecked ? parseInt(firstChecked.dataset.idx, 10) : -1;
+}
+
+export function clearBuilderSelection() {
+    document.querySelectorAll('.b-row-select:checked').forEach(cb => cb.checked = false);
+    // Hide dynamic buttons if they exist
+    const btnDelete = document.getElementById("btnDeleteSelected");
+    const btnRepeat = document.getElementById("btnGroupRepeat");
+    if (btnDelete) btnDelete.style.display = "none";
+    if (btnRepeat) btnRepeat.style.display = "none";
+}
 function builderRender() {
     const tbody = document.getElementById("builderTableBody");
     if (!tbody) return;
@@ -472,15 +487,21 @@ async function processSemicolonCommand(commandString) {
 
     if (validItems.length === 0) return;
 
+    let insertAt = getTargetInsertionIndex(); // 👈 Find ticked box
+
     validItems.forEach(item => {
         const holdTimes = (item.asana && window.getHoldTimes) ? window.getHoldTimes(item.asana, item.stageKey || null) : { standard: 30, flow: 5 };
         const duration = isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30);
-        builderState.poses.push({
+        
+        addPoseToBuilder({
             id: item.id, name: item.name, duration, variation: item.stageKey || '', note: item.stageKey ? `[${item.stageKey}]` : '', holdTier: 'standard', flowHoldOverride: isFlowSequence() ? duration : null,
             _ambiguous: item._ambiguous || false, _pageNum: item._pageNum || null, _alternatives: item._alternatives || []
-        });
+        }, insertAt); // 👈 Pass insertion index
+        
+        if (insertAt >= 0) insertAt++; // Increment so multiple poses stay in order
     });
 
+    clearBuilderSelection(); // 👈 Clear checkbox
     builderRender();
 }
 
@@ -490,6 +511,9 @@ function openEditCourse() {
 }
 
 function builderOpen(mode, seq) {
+    // 🛑 BLIND SPOT 3: Kill audio if they open the builder while it's speaking
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    
     builderState.mode = mode;
     builderState.editingCourseIndex = -1;
     builderState.poses = []; 
@@ -519,6 +543,8 @@ function builderOpen(mode, seq) {
     setupBuilderSearch(
         getAsanaIndex, 
         (asma) => { 
+            const insertAt = getTargetInsertionIndex(); // 👈 Find ticked box
+            
             addPoseToBuilder({
                 id: asma.id,
                 name: asma.name || asma.english,
@@ -526,7 +552,9 @@ function builderOpen(mode, seq) {
                 variation: "",
                 note: "",
                 flowHoldOverride: (() => { const holdTimes = window.getHoldTimes ? window.getHoldTimes(asma) : { standard: 30, flow: 5 }; return isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : null; })()
-            });
+            }, insertAt); // 👈 Pass insertion index
+            
+            clearBuilderSelection(); // 👈 Clear checkbox
             builderRender();
         },
         processSemicolonCommand
@@ -871,6 +899,7 @@ window.selectRowSearch = (id) => {
     }
     document.getElementById('rowSearchOverlay').style.display = 'none';
 };
+
 
 export {
     builderRender, processSemicolonCommand, openEditCourse, builderOpen, builderSave, createRepeatGroup,
