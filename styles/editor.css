@@ -396,9 +396,14 @@
     }
     
     
-    .builder-tools-toggle-btn { display: flex; align-items: center; justify-content: center; }
-    .builder-tools-panel { display: none; flex-direction: column; }
-    .builder-tools-panel.show { display: flex !important; }
+    .builder-tools-toggle-btn, #builderToolsToggle { 
+        display: none !important; 
+    }
+
+    .builder-tools-panel { 
+        display: flex; 
+        flex-direction: column; 
+    }
     
     #editCourseBackdrop .modal { 
         height: 100dvh; 

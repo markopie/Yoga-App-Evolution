@@ -22,7 +22,16 @@ const resetBusyCursorState = () => {
     document.documentElement.style.cursor = "";
 };
 
-// Add to exports at the bottom of the file later: getTargetInsertionIndex, clearBuilderSelection
+export function updateToolbarState() {
+    const checkedCount = document.querySelectorAll('.b-row-select:checked').length;
+    const btnDelete = document.getElementById("btnDeleteSelected");
+    const btnRepeat = document.getElementById("btnGroupRepeat");
+    
+    if (btnDelete) btnDelete.style.display = checkedCount > 0 ? "inline-block" : "none";
+    
+    if (btnRepeat) btnRepeat.style.display = checkedCount > 0 ? "inline-block" : "none"; 
+}
+
 export function getTargetInsertionIndex() {
     const firstChecked = document.querySelector('.b-row-select:checked');
     return firstChecked ? parseInt(firstChecked.dataset.idx, 10) : -1;
@@ -30,12 +39,9 @@ export function getTargetInsertionIndex() {
 
 export function clearBuilderSelection() {
     document.querySelectorAll('.b-row-select:checked').forEach(cb => cb.checked = false);
-    // Hide dynamic buttons if they exist
-    const btnDelete = document.getElementById("btnDeleteSelected");
-    const btnRepeat = document.getElementById("btnGroupRepeat");
-    if (btnDelete) btnDelete.style.display = "none";
-    if (btnRepeat) btnRepeat.style.display = "none";
+    updateToolbarState(); 
 }
+
 function builderRender() {
     const tbody = document.getElementById("builderTableBody");
     if (!tbody) return;
@@ -260,6 +266,8 @@ function builderRender() {
                 if (pairCb) pairCb.checked = isChecked;
             }
         }
+        
+        updateToolbarState(); // 👈 ADDED: Triggers the Delete/Repeat buttons to appear
     });
 
     qS('.b-macro-swap').forEach(btn => btn.onclick = (e) => {
@@ -472,6 +480,7 @@ function builderRender() {
             statsEl.textContent = `${authoredPoses.length} poses · ${fmt(authoredSecs)} total (incl. reps & sides)`;
         }
     }
+    updateToolbarState(); // 👈 ADDED: Ensures buttons hide if a selected row is moved or deleted
 }
 
 async function processSemicolonCommand(commandString) {
@@ -847,9 +856,6 @@ function wireBuilderGlobals() {
         });
     }
 
-    const gearBtn = document.getElementById("builderToolsToggle");
-    const toolsPanel = document.getElementById("builderToolsPanel");
-    if (gearBtn && toolsPanel) gearBtn.onclick = () => toolsPanel.classList.toggle("show");
 
     const rowInput = document.getElementById("rowSearchInput");
     const rowResults = document.getElementById("rowSearchResults");
