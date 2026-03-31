@@ -59,14 +59,14 @@ export async function getOrCreateSubCategoryId(fullCategoryString) {
  * Safely saves or updates a course, resolving category IDs automatically.
  */
 export async function saveSequence(payload, knownId = null) {
-    // 1. Resolve the relational ID using our new helper
+    // 1. Resolve the relational ID
     const subCategoryId = await getOrCreateSubCategoryId(payload.category);
 
-    // 2. Build the exact payload for the database
+    // 2. Build the exact payload (Strictly matching your schema)
     const dbPayload = {
         title: payload.title,
         sequence_text: payload.sequence_text,
-        sub_category_id: subCategoryId, // 🌟 THE ONLY CATEGORY LINK
+        sub_category_id: subCategoryId, 
         last_edited: payload.last_edited,
         user_id: payload.user_id
     };
@@ -75,9 +75,13 @@ export async function saveSequence(payload, knownId = null) {
         dbPayload.is_system = payload.is_system;
     }
 
-    // 3. Execute the Update or Insert
+    // 3. Execute Update or Insert
     if (knownId) {
-        const { error } = await supabase.from('courses').update(dbPayload).eq('id', knownId);
+        const { error } = await supabase
+            .from('courses')
+            .update(dbPayload)
+            .eq('id', knownId);
+            
         if (error) throw error;
         return { id: knownId };
     } 
@@ -92,7 +96,11 @@ export async function saveSequence(payload, knownId = null) {
     if (selErr) throw selErr;
 
     if (existing) {
-        const { error } = await supabase.from('courses').update(dbPayload).eq('id', existing.id);
+        const { error } = await supabase
+            .from('courses')
+            .update(dbPayload)
+            .eq('id', existing.id);
+            
         if (error) throw error;
         return { id: existing.id };
     }
@@ -107,7 +115,6 @@ export async function saveSequence(payload, knownId = null) {
     
     return { id: inserted.id };
 }
-
 /**
  * Safely finds or creates an Asana Category and returns its ID.
  */

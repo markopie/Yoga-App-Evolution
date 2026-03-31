@@ -164,20 +164,30 @@ export function getExpandedPoses(sequence, ctx = {}) {
     finalExpanded.forEach(p => {
         const idStr = String(p[0] || "");
         const poseMeta = p[7] || {};
+        
+        // 1. System Poses (Macros, Loops, etc.)
         if (idStr.startsWith("MACRO") || idStr.startsWith("LOOP_") || idStr === "GROUP_END") {
             withInjected.push(p);
             return;
         }
 
-        if (poseMeta.flowSegment) {
+        // 🌟 THE SAFETY NET: Treat explicit L/R choices as "Flow" segments.
+        // This prevents the bilateral doubler from triggering later.
+        const isExplicitSingleSide = poseMeta.explicitSide === 'L' || poseMeta.explicitSide === 'R';
+        const isFlowContext = !!(poseMeta.flowSegment || isExplicitSingleSide);
+
+        if (isFlowContext) {
+            // In a flow context, we push once and skip the prep/recovery injection 
+            // logic below to keep the flow "clean" and fast.
             withInjected.push(p);
             return;
         }
 
+        // 2. Standard Sequence Logic (Prep/Recovery Injection)
         const asana = findAsana(idStr);
-
         let currKey = null;
         let keyMatch = [p[2], p[3], p[4]].filter(Boolean).join(" ").trim().match(/\[(.*?)\]/);
+        
         if (keyMatch) {
             currKey = keyMatch[1].trim();
         } else if (p[3]) {
@@ -212,12 +222,12 @@ export function getExpandedPoses(sequence, ctx = {}) {
             const parsed = cleanRawId.match(/^(\d+)(.*)$/);
             if (!parsed) return null;
 
-            const numId      = parsed[1].padStart(3, "0");
-            let   varSuffix  = parsed[2] ? parsed[2].toUpperCase() : "";
+            const numId = parsed[1].padStart(3, "0");
+            let varSuffix = parsed[2] ? parsed[2].toUpperCase() : "";
             if (varSuffix === "NULL") varSuffix = "";
 
             const targetAsana = findAsana(numId);
-            let duration      = 30;
+            let duration = 30;
 
             if (targetAsana) {
                 const hj = window.getHoldTimes ? window.getHoldTimes(targetAsana) : {};
@@ -234,14 +244,23 @@ export function getExpandedPoses(sequence, ctx = {}) {
                 }
             }
 
-            return [numId, duration, null, varSuffix || null, `* ${label} (Auto-Injected) *`, p[5] || null, label, { ...(poseMeta || {}), flowSegment: false }];
+            // 🌟 Updated: Ensure injected poses inherit the flow status of the parent
+            return [
+                numId, 
+                duration, 
+                null, 
+                varSuffix || null, 
+                `* ${label} (Auto-Injected) *`, 
+                p[5] || null, 
+                label, 
+                { ...(poseMeta || {}), flowSegment: isFlowContext } 
+            ];
         };
 
         prepIds.forEach(id  => { const pp = createInjectedPose(id,  "Preparatory Action"); if (pp) withInjected.push(pp); });
         withInjected.push(p);
         recovIds.forEach(id => { const rp = createInjectedPose(id,  "Recovery Action");    if (rp) withInjected.push(rp); });
     });
-
 
     return withInjected;
 }
