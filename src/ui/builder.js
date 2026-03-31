@@ -7,7 +7,7 @@ import { parseSemicolonCommand } from "../utils/builderParser.js";
 import { setupBuilderSearch } from "./builderSearch.js";
 import { formatHMS, displayName, formatCategory } from "../utils/format.js";
 import { builderPoseName, generateVariationSelectHTML, generateInfoCellHTML, resolvePoseInfo, buildMacroInfoHTML } from "./builderTemplates.js";
-import { builderState, movePose, movePoseToIndex, removePose, addPoseToBuilder, isFlowSequence } from '../store/builderState.js';
+import { builderState, setPoseSide, movePose, movePoseToIndex, removePose, addPoseToBuilder, isFlowSequence } from '../store/builderState.js';
 import { updateBuilderModeUI, openLinkSequenceModal } from "./builderUI.js";
 
 const getEffectiveTime = (id, time) => window.getEffectiveTime ? window.getEffectiveTime(id, time) : time;
@@ -130,10 +130,20 @@ function builderRender() {
             }
         };
 
-        const sideBadge = (!isMacro && (asana?.requires_sides || asana?.requiresSides)) 
-            ? `<span style="color:#2e7d32; font-size:0.7rem; font-weight:bold; margin-left:4px;">[Sides ×2]</span>` 
-            : '';
-
+        let sideBadge = '';
+        if (!isMacro && (asana?.requires_sides || asana?.requiresSides)) {
+            if (isFlow) {
+                const s = pose.side || '';
+                sideBadge = `
+                <div class="side-selector" style="display:inline-flex; border: 1px solid #d2d2d7; border-radius: 6px; overflow:hidden; font-size: 0.65rem; font-weight: 600; margin-left:8px; vertical-align:middle; background:#fff; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+                    <button class="b-side" data-idx="${idx}" data-side="L" style="padding: 3px 8px; border:none; border-right: 1px solid #d2d2d7; background:${s === 'L' ? '#007aff' : 'transparent'}; color:${s === 'L' ? '#fff' : '#86868b'}; cursor:pointer; transition:all 0.15s;">L</button>
+                    <button class="b-side" data-idx="${idx}" data-side="" style="padding: 3px 8px; border:none; border-right: 1px solid #d2d2d7; background:${s === '' ? '#007aff' : 'transparent'}; color:${s === '' ? '#fff' : '#86868b'}; cursor:pointer; transition:all 0.15s;">L+R</button>
+                    <button class="b-side" data-idx="${idx}" data-side="R" style="padding: 3px 8px; border:none; background:${s === 'R' ? '#007aff' : 'transparent'}; color:${s === 'R' ? '#fff' : '#86868b'}; cursor:pointer; transition:all 0.15s;">R</button>
+                </div>`;
+            } else {
+                sideBadge = `<span style="color:#86868b; font-size:0.65rem; font-weight:600; margin-left:8px; border: 1px solid #d2d2d7; padding: 2px 6px; border-radius: 4px; background:#f5f5f7;">L+R</span>`;
+            }
+        }
         let roundsHTML = '';
         if (isMacro || isLoopStart) {
             roundsHTML = `<div style="font-size:0.75rem; color:#0d47a1; margin-top:4px;">
@@ -268,6 +278,15 @@ function builderRender() {
         }
         
         updateToolbarState(); // 👈 ADDED: Triggers the Delete/Repeat buttons to appear
+    });
+
+    qS('.b-side').forEach(btn => btn.onclick = (e) => {
+        e.preventDefault();
+        const idx = parseInt(e.target.dataset.idx, 10);
+        const side = e.target.dataset.side; // Will be 'L', 'R', or ''
+        
+        setPoseSide(idx, side);
+        builderRender();
     });
 
     qS('.b-macro-swap').forEach(btn => btn.onclick = (e) => {
@@ -520,7 +539,7 @@ function openEditCourse() {
 }
 
 function builderOpen(mode, seq) {
-    // 🛑 BLIND SPOT 3: Kill audio if they open the builder while it's speaking
+
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     
     builderState.mode = mode;
@@ -656,6 +675,7 @@ function builderOpen(mode, seq) {
     
              const holdTimes = asana ? (window.getHoldTimes ? window.getHoldTimes(asana, variation || null) : { standard: 30, flow: 5 }) : { standard: 30, flow: 5 };
              const parsedDuration = Number(p[1]) || (seqIsFlow ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30));
+             
              builderState.poses.push({
                 id: id,
                 name: asana ? (asana.name || displayName(asana)) : id,
@@ -666,7 +686,8 @@ function builderOpen(mode, seq) {
                     const tierMatch = (p[4] || '').match(/\btier:(S|L|STD)\b/i);
                     return tierMatch ? (tierMatch[1].toUpperCase() === 'S' ? 'short' : 'long') : 'standard';
                 })(),
-                flowHoldOverride: seqIsFlow ? parsedDuration : null
+                flowHoldOverride: seqIsFlow ? parsedDuration : null,
+                side: p[7] && p[7].explicitSide ? p[7].explicitSide : "" // 👈 ADDED: Read saved side
              });
        });
     }
@@ -681,22 +702,27 @@ function builderOpen(mode, seq) {
 function builderCompileSequenceText() {
     return builderState.poses.map(p => {
         const idStr = String(p.id);
-    if (idStr.startsWith("MACRO:")) {
+        if (idStr.startsWith("MACRO:")) {
             const rounds = Math.max(1, Number(p.duration) || 1);
             return `${idStr} | ${rounds} | [Sequence Link] Linked Sequence: ${rounds} Round${rounds !== 1 ? 's' : ''}`;
-        }        if (idStr.startsWith("LOOP_")) return `${idStr} | ${p.duration} | [Repetition] ${p.note ? p.note : ''}`;
+        }        
+        if (idStr.startsWith("LOOP_")) return `${idStr} | ${p.duration} | [Repetition] ${p.note ? p.note : ''}`;
 
         const id = String(p.id).padStart(3, '0');
         const dur = p.duration || (isFlowSequence() ? 5 : 30);
         
+        // 👇 MODIFIED: Added .replace(/\bside:[LR]\b/gi, '') to scrub old tags
         let cleanNote = (p.note || '').replace(/\[.*?\b([IVX]+)([a-z]?)\b.*?\]/ig, '')
                                       .replace(/\btier:[SL]\b/gi, '')
+                                      .replace(/\bside:[LR]\b/gi, '') 
                                       .replace(/\s+/g, ' ')
                                       .trim();
 
         const varPart  = p.variation ? `[${p.variation}]` : `[]`;
         const tierTag  = (p.holdTier && p.holdTier !== 'standard') ? ` tier:${p.holdTier === 'short' ? 'S' : 'L'}` : '';
-        const notePart = (cleanNote + tierTag).trim();
+        const sideTag  = p.side ? ` side:${p.side}` : ''; // 👈 ADDED
+        
+        const notePart = (cleanNote + tierTag + sideTag).trim(); // 👈 MODIFIED
         
         return `${id} | ${dur} | ${varPart} ${notePart}`.trim();
     }).filter(s => s.trim().length > 0).join("\n");

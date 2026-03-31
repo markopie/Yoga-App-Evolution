@@ -13,6 +13,11 @@ export const builderState = {
     currentPlaybackMode: null
 };
 
+export function setPoseSide(index, targetSide) {
+    if (!builderState.poses[index]) return;
+    builderState.poses[index].side = targetSide; // targetSide will be 'L', 'R', or '' (Both)
+}
+
 export function isFlowSequence() {
     return builderState.currentPlaybackMode === 'flow';
 }

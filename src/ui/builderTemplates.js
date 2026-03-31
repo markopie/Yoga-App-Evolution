@@ -1,4 +1,5 @@
 import { formatCategory } from "../utils/format.js";
+import { isFlowSequence } from '../store/builderState.js';
 
 export function builderPoseName(asana, poseName, showSanskrit) {
     if (!asana) return poseName || 'Unknown';
@@ -84,7 +85,11 @@ export function generateInfoCellHTML(asana, pose, idx, options = {}) {
         const catKey = displayCat.toLowerCase().split(/[\s/]/)[0];
         catChipHTML = `<span class="binfo-cat" data-cat="${catKey}">${displayCat}</span>`;
     }
-
+    const sideSelector = isFlowSequence() ? `
+    <div class="side-selector" style="display:inline-flex; gap:2px; margin-left:8px; vertical-align:middle;">
+        <button class="tiny b-side ${pose.side === 'L' ? 'active' : ''}" data-idx="${idx}" data-side="L" style="${pose.side === 'L' ? 'background:#007aff; color:#fff; border-color:#007aff;' : ''}">L</button>
+        <button class="tiny b-side ${pose.side === 'R' ? 'active' : ''}" data-idx="${idx}" data-side="R" style="${pose.side === 'R' ? 'background:#007aff; color:#fff; border-color:#007aff;' : ''}">R</button>
+    </div>` : '';
     if (isFlow) {
         return `<td class="builder-info-cell builder-info-flow">
             <div class="builder-flow-info-block">

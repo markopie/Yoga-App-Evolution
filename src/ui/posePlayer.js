@@ -117,7 +117,18 @@ function setPose(idx, keepSamePose = false) {
 
     if (asana && (asana.requiresSides || asana.requires_sides)) {
         if (!keepSamePose) {
-            window.setNeedsSecondSide(true);
+            const poseMeta = currentPose[7] || {};
+            const explicitSide = poseMeta.explicitSide;
+
+            if (explicitSide === 'L' || explicitSide === 'R') {
+                // Strict override from Flow Builder: Lock the side, kill the bilateral loop.
+                window.setCurrentSide(explicitSide === 'L' ? 'left' : 'right');
+                window.setNeedsSecondSide(false); 
+            } else {
+                // Standard behavior: Default to right, ask engine to play left next.
+                window.setCurrentSide("right");
+                window.setNeedsSecondSide(true);
+            }
         }
     }
 
@@ -261,6 +272,8 @@ function setPose(idx, keepSamePose = false) {
     }
 
     if (nameEl) {
+        // Index 2 is baseOverrideName. This will now correctly be empty unless you actually typed a custom name.
+        const baseOverrideName = currentPose[2];
         let finalTitle = baseOverrideName || (asana ? (asana.english_name || asana.english || asana.name) : "Pose");
 
         if (variationTitle) {
@@ -268,7 +281,17 @@ function setPose(idx, keepSamePose = false) {
         }
 
         if (asana && asana.requiresSides) {
-            const sideMarker = window.currentSide === "right" ? "R" : "L";
+            // 👇 Read our explicit side from the meta object we just injected
+            const poseMeta = currentPose[7] || {};
+            const explicitSide = poseMeta.explicitSide;
+            
+            let sideMarker = "";
+            if (explicitSide === "L" || explicitSide === "R") {
+                sideMarker = explicitSide; // Strict override from Flow Builder
+            } else {
+                sideMarker = window.currentSide === "right" ? "R" : "L"; // Standard fallback
+            }
+            
             finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.8em; vertical-align: middle;">• ${sideMarker}</span>`;
         }
         

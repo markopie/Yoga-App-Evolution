@@ -17,14 +17,28 @@ const _sideCues = {};
     } catch (e) {}
 });
 
+/**
+ * Plays a side cue file (Left/Right) and returns a Promise.
+ */
 function playSideCueFile(side) {
-    const a = _sideCues[side];
-    if (!a) return;
-    try {
-        a.currentTime = 0;
-        a.play().catch(e => console.warn(`side cue play failed (${side}):`, e));
-        currentAudio = a;
-    } catch (e) {}
+    return new Promise((resolve) => {
+        const a = _sideCues[side];
+        if (!a) return resolve();
+        
+        a.onended = resolve;
+        a.onerror = resolve;
+        
+        try {
+            a.currentTime = 0;
+            a.play().catch(e => {
+                console.warn(`side cue play failed (${side}):`, e);
+                resolve();
+            });
+            setCurrentAudio(a);
+        } catch (e) {
+            resolve();
+        }
+    });
 }
 
 // ── Exports ───────────────────────────────────────────────────────────────────
@@ -84,18 +98,11 @@ export function playSideCue(side) {
 
 // ── System & Boundary Audio (Macros / Loops) ─────────────────────────────────
 
-/**
- * Plays a pre-recorded system audio prompt. Returns a Promise so the next
- * audio file can be chained to play sequentially without overlapping.
- */
 export function playSystemAudio(fileName) {
     return new Promise((resolve) => {
         if (!fileName) return resolve();
 
         let finalFile = fileName;
-        
-        // Smart fallback: If a specific macro name file isn't on the server, 
-        // fall back to the generic "macro_start.mp3"
         if (fileName.startsWith('macro_start_')) {
             const allFiles = window.serverAudioFiles || [];
             if (!allFiles.includes(`${fileName}.mp3`)) {
@@ -121,18 +128,10 @@ export function playSystemAudio(fileName) {
     });
 }
 
-/**
- * Uses the Web Speech API to announce the round number. 
- * Returns a Promise to allow sequential chaining.
- */
 export function speakRound(roundNum) {
     return speakText(`Round ${roundNum}`);
 }
 
-/**
- * General Speech API helper for accessibility.
- * Includes a 100ms delay to prevent audio clipping on start.
- */
 export function speakText(text) {
     return new Promise((resolve) => {
         if (!('speechSynthesis' in window) || !text) return resolve();
@@ -159,7 +158,6 @@ export function speakText(text) {
         utterance.onend = resolve;
         utterance.onerror = resolve;
 
-        // Small delay ensures the engine has fully cleared the previous cancel command
         setTimeout(() => window.speechSynthesis.speak(utterance), 100);
     });
 }
@@ -170,7 +168,6 @@ export function toggleSpeak(text, btn) {
         return;
     }
 
-    // Reset any other buttons currently in "Stop" state
     document.querySelectorAll('.speak-toggle-btn').forEach(b => {
         if (b.dataset.originalLabel) b.innerHTML = b.dataset.originalLabel;
         b.dataset.speaking = "false";
@@ -189,7 +186,12 @@ export function toggleSpeak(text, btn) {
 
 
 // ── Main orchestrator ─────────────────────────────────────────────────────────
-export function playAsanaAudio(
+
+/**
+ * Top-level async orchestrator. 
+ * Sequentially awaits the asana audio and then the side cue.
+ */
+export async function playAsanaAudio(
     asana,
     poseLabel       = null,
     isBrowseContext = false,
@@ -204,84 +206,93 @@ export function playAsanaAudio(
         currentAudio = null;
     }
 
-    if (isSecondSide && asana.requiresSides && currentSide && !isBrowseContext) {
-        playSideCueFile(currentSide);
-        return;
+    // 1. Await the Main Asana Audio
+    await playPoseMainAudio(asana, poseLabel, null, variationKey);
+
+    // 2. Await Side Cue if required
+    const requiresSides = !!(asana.requiresSides || asana.requires_sides);
+    if (!isBrowseContext && requiresSides && currentSide) {
+        await playSideCueFile(currentSide);
     }
-
-    const onMainAudioEnded = () => {
-        if (isBrowseContext) return;
-        if (asana.requiresSides && currentSide) {
-            playSideCueFile(currentSide);
-        }
-    };
-
-    playPoseMainAudio(asana, poseLabel, onMainAudioEnded, variationKey);
 }
 
+/**
+ * Core audio logic for asanas. Now returns a Promise.
+ */
 export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, variationKey = null) {
-    if (poseLabel && !asana.requiresSides) {
-        const side = detectSide(poseLabel);
-        if (side) setTimeout(() => playSideCue(side), 100);
-    }
+    return new Promise((resolve) => {
+        const handleComplete = () => {
+            if (onComplete) onComplete();
+            resolve();
+        };
 
-    const playSrcInQueue = (src, nextStep) => {
-        if (!src) { if (nextStep) nextStep(); return; }
-        const a = new Audio(src);
-        if (nextStep)       a.onended = nextStep;
-        else if (onComplete) a.onended = onComplete;
-        a.play()
-            .then(() => { currentAudio = a; })
-            .catch(e => {
-                console.warn(`Audio play failed: ${src}`, e);
-                if (nextStep) nextStep();
-                else if (onComplete) onComplete();
-            });
-    };
-
-    const varAudio = (variationKey && asana.variations && asana.variations[variationKey]?.audio)
-        ? asana.variations[variationKey].audio : null;
-
-    const step3_Variation = () => {
-        if (varAudio) playSrcInQueue(varAudio, onComplete);
-        else if (onComplete) onComplete();
-    };
-
-    const step2_Bridge = () => {
-        if (!varAudio) { if (onComplete) onComplete(); return; }
-        if (Math.random() < BRIDGE_SKIP_PROBABILITY) {
-            step3_Variation();
-            return;
+        if (poseLabel && !asana.requiresSides) {
+            const side = detectSide(poseLabel);
+            if (side) setTimeout(() => playSideCue(side), 100);
         }
-        const allFiles   = window.serverAudioFiles || [];
-        const bridges    = ["bridge_stage.mp3", "bridge_stage_2.mp3", "bridge_stage_3.mp3"]
-                            .filter(f => allFiles.includes(f) || f === "bridge_stage.mp3");
-        const bridgeFile = bridges[Math.floor(Math.random() * bridges.length)];
-        playSrcInQueue(AUDIO_BASE + bridgeFile, step3_Variation);
-    };
 
-    const step1_Main = () => {
-        let src = asana.audio;
-        if (!src) {
-            const idStr   = normalizePlate(asana.asanaNo || asana.id);
-            const fileList = window.serverAudioFiles || [];
-            const match   = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
-            if (match)      src = AUDIO_BASE + match;
-            else if (idStr) src = `${AUDIO_BASE}${idStr}_${(asana.english || asana.name || "").replace(/[^a-zA-Z0-9]/g, "")}.mp3`;
-        }
-        if (src) playSrcInQueue(src, step2_Bridge);
-        else     step2_Bridge();
-    };
+        const playSrcInQueue = (src, nextStep) => {
+            if (!src) { if (nextStep) nextStep(); return; }
+            const a = new Audio(src);
+            a.onended = nextStep;
+            a.onerror = nextStep;
+            a.play()
+                .then(() => { setCurrentAudio(a); })
+                .catch(e => {
+                    console.warn(`Audio play failed: ${src}`, e);
+                    nextStep();
+                });
+        };
 
-    step1_Main();
+        const varAudio = (variationKey && asana.variations && asana.variations[variationKey]?.audio)
+            ? asana.variations[variationKey].audio : null;
+
+        const step3_Variation = () => {
+            if (varAudio) playSrcInQueue(varAudio, handleComplete);
+            else handleComplete();
+        };
+
+        const step2_Bridge = () => {
+            if (!varAudio) { handleComplete(); return; }
+            if (Math.random() < BRIDGE_SKIP_PROBABILITY) {
+                step3_Variation();
+                return;
+            }
+            const allFiles   = window.serverAudioFiles || [];
+            const bridges    = ["bridge_stage.mp3", "bridge_stage_2.mp3", "bridge_stage_3.mp3"]
+                                .filter(f => allFiles.includes(f) || f === "bridge_stage.mp3");
+            const bridgeFile = bridges[Math.floor(Math.random() * bridges.length)];
+            playSrcInQueue(AUDIO_BASE + bridgeFile, step3_Variation);
+        };
+
+        const step1_Main = () => {
+            let src = asana.audio;
+            if (!src) {
+                const idStr   = normalizePlate(asana.asanaNo || asana.id);
+                const fileList = window.serverAudioFiles || [];
+                const match   = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
+                
+                if (match) {
+                    src = AUDIO_BASE + match;
+                } else if (idStr) {
+                    const cleanName = (asana.english || asana.name || "").replace(/[^a-zA-Z0-9]/g, "");
+                    src = `${AUDIO_BASE}${idStr}_${cleanName}.mp3`;
+                }
+            }
+            if (src) playSrcInQueue(src, step2_Bridge);
+            else     step2_Bridge();
+        };
+
+        step1_Main();
+    });
 }
 
-// Global bindings for legacy callers
-window.playAsanaAudio   = playAsanaAudio;
-window.playFaintGong    = playFaintGong;
+// Global bindings
+window.playAsanaAudio    = playAsanaAudio;
+window.playFaintGong     = playFaintGong;
 window.playPoseMainAudio = playPoseMainAudio;
-window.getCurrentAudio  = getCurrentAudio;
-window.playSystemAudio  = playSystemAudio;
-window.speakRound       = speakRound;
-window.speakText        = speakText;
-window.toggleSpeak      = toggleSpeak;
+window.getCurrentAudio   = getCurrentAudio;
+window.playSystemAudio   = playSystemAudio;
+window.speakRound        = speakRound;
+window.speakText         = speakText;
+window.toggleSpeak       = toggleSpeak;

@@ -63,6 +63,10 @@ function parseSequenceText(sequenceText) {
       variationKey = roman + suffix; // Properly reconstructs "VIIa" instead of "VIIA"
     }
 
+    // 👇 ADDED: Extract side tag (L or R) from the note
+    const sideMatch = note.match(/\bside:(L|R)\b/i);
+    const side = sideMatch ? sideMatch[1].toUpperCase() : '';
+
     // MACRO: rows (e.g. "MACRO:Surya Namaskar A") are expected linked-sequence
     // markers and must round-trip through persistence intact.
     if (/^MACRO:/i.test(id)) {
@@ -76,8 +80,6 @@ function parseSequenceText(sequenceText) {
     const normalizedId = numericPart
       ? numericPart[1].replace(/^0+/, '').padStart(3, '0') + suffix
       : id;
-
-    
 
     if (/\s+/.test(suffix) || /^[IVX]{2,}/i.test(suffix)) {
       console.warn(
@@ -94,8 +96,7 @@ function parseSequenceText(sequenceText) {
     // (set by getExpandedPoses). Instead, tier is read directly from p[4] (the note)
     // by consumers via a /\btier:(S|L|STD)\b/ regex when needed.
 
-    poses.push([[normalizedId], duration, '', variationKey, note]);
-  });
+    poses.push([[normalizedId], duration, '', variationKey, note, null, null, { explicitSide: side }]);  });
 
   return poses;
 }
