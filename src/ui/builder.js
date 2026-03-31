@@ -289,22 +289,51 @@ function builderRender() {
         builderRender();
     });
 
-    qS('.b-macro-swap').forEach(btn => btn.onclick = (e) => {
+    // 1. Refactored Macro Swap (The Link Sequence Button)
+qS('.b-macro-swap').forEach(btn => {
+    btn.onclick = (e) => {
         const idx = parseInt(e.target.dataset.idx);
         builderState.activeMacroSwapIdx = idx;
+        
         const overlay = document.getElementById('linkSequenceOverlay');
         const input = document.getElementById('linkSequenceInput');
+        
         if (overlay) overlay.style.display = 'flex';
-        if (input) { input.value = ""; input.focus(); }
-    });
+        
+        if (input) {
+            input.value = "";
+            // Mobile Fix: Brief timeout ensures the keyboard doesn't 'jolt' the UI 
+            // before the focus event is registered.
+            setTimeout(() => {
+                input.focus();
+                // Strategy: Some mobile browsers trigger the list on a 'click' to the input
+                input.click(); 
+            }, 100);
+        }
+    };
+});
 
-    qS('.b-row-search-btn').forEach(btn => btn.onclick = (e) => {
+// 2. Refactored Row Search
+qS('.b-row-search-btn').forEach(btn => {
+    btn.onclick = (e) => {
         builderState.activeRowSearchIdx = parseInt(e.target.dataset.idx);
-        document.getElementById('rowSearchOverlay').style.display = 'flex';
-        document.getElementById('rowSearchInput').value = '';
-        document.getElementById('rowSearchResults').innerHTML = '';
-        setTimeout(() => document.getElementById('rowSearchInput').focus(), 50);
-    });
+        
+        const overlay = document.getElementById('rowSearchOverlay');
+        const input = document.getElementById('rowSearchInput');
+        const results = document.getElementById('rowSearchResults');
+
+        if (overlay) overlay.style.display = 'flex';
+        if (input) input.value = '';
+        if (results) results.innerHTML = '';
+        
+        setTimeout(() => {
+            if (input) {
+                input.focus();
+                input.click();
+            }
+        }, 100);
+    };
+});
 
     qS('.b-id').forEach(el => el.onchange = (e) => {
         const i = e.target.dataset.idx;
