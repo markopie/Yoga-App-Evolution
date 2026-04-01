@@ -34,8 +34,10 @@
 
 ### 📄 `playback/timerEvents.js`
 - `_lastBoundaryIdx` (window binding)
+- `_lastSideIdx` (window binding)
 - `appendServerHistory` (window binding)
 - `currentIndex` (window binding)
+- `currentSide` (window binding)
 - `disableWakeLock` (window binding)
 - `displayName` (window binding)
 - `enableWakeLock` (window binding)
@@ -44,8 +46,9 @@
 - `getActivePlaybackList` (window binding)
 - `getCompletionTracker` (window binding)
 - `getCurrentAudio` (window binding)
+- `getPosePillTime` (window binding)
+- `needsSecondSide` (window binding)
 - `nextPose` (window binding)
-- `playAsanaAudio` (window binding)
 - `playFaintGong` (window binding)
 - `playSystemAudio` (window binding)
 - `speakRound` (window binding)
@@ -120,6 +123,7 @@
 - `movePose` (function)
 - `removePose` (function)
 - `setBuilderState` (function)
+- `setPoseSide` (function)
 - `toggleSanskrit` (function)
 
 ### 📄 `store/state.js`
@@ -216,6 +220,7 @@
 
 ### 📄 `ui/builderUI.js`
 - `openLinkSequenceModal` (function)
+- `selectLinkSequence` (window binding)
 - `updateBuilderModeUI` (function)
 
 ### 📄 `ui/courseUI.js`

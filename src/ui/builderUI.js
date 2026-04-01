@@ -102,6 +102,11 @@ export function openLinkSequenceModal() {
     const repsInput = document.getElementById('linkSequenceReps');
     if (!overlay) return;
 
+    // Safety: Close the row search overlay if it's open to prevent "Mixed Up" screens
+    const rowSearch = document.getElementById('rowSearchOverlay');
+    if (rowSearch) rowSearch.style.display = 'none';
+    builderState.activeRowSearchIdx = -1;
+
     // Reset UI
     if (input) {
         input.value = '';

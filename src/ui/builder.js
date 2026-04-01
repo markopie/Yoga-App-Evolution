@@ -202,8 +202,8 @@ function builderRender() {
                  ${isLoopStart || isLoopEnd ? `<span style="color:#999; font-size:0.65rem; text-transform:uppercase; font-weight:bold; letter-spacing:0.02em;">System Block</span>` : 
                    (isMacro ? `ID: <span style="font-family:monospace; background:#f0f0f0; padding:2px 6px; border-radius:4px; border:1px solid #ddd; font-size:0.7rem; color:#333;">${pose.id.replace("MACRO:", "")}</span>
                                <button class="tiny b-macro-swap" data-idx="${idx}" style="padding:2px 8px; border-radius:4px; border:1px solid #007aff; background:#fff; color:#007aff; cursor:pointer; font-weight:600; font-size:0.65rem;" title="Change Linked Sequence">Swap</button>` :
-                              `ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" style="width:50px; padding:2px; border:1px solid #ccc; border-radius:4px;">
-                               <button class="tiny b-row-search-btn" data-idx="${idx}" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer;" title="Search Asana">🔍</button>`
+                                `ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" style="width:50px; padding:2px; border:1px solid #ccc; border-radius:4px;">
+                                <button onclick="window.triggerRowSearch(event, ${idx})" type="button" class="tiny b-row-search-btn" data-idx="${idx}" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer;" title="Search Asana">🔍</button>`
                    )
                  }
               </div>
@@ -257,7 +257,7 @@ function builderRender() {
     const qS = (sel) => tbody.querySelectorAll(sel);
     
     qS('.b-row-select').forEach(cb => cb.onchange = (e) => {
-        const idx = parseInt(e.target.dataset.idx);
+        const idx = parseInt(cb.dataset.idx);
         const pose = builderState.poses[idx];
         if (pose && (pose.id === "LOOP_START" || pose.id === "LOOP_END")) {
             const isChecked = e.target.checked;
@@ -280,10 +280,10 @@ function builderRender() {
         updateToolbarState(); // 👈 ADDED: Triggers the Delete/Repeat buttons to appear
     });
 
-    qS('.b-side').forEach(btn => btn.onclick = (e) => {
+    qS('.b-side').forEach(btn => btn.onmousedown = (e) => {
         e.preventDefault();
-        const idx = parseInt(e.target.dataset.idx, 10);
-        const side = e.target.dataset.side; // Will be 'L', 'R', or ''
+        const idx = parseInt(btn.dataset.idx, 10);
+        const side = btn.dataset.side; // Will be 'L', 'R', or ''
         
         setPoseSide(idx, side);
         builderRender();
@@ -291,8 +291,9 @@ function builderRender() {
 
 // 1. Trigger the Overlay (Delegated to builderUI.js)
 qS('.b-macro-swap').forEach(btn => {
-    btn.onclick = (e) => {
-        builderState.activeMacroSwapIdx = parseInt(e.target.dataset.idx);
+    btn.onmousedown = (e) => {
+        e.preventDefault();
+        builderState.activeMacroSwapIdx = parseInt(btn.dataset.idx, 10);
         if (typeof openLinkSequenceModal === 'function') {
             openLinkSequenceModal();
         }
@@ -300,32 +301,9 @@ qS('.b-macro-swap').forEach(btn => {
 });
 
 
-
-// Refactored Row Search
-qS('.b-row-search-btn').forEach(btn => {
-    btn.onclick = (e) => {
-        builderState.activeRowSearchIdx = parseInt(e.target.dataset.idx);
-        
-        const overlay = document.getElementById('rowSearchOverlay');
-        const input = document.getElementById('rowSearchInput');
-        const results = document.getElementById('rowSearchResults');
-
-        if (overlay) overlay.style.display = 'flex';
-        if (input) input.value = '';
-        if (results) results.innerHTML = '';
-        
-        setTimeout(() => {
-            if (input) {
-                input.focus();
-                input.click();
-            }
-        }, 100);
-    };
-});
-
     qS('.b-id').forEach(el => el.onchange = (e) => {
-        const i = e.target.dataset.idx;
-        let val = e.target.value.trim();
+        const i = el.dataset.idx;
+        let val = el.value.trim();
         if(!val.startsWith("MACRO:")) val = val.padStart(3, '0');
         builderState.poses[i].id = val;
         const normId = typeof normalizePlate === "function" ? normalizePlate(val) : val;
@@ -343,8 +321,8 @@ qS('.b-row-search-btn').forEach(btn => {
     });
 
     qS('.b-var').forEach(el => el.onchange = (e) => {
-        const i = e.target.dataset.idx;
-        builderState.poses[i].variation = e.target.value;
+        const i = el.dataset.idx;
+        builderState.poses[i].variation = el.value;
         const normId = typeof normalizePlate === "function" ? normalizePlate(builderState.poses[i].id) : builderState.poses[i].id;
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
         const holdSource = asanaMatch?.variations?.[e.target.value]?.hold || asanaMatch?.hold || '';
@@ -358,8 +336,8 @@ qS('.b-row-search-btn').forEach(btn => {
     });
 
     qS('.b-flow-hold').forEach(el => el.onchange = (e) => {
-        const idx = e.target.dataset.idx;
-        let val = parseInt(e.target.value, 10);
+        const idx = el.dataset.idx;
+        let val = parseInt(el.value, 10);
         if (isNaN(val) || val < 1) val = 1;
         builderState.poses[idx].flowHoldOverride = val;
         builderState.poses[idx].duration = val;
@@ -367,8 +345,8 @@ qS('.b-row-search-btn').forEach(btn => {
     });
 
     qS('.b-dur').forEach(el => el.onchange = (e) => {
-        const idx = e.target.dataset.idx;
-        let val = parseInt(e.target.value);
+        const idx = el.dataset.idx;
+        let val = parseInt(el.value);
         if (isNaN(val) || val < 1) val = 1;
         builderState.poses[idx].duration = val;
          if (String(builderState.poses[idx].id || "").startsWith("MACRO:")) {
@@ -401,14 +379,16 @@ qS('.b-row-search-btn').forEach(btn => {
         }
     };
 
-    qS('.b-move-up').forEach(el => el.onclick = () => {
-        const idx = parseInt(el.dataset.idx);
+    qS('.b-move-up').forEach(el => el.onmousedown = (e) => {
+        e.preventDefault();
+        const idx = parseInt(el.dataset.idx, 10);
         const range = findLoopRange(idx);
         if (range) moveBlock(range, -1); else movePose(idx, -1);
         builderRender();
     });
-    qS('.b-move-dn').forEach(el => el.onclick = () => {
-        const idx = parseInt(el.dataset.idx);
+    qS('.b-move-dn').forEach(el => el.onmousedown = (e) => {
+        e.preventDefault();
+        const idx = parseInt(el.dataset.idx, 10);
         const range = findLoopRange(idx);
         if (range) moveBlock(range, 1); else movePose(idx, 1);
         builderRender();
@@ -442,8 +422,9 @@ qS('.b-row-search-btn').forEach(btn => {
         saveStatusBtn.style.opacity = hasAmbiguous ? '0.45' : '';
     }
 
-    qS('.b-move-top').forEach(el => el.onclick = () => {
-        const idx = parseInt(el.dataset.idx);
+    qS('.b-move-top').forEach(el => el.onmousedown = (e) => {
+        e.preventDefault();
+        const idx = parseInt(el.dataset.idx, 10);
         if (idx > 0) {
             const item = builderState.poses.splice(idx, 1)[0];
             builderState.poses.unshift(item);
@@ -451,8 +432,9 @@ qS('.b-row-search-btn').forEach(btn => {
         }
     });
 
-    qS('.b-move-bot').forEach(el => el.onclick = () => {
-        const idx = parseInt(el.dataset.idx);
+    qS('.b-move-bot').forEach(el => el.onmousedown = (e) => {
+        e.preventDefault();
+        const idx = parseInt(el.dataset.idx, 10);
         if (idx < builderState.poses.length - 1) {
             const item = builderState.poses.splice(idx, 1)[0];
             builderState.poses.push(item);
@@ -460,8 +442,9 @@ qS('.b-row-search-btn').forEach(btn => {
         }
     });
 
-    qS('.b-tier').forEach(el => el.onclick = () => {
-        const i    = parseInt(el.dataset.idx);
+    qS('.b-tier').forEach(el => el.onmousedown = (e) => {
+        e.preventDefault();
+        const i    = parseInt(el.dataset.idx, 10);
         const tier = el.dataset.tier;
         const pose = builderState.poses[i];
         if (!pose) return;
@@ -1005,6 +988,40 @@ window.selectRowSearch = (id) => {
     document.getElementById('rowSearchOverlay').style.display = 'none';
 };
 
+
+window.triggerRowSearch = (e, idx) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    builderState.activeRowSearchIdx = parseInt(idx, 10);
+    
+    const overlay = document.getElementById('rowSearchOverlay');
+    const input = document.getElementById('rowSearchInput');
+    const results = document.getElementById('rowSearchResults');
+
+    if (!overlay) {
+        console.error("Architect Error: rowSearchOverlay missing from DOM.");
+        return;
+    }
+
+    // 1. DOM Reparenting Failsafe: Ensures immune viewport rendering
+    if (overlay.parentNode !== document.body) {
+        document.body.appendChild(overlay);
+    }
+
+    // 2. State Toggle Only (Visuals delegated to components.css)
+    overlay.style.display = 'flex';
+    
+    if (input) input.value = '';
+    if (results) results.innerHTML = '';
+    
+    setTimeout(() => {
+        if (input) {
+            input.focus();
+            input.click();
+        }
+    }, 100);
+};
 
 export {
     builderRender, processSemicolonCommand, openEditCourse, builderOpen, builderSave, createRepeatGroup,

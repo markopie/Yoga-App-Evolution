@@ -30,14 +30,28 @@ main {
 /* --- 2. Global Modal Framework --- */
 .modal-backdrop {
     position: fixed;
-    inset: 0;
+    inset: 0; /* ARCHITECT NOTE: Excellent modern shorthand. */
     background: rgba(0, 0, 0, 0.5);
-    display: none;
+    display: none; /* Controlled via JS */
     align-items: center; 
     justify-content: center;
-    z-index: 2000;
+    z-index: var(--z-modal-backdrop, 2000); /* Hooked to dictionary with fallback */
     padding: 5mm; 
     box-sizing: border-box;
+}
+
+/* Failsafe to guarantee JS inline overrides win without JS !important tags */
+.modal-backdrop[style*="display: flex"] {
+    display: flex !important;
+}
+
+/* --- 2b. Nested/Secondary Modal Tier --- */
+/* Forces search windows and sub-editors to ALWAYS float above the primary editor */
+#rowSearchOverlay, 
+#linkSequenceOverlay, 
+#repetitionModalOverlay, 
+#asanaEditorBackdrop {
+    z-index: var(--z-modal-secondary, 3000) !important;
 }
 
 .modal {
