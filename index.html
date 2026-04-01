@@ -452,11 +452,11 @@
             Insert an entire sequence as a single repeating block. It will automatically expand during playback.
         </p>
         
-        <div style="margin-bottom: 15px;">
-            <label style="display:block; font-size:0.85rem; font-weight:bold; margin-bottom:4px;">Select Sequence:</label>
-            <input type="text" id="linkSequenceInput" list="linkSequenceList" placeholder="Search your sequences..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
-            <datalist id="linkSequenceList"></datalist>
-        </div>
+        <div style="margin-bottom: 15px; position: relative;">
+      <label style="display:block; font-size:0.85rem; font-weight:bold; margin-bottom:4px;">Select Sequence:</label>
+      <input type="text" id="linkSequenceInput" placeholder="Search your sequences..." 
+           style="width: 100%; padding: 12px; border: 2px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px;">
+<div id="linkSequenceResults" class="link-results-container"></div>
         
         <div style="margin-bottom: 20px;">
             <label style="display:block; font-size:0.85rem; font-weight:bold; margin-bottom:4px;">Repetitions (Rounds):</label>

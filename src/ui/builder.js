@@ -289,31 +289,19 @@ function builderRender() {
         builderRender();
     });
 
-    // 1. Refactored Macro Swap (The Link Sequence Button)
+// 1. Trigger the Overlay (Delegated to builderUI.js)
 qS('.b-macro-swap').forEach(btn => {
     btn.onclick = (e) => {
-        const idx = parseInt(e.target.dataset.idx);
-        builderState.activeMacroSwapIdx = idx;
-        
-        const overlay = document.getElementById('linkSequenceOverlay');
-        const input = document.getElementById('linkSequenceInput');
-        
-        if (overlay) overlay.style.display = 'flex';
-        
-        if (input) {
-            input.value = "";
-            // Mobile Fix: Brief timeout ensures the keyboard doesn't 'jolt' the UI 
-            // before the focus event is registered.
-            setTimeout(() => {
-                input.focus();
-                // Strategy: Some mobile browsers trigger the list on a 'click' to the input
-                input.click(); 
-            }, 100);
+        builderState.activeMacroSwapIdx = parseInt(e.target.dataset.idx);
+        if (typeof openLinkSequenceModal === 'function') {
+            openLinkSequenceModal();
         }
     };
 });
 
-// 2. Refactored Row Search
+
+
+// Refactored Row Search
 qS('.b-row-search-btn').forEach(btn => {
     btn.onclick = (e) => {
         builderState.activeRowSearchIdx = parseInt(e.target.dataset.idx);

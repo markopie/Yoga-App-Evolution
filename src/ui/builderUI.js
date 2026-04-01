@@ -93,24 +93,96 @@ export function updateBuilderModeUI() {
     }
 }
 
+// --- src/ui/builderUI.js ---
+
 export function openLinkSequenceModal() {
     const overlay   = document.getElementById('linkSequenceOverlay');
     const input     = document.getElementById('linkSequenceInput');
-    const datalist  = document.getElementById('linkSequenceList');
+    const results   = document.getElementById('linkSequenceResults');
     const repsInput = document.getElementById('linkSequenceReps');
     if (!overlay) return;
 
-    const allCourses = [...(window.courses || [])];
-    const sorted = [
-        ...allCourses.filter(c => (c.category || '').toLowerCase().includes('flow')),
-        ...allCourses.filter(c => !(c.category || '').toLowerCase().includes('flow'))
-    ];
-    if (datalist) {
-        datalist.innerHTML = sorted.map(c => `<option value="${c.title}">${c.category ? '(' + c.category + ')' : ''}</option>`).join('');
+    // Reset UI
+    if (input) {
+        input.value = '';
+        input.oninput = handleLinkSearch; // Attach the real-time search
     }
-    if (input)     input.value     = '';
     if (repsInput) repsInput.value = '1';
+    if (results) {
+        results.innerHTML = '';
+        results.style.display = 'none';
+    }
 
     overlay.style.display = 'flex';
-    setTimeout(() => { if (input) input.focus(); }, 50);
+    setTimeout(() => { 
+        if (input) {
+            input.focus(); 
+            handleLinkSearch({ target: input }); 
+        }
+    }, 50);
 }
+
+// --- Helper: The Real-time Search Engine ---
+function handleLinkSearch(e) {
+    const term = (e && e.target ? e.target.value : (e || '')).toLowerCase();
+    const resultsContainer = document.getElementById('linkSequenceResults');
+    
+    // Safety check: ensure courses are loaded
+    const allCourses = [...(window.courses || [])];
+    if (allCourses.length === 0) return;
+
+    // The Bridge Check: Look for the word 'flow' in the category string, 
+    // or ID 55 if the dataAdapter passed it through.
+    const isFlow = (c) => {
+        const catStr = String(c.category || '').toLowerCase();
+        return catStr.includes('flow') || 
+               String(c.category_id) === '55' || 
+               String(c.categoryId) === '55';
+    };
+
+    let filtered = [];
+
+    if (term.length === 0) {
+        // EMPTY STATE: User just opened the modal.
+        // ONLY show Flow sequences to prevent dumping the whole DB on the screen.
+        filtered = allCourses.filter(isFlow);
+    } else {
+        // SEARCH STATE: User is typing. Search everything.
+        filtered = allCourses.filter(c => 
+            (c.title || '').toLowerCase().includes(term) || 
+            (c.category || '').toLowerCase().includes(term)
+        );
+        // Sort the search results so Flows still appear at the top
+        filtered.sort((a, b) => isFlow(b) - isFlow(a));
+    }
+
+    // Limit results to 50 to ensure mobile scrolling remains perfectly smooth
+    const displayList = filtered.slice(0, 50);
+
+    if (displayList.length > 0) {
+        resultsContainer.innerHTML = displayList.map(c => {
+        const safeTitle = (c.title || '').replace(/'/g, "\\'"); 
+        const displayCat = c.category || (isFlow(c) ? 'Flow' : 'General');
+        
+        return `
+            <div class="link-option-row" onclick="window.selectLinkSequence('${safeTitle}')">
+                <span class="link-option-title">${c.title}</span>
+                <span class="link-option-meta">${displayCat}</span>
+            </div>
+        `;
+    }).join('');
+        resultsContainer.style.display = 'block';
+    } else {
+        resultsContainer.innerHTML = `<div style="padding:12px; color:#999; text-align:center;">No sequences found.</div>`;
+        resultsContainer.style.display = 'block';
+    }
+}
+
+// --- Window Binding for Inline Onclick ---
+// Placed globally so the innerHTML buttons can trigger it
+window.selectLinkSequence = (title) => {
+    const input = document.getElementById('linkSequenceInput');
+    const results = document.getElementById('linkSequenceResults');
+    if (input) input.value = title;
+    if (results) results.style.display = "none";
+};
