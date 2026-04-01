@@ -38,10 +38,15 @@ function prevPose() {
                   : (window.currentSequence.poses || []);
 
     if (window.getCurrentSide() === "left") {
-        window.setCurrentSide("right");
-        window.setNeedsSecondSide(true); 
-        setPose(window.currentIndex, true);
-        return;
+        const currentPose = poses[window.currentIndex];
+        const meta = currentPose?.[7] || {};
+        // Only move back to 'right' side if this isn't an explicit single-sided pose
+        if (!meta.explicitSide) {
+            window.setCurrentSide("right");
+            window.setNeedsSecondSide(true); 
+            setPose(window.currentIndex, true);
+            return;
+        }
     }
 
     if (window.currentIndex > 0) {
@@ -50,8 +55,12 @@ function prevPose() {
         
         const id = Array.isArray(prevPoseData[0]) ? prevPoseData[0][0] : prevPoseData[0];
         const asana = window.findAsanaByIdOrPlate(window.normalizePlate(id));
+        const meta = prevPoseData[7] || {};
 
-        if (asana && asana.requiresSides) {
+        // Only treat as bilateral if it's not a flow segment and has no explicit side lock
+        const isBilateralContext = asana && (asana.requiresSides || asana.requires_sides) && !meta.explicitSide && !meta.flowSegment;
+
+        if (isBilateralContext) {
             window.setCurrentSide("left");
             window.setNeedsSecondSide(false);
             setPose(newIndex, true); 

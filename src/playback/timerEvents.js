@@ -41,6 +41,17 @@ window.playbackEngine.onStart = () => {
         if (poses[window.currentIndex]) {
             const idx = window.currentIndex;
             const currentPose = poses[idx];
+
+            // --- 🧭 STATE SYNC (FIXES INCORRECT SIDE AUDIO & DOUBLER) ---
+            const meta = currentPose[7] || {};
+            if (meta.explicitSide) {
+                window.currentSide = meta.explicitSide === 'L' ? 'left' : 'right';
+                window.needsSecondSide = false; // Disable the auto-doubler for this pose
+            } else if (window._lastSideIdx !== idx) {
+                // Transition to a NEW index without explicit marker: default to Right
+                window._lastSideIdx = idx;
+                window.currentSide = 'right';
+            }
             
             // --- SKIP BUTTON LOGIC ---
             const activeSkipBtn = document.getElementById("activePoseSkipBtn"); 
@@ -163,6 +174,47 @@ window.playbackEngine.onTick = (remaining, currentPoseSeconds) => {
     window.updateTimerUI(remaining, currentPoseSeconds);
 };
 
+window.playbackEngine.onTransitionStart = (secs) => {
+    const overlay = document.getElementById("transitionOverlay");
+    if (overlay) overlay.style.display = "flex";
+
+    // Ensure initial timer value is visible immediately
+    const timerEl = document.getElementById("transitionTimer") || document.querySelector(".transition-countdown");
+    if (timerEl) {
+        timerEl.textContent = typeof window.formatHMS === "function" 
+            ? window.formatHMS(secs) 
+            : secs;
+    }
+};
+
+window.playbackEngine.onTransitionTick = (remaining) => {
+    // Use ID with fallback to class to ensure countdown visibility
+    const timerEl = document.getElementById("transitionTimer") || document.querySelector(".transition-countdown");
+    if (timerEl) {
+        timerEl.textContent = typeof window.formatHMS === "function" 
+            ? window.formatHMS(remaining) 
+            : remaining;
+    }
+
+    // Visual warning when transition is nearly over
+    if (timerEl) {
+        if (remaining <= 3) {
+            timerEl.style.color = "#d32f2f";
+            timerEl.style.transform = "scale(1.1)";
+        } else {
+            timerEl.style.color = "";
+            timerEl.style.transform = "";
+        }
+    }
+};
+
+window.playbackEngine.onTransitionComplete = () => {
+    const overlay = document.getElementById("transitionOverlay");
+    if (overlay) overlay.style.display = "none";
+    const advanced = typeof window.nextPose === "function" ? window.nextPose() : false;
+    if (advanced) window.playbackEngine.start();
+};
+
 window.playbackEngine.onActiveTick = (secs) => {
     if (typeof window.updateNodeCompletion === 'function') {
         window.updateNodeCompletion(window.getCurrentIndex(), secs);
@@ -183,10 +235,31 @@ window.playbackEngine.onPoseComplete = (wasLongHold) => {
     const nextPose = poses[window.currentIndex + 1] || null;
     const currMeta = currentPose?.[7] || {};
     const nextMeta = nextPose?.[7] || {};
-    const isBoundary = (nextMeta.macroTitle && nextMeta.macroTitle !== currMeta.macroTitle) || 
-                       (nextMeta.loopCurrent && nextMeta.loopCurrent !== currMeta.loopCurrent);
 
-    if ((wasLongHold || isBoundary) && !flowPose) {
+    // Only show transition for long holds (>= 1 min). 
+    // Removed 'isBoundary' check to prevent short poses triggering rest at macro starts.
+    if (wasLongHold && !flowPose) {
+        // Update the "Up Next" label before starting the transition
+        const nextLabelEl = document.querySelector(".transition-next");
+        if (nextLabelEl && nextPose) {
+            let nextName = "";
+            // Priority 1: Macro Title
+            if (nextMeta.macroTitle) {
+                nextName = nextMeta.macroTitle;
+            } else {
+                // Priority 2: Asana Library Name
+                const id = Array.isArray(nextPose[0]) ? nextPose[0][0] : nextPose[0];
+                const asana = typeof window.findAsanaByIdOrPlate === "function" 
+                    ? window.findAsanaByIdOrPlate(window.normalizePlate(id)) 
+                    : null;
+                
+                nextName = asana 
+                    ? (typeof window.displayName === "function" ? window.displayName(asana) : (asana.english || asana.name))
+                    : (nextPose[6] || "Next Pose");
+            }
+            nextLabelEl.textContent = `Up next: ${nextName}`;
+        }
+
         window.playbackEngine.startTransition(15);
         return;
     }

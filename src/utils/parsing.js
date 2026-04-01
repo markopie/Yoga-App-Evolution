@@ -71,7 +71,8 @@ function parseSequenceText(sequenceText) {
     // markers and must round-trip through persistence intact.
     if (/^MACRO:/i.test(id)) {
       const macroTitle = id.replace(/^MACRO:/i, '').trim();
-      poses.push([`MACRO:${macroTitle}`, duration, '', '', note]);
+      // Use consistent 8-element structure where index 0 is an array and metadata exists at index 7
+      poses.push([[`MACRO:${macroTitle}`], duration, '', '', note, null, null, { explicitSide: side }]);
       return;
     }
 

@@ -115,8 +115,9 @@ export function getEffectiveTime(id, dur, tier, varKey, note, returnPerSide = fa
     
 
     // RULE 4: Bilateral Logic
-    const isBilateral = asana.requiresSides || asana.requires_sides;
-    if (isBilateral) {
+    const hasExplicitSide = !!(poseMeta && poseMeta.explicitSide);
+    const isBilateralActive = (asana.requiresSides || asana.requires_sides) && !hasExplicitSide && !isFlow;
+    if (isBilateralActive) {
         return returnPerSide ? duration : (duration * 2);
     }
 

@@ -179,7 +179,13 @@ export function getExpandedPoses(sequence, ctx = {}) {
         if (isFlowContext) {
             // In a flow context, we push once and skip the prep/recovery injection 
             // logic below to keep the flow "clean" and fast.
-            withInjected.push(p);
+            let cloned = [...p];
+            cloned[7] = { 
+                ...(cloned[7] || {}), 
+                flowSegment: true,
+                isBilateral: false // Signal the player to ignore standard bilateral doubling
+            };
+            withInjected.push(cloned);
             return;
         }
 
