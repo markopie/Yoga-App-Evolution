@@ -192,7 +192,7 @@ function builderRender() {
            <td style="padding:12px 8px; vertical-align: top; border-bottom: 1px solid #eee;">
               <div style="font-weight:700; font-size:1.1rem; line-height: 1.2; display:flex; align-items:center; flex-wrap:wrap;">
                  <span>${isSpecial ? (pose.name || 'Unknown') : builderPoseName(asana, pose.name, builderState.showSanskrit)}</span>
-                ${generateVariationSelectHTML(asana, pose, idx)}
+                 <span style="margin-left: 6px;">${generateVariationSelectHTML(asana, pose, idx)}</span>
                  ${sideBadge}
               </div>
               <div style="font-size:0.85rem; color:var(--color-text-secondary); font-style:italic; margin-bottom:6px;">
@@ -305,6 +305,13 @@ qS('.b-macro-swap').forEach(btn => {
         const i = el.dataset.idx;
         let val = el.value.trim();
         if(!val.startsWith("MACRO:")) val = val.padStart(3, '0');
+        
+        // 👈 THE FIX: Clear Phantom State
+        // If the ID actually changed, wipe out any old variation data
+        if (builderState.poses[i].id !== val) {
+            builderState.poses[i].variation = "";
+        }
+
         builderState.poses[i].id = val;
         const normId = typeof normalizePlate === "function" ? normalizePlate(val) : val;
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
@@ -711,18 +718,31 @@ function builderCompileSequenceText() {
         const id = String(p.id).padStart(3, '0');
         const dur = p.duration || (isFlowSequence() ? 5 : 30);
         
-        // 👇 MODIFIED: Added .replace(/\bside:[LR]\b/gi, '') to scrub old tags
+        // 🌟 THE AUTO-SCRUBBER: Strict Schema Validation
+        let validatedVariation = p.variation || "";
+        if (validatedVariation) {
+            const libraryArray = Object.values(window.asanaLibrary || {});
+            const normId = typeof normalizePlate === "function" ? normalizePlate(id) : id;
+            const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
+            
+            // If the pose exists, but it DOES NOT have this variation in the database, wipe it out.
+            if (asanaMatch && (!asanaMatch.variations || !asanaMatch.variations[validatedVariation])) {
+                validatedVariation = "";
+            }
+        }
+
+        // Scrub old tags out of the note
         let cleanNote = (p.note || '').replace(/\[.*?\b([IVX]+)([a-z]?)\b.*?\]/ig, '')
                                       .replace(/\btier:[SL]\b/gi, '')
                                       .replace(/\bside:[LR]\b/gi, '') 
                                       .replace(/\s+/g, ' ')
                                       .trim();
 
-        const varPart  = p.variation ? `[${p.variation}]` : `[]`;
+        const varPart  = validatedVariation ? `[${validatedVariation}]` : `[]`;
         const tierTag  = (p.holdTier && p.holdTier !== 'standard') ? ` tier:${p.holdTier === 'short' ? 'S' : 'L'}` : '';
-        const sideTag  = p.side ? ` side:${p.side}` : ''; // 👈 ADDED
+        const sideTag  = p.side ? ` side:${p.side}` : ''; 
         
-        const notePart = (cleanNote + tierTag + sideTag).trim(); // 👈 MODIFIED
+        const notePart = (cleanNote + tierTag + sideTag).trim(); 
         
         return `${id} | ${dur} | ${varPart} ${notePart}`.trim();
     }).filter(s => s.trim().length > 0).join("\n");
@@ -968,19 +988,26 @@ if (document.readyState === "loading") { document.addEventListener("DOMContentLo
 window.selectRowSearch = (id) => {
     if (builderState.activeRowSearchIdx >= 0 && builderState.poses[builderState.activeRowSearchIdx]) {
         const val = String(id).padStart(3, '0');
-        builderState.poses[builderState.activeRowSearchIdx].id = val;
+        const targetPose = builderState.poses[builderState.activeRowSearchIdx];
+        
+        // 👈 THE FIX: Clear Phantom State on Search
+        if (targetPose.id !== val) {
+            targetPose.variation = "";
+        }
+
+        targetPose.id = val;
         
         const libraryArray = Object.values(window.asanaLibrary || {});
         const normId = typeof normalizePlate === "function" ? normalizePlate(val) : val;
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
         
         if (asanaMatch) {
-            builderState.poses[builderState.activeRowSearchIdx].name = asanaMatch.name;
+            targetPose.name = asanaMatch.name;
             if (window.getHoldTimes) {
                 const holdTimes = window.getHoldTimes(asanaMatch);
                 const nextDuration = isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30);
-                builderState.poses[builderState.activeRowSearchIdx].duration = nextDuration;
-                builderState.poses[builderState.activeRowSearchIdx].flowHoldOverride = isFlowSequence() ? nextDuration : null;
+                targetPose.duration = nextDuration;
+                targetPose.flowHoldOverride = isFlowSequence() ? nextDuration : null;
             }
         }
         builderRender();

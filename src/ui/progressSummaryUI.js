@@ -54,7 +54,6 @@ function renderProgressSummaryModal() {
     activeList.forEach((node, playbackIdx) => {
         const origIdx = (node[5] !== undefined && node[5] !== null) ? node[5] : `p-${playbackIdx}`;
         
-        // Detect if this specific node is an auto-injected transition (Prep/Recovery)
         const noteText = String(node[4] || "").toLowerCase();
         const labelText = String(node[6] || "").toLowerCase();
         const isTransition = noteText.includes("recovery") || labelText.includes("recovery") || 
@@ -66,6 +65,7 @@ function renderProgressSummaryModal() {
                 firstPlaybackIndex: playbackIdx,
                 macroTitle: node[7]?.macroTitle || null,
                 label: node[6] || null, 
+                variation: node[3] || null, // Capture parsed variation [code]
                 rawId: Array.isArray(node[0]) ? node[0][0] : node[0],
                 totalAllocated: 0,
                 totalCompleted: 0,
@@ -75,29 +75,27 @@ function renderProgressSummaryModal() {
         }
         const g = groupMap[origIdx];
 
-        // If this node is NOT a transition, ensure it "wins" the naming/metadata for the group
-        // and include its duration in the row totals.
         if (!isTransition) {
             g.rawId = Array.isArray(node[0]) ? node[0][0] : node[0];
             if (!g.macroTitle) g.macroTitle = node[7]?.macroTitle || null;
             g.label = node[6] || null;
+            g.variation = node[3] || null;
             
             g.totalAllocated += Number(node[1] || 0);
             g.totalCompleted += Number(tracker[playbackIdx] || 0);
         }
     });
 
-    // --- NEW: Dashboard Calculations ---
+    // --- Dashboard Calculations ---
     const totalSections = groups.length;
     let completedSections = 0;
 
     groups.forEach(g => {
         const ratio = g.totalAllocated > 0 ? (g.totalCompleted / g.totalAllocated) : 0;
-        if (ratio >= 0.9) completedSections++; // 90% threshold for an individual section
+        if (ratio >= 0.9) completedSections++; 
     });
 
     const completionRatio = totalSections > 0 ? (completedSections / totalSections) : 0;
-    // The Hidden 90% Rule applied to the overall score:
     const isSuccess = completionRatio >= 0.9; 
     const displayPercent = isSuccess ? 100 : Math.round(completionRatio * 100);
     
@@ -120,7 +118,6 @@ function renderProgressSummaryModal() {
             </div>
         </div>
     `;
-    // -----------------------------------
 
     // 2. Create Modal Containers
     const backdrop = document.createElement('div');
@@ -136,7 +133,7 @@ function renderProgressSummaryModal() {
     footer.className = 'progress-summary-footer';
     footer.innerHTML = `<button id="closeSummaryBtnBottom" class="progress-summary-close-btn">Close</button>`;
 
-    // 3. Render Groups into the Body
+    // 3. Render Groups into the Table
     let html = `<table class="progress-summary-table">
                 <thead><tr><th>Asana / Section</th><th style="text-align: right;">Status</th></tr></thead>
                 <tbody>`;
@@ -146,41 +143,51 @@ function renderProgressSummaryModal() {
         const isEffectivelyDone = ratio >= 0.9;
         const statusClass = isEffectivelyDone ? 'status-complete' : 'status-incomplete';
 
-        // 1. Resolve Data using Schema-aligned fields
+        // Data Resolution
         const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(window.normalizePlate(g.rawId)) : null;
-        // 2. Define Components
-        ;const primaryDisplay = g.macroTitle 
-        ? `📦 ${g.macroTitle}` 
-        : (asana?.english || g.label || asana?.name || `Pose ${g.rawId}`);
+        
+        const primaryDisplay = g.macroTitle 
+            ? `📦 ${g.macroTitle}` 
+            : (asana?.english || g.label || asana?.name || `Pose ${g.rawId}`);
 
         const secondaryIast = asana?.iast || "";
 
-        // 3. Variation Logic: Clean the label
-        // If the label (e.g. "I") is already at the end of the primary name, don't repeat it as a subtitle.
-        let subLabel = (g.label && g.label !== primaryDisplay) ? g.label : "";
+        let subLabel = "";
+
+        if (g.variation) {
+            const stageKey = String(g.variation).trim();
+            // Look up using the exact key structure defined in your service layer
+            const varObj = asana?.variations?.[stageKey];
+            
+            // If found, use the 'title' property we saw in the service code
+            subLabel = varObj?.title || stageKey; 
+        } else if (g.label && g.label !== primaryDisplay) {
+            subLabel = g.label;
+        }
+
         if (primaryDisplay.endsWith(` ${subLabel}`)) subLabel = ""; 
 
-        // 4. Final Jobsian HTML Construction
-        const nameDisplay = `
+        const loopHtml = (g.loopTotal > 1 && !g.macroTitle) 
+            ? `<div style="font-size:0.75rem; opacity:0.6; margin-top:2px;">${g.loopTotal} Rounds</div>` 
+            : "";
+
+        const nameDisplayHtml = `
             <div class="progress-asana-stack">
                 <span class="progress-asana-name">${primaryDisplay}</span>
                 ${secondaryIast ? `<span class="progress-asana-iast">${secondaryIast}</span>` : ''}
-                ${subLabel ? `<div class="progress-variation-label">${subLabel}</div>` : ''}
+                ${subLabel ? `<div class="progress-skip-tag" style="background:rgba(0,122,255,0.1); border-color:rgba(0,122,255,0.2); color:#007aff;">${subLabel}</div>` : ''}
+                ${loopHtml}
             </div>
         `;
-        if (g.loopTotal > 1 && !g.macroTitle) {
-            nameDisplay += `<div style="font-size:0.75rem; opacity:0.6; margin-top:2px;">${g.loopTotal} Rounds</div>`;
-        }
 
         const timeTotalStr = typeof window.formatHMS === 'function' ? window.formatHMS(g.totalAllocated) : g.totalAllocated + 's';
         const statusIndicator = isEffectivelyDone 
-        
             ? '<span class="progress-status-badge done">✓ Done</span>' 
             : `<span class="progress-status-badge partial">${Math.round(ratio * 100)}%</span>`;
 
         html += `
             <tr class="progress-summary-row ${statusClass}" data-index="${g.firstPlaybackIndex}">
-                <td class="progress-cell-left">${nameDisplay}</td>
+                <td class="progress-cell-left">${nameDisplayHtml}</td>
                 <td class="progress-cell-right" style="text-align: right;">
                     <div class="progress-time-total">${timeTotalStr}</div>
                     <div class="progress-status-wrapper" style="margin-top:4px;">${statusIndicator}</div>
@@ -190,10 +197,8 @@ function renderProgressSummaryModal() {
 
     html += `</tbody></table>`;
     
-    // Inject the Dashboard ABOVE the table
     body.innerHTML = dashboardHtml + html;
 
-    // 4. Assemble & Display
     modal.appendChild(header);
     modal.appendChild(body);
     modal.appendChild(footer);
@@ -217,5 +222,4 @@ function renderProgressSummaryModal() {
     });
 }
 
-// Expose to window
 window.setupProgressSummary = setupProgressSummary;
