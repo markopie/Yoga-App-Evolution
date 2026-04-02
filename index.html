@@ -443,104 +443,58 @@
    
   </div>
   
-  <div id="linkSequenceOverlay" class="modal-backdrop" style="display:none; z-index: 4000; align-items:center; justify-content:center;">
-    <div class="modal" style="max-width: 400px; width: 90vw; padding: 20px; border-radius: 8px; background: #fff;">
+  <div id="linkSequenceOverlay" class="modal-backdrop">
+    <div class="modal" style="max-width: 400px; width: 90vw; padding: 20px; border-radius: 8px; background: #fff; height: auto;">
         <h3 style="margin-top:0; color:#1976d2; display:flex; align-items:center; gap:8px;">
             🔗 Link a Sequence
         </h3>
         <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">
-            Insert an entire sequence as a single repeating block. It will automatically expand during playback.
+            Insert an entire sequence as a single repeating block.
         </p>
-        
         <div style="margin-bottom: 15px; position: relative;">
-      <label style="display:block; font-size:0.85rem; font-weight:bold; margin-bottom:4px;">Select Sequence:</label>
-      <input type="text" id="linkSequenceInput" placeholder="Search your sequences..." 
-           style="width: 100%; padding: 12px; border: 2px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px;">
-<div id="linkSequenceResults" class="link-results-container"></div>
-        
+            <label style="display:block; font-size:0.85rem; font-weight:bold; margin-bottom:4px;">Select Sequence:</label>
+            <input type="text" id="linkSequenceInput" placeholder="Search sequences..." 
+                   style="width: 100%; padding: 12px; border: 2px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px;">
+            <div id="linkSequenceResults" class="link-results-container"></div>
+        </div>
         <div style="margin-bottom: 20px;">
             <label style="display:block; font-size:0.85rem; font-weight:bold; margin-bottom:4px;">Repetitions (Rounds):</label>
             <input type="number" id="linkSequenceReps" value="1" min="1" max="50" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
         </div>
-        
         <div style="display:flex; justify-content: flex-end; gap: 10px;">
-            <button type="button" id="btnCancelLink" class="secondary" onclick="document.getElementById('linkSequenceOverlay').style.display='none'">Cancel</button>
+            <button type="button" class="secondary" onclick="document.getElementById('linkSequenceOverlay').style.display='none'">Cancel</button>
             <button type="button" id="btnConfirmLink" class="primary">Add Link</button>
         </div>
     </div>
 </div>
 
-<div id="repetitionModalOverlay" class="modal-backdrop" style="display:none; z-index: 4001; align-items:center; justify-content:center;">
-  <div class="modal" style="max-width: 320px; width: 85vw; padding: 20px; border-radius: 8px; background: #fff; box-shadow: 0 8px 32px rgba(0,0,0,0.25);">
-      <h3 style="margin-top:0; color:#c62828; display:flex; align-items:center; gap:8px;">
-          🔁 Set Repetitions
-      </h3>
-      <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">
-          How many times should this section repeat?
-      </p>
-      
-      <div style="margin-bottom: 20px;">
-          <input type="number" id="repetitionInput" value="2" min="2" max="99" style="width: 100%; padding: 12px; font-size: 1.2rem; text-align: center; border: 2px solid #eee; border-radius: 6px; box-sizing: border-box;">
-      </div>
-      
-      <div style="display:flex; justify-content: flex-end; gap: 10px;">
-          <button type="button" class="secondary" onclick="document.getElementById('repetitionModalOverlay').style.display='none'">Cancel</button>
-          <button type="button" id="btnConfirmRepetition" class="primary" style="background:#c62828;">Create Loop</button>
-      </div>
-  </div>
-</div>
-  
-<div id="ratingOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(255, 255, 255, 0.95); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:9999; align-items:center; justify-content:center; flex-direction:column; color:#1d1d1f; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-  <h2 style="font-size: 2rem; margin-bottom: 2.5rem; font-weight: 500; text-align:center; letter-spacing:-0.02em;">How did your body feel?</h2>
-  <div style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center; max-width:800px; padding:0 20px;">
-    
-    <button class="rating-btn" data-rating="1">
-      <span style="font-size:2.5rem; margin-bottom:12px;">🪨</span>
-      <span style="font-size:0.95rem; font-weight:600; margin-bottom:5px;">Struggled</span>
-      <span style="font-size:0.8rem; color:#86868b;">Heavy</span>
-    </button>
-    
-    <button class="rating-btn" data-rating="2">
-      <span style="font-size:2.5rem; margin-bottom:12px;">🧗</span>
-      <span style="font-size:0.95rem; font-weight:600; margin-bottom:5px;">Challenging</span>
-      <span style="font-size:0.8rem; color:#86868b;">Effortful</span>
-    </button>
-
-    <button class="rating-btn" data-rating="3">
-      <span style="font-size:2.5rem; margin-bottom:12px;">⚖️</span>
-      <span style="font-size:0.95rem; font-weight:600; margin-bottom:5px;">Balanced</span>
-      <span style="font-size:0.8rem; color:#86868b;">Centered</span>
-    </button>
-
-    <button class="rating-btn" data-rating="4">
-      <span style="font-size:2.5rem; margin-bottom:12px;">🌊</span>
-      <span style="font-size:0.95rem; font-weight:600; margin-bottom:5px;">Fluid</span>
-      <span style="font-size:0.8rem; color:#86868b;">Easy</span>
-    </button>
-
-    <button class="rating-btn" data-rating="5">
-      <span style="font-size:2.5rem; margin-bottom:12px;">⚡</span>
-      <span style="font-size:0.95rem; font-weight:600; margin-bottom:5px;">Strong</span>
-      <span style="font-size:0.8rem; color:#86868b;">Mastered</span>
-    </button>
-
-  </div>
+<div id="repetitionModalOverlay" class="modal-backdrop">
+    <div class="modal" style="max-width: 320px; width: 85vw; padding: 20px; border-radius: 8px; background: #fff; box-shadow: 0 8px 32px rgba(0,0,0,0.25); height: auto;">
+        <h3 style="margin-top:0; color:#c62828; display:flex; align-items:center; gap:8px;">
+            🔁 Set Repetitions
+        </h3>
+        <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">
+            How many times should this section repeat?
+        </p>
+        <div style="margin-bottom: 20px;">
+            <input type="number" id="repetitionInput" value="2" min="2" max="99" 
+                   style="width: 100%; padding: 12px; font-size: 1.2rem; text-align: center; border: 2px solid #eee; border-radius: 6px; box-sizing: border-box;">
+        </div>
+        <div style="display:flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="secondary" onclick="document.getElementById('repetitionModalOverlay').style.display='none'">Cancel</button>
+            <button type="button" id="btnConfirmRepetition" class="primary" style="background:#c62828;">Create Loop</button>
+        </div>
+    </div>
 </div>
 
-<div id="rowSearchOverlay" class="modal-backdrop" style="display:none; z-index: 5000; align-items:center; justify-content:center;">
-   <div class="modal" style="width:95vw; max-width:400px; padding:20px; border-radius:12px; background:#fff; display:flex; flex-direction:column; max-height:85vh; box-sizing:border-box;">
-      
-      <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center; flex-shrink:0;">
-         <strong style="font-size:1.1rem; color:#1d1d1f;">Search Pose</strong>
-         <button onclick="document.getElementById('rowSearchOverlay').style.display='none'" class="tiny warn" style="border:none; background:#f2f2f2; color:#333; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
+<div id="rowSearchOverlay" class="modal-backdrop">
+   <div class="modal" style="width:95vw; max-width:400px; padding:20px; border-radius:12px; background:#fff; display:flex; flex-direction:column; max-height:85vh; box-sizing:border-box; height: auto;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
+          <strong style="font-size:1.1rem; color:#1d1d1f;">Search Pose</strong>
+          <button onclick="document.getElementById('rowSearchOverlay').style.display='none'" style="border:none; background:#f2f2f2; color:#333; border-radius:50%; width:28px; height:28px; cursor:pointer;">✕</button>
       </div>
-      
-      <div style="flex-shrink:0;">
-          <input type="text" id="rowSearchInput" placeholder="Type name or ID..." style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
-      </div>
-      
+      <input type="text" id="rowSearchInput" placeholder="Type name or ID..." style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
       <div id="rowSearchResults" style="flex:1; overflow-y:auto; margin-top:15px; min-height:0;"></div>
-      
    </div>
 </div>  
 

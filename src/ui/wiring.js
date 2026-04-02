@@ -1,11 +1,3 @@
-// -----------------------------------------------------------------------------
-// TODO: [MODULE REFACTOR ARCHITECTURE]
-// This file serves as the central nervous system binding the UI to the logic.
-// In the next refactor phase, we must extract these domains into dedicated modules:
-// 1. Auth Logic -> src/services/authService.js
-// 2. Playback/Timer UI Bindings -> src/ui/playbackUI.js
-// 3. Dropdown/Sequence Selection -> src/ui/sequenceSelector.js
-// -----------------------------------------------------------------------------
 import { builderState } from '../store/builderState.js';
 import { getTargetInsertionIndex, clearBuilderSelection } from './builder.js';
 import { $, showError, safeListen, normaliseText, setStatus } from '../utils/dom.js';

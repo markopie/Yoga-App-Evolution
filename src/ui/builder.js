@@ -813,6 +813,7 @@ async function builderSave() {
 }
 
 function createRepeatGroup() {
+    // 1. Initial State Check (Your original logic)
     const checkboxes = document.querySelectorAll('.b-row-select:checked');
     if (checkboxes.length === 0) return alert("Please select at least one pose using the checkboxes.");
 
@@ -822,17 +823,30 @@ function createRepeatGroup() {
     
     for (let i = startIdx; i <= endIdx; i++) {
         const idStr = String(builderState.poses[i].id);
-        if (idStr.startsWith('MACRO:') || idStr.startsWith('LOOP_')) return alert("Cannot create a repeat group that intersects with Macros or other loops.");
+        if (idStr.startsWith('MACRO:') || idStr.startsWith('LOOP_')) {
+            return alert("Cannot create a repeat group that intersects with Macros or other loops.");
+        }
     }
 
+    // 2. UI Hookup
     const overlay = document.getElementById("repetitionModalOverlay");
     const input = document.getElementById("repetitionInput");
     const confirmBtn = document.getElementById("btnConfirmRepetition");
 
-    overlay.style.display = "flex";
-    input.focus();
-    input.select();
+    // ARCHITECT SAFETY: Close Row Search if open (Standardized behavior)
+    const rowSearch = document.getElementById('rowSearchOverlay');
+    if (rowSearch) rowSearch.style.display = 'none';
 
+    // 3. Display Logic (Standardized with Link Modal)
+    overlay.style.display = "flex";
+    
+    // JOBSian FOCUS PROTOCOL: Ensure input is focused after DOM paint
+    setTimeout(() => {
+        input.focus();
+        input.select();
+    }, 50);
+
+    // 4. Button Binding (Cloning prevents multiple listener stacking)
     const newConfirmBtn = confirmBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
 
@@ -841,11 +855,17 @@ function createRepeatGroup() {
         if (isNaN(reps) || reps < 2) return alert("Please enter a number of 2 or more.");
 
         overlay.style.display = "none";
+
+        // DATA INTEGRITY: Your original splice logic preserved exactly
+        // Insert End first so Start index remains constant
         builderState.poses.splice(endIdx + 1, 0, { id: "LOOP_END", name: "🔚 End Repeat Block", duration: 0, variation: "", note: "" });
         builderState.poses.splice(startIdx, 0, { id: "LOOP_START", name: `🔁 Repeat Block (${reps} Rounds)`, duration: reps, variation: "", note: "" });
         
+        // 5. Cleanup & Refresh
         checkboxes.forEach(c => c.checked = false);
         builderRender();
+        
+        // Brief delay for the alert to allow DOM to render the new rows first
         setTimeout(() => alert(`Successfully created a repetition group of ${endIdx - startIdx + 1} poses!`), 100);
     };
 }
