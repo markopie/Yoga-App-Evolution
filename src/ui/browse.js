@@ -123,31 +123,7 @@ function setupBrowseUI() {
         }
     };
 
-    // --- IAST Toggle button on the browse list header ---
-    const browseListHeader = document.querySelector('#browseBackdrop .browse-list-header, #browseBackdrop .browse-panel');
-    let iastToggleBtn = document.getElementById('browseIastToggle');
-    if (!iastToggleBtn) {
-        const filtersRow = $("browseCategory")?.parentElement?.parentElement || $("browseSearch")?.parentElement;
-        iastToggleBtn = document.createElement('button');
-        iastToggleBtn.id = 'browseIastToggle';
-        iastToggleBtn.className = 'tiny';
-        iastToggleBtn.title = 'Toggle IAST / English names in the list';
-        iastToggleBtn.style.cssText = 'white-space:nowrap; flex-shrink:0;';
-        window._browseShowIAST = false;
-        iastToggleBtn.textContent = 'Show IAST';
-        iastToggleBtn.onclick = () => {
-            window._browseShowIAST = !window._browseShowIAST;
-            iastToggleBtn.textContent = window._browseShowIAST ? 'Show English' : 'Show IAST';
-            iastToggleBtn.style.background = window._browseShowIAST ? '#7b1fa2' : '';
-            iastToggleBtn.style.color = window._browseShowIAST ? '#fff' : '';
-            applyBrowseFilters();
-        };
-        // Append into .browse-filters (the filter bar) - browseCategory is a direct child of .browse-filters
-        const filtersBar = $("browseCategory")?.parentElement;
-        if (filtersBar) {
-            filtersBar.appendChild(iastToggleBtn);
-        }
-    }
+    
 }
 
 
@@ -191,127 +167,6 @@ function closeBrowse() {
     if (d) d.innerHTML = "";
     if ($("browseBtn")) $("browseBtn").focus();
 }
-function renderBrowseList(items) {
-    const list = document.getElementById("browseList");
-    if (!list) return;
-    
-    list.innerHTML = "";
-    const countEl = document.getElementById("browseCount");
-    
-    const totalCount = Object.keys(asanaLibrary || {}).length;
-    // Count includes stage hits — show base poses count in denominator
-    const stageHitCount = items.filter(a => a._sourceType === 'stage').length;
-    const baseHitCount = items.length - stageHitCount;
-    if (countEl) {
-        countEl.textContent = stageHitCount > 0
-            ? `Showing ${baseHitCount} poses + ${stageHitCount} stages of ${totalCount} total`
-            : `Showing ${items.length} of ${totalCount}`;
-    }
-
-    if (!items.length) {
-       list.innerHTML = `<div class="msg" style="padding:10px 0">No matches found.</div>`;
-       return;
-    }
-
-    const frag = document.createDocumentFragment();
-    
-    items.slice(0, 400).forEach(asma => {
-       const row = document.createElement("div");
-       // Give stage rows a subtle left border to visually group them under their parent
-       row.className = "browse-item" + (asma._sourceType === 'stage' ? " browse-item--stage" : "");
-       if (asma._sourceType === 'stage') {
-           row.style.cssText = "border-left: 3px solid #00695c; margin-left: 8px; background: #f0faf9;";
-       }
-
-       const left = document.createElement("div");
-       
-       const title = document.createElement("div");
-       title.className = "title";
-       
-       // Use IAST or English based on toggle
-       const showIAST = !!window._browseShowIAST;
-       let titleText;
-
-       if (asma._sourceType === 'stage' && asma._stageTitle) {
-           // For stage results: show stage title as primary
-           titleText = asma._stageTitle;
-       } else if (showIAST && asma.iast) {
-           titleText = asma.iast;
-       } else {
-           titleText = (typeof displayName === "function" ? displayName(asma) : null);
-           if (!titleText || titleText === "(no name)") {
-               titleText = asma.name || asma.english || asma.iast || "(no name)";
-           }
-       }
-       
-       // Variation count badge (only for base poses)
-       if (asma._sourceType !== 'stage') {
-           const varCount = asma.variations ? Object.keys(asma.variations).length : 0;
-           if (varCount > 0) {
-               titleText += ` <span style="font-weight:normal; color:#666; font-size:0.9em;">(${varCount} variations)</span>`;
-           }
-       }
-       title.innerHTML = titleText;
-
-       // Sub-label: parent asana name when showing a stage result
-       if (asma._sourceType === 'stage') {
-           const parentSub = document.createElement('div');
-           parentSub.style.cssText = 'font-size:0.78rem; color:#00695c; margin-top:1px; font-weight:600;';
-           const parentName = asma.english || asma.name || `ID ${asma.id}`;
-           parentSub.textContent = `↳ ${parentName}`;
-           left.appendChild(parentSub);
-       } else if (showIAST && asma.english) {
-           const sub = document.createElement('div');
-           sub.style.cssText = 'font-size:0.8rem; color:#888; margin-top:1px;';
-           sub.textContent = asma.english;
-           left.appendChild(sub);
-       }
-
-       const meta = document.createElement("div");
-       meta.className = "meta";
-       const catDisplay = formatCategory(asma.category);
-       const catBadge = `<span class="badge">${catDisplay}</span>`;
-
-       // Stage key badge — shows the stage code (e.g. "I", "II", "A") so user can see what to select
-       const stageKeyBadge = asma._sourceType === 'stage' && asma._stageKey
-           ? `<span style="background:#00695c; color:#fff; border-radius:10px; padding:1px 8px; font-size:0.72rem; font-weight:700; white-space:nowrap; font-family:monospace;">Stage ${asma._stageKey}</span>`
-           : '';
-       
-       meta.innerHTML = `
-         <span style="color:#000; font-weight:bold;">ID: ${asma.id || asma.asanaNo || "?"}</span>
-         ${catBadge}
-         ${stageKeyBadge}
-       `;
-       
-       left.appendChild(title);
-       left.appendChild(meta);
-
-       const btn = document.createElement("button");
-       btn.textContent = "View";
-       btn.className = "tiny";
-       // Pass _stageKey so showAsanaDetail can pre-highlight the correct variation panel
-       btn.addEventListener("click", () => {
-          if (typeof showAsanaDetail === "function") showAsanaDetail(asma, asma._stageKey || null);
-          if (typeof isBrowseMobile === 'function' && isBrowseMobile()) {
-             if (typeof enterBrowseDetailMode === "function") enterBrowseDetailMode();
-          }
-       });
-
-       row.appendChild(left);
-       row.appendChild(btn);
-       frag.appendChild(row);
-    });
-    
-    list.appendChild(frag);
-
-    if (items.length > 400) {
-       const more = document.createElement("div");
-       more.className = "msg";
-       more.style.padding = "10px 0";
-       more.textContent = `Showing first 400 results. Narrow your filters.`;
-       list.appendChild(more);
-    }
-}
 
 
 function startBrowseAsana(asma) {
@@ -334,6 +189,7 @@ function startBrowseAsana(asma) {
    window.setPose(0);
    closeBrowse();
 }
+
 async function showAsanaDetail(asana, highlightStageKey = null) {
     const d = document.getElementById('browseDetail');
     if (!d) return;
@@ -343,7 +199,7 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
     // 1. Header Logic
     const titleEl = document.createElement("h2");
     titleEl.style.margin = "0 0 10px 0";
-    titleEl.textContent = displayName(asana);
+    titleEl.textContent = typeof displayName === "function" ? displayName(asana) : (asana.english || asana.name || asana.iast || "(no name)");
     d.appendChild(titleEl);
 
     const editBtn = document.createElement("button");
@@ -354,20 +210,18 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
     d.appendChild(editBtn);
 
    // 🛑 2. DYNAMIC HOLD TIME LOGIC
-    const hj = window.getHoldTimes(asana, highlightStageKey); 
+    const hj = typeof window.getHoldTimes === "function" ? window.getHoldTimes(asana, highlightStageKey) : null; 
 
     let rangeDisplay = "";
     if (hj && hj.standard) {
-        // Using the elegant en-dash (–) for the range
         rangeDisplay = ` • ~${hj.standard}s (Range: ${hj.short}s–${hj.long}s)`;
     }
 
     // 3. Build the Meta Info (IAST/English + ID Row)
-    // Combined into a single assignment to avoid "already declared" errors
     let detailHTML = `
-      ${asana.iast && prefersIAST() && asana.english
+      ${asana.iast && typeof prefersIAST === "function" && prefersIAST() && asana.english
           ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;">${asana.english}</div>`
-          : asana.iast && !prefersIAST()
+          : asana.iast && (typeof prefersIAST !== "function" || !prefersIAST())
           ? `<div style="font-size:0.85rem;color:#666;margin-bottom:4px;font-style:italic;">${asana.iast}</div>`
           : ''
       }
@@ -380,7 +234,6 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
       <hr>
     `;
 
-
     // 4. Images
     const urls = typeof smartUrlsForPoseId === 'function' ? smartUrlsForPoseId(asana.id || asana.asanaNo) : [];
     if (urls && urls.length > 0) {
@@ -391,45 +244,54 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
         detailHTML += `</div>`;
     }
 
-    // 🛑 5. JOBSIAN ACCORDION STACK (Replacing hardcoded H3s)
+    // 🛑 5. JOBSIAN ACCORDION STACK
     detailHTML += `<div class="pose-details-stack">`;
 
     // Technique Accordion
-const baseTech = asana.technique || asana.Technique || "";
-if (baseTech) {
-    detailHTML += `
+    const baseTech = asana.technique || asana.Technique || "";
+    if (baseTech) {
+        detailHTML += `
         <details>
             <summary>Base Technique</summary>
             <div class="technique-text"><button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${baseTech.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak</button>
 ${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseTech).trim() : baseTech.trim()}</div>
         </details>`;
-}
-// Description Accordion
-const baseDesc = asana.description || asana.Description || "";
-if (baseDesc) {
-    detailHTML += `
+    }
+    // Description Accordion
+    const baseDesc = asana.description || asana.Description || "";
+    if (baseDesc) {
+        detailHTML += `
         <details>
             <summary>Description</summary>
             <div class="desc-text"><button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${baseDesc.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak</button>
 ${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseDesc).trim() : baseDesc.trim()}</div>
         </details>`;
-}
+    }
 
-detailHTML += `</div>`; // Close stack
+    detailHTML += `</div>`; // Close stack
 
     d.insertAdjacentHTML('beforeend', detailHTML);
 
-    // 6. Variations & Stages (Kept separate for visual distinction)
+    // 6. Variations & Stages
     if (asana.variations && Object.keys(asana.variations).length > 0) {
         const varSection = document.createElement('div');
         varSection.innerHTML = '<div style="margin-top:30px; margin-bottom:15px; font-weight:700; font-size:1.1rem; color:#86868b; text-transform:uppercase; letter-spacing:0.05em;">Variations & Stages</div>';
 
-        const sortedKeys = Object.keys(asana.variations).sort();
+        // 🛑 ARCHITECT FIX: Sort numeric sort_order first, default missing/NaN to 9999, then standard locale compare
+        const sortedKeys = Object.keys(asana.variations).sort((a, b) => {
+            const valA = asana.variations[a];
+            const valB = asana.variations[b];
+            const orderA = (valA && typeof valA === 'object' && valA.sort_order !== undefined) ? parseInt(valA.sort_order, 10) : 9999;
+            const orderB = (valB && typeof valB === 'object' && valB.sort_order !== undefined) ? parseInt(valB.sort_order, 10) : 9999;
+            
+            if (orderA !== orderB) return orderA - orderB;
+            return a.localeCompare(b);
+        });
+
         sortedKeys.forEach(key => {
             const val = asana.variations[key];
             let techText = '', shortText = '', titleText = `Stage ${key}`, isCustom = !!val.isCustom;
             
-            // Extract Variation Hold Time (New)
             let varHold = (val && typeof val === 'object') ? (val.standard || val.Standard || val.hold) : '';
 
             if (typeof val === 'string') {
@@ -457,7 +319,7 @@ detailHTML += `</div>`; // Close stack
             wrapper.innerHTML = html;
 
             if (highlightStageKey && key === highlightStageKey) {
-                wrapper.style.border = '2px solid #ff9500'; // Apple Gold/Orange highlight
+                wrapper.style.border = '2px solid #ff9500'; 
                 wrapper.style.background = '#fff9f0';
                 wrapper.dataset.highlighted = 'true';
             }
@@ -475,8 +337,11 @@ detailHTML += `</div>`; // Close stack
     }
 
     const playBtn = document.getElementById('playNameBtn');
-    if (playBtn) playBtn.onclick = () => playAsanaAudio(asana, null, true, null, highlightStageKey);
+    if (playBtn) playBtn.onclick = () => {
+        if (typeof playAsanaAudio === "function") playAsanaAudio(asana, null, true, null, highlightStageKey);
+    };
 }
+
 
 
 
@@ -488,7 +353,7 @@ function applyBrowseFilters() {
     const normalizeText = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     const normQ = normalizeText(q);
 
-    const asanaArray = Object.values(window.asanaIndex || asanaLibrary || {});
+    const asanaArray = Object.values(window.asanaIndex || window.asanaLibrary || {});
 
     // ── 1. Base-asana results ─────────────────────────────────────────────────
     const baseFiltered = asanaArray.filter(a => {
@@ -517,40 +382,51 @@ function applyBrowseFilters() {
         return true;
     });
 
-    // Mark base asanas so renderBrowseList can tell them apart
-    const baseResults = baseFiltered.map(a => ({ ...a, _sourceType: 'asana', _stageKey: null, _stageTitle: null }));
+    const baseResults = baseFiltered.map(a => ({ ...a, _sourceType: 'asana', _stageKey: null, _stageTitle: null, _sortOrder: 0 }));
 
     // ── 2. Stage results (unified_page_index via asanaLibrary.variations) ─────
-    // Only add stage hits when there is a text query — avoids flooding the list
     const stageResults = [];
-    if (normQ && !noQ) {
+    // Architect Fix: Execute if EITHER text or ID query is present.
+    if (normQ || noQ) {
         asanaArray.forEach(a => {
             if (!a || !a.variations) return;
-            // Apply category filter to parent asana
+            
+            const aId = String(a.id || a.asanaNo || '').replace(/^0+/, '');
+            const normalizedNoQ = noQ ? noQ.replace(/^0+/, '') : '';
+
             if (cat && cat !== "") {
                 const safeCat = String(a.category || "");
                 if (cat === "__UNCAT__") { if (safeCat && safeCat !== "Uncategorized") return; }
                 else { if (safeCat !== cat) return; }
             }
+
             Object.entries(a.variations).forEach(([stageKey, vData]) => {
                 if (!vData || typeof vData !== 'object') return;
-                const stageTitleRaw = vData.title || vData.Title || `Stage ${stageKey}`;
-                const stageShorthand = vData.shorthand || vData.Shorthand || '';
-                const searchStr = normalizeText(stageTitleRaw)
-                    + ' ' + normalizeText(stageShorthand)
-                    + ' ' + normalizeText(a.english)
-                    + ' ' + normalizeText(a.iast);
-                if (!searchStr.includes(normQ)) return;
+                
+                let matches = true;
+                
+                // Architect Fix: Map foreign ID strictly to parent ID
+                if (noQ && aId !== normalizedNoQ) matches = false;
+                
+                if (normQ && matches) {
+                    const stageTitleRaw = vData.title || vData.Title || `Stage ${stageKey}`;
+                    const stageShorthand = vData.shorthand || vData.Shorthand || '';
+                    const searchStr = normalizeText(stageTitleRaw)
+                        + ' ' + normalizeText(stageShorthand)
+                        + ' ' + normalizeText(a.english)
+                        + ' ' + normalizeText(a.iast);
+                    if (!searchStr.includes(normQ)) matches = false;
+                }
 
-                // Avoid duplicate if the base pose already matched
-                const alreadyBase = baseResults.some(r => r.id === a.id && r._stageKey === null);
-                // We still add the stage even if the base matched — it's a distinct hit
+                if (!matches) return;
+
                 stageResults.push({
                     ...a,
                     _sourceType: 'stage',
                     _stageKey: stageKey,
-                    _stageTitle: stageTitleRaw,
-                    // Synthetic ID for dedup (asana id + stage key)
+                    _stageTitle: vData.title || vData.Title || `Stage ${stageKey}`,
+                    // Architect Fix: Ingest integer sort_order for downstream matrix logic
+                    _sortOrder: vData.sort_order !== undefined ? parseInt(vData.sort_order, 10) : 9999,
                     _uniqueKey: String(a.id) + ':' + stageKey
                 });
             });
@@ -561,6 +437,7 @@ function applyBrowseFilters() {
     const allResults = [...baseResults, ...stageResults];
     const uniqueFiltered = [];
     const seen = new Set();
+    
     allResults.forEach(a => {
         const uniqueKey = a._uniqueKey || String(a.id || a.asanaNo || a.name || "").toLowerCase().trim();
         if (uniqueKey && !seen.has(uniqueKey)) {
@@ -572,16 +449,142 @@ function applyBrowseFilters() {
     uniqueFiltered.sort((x, y) => {
         const idX = String(x.id || x.asanaNo || "9999");
         const idY = String(y.id || y.asanaNo || "9999");
+        
         const cmp = idX.localeCompare(idY, undefined, { numeric: true });
         if (cmp !== 0) return cmp;
-        // Stages come after their parent base pose
+        
         if (x._stageKey && !y._stageKey) return 1;
         if (!x._stageKey && y._stageKey) return -1;
-        return (x._stageKey || '').localeCompare(y._stageKey || '');
+        
+        // Architect Fix: Numeric execution of database sort_order property
+        if (x._stageKey && y._stageKey) {
+            if (x._sortOrder !== y._sortOrder) {
+                return x._sortOrder - y._sortOrder;
+            }
+            return x._stageKey.localeCompare(y._stageKey);
+        }
+        
+        return 0;
     });
 
     if (typeof renderBrowseList === "function") {
         renderBrowseList(uniqueFiltered);
+    }
+}
+
+function renderBrowseList(items) {
+    const list = document.getElementById("browseList");
+    if (!list) return;
+    
+    list.innerHTML = "";
+    const countEl = document.getElementById("browseCount");
+    
+    const totalCount = Object.keys(window.asanaIndex || window.asanaLibrary || {}).length;
+    const stageHitCount = items.filter(a => a._sourceType === 'stage').length;
+    const baseHitCount = items.length - stageHitCount;
+    
+    if (countEl) {
+        countEl.textContent = stageHitCount > 0
+            ? `Showing ${baseHitCount} poses + ${stageHitCount} stages of ${totalCount} total`
+            : `Showing ${items.length} of ${totalCount}`;
+    }
+
+    if (!items.length) {
+       list.innerHTML = `<div class="msg" style="padding:10px 0">No matches found.</div>`;
+       return;
+    }
+
+    const frag = document.createDocumentFragment();
+    
+    items.slice(0, 400).forEach(asma => {
+       const row = document.createElement("div");
+       row.className = "browse-item" + (asma._sourceType === 'stage' ? " browse-item--stage" : "");
+       if (asma._sourceType === 'stage') {
+           row.style.cssText = "border-left: 3px solid #00695c; margin-left: 8px; background: #f0faf9;";
+       }
+
+       const left = document.createElement("div");
+       
+       const title = document.createElement("div");
+       title.className = "title";
+       title.style.display = "flex";
+       title.style.alignItems = "center";
+       title.style.flexWrap = "wrap";
+       title.style.gap = "6px";
+       
+       // ── Jobsian Typographic Hierarchy Implementation ──
+       const primaryName = asma._sourceType === 'stage' && asma._stageTitle 
+           ? asma._stageTitle 
+           : (asma.english || asma.name || "(no name)");
+           
+       title.innerHTML = `<span style="font-weight:700; color:#1d1d1f;">${primaryName}</span>`;
+
+       if (asma._sourceType !== 'stage') {
+           const varCount = asma.variations ? Object.keys(asma.variations).length : 0;
+           if (varCount > 0) {
+               title.innerHTML += `<span style="font-weight:600; color:#00695c; font-size:0.75rem; background:#e0f2f1; padding:2px 6px; border-radius:12px; letter-spacing:0.02em;">${varCount} VARIATIONS</span>`;
+           }
+       }
+       left.appendChild(title);
+
+       // Secondary Italicized IAST and/or Parent Routing Logic
+       if (asma._sourceType === 'stage') {
+           const parentSub = document.createElement('div');
+           parentSub.style.cssText = 'font-size:0.78rem; color:#00695c; margin-top:3px; font-weight:600;';
+           const parentName = asma.english || asma.name || `ID ${asma.id}`;
+           parentSub.textContent = `↳ ${parentName}`;
+           left.appendChild(parentSub);
+       }
+       
+       if (asma.iast) {
+           const iastSub = document.createElement('div');
+           iastSub.style.cssText = 'font-size:0.85rem; color:#86868b; font-style:italic; margin-top:2px;';
+           iastSub.textContent = asma.iast;
+           left.appendChild(iastSub);
+       }
+
+       const meta = document.createElement("div");
+       meta.className = "meta";
+       meta.style.marginTop = "6px";
+       
+       const catDisplay = typeof formatCategory === "function" ? formatCategory(asma.category) : asma.category;
+       const catBadge = `<span class="badge">${catDisplay || 'Uncategorized'}</span>`;
+
+       const stageKeyBadge = asma._sourceType === 'stage' && asma._stageKey
+           ? `<span style="background:#00695c; color:#fff; border-radius:10px; padding:1px 8px; font-size:0.72rem; font-weight:700; white-space:nowrap; font-family:monospace; margin-left:6px;">Stage ${asma._stageKey}</span>`
+           : '';
+       
+       meta.innerHTML = `
+         <span style="color:#000; font-weight:bold;">ID: ${asma.id || asma.asanaNo || "?"}</span>
+         ${catBadge}
+         ${stageKeyBadge}
+       `;
+       
+       left.appendChild(meta);
+
+       const btn = document.createElement("button");
+       btn.textContent = "View";
+       btn.className = "tiny";
+       btn.addEventListener("click", () => {
+          if (typeof showAsanaDetail === "function") showAsanaDetail(asma, asma._stageKey || null);
+          if (typeof isBrowseMobile === 'function' && isBrowseMobile()) {
+             if (typeof enterBrowseDetailMode === "function") enterBrowseDetailMode();
+          }
+       });
+
+       row.appendChild(left);
+       row.appendChild(btn);
+       frag.appendChild(row);
+    });
+    
+    list.appendChild(frag);
+
+    if (items.length > 400) {
+       const more = document.createElement("div");
+       more.className = "msg";
+       more.style.padding = "10px 0";
+       more.textContent = `Showing first 400 results. Narrow your filters.`;
+       list.appendChild(more);
     }
 }
 
