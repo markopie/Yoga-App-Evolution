@@ -146,25 +146,35 @@ function renderProgressSummaryModal() {
         const isEffectivelyDone = ratio >= 0.9;
         const statusClass = isEffectivelyDone ? 'status-complete' : 'status-incomplete';
 
-        let nameDisplay = "";
-        if (g.macroTitle) {
-            nameDisplay = `<span class="progress-asana-name" style="color:var(--accent-color); font-weight:600;">📦 ${g.macroTitle}</span>`;
-        } else {
-            const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(window.normalizePlate(g.rawId)) : null;
-            if (asana) {
-                const english = asana.english_name || asana.english || asana.name || "";
-                nameDisplay = `<span class="progress-asana-name">${english}</span>`;
-            } else {
-                nameDisplay = `<span class="progress-asana-name">${g.label || `Pose ${g.rawId}`}</span>`;
-            }
-        }
+        // 1. Resolve Data using Schema-aligned fields
+        const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(window.normalizePlate(g.rawId)) : null;
+        // 2. Define Components
+        ;const primaryDisplay = g.macroTitle 
+        ? `📦 ${g.macroTitle}` 
+        : (asana?.english || g.label || asana?.name || `Pose ${g.rawId}`);
 
+        const secondaryIast = asana?.iast || "";
+
+        // 3. Variation Logic: Clean the label
+        // If the label (e.g. "I") is already at the end of the primary name, don't repeat it as a subtitle.
+        let subLabel = (g.label && g.label !== primaryDisplay) ? g.label : "";
+        if (primaryDisplay.endsWith(` ${subLabel}`)) subLabel = ""; 
+
+        // 4. Final Jobsian HTML Construction
+        const nameDisplay = `
+            <div class="progress-asana-stack">
+                <span class="progress-asana-name">${primaryDisplay}</span>
+                ${secondaryIast ? `<span class="progress-asana-iast">${secondaryIast}</span>` : ''}
+                ${subLabel ? `<div class="progress-variation-label">${subLabel}</div>` : ''}
+            </div>
+        `;
         if (g.loopTotal > 1 && !g.macroTitle) {
             nameDisplay += `<div style="font-size:0.75rem; opacity:0.6; margin-top:2px;">${g.loopTotal} Rounds</div>`;
         }
 
         const timeTotalStr = typeof window.formatHMS === 'function' ? window.formatHMS(g.totalAllocated) : g.totalAllocated + 's';
         const statusIndicator = isEffectivelyDone 
+        
             ? '<span class="progress-status-badge done">✓ Done</span>' 
             : `<span class="progress-status-badge partial">${Math.round(ratio * 100)}%</span>`;
 

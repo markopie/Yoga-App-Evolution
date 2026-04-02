@@ -105,6 +105,16 @@ export function formatHMS(totalSeconds) {
    return `${m}:${String(r).padStart(2,"0")}`;
 }
 
+export function getAsanaDisplayName(asana, label = "") {
+    if (!asana) return label || "Unknown Pose";
+    
+    return {
+        primary: asana.english || asana.name,
+        secondary: asana.iast || "",
+        context: (label && label !== asana.english) ? label : ""
+    };
+}
+
 export function formatTechniqueText(text) {
     // SAFETY CHECK: If text is null, undefined, or an object, return empty string
     if (!text || typeof text !== 'string') return "";
