@@ -6,7 +6,7 @@
 //    via window.* to avoid duplicate module instances.
 // ────────────────────────────────────────────────────────────────────────────
 
-// 1. ENGINE BINDINGS (Fixes window.startTimer is not a function)
+// 1. ENGINE BINDINGS
 window.startTimer = () => window.playbackEngine.start();
 window.stopTimer = () => window.playbackEngine.stop();
 
@@ -42,13 +42,12 @@ window.playbackEngine.onStart = () => {
             const idx = window.currentIndex;
             const currentPose = poses[idx];
 
-            // --- 🧭 STATE SYNC (FIXES INCORRECT SIDE AUDIO & DOUBLER) ---
+            // --- 🧭 STATE SYNC ---
             const meta = currentPose[7] || {};
             if (meta.explicitSide) {
                 window.currentSide = meta.explicitSide === 'L' ? 'left' : 'right';
-                window.needsSecondSide = false; // Disable the auto-doubler for this pose
+                window.needsSecondSide = false; 
             } else if (window._lastSideIdx !== idx) {
-                // Transition to a NEW index without explicit marker: default to Right
                 window._lastSideIdx = idx;
                 window.currentSide = 'right';
             }
@@ -178,6 +177,18 @@ window.playbackEngine.onTransitionStart = (secs) => {
     const overlay = document.getElementById("transitionOverlay");
     if (overlay) overlay.style.display = "flex";
 
+    // --- FIX: BIND TRANSITION SKIP BUTTON ---
+    const skipBtn = document.getElementById("transitionSkipBtn");
+    if (skipBtn) {
+        skipBtn.onclick = (e) => {
+            e.preventDefault();
+            if (overlay) overlay.style.display = "none";
+            window.playbackEngine.stop(); // Halt the engine's internal transition clock
+            const advanced = typeof window.nextPose === "function" ? window.nextPose() : false;
+            if (advanced) window.playbackEngine.start();
+        };
+    }
+
     // Ensure initial timer value is visible immediately
     const timerEl = document.getElementById("transitionTimer") || document.querySelector(".transition-countdown");
     if (timerEl) {
@@ -188,7 +199,6 @@ window.playbackEngine.onTransitionStart = (secs) => {
 };
 
 window.playbackEngine.onTransitionTick = (remaining) => {
-    // Use ID with fallback to class to ensure countdown visibility
     const timerEl = document.getElementById("transitionTimer") || document.querySelector(".transition-countdown");
     if (timerEl) {
         timerEl.textContent = typeof window.formatHMS === "function" 
@@ -196,7 +206,6 @@ window.playbackEngine.onTransitionTick = (remaining) => {
             : remaining;
     }
 
-    // Visual warning when transition is nearly over
     if (timerEl) {
         if (remaining <= 3) {
             timerEl.style.color = "#d32f2f";
@@ -225,6 +234,7 @@ window.playbackEngine.onPoseComplete = (wasLongHold) => {
     const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) ? window.activePlaybackList : (window.currentSequence?.poses || []);
     const currentPose = poses[window.currentIndex] || null;
     const flowPose = isFlowPlaybackPose(currentPose);
+    
     const advanceAndRestart = () => {
         const advanced = window.nextPose();
         if (advanced) window.playbackEngine.start();
@@ -236,18 +246,18 @@ window.playbackEngine.onPoseComplete = (wasLongHold) => {
     const currMeta = currentPose?.[7] || {};
     const nextMeta = nextPose?.[7] || {};
 
-    // Only show transition for long holds (>= 1 min). 
-    // Removed 'isBoundary' check to prevent short poses triggering rest at macro starts.
-    if (wasLongHold && !flowPose) {
-        // Update the "Up Next" label before starting the transition
+    // --- FIX: PREVENT TRANSITION IF WE ARE INTRA-ASANA (NEEDS SECOND SIDE) ---
+    // If needsSecondSide is explicitly true, we are not done with the current Asana block.
+    const isLastSide = !window.needsSecondSide;
+
+    // Only show transition for long holds (>= 1 min) AND when not pending a side switch.
+    if (wasLongHold && !flowPose && isLastSide) {
         const nextLabelEl = document.querySelector(".transition-next");
         if (nextLabelEl && nextPose) {
             let nextName = "";
-            // Priority 1: Macro Title
             if (nextMeta.macroTitle) {
                 nextName = nextMeta.macroTitle;
             } else {
-                // Priority 2: Asana Library Name
                 const id = Array.isArray(nextPose[0]) ? nextPose[0][0] : nextPose[0];
                 const asana = typeof window.findAsanaByIdOrPlate === "function" 
                     ? window.findAsanaByIdOrPlate(window.normalizePlate(id)) 
@@ -291,7 +301,7 @@ window.playbackEngine.onPoseComplete = (wasLongHold) => {
     advanceAndRestart();
 };
 
-// 4. BOTTOM UI FUNCTIONS (Fixes updateTimerUI is not a function)
+// 4. BOTTOM UI FUNCTIONS
 function triggerSequenceEnd() {
     window.stopTimer();
     const transOverlay = document.getElementById("transitionOverlay");
