@@ -129,24 +129,40 @@ function setupPlaybackControls() {
         if (!playbackEngine.running) window.startTimer();
         else window.stopTimer();
     });
-    
     safeListen("resetBtn", "click", () => {
         // 1. Stop the clock to freeze the Timer Pill
         if (typeof window.stopTimer === 'function') {
             window.stopTimer();
         }
+        
+        // 🛡️ ARCHITECT FIX 1: Wipe the engine's internal duration memory for the next sequence
+        if (window.playbackEngine && typeof window.playbackEngine.resetPracticeTimer === 'function') {
+            window.playbackEngine.resetPracticeTimer();
+        }
+        
+        // 🛡️ ARCHITECT FIX 2: Wipe the localStorage save file so "Resume" doesn't trigger on refresh
+        if (typeof window.clearProgress === 'function') {
+            window.clearProgress();
+        }
+        
+        // 🛡️ ARCHITECT FIX 3: Wipe the local completion tracker memory
+        if (typeof window.resetCompletionTracker === 'function') {
+            window.resetCompletionTracker();
+        }
+        window.completionTracker = {}; 
+
         const seqSelect = document.getElementById("sequenceSelect");
-    if (seqSelect) {
-        seqSelect.value = ""; // Visually clears the dropdown
-        seqSelect.dispatchEvent(new Event('change')); // Triggers app-wide reset logic
-    }
+        if (seqSelect) {
+            seqSelect.value = ""; // Visually clears the dropdown
+            seqSelect.dispatchEvent(new Event('change')); // Triggers app-wide reset logic
+        }
 
         // 2. The UI Manifest (Verified against index.html)
         const uiResetManifest = {
             "poseTimer":            ["–", "text"],
             "timeRemainingDisplay": ["--:--", "text"],
             "timeTotalDisplay":     ["--:--", "text"],
-            "statusText":           ["Ready to Start", "text"], // Changed from Session Reset for better UX
+            "statusText":           ["Ready to Start", "text"],
             "poseName":             ["", "text"],
             "poseLabel":            ["", "text"], 
             "poseShorthand":        ["", "html"],
@@ -182,22 +198,20 @@ function setupPlaybackControls() {
         
         if (descDetails) {
             descDetails.style.display = "none"; 
-            descDetails.open = false; // Reset state
+            descDetails.open = false; 
         }
         if (techDetails) {
             techDetails.style.display = "none";
-            techDetails.open = false; // Reset state
+            techDetails.open = false; 
         }
 
         // 5. Clean up Images and Progress
         const collageWrap = document.getElementById("collageWrap");
         if (collageWrap) {
-            // Restore your "Ready for Practice" screen
             collageWrap.innerHTML = typeof EMPTY_STATE_HTML !== "undefined" ? EMPTY_STATE_HTML : "";
         }
 
         // 🛑 6. THE ENGINE FLUSH (Fixes the "Lock Up" bug)
-        // This ensures the next sequence you select doesn't collide with the old one
         window.activePlaybackList = null;
         window._lastBoundaryIdx = -1;
         window.currentSequence = null;
@@ -208,7 +222,7 @@ function setupPlaybackControls() {
         const startBtn = document.getElementById("startStopBtn");
         if (startBtn) startBtn.textContent = "Start";
         
-        console.log("Session Reset Complete: Engine Flushed");
+        console.log("🛠️ Architect: Session Reset Complete. Engine, UI, and Save State Flushed.");
     });
 
     // Mobile Duration Dial Reset

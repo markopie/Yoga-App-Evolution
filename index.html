@@ -497,7 +497,42 @@
       <div id="rowSearchResults" style="flex:1; overflow-y:auto; margin-top:15px; min-height:0;"></div>
    </div>
 </div>  
+<div id="ratingOverlay" role="dialog" aria-modal="true" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(255, 255, 255, 0.95); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:9999; align-items:center; justify-content:center; flex-direction:column; color:#1d1d1f; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <h2 style="font-size: 2rem; margin-bottom: 2.5rem; font-weight: 500; text-align:center; letter-spacing:-0.02em;">How did your body feel?</h2>
+    <div style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center; max-width:800px; padding:0 20px;">
+      
+      <button class="rating-btn" data-rating="1">
+        <span style="font-size:2.5rem; margin-bottom:12px;">🪨</span>
+        <span style="font-size:0.95rem; font-weight:600; margin-bottom:5px;">Struggled</span>
+        <span style="font-size:0.8rem; color:#86868b;">Heavy</span>
+      </button>
+      
+      <button class="rating-btn" data-rating="2">
+        <span style="font-size:2.5rem; margin-bottom:12px;">🧗</span>
+        <span style="font-size:0.95rem; font-weight:600; margin-bottom:5px;">Challenging</span>
+        <span style="font-size:0.8rem; color:#86868b;">Effortful</span>
+      </button>
 
+      <button class="rating-btn" data-rating="3">
+        <span style="font-size:2.5rem; margin-bottom:12px;">⚖️</span>
+        <span style="font-size:0.95rem; font-weight:600; margin-bottom:5px;">Balanced</span>
+        <span style="font-size:0.8rem; color:#86868b;">Centered</span>
+      </button>
+
+      <button class="rating-btn" data-rating="4">
+        <span style="font-size:2.5rem; margin-bottom:12px;">🌊</span>
+        <span style="font-size:0.95rem; font-weight:600; margin-bottom:5px;">Fluid</span>
+        <span style="font-size:0.8rem; color:#86868b;">Easy</span>
+      </button>
+
+      <button class="rating-btn" data-rating="5">
+        <span style="font-size:2.5rem; margin-bottom:12px;">⚡</span>
+        <span style="font-size:0.95rem; font-weight:600; margin-bottom:5px;">Strong</span>
+        <span style="font-size:0.8rem; color:#86868b;">Mastered</span>
+      </button>
+
+    </div>
+  </div>
 <script type="module" src="src/services/supabaseClient.js"></script>
 <script type="module" src="src/services/dataAdapter.js"></script>
 <script type="module" src="app.js"></script>

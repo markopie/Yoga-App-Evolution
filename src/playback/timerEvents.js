@@ -1,9 +1,6 @@
 // src/playback/timerEvents.js
 // ────────────────────────────────────────────────────────────────────────────
 // Extracted from app.js Phase 4. Timer engine event callbacks.
-//
-// ⚠️  NO IMPORTS — follows sequenceEngine.js pattern. All helpers accessed 
-//    via window.* to avoid duplicate module instances.
 // ────────────────────────────────────────────────────────────────────────────
 
 // 1. ENGINE BINDINGS
@@ -78,7 +75,6 @@ window.playbackEngine.onStart = () => {
             if (asana) {
                 if (window.playbackEngine.remaining === window.playbackEngine.currentPoseSeconds) {
                     
-                    // --- 🎙️ SEQUENTIAL AUDIO HELPER ---
                     const triggerAsanaAudio = () => {
                         if (typeof window.playAsanaAudio !== "function") {
                             window.playbackEngine.resume();
@@ -96,7 +92,6 @@ window.playbackEngine.onStart = () => {
                             });
                     };
 
-                    // --- BOUNDARY AUDIO INTERCEPTOR ---
                     if (window._lastBoundaryIdx !== idx) {
                         window._lastBoundaryIdx = idx;
 
@@ -177,36 +172,27 @@ window.playbackEngine.onTransitionStart = (secs) => {
     const overlay = document.getElementById("transitionOverlay");
     if (overlay) overlay.style.display = "flex";
 
-    // --- FIX: BIND TRANSITION SKIP BUTTON ---
     const skipBtn = document.getElementById("transitionSkipBtn");
     if (skipBtn) {
         skipBtn.onclick = (e) => {
             e.preventDefault();
             if (overlay) overlay.style.display = "none";
-            window.playbackEngine.stop(); // Halt the engine's internal transition clock
+            window.playbackEngine.stop(); 
             const advanced = typeof window.nextPose === "function" ? window.nextPose() : false;
             if (advanced) window.playbackEngine.start();
         };
     }
 
-    // Ensure initial timer value is visible immediately
     const timerEl = document.getElementById("transitionTimer") || document.querySelector(".transition-countdown");
     if (timerEl) {
-        timerEl.textContent = typeof window.formatHMS === "function" 
-            ? window.formatHMS(secs) 
-            : secs;
+        timerEl.textContent = typeof window.formatHMS === "function" ? window.formatHMS(secs) : secs;
     }
 };
 
 window.playbackEngine.onTransitionTick = (remaining) => {
     const timerEl = document.getElementById("transitionTimer") || document.querySelector(".transition-countdown");
     if (timerEl) {
-        timerEl.textContent = typeof window.formatHMS === "function" 
-            ? window.formatHMS(remaining) 
-            : remaining;
-    }
-
-    if (timerEl) {
+        timerEl.textContent = typeof window.formatHMS === "function" ? window.formatHMS(remaining) : remaining;
         if (remaining <= 3) {
             timerEl.style.color = "#d32f2f";
             timerEl.style.transform = "scale(1.1)";
@@ -245,12 +231,8 @@ window.playbackEngine.onPoseComplete = (wasLongHold) => {
     const nextPose = poses[window.currentIndex + 1] || null;
     const currMeta = currentPose?.[7] || {};
     const nextMeta = nextPose?.[7] || {};
-
-    // --- FIX: PREVENT TRANSITION IF WE ARE INTRA-ASANA (NEEDS SECOND SIDE) ---
-    // If needsSecondSide is explicitly true, we are not done with the current Asana block.
     const isLastSide = !window.needsSecondSide;
 
-    // Only show transition for long holds (>= 1 min) AND when not pending a side switch.
     if (wasLongHold && !flowPose && isLastSide) {
         const nextLabelEl = document.querySelector(".transition-next");
         if (nextLabelEl && nextPose) {
@@ -262,14 +244,10 @@ window.playbackEngine.onPoseComplete = (wasLongHold) => {
                 const asana = typeof window.findAsanaByIdOrPlate === "function" 
                     ? window.findAsanaByIdOrPlate(window.normalizePlate(id)) 
                     : null;
-                
-                nextName = asana 
-                    ? (typeof window.displayName === "function" ? window.displayName(asana) : (asana.english || asana.name))
-                    : (nextPose[6] || "Next Pose");
+                nextName = asana ? (typeof window.displayName === "function" ? window.displayName(asana) : (asana.english || asana.name)) : (nextPose[6] || "Next Pose");
             }
             nextLabelEl.textContent = `Up next: ${nextName}`;
         }
-
         window.playbackEngine.startTransition(15);
         return;
     }
@@ -302,18 +280,18 @@ window.playbackEngine.onPoseComplete = (wasLongHold) => {
 };
 
 // 4. BOTTOM UI FUNCTIONS
-function triggerSequenceEnd() {
+async function triggerSequenceEnd() {
     window.stopTimer();
     const transOverlay = document.getElementById("transitionOverlay");
     if (transOverlay) transOverlay.style.display = "none";
     const focusOverlay = document.getElementById("focusOverlay");
     if (focusOverlay) focusOverlay.style.display = "none";
 
-    const activeList = typeof window.getActivePlaybackList === 'function' ? window.getActivePlaybackList() : [];
+    const activeList = (typeof window.getActivePlaybackList === 'function' ? window.getActivePlaybackList() : []) || [];
     const tracker = typeof window.getCompletionTracker === 'function' ? window.getCompletionTracker() : {};
     
-    let totalSections = 0;
-    let completedSections = 0;
+    let totalSecsAllocated = 0;
+    let totalSecsPracticed = 0;
 
     if (activeList && activeList.length > 0) {
         const groupMap = {};
@@ -321,37 +299,50 @@ function triggerSequenceEnd() {
             const origIdx = (node[5] !== undefined && node[5] !== null) ? node[5] : `p-${playbackIdx}`;
             if (!groupMap[origIdx]) {
                 groupMap[origIdx] = { totalAllocated: 0, totalCompleted: 0 };
-                totalSections++;
             }
-            groupMap[origIdx].totalAllocated += Number(node[1] || 0);
-            groupMap[origIdx].totalCompleted += Number(tracker[playbackIdx] || 0);
+            
+            const allocated = Number(node[1] || 0);
+            const practiced = Number(tracker[playbackIdx] || 0);
+            
+            groupMap[origIdx].totalAllocated += allocated;
+            groupMap[origIdx].totalCompleted += practiced;
+            
+            totalSecsAllocated += allocated;
+            totalSecsPracticed += practiced;
         });
-
+        
+        let completedSections = 0;
         Object.values(groupMap).forEach(g => {
             const ratio = g.totalAllocated > 0 ? (g.totalCompleted / g.totalAllocated) : 0;
             if (ratio >= 0.9) completedSections++; 
         });
     }
 
-    const completionRatio = totalSections > 0 ? (completedSections / totalSections) : 0;
+    const completionRatio = totalSecsAllocated > 0 ? (totalSecsPracticed / totalSecsAllocated) : 0;
     const isSuccess = completionRatio >= 0.9;
 
-    if (!isSuccess) { 
-        const displayPercent = Math.round(completionRatio * 100);
-        alert(`You've completed ${displayPercent}% of the sequence blocks.\n\nYou need to hold the poses a bit longer to log this session to your history!`);
-        return;
-    }
-
-    const ratingOverlay = document.getElementById("ratingOverlay");
-    if (ratingOverlay && ratingOverlay.style.display !== "flex") {
-        ratingOverlay.style.display = "flex";
-        const title = window.currentSequence?.title || "Unknown Sequence";
-        const category = window.currentSequence?.category || null;
-        const focusDuration = window.playbackEngine ? window.playbackEngine.activePracticeSeconds : 0;
+    if (isSuccess) {
+        let ratingOverlay = document.getElementById("ratingOverlay");
         
         if (typeof window.appendServerHistory === "function") {
-            window.appendServerHistory(title, new Date(), category, focusDuration);
+            const title = window.currentSequence?.title || "Unknown";
+            const dur = Math.round(totalSecsPracticed);
+            
+            try {
+                const sessionId = await window.appendServerHistory(title, new Date(), window.currentSequence?.category, dur);
+                
+                if (ratingOverlay) {
+                    ratingOverlay.dataset.sessionId = sessionId || "fallback-id";
+                    ratingOverlay.style.setProperty('display', 'flex', 'important');
+                }
+            } catch (err) {
+                console.error("History Phase 1 Failed:", err);
+                if (ratingOverlay) ratingOverlay.style.setProperty('display', 'flex', 'important');
+            }
         }
+    } else {
+        const displayPercent = Math.round(completionRatio * 100);
+        alert(`You've completed ${displayPercent}% of the sequence. Hold poses longer to log this session!`);
     }
 }
 
@@ -399,6 +390,5 @@ function updateTimerUI(remaining, currentPoseSeconds) {
     }
 }
 
-// 5. GLOBAL EXPORTS
 window.updateTimerUI = updateTimerUI;
 window.triggerSequenceEnd = triggerSequenceEnd;
