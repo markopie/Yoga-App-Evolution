@@ -8,12 +8,29 @@ import { supabase } from "../services/supabaseClient.js";
  */
 export async function parseSemicolonCommand(commandString, libraryArray, asanaLibraryMap) {
     const parts = commandString.split(';').map(p => p.trim());
-    if (parts.length < 3) return null;
+    
+    let title = null;
+    let category = null;
+    let idsStr = "";
 
-    const [title, category, idsStr] = parts;
+    // CASE A: Full Command (Title; Category; IDs)
+    if (parts.length >= 3) {
+        [title, category, idsStr] = parts;
+    } 
+    // CASE B: Shorthand Command (Just LOY: 1, 2, 3)
+    else if (parts.length === 1 && parts[0].toUpperCase().startsWith('LOY:')) {
+        idsStr = parts[0];
+    }
+    // CASE C: Invalid format
+    else {
+        return null;
+    }
 
-    // Expand integer ranges (51-55) then split by comma
-    const expandedTokens = idsStr.replace(/(\d+)\s*-\s*(\d+)/g, (m, start, end) => {
+    const isLOYBatch = idsStr.toUpperCase().startsWith('LOY:');
+    const cleanIdsStr = isLOYBatch ? idsStr.substring(4).trim() : idsStr;
+
+    // Logic Preservation: Keep the range expansion (e.g. 51-55)
+    const expandedTokens = cleanIdsStr.replace(/(\d+)\s*-\s*(\d+)/g, (m, start, end) => {
         const r = [];
         for (let i = parseInt(start); i <= parseInt(end); i++) r.push(String(i));
         return r.join(',');
@@ -22,74 +39,22 @@ export async function parseSemicolonCommand(commandString, libraryArray, asanaLi
     const tokens = expandedTokens.split(',').map(s => s.trim()).filter(s => s.length > 0 && s !== '0');
 
     const resolveToken = async (token) => {
-        const pageNum = parseFloat(token);
-        const isPageNum = !isNaN(pageNum) && /^\d+(\.\d+)?$/.test(token.trim());
-
-        if (isPageNum) {
-            const baseMatches = libraryArray.filter(a => parseFloat(a.page_primary) === pageNum);
-
-            if (baseMatches.length === 1) {
-                const m = baseMatches[0];
-                return { id: m.id, asana: m, variation: '', stageKey: '', name: m.english || m.name || m.id, _pageNum: pageNum };
-            }
-            if (baseMatches.length > 1) {
-                const primary = baseMatches[0];
-                return {
-                    id: primary.id, asana: primary, variation: '', stageKey: '', name: primary.english || primary.name || primary.id, _pageNum: pageNum, _ambiguous: true,
-                    _alternatives: baseMatches.slice(1).map(a => ({ id: a.id, name: a.english || a.name || a.id, asana: a }))
-                };
-            }
-
-            for (const a of libraryArray) {
-                if (!a.variations) continue;
-                for (const [stageKey, vData] of Object.entries(a.variations)) {
-                    if (vData && parseFloat(vData.page_primary) === pageNum) {
-                        return { id: a.id, asana: a, variation: stageKey, stageKey, name: `${a.english || a.name} › ${vData.title || stageKey}`, _pageNum: pageNum };
-                    }
-                }
-            }
-
-            try {
-                const { data: aHits } = await supabase.from('asanas').select('id, english_name, name').eq('page_primary', pageNum);
-
-                if (aHits && aHits.length === 1) {
-                    const row = aHits[0];
-                    const asanaKey = String(row.id).padStart(3, '0');
-                    const asana = asanaLibraryMap?.[asanaKey];
-                    return { id: asanaKey, asana: asana || { id: asanaKey }, variation: '', stageKey: '', name: row.english_name || row.name || asanaKey, _pageNum: pageNum };
-                }
-
-                if (aHits && aHits.length > 1) {
-                    const primary = aHits[0];
-                    const asanaKey = String(primary.id).padStart(3, '0');
-                    const asana = asanaLibraryMap?.[asanaKey];
-                    return {
-                        id: asanaKey, asana: asana || { id: asanaKey }, variation: '', stageKey: '', name: primary.english_name || primary.name || asanaKey, _pageNum: pageNum, _ambiguous: true,
-                        _alternatives: aHits.slice(1).map(r => {
-                            const k = String(r.id).padStart(3, '0');
-                            return { id: k, name: r.english_name || r.name || k, asana: asanaLibraryMap?.[k] || { id: k } };
-                        })
-                    };
-                }
-
-                const { data: sHits } = await supabase.from('stages').select('asana_id, stage_name, title').eq('page_primary', pageNum).limit(1);
-                if (sHits && sHits.length > 0) {
-                    const row = sHits[0];
-                    const asanaKey = String(row.asana_id).padStart(3, '0');
-                    const asana = asanaLibraryMap?.[asanaKey];
-                    return { id: asanaKey, asana: asana || { id: asanaKey }, variation: row.stage_name || '', stageKey: row.stage_name || '', name: `${asana?.english || asanaKey} › ${row.title || row.stage_name || ''}`, _pageNum: pageNum };
-                }
-            } catch (netErr) {
-                console.warn(`⚠️ page_primary network lookup failed for ${pageNum}:`, netErr.message);
-            }
-
-            console.warn(`⚠️ No asana or stage found for page_primary = ${pageNum}`);
+        if (isLOYBatch) {
+            const cleanId = token.padStart(3, '0');
+            const asana = asanaLibraryMap?.[cleanId];
+            if (asana) return { id: cleanId, asana, variation: '', stageKey: '', name: asana.english || asana.name || cleanId };
             return null;
         }
 
-        const cleanId = token.padStart(3, '0');
-        const asana = asanaLibraryMap?.[cleanId];
-        if (asana) return { id: cleanId, asana, variation: '', stageKey: '', name: asana.english || asana.name || cleanId };
+        // Mehta Fallback (Legacy)
+        const pageNum = parseFloat(token);
+        if (!isNaN(pageNum)) {
+            const baseMatches = libraryArray.filter(a => parseFloat(a.page_primary) === pageNum);
+            if (baseMatches.length >= 1) {
+                const m = baseMatches[0];
+                return { id: m.id, asana: m, variation: '', stageKey: '', name: m.english || m.name || m.id, _pageNum: pageNum };
+            }
+        }
         return null;
     };
 

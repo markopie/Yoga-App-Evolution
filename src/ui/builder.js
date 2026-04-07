@@ -515,28 +515,34 @@ async function processSemicolonCommand(commandString) {
 
     const { title, category, validItems } = result;
 
-    const titleEl = document.getElementById('builderTitle');
-    const catEl   = document.getElementById('builderCategory');
-    if (titleEl && title)    titleEl.value = title;
-    if (catEl   && category) catEl.value   = category;
+    // Only overwrite UI if explicitly provided in the command
+    if (title) {
+        const titleEl = document.getElementById('builderTitle');
+        if (titleEl) titleEl.value = title;
+    }
+    if (category) {
+        const catEl = document.getElementById('builderCategory');
+        if (catEl) catEl.value = category;
+    }
 
     if (validItems.length === 0) return;
 
-    let insertAt = getTargetInsertionIndex(); // 👈 Find ticked box
+    let insertAt = getTargetInsertionIndex(); 
 
     validItems.forEach(item => {
         const holdTimes = (item.asana && window.getHoldTimes) ? window.getHoldTimes(item.asana, item.stageKey || null) : { standard: 30, flow: 5 };
         const duration = isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30);
         
         addPoseToBuilder({
-            id: item.id, name: item.name, duration, variation: item.stageKey || '', note: item.stageKey ? `[${item.stageKey}]` : '', holdTier: 'standard', flowHoldOverride: isFlowSequence() ? duration : null,
+            id: item.id, name: item.name, duration, variation: item.stageKey || '', note: item.stageKey ? `[${item.stageKey}]` : '', 
+            holdTier: 'standard', flowHoldOverride: isFlowSequence() ? duration : null,
             _ambiguous: item._ambiguous || false, _pageNum: item._pageNum || null, _alternatives: item._alternatives || []
-        }, insertAt); // 👈 Pass insertion index
+        }, insertAt);
         
-        if (insertAt >= 0) insertAt++; // Increment so multiple poses stay in order
+        if (insertAt >= 0) insertAt++; 
     });
 
-    clearBuilderSelection(); // 👈 Clear checkbox
+    clearBuilderSelection(); 
     builderRender();
 }
 

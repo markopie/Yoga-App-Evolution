@@ -49,29 +49,45 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
     }
 
     searchInput.onkeydown = (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            const val = searchInput.value.trim();
-            if (val.includes(';')) {
-                e.preventDefault();
+    if (e.key === "Enter" && !e.shiftKey) {
+        const val = searchInput.value.trim();
+        const isSemicolon = val.includes(';');
+        const isLOYBatch = val.toUpperCase().startsWith('LOY:');
+
+        if (isSemicolon || isLOYBatch) {
+            e.preventDefault();
+            
+            // ARCHITECT'S NOTE: Ensure this name matches your defined function
+            if (typeof processSemicolonCommand === "function") {
+                processSemicolonCommand(val);
+            } else if (typeof onSemicolonCommand === "function") {
                 onSemicolonCommand(val);
-                searchInput.value = "";
-                return;
+            } else {
+                console.error("FATAL: Batch processing function not found in scope.");
             }
-            if (val.length >= 1) {
-                e.preventDefault();
-                const { results } = getSearchResults(val);
-                if (results.length > 0) {
-                    onResultSelected(results[0].asma);
-                    searchInput.value = "";
-                    resultsBox.style.display = "none";
-                }
+
+            searchInput.value = "";
+            resultsBox.style.display = "none";
+            return;
+        }
+
+        // Standard Single Search Fallback
+        if (val.length >= 1) {
+            e.preventDefault();
+            const { results } = getSearchResults(val);
+            if (results.length > 0) {
+                onResultSelected(results[0].asma);
+                searchInput.value = "";
+                resultsBox.style.display = "none";
             }
         }
-    };
+    }
+};
 
-    searchInput.oninput = () => {
-        const query = searchInput.value.trim(); // 🔥 Fixed scope issue
-        if (query.length < 1 || query.includes(';')) {
+        searchInput.oninput = () => {
+        const query = searchInput.value.trim();
+        // Logic Guard: Hide results if it's a batch command (Semicolon or LOY:)
+        if (query.length < 1 || query.includes(';') || query.toUpperCase().startsWith('LOY:')) {
             resultsBox.style.display = "none";
             return;
         }
