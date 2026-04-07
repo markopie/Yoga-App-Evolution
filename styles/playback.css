@@ -240,6 +240,12 @@
 /* ────────────────────────────────────────────────────────────────────────────
    PROGRESS SUMMARY MODAL (Playback)
    ──────────────────────────────────────────────────────────────────────────── */
+.progress-status-wrapper {
+    display: flex;
+    justify-content: flex-end; 
+    margin-top: 4px;
+}
+
 .progress-summary-backdrop {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0, 0, 0, 0.5); z-index: 9998;
@@ -271,12 +277,17 @@
 }
 
 .progress-summary-body {
-    padding: 0; overflow-y: auto; flex: 1;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    min-height: 0; /* Critical for flex-child scrolling logic */
     -webkit-overflow-scrolling: touch;
 }
 
 .progress-summary-table {
-    width: 100%; text-align: left; border-collapse: collapse;
+    width: 100%;
+    border-collapse: collapse;
+    /* This creates the necessary space at the end of the scroll */
+    margin-bottom: 50px !important; 
 }
 
 .progress-summary-table thead {
@@ -341,13 +352,21 @@
     border-radius: 10px; font-weight: 600; font-size: 1rem; cursor: pointer; 
     width: 100%; box-shadow: 0 2px 4px rgba(0,122,255,0.2);
 }
+.progress-status-badge::before {
+    display: inline-block;
+    vertical-align: middle;
+}
 
 .progress-status-badge {
+    display: inline-flex;    /* Keeps icon and text on one line */
+    align-items: center;     /* Perfectly centers content vertically */
+    gap: 4px;               /* Precise spacing between ✓ and DONE */
+    padding: 3px 10px;
+    border-radius: 100px;    /* Clean pill shape */
     font-size: 0.7rem;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-weight: bold;
-    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;     /* Prevents awkward wrapping */
 }
 .progress-status-badge.done {
     background: rgba(40, 167, 69, 0.2);
