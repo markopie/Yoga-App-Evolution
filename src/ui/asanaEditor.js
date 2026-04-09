@@ -104,6 +104,16 @@ function getVariationSuffixes() {
     return Array.from(suffixes).sort();
 }
 
+window.refreshStageIndices = function() {
+    const container = $("stagesContainer");
+    if (!container) return;
+    const rows = Array.from(container.querySelectorAll(".stage-row"));
+    rows.forEach((row, index) => {
+        const display = row.querySelector(".stage-index-display");
+        if (display) display.textContent = index + 1;
+    });
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ADD STAGE ROW TO EDITOR
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,6 +153,10 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
 
     div.innerHTML = `
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+           <div style="min-width:30px; text-align:center;">
+               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Pos</label>
+               <div class="stage-index-display" style="padding:6px; font-weight:bold; color:#007aff; font-size:0.9rem;"></div>
+           </div>
            <div style="min-width:60px;">
                <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Key</label>
                <input type="text" class="stage-key" value="${autoKey}" readonly style="width:60px; padding:6px; font-weight:bold; background:#f5f5f5; text-align:center; border:1px solid #ccc; border-radius:4px;">
@@ -191,7 +205,10 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
         </div>
     `;
 
-    div.querySelector(".remove-stage-btn").onclick = () => div.remove();
+    div.querySelector(".remove-stage-btn").onclick = () => {
+        div.remove();
+        window.refreshStageIndices?.();
+    };
 
     // Prefix template picker: prepend chosen text then reset select
     const prefixSel = div.querySelector(".stage-prefix-tpl");
@@ -207,6 +224,7 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
     }
 
     container.appendChild(div);
+    window.refreshStageIndices?.();
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -516,11 +534,12 @@ function wireEditorSave() {
             if (asanaErr) throw new Error(`Asana Save Error: ${asanaErr.message}`);
 
             // Process variation/stage rows
-            const stageDivs = $("stagesContainer").querySelectorAll(".stage-row");
+            const stageDivs = Array.from($("stagesContainer").querySelectorAll(".stage-row"));
             const localVariations = {};
 
-            for (const div of stageDivs) {
-                const key = div.querySelector(".stage-key").value.trim();
+            for (let index = 0; index < stageDivs.length; index++) {
+                const div = stageDivs[index];
+                const key = div.querySelector(".stage-key")?.value.trim();
                 if (!key) continue;
 
                 const sfx = div.querySelector(".stage-suffix")?.value.trim() || "";
@@ -539,10 +558,8 @@ function wireEditorSave() {
                     title:          sfx || key,
                     full_technique: div.querySelector(".stage-tech")?.value.trim()       || null,
                     shorthand:      div.querySelector(".stage-short")?.value.trim()       || null,
-                    image_url:      baseVariation.image_url                               || null,
-                    audio_url:      div.querySelector(".stage-audio-url")?.value.trim()   || null,
-                    audio_title:    div.querySelector(".stage-audio-title")?.value.trim() || null,
-                    hold:           holdStr
+                    hold:           holdStr,
+                    sort_order:     index
                 };
 
                 // 🌟 FIX: dbId is now a BigInt, not a UUID string. 

@@ -277,12 +277,12 @@ ${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseDesc).trim
         const varSection = document.createElement('div');
         varSection.innerHTML = '<div style="margin-top:30px; margin-bottom:15px; font-weight:700; font-size:1.1rem; color:#86868b; text-transform:uppercase; letter-spacing:0.05em;">Variations & Stages</div>';
 
-        // 🛑 ARCHITECT FIX: Sort numeric sort_order first, default missing/NaN to 9999, then standard locale compare
+        // 🛑 ARCHITECT FIX: Sort numeric sort_order first, default missing/NaN to 0, then standard locale compare
         const sortedKeys = Object.keys(asana.variations).sort((a, b) => {
             const valA = asana.variations[a];
             const valB = asana.variations[b];
-            const orderA = (valA && typeof valA === 'object' && valA.sort_order !== undefined) ? parseInt(valA.sort_order, 10) : 9999;
-            const orderB = (valB && typeof valB === 'object' && valB.sort_order !== undefined) ? parseInt(valB.sort_order, 10) : 9999;
+            const orderA = (valA && typeof valA === 'object' && valA.sort_order !== undefined) ? parseInt(valA.sort_order, 10) : 0;
+            const orderB = (valB && typeof valB === 'object' && valB.sort_order !== undefined) ? parseInt(valB.sort_order, 10) : 0;
             
             if (orderA !== orderB) return orderA - orderB;
             return a.localeCompare(b);
@@ -426,7 +426,7 @@ function applyBrowseFilters() {
                     _stageKey: stageKey,
                     _stageTitle: vData.title || vData.Title || `Stage ${stageKey}`,
                     // Architect Fix: Ingest integer sort_order for downstream matrix logic
-                    _sortOrder: vData.sort_order !== undefined ? parseInt(vData.sort_order, 10) : 9999,
+                    _sortOrder: vData.sort_order !== undefined ? parseInt(vData.sort_order, 10) : 0,
                     _uniqueKey: String(a.id) + ':' + stageKey
                 });
             });

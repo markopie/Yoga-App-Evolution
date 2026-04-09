@@ -67,12 +67,15 @@ function parseSequenceText(sequenceText) {
     const sideMatch = note.match(/\bside:(L|R)\b/i);
     const side = sideMatch ? sideMatch[1].toUpperCase() : '';
 
+    const props = [];
+    if (note.toLowerCase().includes(':bandage')) props.push('bandage');
+
     // MACRO: rows (e.g. "MACRO:Surya Namaskar A") are expected linked-sequence
     // markers and must round-trip through persistence intact.
     if (/^MACRO:/i.test(id)) {
       const macroTitle = id.replace(/^MACRO:/i, '').trim();
       // Use consistent 8-element structure where index 0 is an array and metadata exists at index 7
-      poses.push([[`MACRO:${macroTitle}`], duration, '', '', note, null, null, { explicitSide: side }]);
+      poses.push([[`MACRO:${macroTitle}`], duration, '', '', note, null, null, { explicitSide: side, props: props }]);
       return;
     }
 
@@ -97,7 +100,7 @@ function parseSequenceText(sequenceText) {
     // (set by getExpandedPoses). Instead, tier is read directly from p[4] (the note)
     // by consumers via a /\btier:(S|L|STD)\b/ regex when needed.
 
-    poses.push([[normalizedId], duration, '', variationKey, note, null, null, { explicitSide: side }]);  });
+    poses.push([[normalizedId], duration, '', variationKey, note, null, null, { explicitSide: side, props: props }]);  });
 
   return poses;
 }

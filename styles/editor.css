@@ -550,3 +550,27 @@
 .link-option-row:last-child {
     border-bottom: none;
 }
+
+
+.b-prop-pill {
+    display: inline-block;
+    margin-left: 8px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    filter: grayscale(1);
+    opacity: 0.2;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+}
+
+/* Hover: Peek at the icon */
+.b-prop-pill:hover {
+    opacity: 0.6;
+    filter: grayscale(0.5);
+}
+
+/* Active: Full color and opacity */
+.b-prop-pill.active {
+    opacity: 1;
+    filter: grayscale(0);
+}

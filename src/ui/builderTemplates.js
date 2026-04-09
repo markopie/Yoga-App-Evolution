@@ -7,6 +7,7 @@ export function builderPoseName(asana, poseName, showSanskrit) {
     return asana.english || asana.name || poseName || 'Unknown';
 }
 
+
 export function generateVariationSelectHTML(asana, pose, idx) {
     const variations = asana ? (asana.variations || {}) : {};
     const hasVariations = Object.keys(variations).length > 0;
@@ -24,7 +25,7 @@ export function generateVariationSelectHTML(asana, pose, idx) {
           <option value="">Base Pose</option>
           ${Object.entries(variations)
               // 🌟 NEW: Sort numerically using our new Supabase column
-              .sort(([, aData], [, bData]) => (aData.sort_order ?? 999) - (bData.sort_order ?? 999))
+              .sort(([, aData], [, bData]) => (aData.sort_order ?? 0) - (bData.sort_order ?? 0))
               .map(([vKey, vData]) => {
                   const optionTitle = vData.title || `Stage ${vKey}`;
                   const sel = (pose.variation === vKey) ? 'selected' : '';

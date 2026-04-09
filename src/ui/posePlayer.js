@@ -93,6 +93,7 @@ function setPose(idx, keepSamePose = false) {
 
     // 2. DATA EXTRACTION
     const currentPose = poses[idx];
+    const poseMeta = currentPose[7] || {};
     const originalRowIndex = (currentPose && currentPose[5] !== undefined) 
                             ? currentPose[5] 
                             : idx;
@@ -122,11 +123,22 @@ function setPose(idx, keepSamePose = false) {
     // --- 🛑 DURATION RESOLUTION (TRUST THE PLAYBACK LIST) ---
     // applyDurationDial() has ALREADY evaluated the strict rules, 
     // applied the dial scaling, and calculated sides. We just read it directly!
-    let seconds = Number(currentPose[1]) || 30;
+    let seconds = Number(currentPose[1]) || 0;
+
+    // JSON-Native Fallback: If duration is 0/null, use library standard
+    if (!seconds && asana) {
+        const varKey = currentPose[3]; 
+        const hj = window.getHoldTimes ? window.getHoldTimes(asana, varKey) : { standard: 30 };
+        const tier = poseMeta.tier;
+        if (tier === 'S') seconds = hj.short || hj.standard || 30;
+        else if (tier === 'L') seconds = hj.long || hj.standard || 30;
+        else seconds = hj.standard || 30;
+    }
+    // Final absolute safety fallback
+    if (!seconds) seconds = 30;
 
     if (asana && (asana.requiresSides || asana.requires_sides)) {
         if (!keepSamePose) {
-            const poseMeta = currentPose[7] || {};
             const explicitSide = poseMeta.explicitSide;
 
             if (explicitSide === 'L' || explicitSide === 'R') {
@@ -142,67 +154,113 @@ function setPose(idx, keepSamePose = false) {
     }
 
 
-    // VARIATION & NOTE EXTRACTION
+    // VARIATION & NOTE EXTRACTION (The Perfect Rollback)
     let noteField = currentPose[4] || "";
     let variationTitle = currentPose[3] || ""; 
     let actualNote = noteField;
     let baseOverrideName = currentPose[2] || "";
 
+    const isJsonNative = !!poseMeta.originalJson;
+
+    if (isJsonNative) {
+        actualNote = poseMeta.originalJson.note || "";
+    } else {
+    // 1. ORIGINAL BRACKET LOGIC (Exactly as it was when variations worked perfectly)
     const bracketMatch = noteField.match(/\[(.*?)\]/);
     if (bracketMatch) {
         if (!variationTitle) variationTitle = bracketMatch[1].trim();
-        // Clean out the bracket part so the note UI just shows the user's text
         actualNote = noteField.replace(bracketMatch[0], "").replace(/^[\s\-\|]+/, "").trim();
     } else if (!variationTitle) {
         actualNote = [currentPose[3], currentPose[4]].filter(Boolean).join(" ").trim();
     }
+    }
+
+    // 2. THE PROP SANITIZER (Invisible Extraction)
+    let propModifier = null;
+    
+    // JSON-Native First: Rely strictly on the props array
+    if (poseMeta.props && poseMeta.props.includes('bandage')) {
+        propModifier = 'bandage';
+    }
+
+    // Legacy Note Cleanup (Strips it out for display hygiene)
+    if (actualNote.toLowerCase().includes(':bandage')) {
+        actualNote = actualNote.replace(/:bandage/gi, '').trim();
+    }
+    
+    // Check and clean the Variation field (in case the adapter shifted it)
+    if (variationTitle.toLowerCase().includes(':bandage')) {
+        propModifier = 'bandage';
+        variationTitle = variationTitle.replace(/:bandage/gi, '').trim();
+    }
+    
+    // Check and clean the Name Override field
+    if (baseOverrideName.toLowerCase().includes(':bandage')) {
+        propModifier = 'bandage';
+        baseOverrideName = baseOverrideName.replace(/:bandage/gi, '').trim();
+    }
+
+    // 3. Global State for Focus Mode Auto-Audio Trigger
+    window.currentPropModifier = propModifier;
 
     // VARIATION TECHNIQUE & SHORTHAND
     let displayShorthand = "";
     let displayTechnique = asana ? (asana.technique || asana.Technique || "") : "";
-    let matchedVariationKey = storedVarKey || variationTitle;
+    let matchedVariationKey = variationTitle || currentPose[3]; 
 
     const normalizeText = (str) => (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     const compactText = (str) => normalizeText(str).replace(/\s+/g, "");
 
-    if (asana && asana.variations && variationTitle) {
+    // 🌟 JSON NATIVE LOOKUP: Priority lookup via relational ID
+    if (poseMeta.stageId && asana && asana.variations) {
+        const foundEntry = Object.entries(asana.variations).find(([k, v]) => Number(v.id) === Number(poseMeta.stageId));
+        if (foundEntry) {
+            const [vKey, vData] = foundEntry;
+            matchedVariationKey = vKey;
+            variationTitle = vData.title || vData.Title || `Stage ${vKey}`;
+            const varTech = (typeof vData === 'object') ? (vData.full_technique || vData.Full_Technique || vData.technique || vData.Technique) : vData;
+            if (varTech) displayTechnique = varTech;
+            if (typeof vData === 'object') displayShorthand = vData.shorthand || vData.Shorthand || "";
+        }
+    }
+
+    // Legacy Fuzzy Match Logic (Fallback if stageId resolution failed or wasn't present)
+    if (!matchedVariationKey && asana && asana.variations && variationTitle) {
         const compactVarTitle = compactText(variationTitle);
         let foundVariation = false;
 
-        // Pass 1: Exact & Space-Agnostic Matches
+        // Pass 1: Exact Match (NOW INCLUDES STAGE_NAME)
         for (const [vKey, vData] of Object.entries(asana.variations)) {
             const resolvedTitle = typeof vData === 'object' ? (vData.title || vData.Title || "") : "";
+            const stageName = typeof vData === 'object' ? (vData.stage_name || vData.stage || vData.Stage || "") : "";
+            
             const compactTitle = compactText(resolvedTitle);
             const compactShort = compactText(typeof vData === 'object' ? (vData.shorthand || vData.Shorthand || "") : "");
+            const compactStage = compactText(stageName);
             const compactKey = compactText(vKey);
 
-            if (compactVarTitle === compactTitle ||
-                compactVarTitle === compactShort ||
-                compactVarTitle === `stage${compactKey}` ||
+            if (compactVarTitle === compactTitle || 
+                compactVarTitle === compactShort || 
+                compactVarTitle === compactStage || // <-- CRITICAL: Catches "I", "II", "III" directly
+                compactVarTitle === `stage${compactKey}` || 
                 compactVarTitle === compactKey) {
-
-                // 🛑 CRITICAL FIX: Explicitly target full_technique first
+                
                 const varTech = (typeof vData === 'object') ? (vData.full_technique || vData.Full_Technique || vData.technique || vData.Technique) : vData;
                 if (varTech) displayTechnique = varTech;
                 if (typeof vData === 'object') displayShorthand = vData.shorthand || vData.Shorthand || "";
                 
                 const idNum = parseInt(asana.id || asana.asanaNo || "0", 10);
-                const isPranayama = idNum >= 214 && idNum <= 230;
-
-                if (resolvedTitle) {
-                    if (isPranayama) {
-                        variationTitle = resolvedTitle;
+                if (idNum >= 214 && idNum <= 230 && resolvedTitle) {
+                    variationTitle = resolvedTitle;
+                } else if (resolvedTitle) {
+                    const bm = resolvedTitle.match(/\((.*?)\)/);
+                    if (bm) {
+                        let innerText = bm[1].trim();
+                        variationTitle = innerText.charAt(0).toUpperCase() + innerText.slice(1);
                     } else {
-                        const bm = resolvedTitle.match(/\((.*?)\)/);
-                        if (bm) {
-                            let innerText = bm[1].trim();
-                            variationTitle = innerText.charAt(0).toUpperCase() + innerText.slice(1);
-                        } else {
-                            variationTitle = resolvedTitle.replace(/^Modified\s+[IVX]+\s*-?\s*/i, '').trim();
-                        }
+                        variationTitle = resolvedTitle.replace(/^Modified\s+[IVX]+\s*-?\s*/i, '').trim();
                     }
                 }
-
                 matchedVariationKey = vKey;
                 foundVariation = true;
                 break;
@@ -216,55 +274,37 @@ function setPose(idx, keepSamePose = false) {
                 const normKey = vKey.toLowerCase();
                 const vData = asana.variations[vKey];
                 const resolvedTitle = typeof vData === 'object' ? (vData.title || vData.Title || "") : "";
-                const normTitle = normalizeText(resolvedTitle);
                 
                 const normVarTitle = normalizeText(variationTitle);
                 const safeVarTitle = normVarTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const matchRegex = new RegExp(`\\b${safeVarTitle}\\b`, 'i');
 
-                if (matchRegex.test(normKey) || matchRegex.test(normTitle)) {
-                    // 🛑 CRITICAL FIX: Explicitly target full_technique first
+                if (matchRegex.test(normKey) || matchRegex.test(normalizeText(resolvedTitle))) {
                     const varTech = (typeof vData === 'object') ? (vData.full_technique || vData.Full_Technique || vData.technique || vData.Technique) : vData;
                     if (varTech) displayTechnique = varTech;
                     if (typeof vData === 'object') displayShorthand = vData.shorthand || vData.Shorthand || "";
-                    
-                    const idNum = parseInt(asana.id || asana.asanaNo || "0", 10);
-                    const isPranayama = idNum >= 214 && idNum <= 230;
-
-                    if (resolvedTitle) {
-                        if (isPranayama) {
-                            variationTitle = resolvedTitle;
-                        } else {
-                            const bm = resolvedTitle.match(/\((.*?)\)/);
-                            if (bm) {
-                                let innerText = bm[1].trim();
-                                variationTitle = innerText.charAt(0).toUpperCase() + innerText.slice(1);
-                            } else {
-                                variationTitle = resolvedTitle.replace(/^Modified\s+[IVX]+\s*-?\s*/i, '').trim();
-                            }
-                        }
-                    }
-                    
                     matchedVariationKey = vKey;
-                   
                     break;
                 }
             }
         }
-    } 
-    // Legacy fallback
-    else if (asana && currentPose[3] && asana.variations && asana.variations[currentPose[3]]) {
-        const v = asana.variations[currentPose[3]];
-        matchedVariationKey = currentPose[3];
+    } else if (asana && variationTitle && asana.variations && asana.variations[variationTitle]) {
+        const v = asana.variations[variationTitle];
+        matchedVariationKey = variationTitle;
         if (typeof v === "string") {
             displayTechnique = v;
         } else {
             displayShorthand = v.shorthand || v.Shorthand || "";
-            // 🛑 CRITICAL FIX: Explicitly target full_technique first
             displayTechnique = v.full_technique || v.Full_Technique || v.technique || v.Technique || "";
             const legacyTitle = v.title || v.Title || "";
             if (legacyTitle) variationTitle = legacyTitle;
         }
+    }
+
+    // 🌟 RE-SANitize Props: If lookup updated variationTitle, check again for bandage/side
+    if (variationTitle && variationTitle.toLowerCase().includes(':bandage')) {
+        propModifier = 'bandage';
+        window.currentPropModifier = propModifier;
     }
 
     // 4. HEADER UI
@@ -288,7 +328,9 @@ function setPose(idx, keepSamePose = false) {
         if (variationTitle) {
             finalTitle += ` <span style="font-weight:300; opacity:0.7; font-size:0.85em;">— ${variationTitle}</span>`;
         }
-
+        if (propModifier === 'bandage') {
+            finalTitle += ` <span style="color:var(--accent-color, #d35400); margin-left:8px;" title="Therapeutic Bandage">🩹</span>`;
+        }
         if (asana && asana.requiresSides) {
             // 👇 Read our explicit side from the meta object we just injected
             const poseMeta = currentPose[7] || {};
@@ -395,28 +437,33 @@ function setPose(idx, keepSamePose = false) {
             btn.onclick = (e) => { 
                 e.stopPropagation(); 
                 // Correctly passes the variation key to the audio engine
-                window.playAsanaAudio(asana, null, true, null, matchedVariationKey); 
-            };
+            window.playAsanaAudio(asana, null, true, null, matchedVariationKey, false, propModifier);            };
             metaContainer.appendChild(btn);
         }
     }
 
-    // 10. TIMER & IMAGE LOGIC
+    // 10. TIMER & IMAGE LOGIC + THERAPEUTIC BANNER
     window.playbackEngine.setPoseTime(seconds);
-    window.playbackEngine.remaining = window.playbackEngine.currentPoseSeconds;
     window.updateTimerUI(window.playbackEngine.remaining, window.playbackEngine.currentPoseSeconds);
 
     const wrap = document.getElementById("collageWrap");
     if (wrap) {
+        // Clear the container first
         wrap.innerHTML = "";
+        
+        
+        if (propModifier === 'bandage') {
+            wrap.insertAdjacentHTML('afterbegin', `<div class="therapeutic-banner" style="background:rgba(211,84,0,0.1); border-left:4px solid #d35400; padding:12px; margin-bottom:15px; border-radius:4px; font-size:0.92em; color:#333; width: 100%; box-sizing: border-box;">
+                <strong style="color:#d35400;">🩹 Therapeutic Protocol: Head Bandage</strong><br>
+                A firmly tied bandage round the head is soothing for headaches. Wind bandage around the forehead and back of the skull. Pull firmly but not tight. 
+                <br><small><em>Eyestrain: cover eyes lightly 2-3 times at start.</em></small></div>`);
+        }
+
         const urls = window.smartUrlsForPoseId(lookupId, matchedVariationKey);
-        if (urls.length > 0) {
-            wrap.appendChild(window.renderCollage(urls));
-        } else {
-            const div = document.createElement("div");
-            div.className = "msg";
-            div.textContent = `No image found for: ${lookupId}`;
-            wrap.appendChild(div);
+        if (urls.length > 0) { 
+            wrap.appendChild(window.renderCollage(urls)); 
+        } else { 
+            wrap.insertAdjacentHTML('beforeend', `<div class="msg">No image found for: ${lookupId}</div>`); 
         }
     }
 
@@ -450,7 +497,7 @@ function setPose(idx, keepSamePose = false) {
     window.currentVariationKey = matchedVariationKey;
     if (window.playbackEngine && window.playbackEngine.running && asana) {
         const isSecondSide = window.getCurrentSide() === "left" && !!(asana.requiresSides || asana.requires_sides);
-        window.playAsanaAudio(asana, baseOverrideName, false, window.getCurrentSide(), matchedVariationKey, isSecondSide);
+        window.playAsanaAudio(asana, baseOverrideName, false, window.getCurrentSide(), matchedVariationKey, isSecondSide, propModifier);
     }
 
     // SKIP BUTTON VISIBILITY (Recovery / Preparatory)

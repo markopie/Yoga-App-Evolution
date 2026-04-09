@@ -1,6 +1,51 @@
 import { supabase } from './supabaseClient.js';
 import { parseHoldTimes, parseSequenceText } from '../utils/parsing.js';
 
+/** 
+ * Bridge: Converts new JSON schema into the app's internal array format 
+ */
+function parseSequenceJSON(json) {
+    if (!Array.isArray(json)) return [];
+    
+    return json.map((item, idx) => {
+        // Schema: [id, duration, name_override, variation_key, note, original_idx, label, meta_obj]
+        if (item.type === 'pose') {
+            const meta = { 
+                originalJson: item,
+                props: item.props || [],
+                stageId: item.stage_id || null,
+                tier: item.tier || null, // JSON-Native Tier property
+                explicitSide: null
+            };
+            
+            // Restore side info from props
+            if (meta.props.includes('side:L')) meta.explicitSide = 'L';
+            if (meta.props.includes('side:R')) meta.explicitSide = 'R';
+
+            return [
+                item.pose_id || "",
+                item.duration || 0,
+                item.name_override || "",
+                "", // variation_key (resolved in fetchCourses)
+                item.note || "",
+                idx,
+                null,
+                meta
+            ];
+        }
+        if (item.type === 'macro') {
+            return [`MACRO:${item.sequence_id}`, item.rounds || 1, "", "", "", idx, "", { originalJson: item }];
+        }
+        if (item.type === 'loop_start') {
+            return ["LOOP_START", item.rounds || 2, "", "", "", idx, "", { originalJson: item }];
+        }
+        if (item.type === 'loop_end') {
+            return ["LOOP_END", 0, "", "", "", idx, "", { originalJson: item }];
+        }
+        return null;
+    }).filter(Boolean);
+}
+
 async function fetchCourses(currentUserId = null) {
     if (!supabase) return [];
 
@@ -24,10 +69,25 @@ async function fetchCourses(currentUserId = null) {
 
         if (coursesData) {
             coursesData.forEach(row => {
-                const poses = parseSequenceText(row.sequence_text || '');
+                // 🌟 JSON Migration: Prioritize JSON column, fallback to text
+                const poses = (row.sequence_json && Array.isArray(row.sequence_json))
+                    ? parseSequenceJSON(row.sequence_json)
+                    : parseSequenceText(row.sequence_text || '');
                 
                 if (row.title && poses.length > 0) {
                     
+                    // Resolve variation string keys from stage IDs if loaded from JSON
+                    poses.forEach(p => {
+                        const meta = p[7];
+                        if (meta && meta.stageId && !p[3]) {
+                            const asana = findAsanaByIdOrPlate(normalizePlate(p[0]));
+                            if (asana && asana.variations) {
+                                const found = Object.entries(asana.variations).find(([k, v]) => String(v.id) === String(meta.stageId));
+                                if (found) p[3] = found[0];
+                            }
+                        }
+                    });
+
                     // 🌟 THE FLATTENING: Exclusively use joined relational data
                     // We assume 'General' if the join somehow fails, but the structure is now the source of truth
                     const subObj = row.course_sub_categories;
@@ -50,6 +110,7 @@ async function fetchCourses(currentUserId = null) {
                         playbackMode: isFlow ? 'flow' : 'standard',
                         isFlow,
                         poses,
+                        isNativeJson: !!(row.sequence_json && Array.isArray(row.sequence_json)),
                         isUserSequence: categoryString === 'My Sequences',
                         id: String(row.id),
                         supabaseId: String(row.id)
@@ -143,23 +204,29 @@ async function loadAsanaLibrary() {
         
         let allStagesData = stagesData ? [...stagesData] : [];
 
-        allStagesData.forEach((stage) => {
-            let parentIdStr = stage.asana_id ?? (Array.isArray(stage.parent_id) ? stage.parent_id[0] : stage.parent_id) ?? null;
+        // 🌟 REFACTOR: Group by asana_id to enforce continuous zero-indexed sort_order on load
+        const stagesByAsana = {};
+        allStagesData.forEach(stage => {
+            const parentIdStr = stage.asana_id ?? (Array.isArray(stage.parent_id) ? stage.parent_id[0] : stage.parent_id) ?? null;
             if (!parentIdStr) return;
-
             const parentKey = normaliseAsanaId(String(parentIdStr));
-            
             if (!normalized[parentKey]) return;
+            if (!stagesByAsana[parentKey]) stagesByAsana[parentKey] = [];
+            stagesByAsana[parentKey].push(stage);
+        });
 
-            const stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
+        Object.keys(stagesByAsana).forEach(parentKey => {
+            const stages = stagesByAsana[parentKey];
+            // Sort by existing sort_order, then by stage name as fallback
+            stages.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || String(a.stage_name).localeCompare(String(b.stage_name)));
+
+            stages.forEach((stage, i) => {
+                const stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
             if (!stageKey) return;
-
             const holdStr = stage.Hold ?? stage.hold ?? '';
             
-            // User stages naturally overwrite global stages here because they were concatenated last
             normalized[parentKey].variations[stageKey] = {
                 id: stage.id ?? '',
-                // CRITICAL FIX: Aggressively check all capitalizations of full_technique and technique
                 technique: stage.full_technique ?? stage.Full_Technique ?? stage.technique ?? stage.Technique ?? '',
                 full_technique: stage.full_technique ?? stage.Full_Technique ?? stage.technique ?? stage.Technique ?? '',
                 shorthand: stage.Shorthand ?? stage.shorthand ?? '',
@@ -172,8 +239,9 @@ async function loadAsanaLibrary() {
                 preparatory_pose_id: stage.preparatory_pose_id ?? null,
                 page_primary: stage.page_primary ?? null,  
                 isCustom: !!stage.user_id,
-                sort_order: stage.sort_order ?? 999 // 👈 ADD THIS: Pull the new integer from Supabase
+                sort_order: i 
             };
+        });
         });
 
         window.asanaLibrary = normalized;

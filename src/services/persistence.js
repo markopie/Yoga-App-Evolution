@@ -65,11 +65,16 @@ export async function saveSequence(payload, knownId = null) {
     // 2. Build the exact payload (Strictly matching your schema)
     const dbPayload = {
         title: payload.title,
-        sequence_text: payload.sequence_text,
+        sequence_json: payload.sequence_json, // JSON-Native Migration: Primary Source of Truth
         sub_category_id: subCategoryId, 
         last_edited: payload.last_edited,
         user_id: payload.user_id
     };
+
+    // Legacy sync: only write sequence_text if explicitly provided (Builder now stops sending it)
+    if (payload.sequence_text !== undefined) {
+        dbPayload.sequence_text = payload.sequence_text;
+    }
 
     if (payload.is_system !== undefined) {
         dbPayload.is_system = payload.is_system;

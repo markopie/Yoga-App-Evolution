@@ -193,23 +193,34 @@ export function toggleSpeak(text, btn) {
  */
 export async function playAsanaAudio(
     asana,
-    poseLabel       = null,
+    poseLabel = null,
     isBrowseContext = false,
-    currentSide     = null,
-    variationKey    = null,
-    isSecondSide    = false
+    currentSide = null,
+    variationKey = null,
+    isSecondSide = false,
+    propModifier = null
 ) {
     if (!asana) return;
+
+    // AUDIO FIX: Use local propModifier, fallback to global state for Focus Mode
+    const activeProp = propModifier || window.currentPropModifier;
 
     if (currentAudio) {
         try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
         currentAudio = null;
     }
 
-    // 1. Await the Main Asana Audio
+    // 1. Await the Main Asana Audio & Bridge Files
     await playPoseMainAudio(asana, poseLabel, null, variationKey);
 
-    // 2. Await Side Cue if required
+    // 2. Play Verbal Prop Cue
+    if (activeProp === 'bandage') {
+        // A short timeout ensures browser speech engine clears the MP3 buffer
+        await new Promise(resolve => setTimeout(resolve, 150));
+        await speakText("Wearing a bandage.");
+    }
+
+    // 3. Await Side Cue if required
     const requiresSides = !!(asana.requiresSides || asana.requires_sides);
     if (!isBrowseContext && requiresSides && currentSide) {
         await playSideCueFile(currentSide);

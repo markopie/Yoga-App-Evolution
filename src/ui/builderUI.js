@@ -93,7 +93,6 @@ export function updateBuilderModeUI() {
     }
 }
 
-// --- src/ui/builderUI.js ---
 
 export function openLinkSequenceModal() {
     const overlay   = document.getElementById('linkSequenceOverlay');

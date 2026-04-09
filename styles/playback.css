@@ -381,3 +381,18 @@
     font-weight: 500;
     opacity: 0.8;
 }
+
+.therapeutic-banner {
+    background: rgba(var(--accent-rgb), 0.1);
+    border-left: 4px solid var(--accent-color);
+    padding: 12px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+.prop-tag {
+    color: var(--accent-color);
+    font-weight: 500;
+    font-style: italic;
+}

@@ -13,6 +13,13 @@ export const builderState = {
     currentPlaybackMode: null
 };
 
+/**
+ * Bulk updates props for selected rows.
+ * @param {string} propKey - e.g., 'bandage'
+ * @param {boolean} add - true to add, false to clear
+ */
+
+
 export function setPoseSide(index, targetSide) {
     if (!builderState.poses[index]) return;
     builderState.poses[index].side = targetSide; // targetSide will be 'L', 'R', or '' (Both)

@@ -177,10 +177,23 @@ export function calculateRequiredSequenceTime(activePlaybackList) {
     }, 0);
 }
 
+/**
+ * Enforces strict zero-based indexing on an array of objects.
+ * Recalculates the sort_order property based on current array position.
+ */
+export function reindexSortOrder(items) {
+    if (!Array.isArray(items)) return [];
+    items.forEach((item, i) => {
+        item.sort_order = i;
+    });
+    return items;
+}
+
 // Global Exports
 Object.assign(window, {
     getEffectiveTime,
     calculateTotalSequenceTime,
-    getPosePillTime, // <-- Added comma here
-    calculateRequiredSequenceTime
+    getPosePillTime,
+    calculateRequiredSequenceTime,
+    reindexSortOrder
 });

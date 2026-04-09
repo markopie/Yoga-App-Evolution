@@ -203,6 +203,13 @@ function builderRender() {
                    (isMacro ? `ID: <span style="font-family:monospace; background:#f0f0f0; padding:2px 6px; border-radius:4px; border:1px solid #ddd; font-size:0.7rem; color:#333;">${pose.id.replace("MACRO:", "")}</span>
                                <button class="tiny b-macro-swap" data-idx="${idx}" style="padding:2px 8px; border-radius:4px; border:1px solid #007aff; background:#fff; color:#007aff; cursor:pointer; font-weight:600; font-size:0.65rem;" title="Change Linked Sequence">Swap</button>` :
                                 `ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" style="width:50px; padding:2px; border:1px solid #ccc; border-radius:4px;">
+                                <button class="tiny b-prop-toggle" data-idx="${idx}" data-prop="bandage" title="Therapeutic Bandage" 
+                                        style="padding:2px 4px; border:none; background:transparent; cursor:pointer; font-size:1.1rem; line-height:1; vertical-align:middle; transition:all 0.2s;
+                                               filter:${pose.props?.includes('bandage') ? 'none' : 'grayscale(1)'}; 
+                                               opacity:${pose.props?.includes('bandage') ? '1' : '0.2'}; 
+                                               color:${pose.props?.includes('bandage') ? '#007aff' : 'inherit'};">
+                                    🩹
+                                </button>
                                 <button onclick="window.triggerRowSearch(event, ${idx})" type="button" class="tiny b-row-search-btn" data-idx="${idx}" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer;" title="Search Asana">🔍</button>`
                    )
                  }
@@ -278,6 +285,18 @@ function builderRender() {
         }
         
         updateToolbarState(); // 👈 ADDED: Triggers the Delete/Repeat buttons to appear
+    });
+
+    qS('.b-prop-toggle').forEach(btn => btn.onclick = (e) => {
+        e.preventDefault();
+        const idx = parseInt(btn.dataset.idx, 10);
+        const prop = btn.dataset.prop;
+        const p = builderState.poses[idx];
+        if (!p.props) p.props = [];
+        p.props = p.props.includes(prop) 
+            ? p.props.filter(item => item !== prop) 
+            : [...p.props, prop];
+        builderRender();
     });
 
     qS('.b-side').forEach(btn => btn.onmousedown = (e) => {
@@ -628,6 +647,9 @@ function builderOpen(mode, seq) {
        const seqIsFlow = builderState.currentPlaybackMode === "flow";
        const libraryArray = Object.values(window.asanaLibrary || {});
        const rawPoses = (window.currentSequenceOriginalPoses && seq === window.currentSequence) ? window.currentSequenceOriginalPoses : (seq.poses || []);
+
+       // 🌟 JSON Migration: Detect if source is native JSON
+       const isNativeSource = seq.isNativeJson || (rawPoses.length > 0 && rawPoses[0][7]?.originalJson);
        
        if (displayCategory) displayCategory.textContent = seq.category || "";
        
@@ -658,10 +680,20 @@ function builderOpen(mode, seq) {
              const id = idStr.padStart(3, '0');
              const asana = libraryArray.find(a => String(a.id) === id);
              
-             let rawExtras = [p[2], p[4]].filter(Boolean).join(" | ").trim();
-             let variation = p[3] || ""; 
+             let rawExtras = "";
              let extractedLabel = "";
+             let variation = p[3] || ""; 
+             let holdTier = 'standard';
+             let initialProps = [...(p[7]?.props || [])];
     
+             if (isNativeSource && p[7]?.originalJson) {
+                 rawExtras = p[7].originalJson.note || "";
+                 const jsonTier = p[7].originalJson.tier;
+                 holdTier = jsonTier === 'S' ? 'short' : (jsonTier === 'L' ? 'long' : 'standard');
+                 // variation is already resolved by fetchCourses bridge
+             } else {
+                 rawExtras = [p[2], p[4]].filter(Boolean).join(" | ").trim();
+
              const bracketMatch = rawExtras.match(/\[(.*?)\]/);
              if (bracketMatch) {
                  extractedLabel = bracketMatch[1].trim(); 
@@ -669,6 +701,19 @@ function builderOpen(mode, seq) {
              } else {
                  extractedLabel = rawExtras; rawExtras = "";
              }
+
+             // 🌟 Note Cleaning: Strip legacy tier tags and assign to state
+             const tierMatch = (rawExtras || p[4] || '').match(/\btier:(S|L|STD)\b/i);
+             if (tierMatch) {
+                 holdTier = tierMatch[1].toUpperCase() === 'S' ? 'short' : (tierMatch[1].toUpperCase() === 'L' ? 'long' : 'standard');
+                 rawExtras = rawExtras.replace(tierMatch[0], '').trim();
+             }
+
+             const bandageInNote = rawExtras.toLowerCase().includes(':bandage');
+             if (bandageInNote) {
+                 rawExtras = rawExtras.replace(/:bandage/gi, '').trim();
+             }
+             if (bandageInNote && !initialProps.includes('bandage')) initialProps.push('bandage');
     
              if (!variation && asana?.variations && extractedLabel) {
                  const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
@@ -685,6 +730,7 @@ function builderOpen(mode, seq) {
              if (extractedLabel && !variation) {
                  rawExtras = (extractedLabel + (rawExtras ? " | " + rawExtras : "")).trim();
              }
+             }
     
              const holdTimes = asana ? (window.getHoldTimes ? window.getHoldTimes(asana, variation || null) : { standard: 30, flow: 5 }) : { standard: 30, flow: 5 };
              const parsedDuration = Number(p[1]) || (seqIsFlow ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30));
@@ -695,12 +741,10 @@ function builderOpen(mode, seq) {
                 duration: parsedDuration,
                 variation: variation,
                 note: rawExtras,
-                holdTier: (() => {
-                    const tierMatch = (p[4] || '').match(/\btier:(S|L|STD)\b/i);
-                    return tierMatch ? (tierMatch[1].toUpperCase() === 'S' ? 'short' : 'long') : 'standard';
-                })(),
+                holdTier: holdTier,
                 flowHoldOverride: seqIsFlow ? parsedDuration : null,
-                side: p[7] && p[7].explicitSide ? p[7].explicitSide : "" // 👈 ADDED: Read saved side
+                side: p[7] && p[7].explicitSide ? p[7].explicitSide : "",
+                props: initialProps
              });
        });
     }
@@ -724,34 +768,96 @@ function builderCompileSequenceText() {
         const id = String(p.id).padStart(3, '0');
         const dur = p.duration || (isFlowSequence() ? 5 : 30);
         
-        // 🌟 THE AUTO-SCRUBBER: Strict Schema Validation
+        // 🌟 THE AUTO-SCRUBBER
         let validatedVariation = p.variation || "";
         if (validatedVariation) {
             const libraryArray = Object.values(window.asanaLibrary || {});
             const normId = typeof normalizePlate === "function" ? normalizePlate(id) : id;
             const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
-            
-            // If the pose exists, but it DOES NOT have this variation in the database, wipe it out.
             if (asanaMatch && (!asanaMatch.variations || !asanaMatch.variations[validatedVariation])) {
                 validatedVariation = "";
             }
         }
 
-        // Scrub old tags out of the note
+        // Check if the bandage prop is present in the note BEFORE scrubbing
+        const hasBandage = (p.note || '').toLowerCase().includes(':bandage') || p.props?.includes('bandage');
+
+        // Scrub old tags (Preserving the note text, removing brackets with Roman numerals)
         let cleanNote = (p.note || '').replace(/\[.*?\b([IVX]+)([a-z]?)\b.*?\]/ig, '')
+                                      .replace(/:bandage/gi, '') // Remove existing bandage tag to re-insert cleanly
                                       .replace(/\btier:[SL]\b/gi, '')
                                       .replace(/\bside:[LR]\b/gi, '') 
                                       .replace(/\s+/g, ' ')
                                       .trim();
 
-        const varPart  = validatedVariation ? `[${validatedVariation}]` : `[]`;
-        const tierTag  = (p.holdTier && p.holdTier !== 'standard') ? ` tier:${p.holdTier === 'short' ? 'S' : 'L'}` : '';
-        const sideTag  = p.side ? ` side:${p.side}` : ''; 
+        // 🌟 RE-CONSTRUCTION: The "Bandage-Aware" Schema
+        // If we have a variation AND a bandage: [I:bandage]
+        // If just bandage: [:bandage]
+        // If just variation: [I]
+        let bracketContent = validatedVariation;
+        if (hasBandage) {
+            bracketContent = bracketContent ? `${bracketContent}:bandage` : `:bandage`;
+        }
+        
+        const varPart = bracketContent ? `[${bracketContent}]` : `[]`;
+        const tierTag = (p.holdTier && p.holdTier !== 'standard') ? ` tier:${p.holdTier === 'short' ? 'S' : 'L'}` : '';
+        const sideTag = p.side ? ` side:${p.side}` : ''; 
         
         const notePart = (cleanNote + tierTag + sideTag).trim(); 
         
+        // This creates the standard: ID | Dur | [Var:Prop] Note
         return `${id} | ${dur} | ${varPart} ${notePart}`.trim();
     }).filter(s => s.trim().length > 0).join("\n");
+}
+
+function builderCompileSequenceJSON() {
+    return builderState.poses.map(p => {
+        const idStr = String(p.id);
+        
+        if (idStr.startsWith("MACRO:")) {
+            return {
+                type: "macro",
+                sequence_id: idStr.replace("MACRO:", ""),
+                rounds: Math.max(1, Number(p.duration) || 1)
+            };
+        }
+        if (idStr === "LOOP_START") {
+            return {
+                type: "loop_start",
+                rounds: Math.max(2, Number(p.duration) || 2)
+            };
+        }
+        if (idStr === "LOOP_END") {
+            return { type: "loop_end" };
+        }
+
+        // 🌟 JSON-Native Fix: Use the props array from the builder state (which contains toggle selections)
+        const props = Array.isArray(p.props) ? [...p.props] : [];
+        
+        // Sync explicit side selector into the metadata props
+        if (p.side && !props.includes(`side:${p.side}`)) props.push(`side:${p.side}`);
+        
+        // Also check if the user manually typed a marker in the note field during this session
+        if (p.note && p.note.toLowerCase().includes(':bandage') && !props.includes('bandage')) props.push('bandage');
+        
+        let stageId = null;
+        if (p.variation) {
+            const asana = (window.asanaLibrary || {})[normalizePlate(p.id)];
+            if (asana && asana.variations && asana.variations[p.variation]) {
+                stageId = asana.variations[p.variation].id;
+            }
+        }
+
+        return {
+            type: "pose",
+            pose_id: normalizePlate(p.id),
+            stage_id: stageId,
+            duration: Number(p.duration) || 0,
+            tier: p.holdTier === 'short' ? 'S' : (p.holdTier === 'long' ? 'L' : null),
+            props: props,
+            note: p.note ? p.note.replace(/:bandage/gi, '').replace(/\btier:[SL]\b/gi, '').trim() : ""
+        };
+    });
 }
 
 function builderGetTitle() { return ($("builderTitle")?.value || "").trim(); }
@@ -764,7 +870,7 @@ function builderGetCategory() {
 async function builderSave() {
     const title = builderGetTitle();
     const categoryString = builderGetCategory();
-    const sequenceText = builderCompileSequenceText();
+    const sequenceJson = builderCompileSequenceJSON();
     
     if (!title) return alert("Please enter a title.");
 
@@ -783,7 +889,7 @@ async function builderSave() {
         const payload = { 
             title, 
             category: categoryString, 
-            sequence_text: sequenceText, 
+            sequence_json: sequenceJson,
             last_edited: new Date().toISOString(), 
             user_id: window.currentUserId 
         };
@@ -1077,7 +1183,7 @@ window.triggerRowSearch = (e, idx) => {
 };
 
 export {
-    builderRender, processSemicolonCommand, openEditCourse, builderOpen, builderSave, createRepeatGroup,
+    builderRender, builderCompileSequenceJSON, processSemicolonCommand, openEditCourse, builderOpen, builderSave, createRepeatGroup,
     openLinkSequenceModal // Correctly exported
 };
 export { movePose, removePose, addPoseToBuilder } from "../store/builderState.js";
