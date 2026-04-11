@@ -459,17 +459,13 @@ function setPose(idx, keepSamePose = false) {
     // 10. THERAPEUTIC BANNERS
     const wrap = document.getElementById("collageWrap");
     if (wrap) {
-        // Ensure a dedicated banner stack exists
-        let bannerStack = wrap.querySelector(".banner-stack");
-        if (!bannerStack || wrap.innerHTML.includes('No image found')) {
-            wrap.innerHTML = '<div class="banner-stack" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px; width:100%;"></div>';
-            bannerStack = wrap.querySelector(".banner-stack");
-        } else {
-            bannerStack.innerHTML = "";
-        }
+        // 🛡️ ARCHITECT FIX: Fully reset wrap to prevent image accumulation from previous poses
+        wrap.innerHTML = '<div class="banner-stack" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px; width:100%;"></div>';
+        const bannerStack = wrap.querySelector(".banner-stack");
         
         activeProps.forEach(pid => {
             const p = registry[pid];
+            if (!p) return; // 🛡️ Safety check: Skip if prop is missing from registry
             const hexToRgba = (hex, a) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})`; };
             bannerStack.insertAdjacentHTML('beforeend', `<div class="therapeutic-banner" style="background:${hexToRgba(p.color, 0.08)}; border-left:4px solid ${p.color}; padding:12px; border-radius:6px; font-size:0.9em; color:#1d1d1f; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                 <strong style="color:${p.color};">${p.icon || '🩹'} ${p.bannerTitle}</strong><br>${p.bannerHtml}</div>`);

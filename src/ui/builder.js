@@ -392,7 +392,7 @@ function openPropPicker(idx) {
     // 🌟 Custom Prop logic: allows on-the-fly expansion of the registry
     const addBtn = document.getElementById("btnAddCustomProp");
     if (addBtn) {
-        addBtn.onclick = () => {
+        addBtn.onclick = async () => {
             const iconInp = document.getElementById("customPropIcon");
             const labelInp = document.getElementById("customPropLabel");
             const audioInp = document.getElementById("customPropAudio");
@@ -410,25 +410,44 @@ function openPropPicker(idx) {
             const pid = label.toLowerCase().replace(/\s+/g, '_');
             if (PROP_REGISTRY[pid]) return alert("This prop already exists.");
 
-            // Inject into memory
-            PROP_REGISTRY[pid] = { id: pid, label, icon, color: "#007aff", audioCue, bannerTitle, bannerHtml };
-            
-            if (!pose.props) pose.props = [];
-            pose.props.push(pid);
-            
-            // Reset fields and close accordion
-            [iconInp, labelInp, audioInp, titleInp, htmlInp].forEach(el => el.value = "");
-            document.getElementById("customPropAccordion").open = false;
+            // 🌟 PERSIST TO SUPABASE
+            const payload = {
+                id: pid,
+                label,
+                icon,
+                color: "#007aff",
+                audio_cue: audioCue,
+                banner_title: bannerTitle,
+                banner_html: bannerHtml
+            };
 
-            openPropPicker(idx); // Recursive refresh to show the new item
-            builderRender();
+            try {
+                const { error } = await supabase.from('props').upsert(payload);
+                if (error) throw error;
+
+                // Inject into local memory registry
+                PROP_REGISTRY[pid] = { id: pid, label, icon, color: "#007aff", audioCue, bannerTitle, bannerHtml };
+                
+                if (!pose.props) pose.props = [];
+                pose.props.push(pid);
+                
+                // Reset fields and close accordion
+                [iconInp, labelInp, audioInp, titleInp, htmlInp].forEach(el => el.value = "");
+                document.getElementById("customPropAccordion").open = false;
+
+                openPropPicker(idx); // Recursive refresh to show the new item
+                builderRender();
+            } catch (err) {
+                console.error("[Props] Save failed:", err);
+                alert("Failed to save prop to global library: " + err.message);
+            }
         };
     }
     overlay.style.display = "flex";
 }
 
-// 1. Trigger the Overlay (Delegated to builderUI.js)
-qS('.b-macro-swap').forEach(btn => {
+    // 1. Trigger the Overlay (Delegated to builderUI.js)
+    qS('.b-macro-swap').forEach(btn => {
     btn.onmousedown = (e) => {
         e.preventDefault();
         builderState.activeMacroSwapIdx = parseInt(btn.dataset.idx, 10);

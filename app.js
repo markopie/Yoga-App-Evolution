@@ -1,6 +1,7 @@
 // #region 1. STATE & CONSTANTS
 import { supabase } from "./src/services/supabaseClient.js";
 import { fetchCourses, loadAsanaLibrary, normalizeAsana, normalizePlate, findAsanaByIdOrPlate } from "./src/services/dataAdapter.js";
+import { hydratePropsFromDb } from "./src/config/propRegistry.js";
 import { themeManager } from "./src/ui/themeToggle.js";
 import { $, safeListen } from "./src/utils/dom.js";
 import { parseHoldTimes } from "./src/utils/parsing.js"; 
@@ -233,6 +234,9 @@ async function init() {
 
         if (statusEl) statusEl.textContent = "Loading library...";
         window.asanaLibrary = await loadAsanaLibrary();
+
+        // 🌟 HYDRATE PROPS: Ensure custom props are loaded from DB before sequences
+        await hydratePropsFromDb(supabase);
 
         if (statusEl) statusEl.textContent = "Loading courses...";
         await window.loadCourses();

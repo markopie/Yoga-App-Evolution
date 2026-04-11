@@ -58,6 +58,29 @@ Adjustment: Utilize varying block heights to maintain spinal alignment.<br>
     }
 };
 
+/**
+ * Synchronizes the in-memory registry with the Supabase database.
+ * Converts snake_case DB columns to the camelCase properties used in the UI.
+ */
+export async function hydratePropsFromDb(supabase) {
+    const { data, error } = await supabase.from('props').select('*');
+    if (error) {
+        console.warn("[Props] Failed to load from DB, using hardcoded defaults.", error);
+        return;
+    }
+    data.forEach(p => {
+        PROP_REGISTRY[p.id] = {
+            id: p.id,
+            label: p.label,
+            icon: p.icon,
+            color: p.color,
+            audioCue: p.audio_cue,
+            bannerTitle: p.banner_title,
+            bannerHtml: p.banner_html
+        };
+    });
+}
+
 // Expose to window for zero-import modules like posePlayer and audioEngine
 if (typeof window !== 'undefined') {
     window.PROP_REGISTRY = PROP_REGISTRY;
