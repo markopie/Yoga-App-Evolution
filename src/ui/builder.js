@@ -103,7 +103,20 @@ function builderRender() {
 
         const devanagari = asana?.devanagari || asana?.name || ""; 
         const iast = asana?.iast || "";
-    
+
+        const viewModePropsHTML = (pose.props || []).length > 0 ? `
+            <div class="view-mode-props-container">
+                ${pose.props.map(pid => {
+                    const p = PROP_REGISTRY[pid];
+                    if (!p) return '';
+                    const r = parseInt(p.color.slice(1,3), 16), g = parseInt(p.color.slice(3,5), 16), b = parseInt(p.color.slice(5,7), 16);
+                    return `<span class="b-prop-chip" style="border-color: ${p.color}; color: ${p.color}; background: rgba(${r},${g},${b},0.08);">
+                        ${p.icon} ${p.label}
+                    </span>`;
+                }).join('')}
+            </div>
+        ` : '';
+
         const tr = document.createElement("tr");
         tr.draggable = true;
         tr.dataset.idx = idx;
@@ -201,6 +214,7 @@ function builderRender() {
               <div style="font-size:0.85rem; color:var(--color-text-secondary); font-style:italic; margin-bottom:6px;">
                  ${iast}
               </div>
+              ${viewModePropsHTML}
               <div class="edit-only-inline" style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; font-size:0.75rem; color:#666;">
                  ${isLoopStart || isLoopEnd ? `<span style="color:#999; font-size:0.65rem; text-transform:uppercase; font-weight:bold; letter-spacing:0.02em;">System Block</span>` : 
                    (isMacro ? `ID: <span style="font-family:monospace; background:#f0f0f0; padding:2px 6px; border-radius:4px; border:1px solid #ddd; font-size:0.7rem; color:#333;">${pose.id.replace("MACRO:", "")}</span>
@@ -1201,7 +1215,8 @@ function wireBuilderGlobals() {
     if (modeBtn) modeBtn.onclick = () => { builderState.isViewMode = !builderState.isViewMode; updateBuilderModeUI(); };
 
     const printBtn = document.getElementById("builderPrintBtn");
-    if (printBtn) printBtn.onclick = () => window.print();
+    if (printBtn) {
+    }
 
     const catEdit = document.getElementById("builderCategory");
     if (catEdit) {

@@ -1,0 +1,6 @@
+/scripts/legacy/
+/style.css
+/node_modules/
+/dist/
+/build/
+*.log

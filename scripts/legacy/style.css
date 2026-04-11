@@ -657,6 +657,94 @@ th {
 }
 
 }
+
+/* ==========================================================================
+   9. EXPORT & PRINT (Jobsian Minimalism)
+   ========================================================================== */
+
+/* Export Cluster */
+.export-cluster {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    vertical-align: middle;
+}
+
+.btn-export-primary {
+    background: #007aff !important;
+    color: #fff !important;
+    border: none !important;
+    padding: 7px 18px !important;
+    border-radius: 20px !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,122,255,0.15);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-export-primary:hover {
+    background: #0062cc !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,122,255,0.2);
+}
+
+.btn-export-primary:active {
+    transform: translateY(0);
+}
+
+.btn-export-secondary {
+    background: #f5f5f7 !important;
+    color: #1d1d1f !important;
+    border: 1px solid #d2d2d7 !important;
+    padding: 7px 16px !important;
+    border-radius: 20px !important;
+    font-size: 0.82rem !important;
+    font-weight: 500 !important;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-export-secondary:hover {
+    background: #e8e8ed !important;
+}
+
+.export-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.88rem;
+    color: #1d1d1f;
+}
+
+/* Export Customization Overrides */
+.export-hide-title .jobbsian-title,
+.export-hide-title .jobbsian-category {
+    display: none !important;
+}
+
+.export-hide-notes .builder-macro-note,
+.export-hide-notes .b-note,
+.export-hide-notes .builder-info-cell {
+    display: none !important;
+}
+
+.export-relaxed #builderTable td {
+    padding-top: 24px !important;
+    padding-bottom: 24px !important;
+}
+
+.export-date-tag {
+    display: none;
+    font-size: 0.72rem;
+    color: #86868b;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #f2f2f7;
+    padding-bottom: 8px;
+    font-weight: 500;
+}
+
 #poseShorthand {
     font-family: 'Segoe UI', monospace;
     font-size: 1.3rem;
@@ -1769,6 +1857,31 @@ body.modal-open {
     pointer-events: none !important;
 }
 
+/* --- Prop Chips for View Mode --- */
+.view-mode-props-container {
+    display: none;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.builder-view-mode .view-mode-props-container {
+    display: flex;
+}
+
+.b-prop-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 14px;
+    border: 1px solid;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
 /* ==========================================================================
    PRINT / PDF EXPORT STYLES (Militant Refactor)
    ========================================================================== */
@@ -1841,6 +1954,18 @@ body.modal-open {
     #builderTable th:last-child, 
     #builderTable td:last-child {
         display: none !important;
+    }
+
+    .view-mode-props-container {
+        display: flex !important;
+    }
+
+    .export-cluster, .export-panel {
+        display: none !important;
+    }
+
+    .export-only {
+        display: block !important;
     }
 
     /* 6. The Table "Proper" Fix: Prevent right-edge clipping */
@@ -1954,4 +2079,32 @@ body:not(.modal-open) {
     #builderTable td:nth-child(2) {
         width: calc(100% - 32px) !important;
     }
+}
+
+/* --- Jobbsian Prop Chips --- */
+.view-mode-props-container {
+    display: none;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
+
+.builder-view-mode .view-mode-props-container {
+    display: flex;
+}
+
+.b-prop-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 3px 10px;
+    border-radius: 14px;
+    border: 1px solid;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
 }

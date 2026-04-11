@@ -1,91 +1,166 @@
 # 📘 Project Best Practices
 
-#### 1. Project Purpose
-This repository implements the Yoga App Evolution client and tooling: a browser-first web application for authoring and playing yoga sequences, plus a set of Python/Node scripts for data auditing, migration, and asset management. The codebase mixes frontend UI code (vanilla JS modules + CSS), utility libraries, playback/timing engines, and operational scripts that interact with Supabase for persistence.
+## 1. Project Purpose
+This repository, **Yoga-App-Evolution**, contains the Yoga App Evolution web app and supporting tooling.
 
-#### 2. Project Structure
-- Top-level files
-  - package.json: npm scripts, test runner uses `node --test`, dev uses Vite.
-  - index.html, app.js: application entry for the browser build.
-  - README.md, docs/: project documentation and refactor notes.
-- Key directories
-  - src/: core application code
-    - config/: runtime configuration (appConfig.js)
-    - playback/: audio & timing engines (audioEngine.js, timer.js, timerEvents.js)
-    - services/: data persistence and adapters (supabaseClient.js, dataAdapter.js, persistence.js, sequenceEngine.js)
-    - store/: application state modules (state.js, builderState.js)
-    - ui/: UI components and wiring (builder.*, courseUI.js, posePlayer.js)
-    - utils/: pure helpers and parsers (parsing.js, sequenceUtils.js, dom.js)
-  - scripts/: maintenance and migration scripts (Python & JS) — used for audits, bulk fixes, and data migration with Supabase.
-  - styles/: CSS used by the app. No CSS-in-JS; plain stylesheet modules.
-  - supabase/: SQL migrations and RLS policies.
+The main product is a browser-first yoga sequencing and playback application built with vanilla JavaScript modules, modular CSS, and Supabase-backed data/services. The repo also contains operational scripts for auditing data, migrations, asset management, and one-off maintenance tasks.
 
-Separation of concerns
-- Frontend app is organized by feature (playback, ui, services) with utils for shared logic.
-- Operational scripts live in scripts/ and may be Python or Node; treat them as separate CLIs.
+The codebase includes:
+- frontend UI code for browsing, building, editing, and playing yoga sequences
+- playback and timer logic
+- Supabase service/adaptor code
+- utility/parsing logic
+- operational scripts for data cleanup, migration, and audits
 
-#### 3. Test Strategy
-- Framework: Node's built-in test runner (node --test) is used for unit tests (see src/utils/parsing.test.js).
-- Location & naming: tests live adjacent to the modules they verify (src/utils/parsing.test.js). Tests use ES module imports and node:test + assert.
-- Philosophy: prefer small, deterministic unit tests for pure utilities (parsers, formatters). Integration tests are manual or via scripts that call Supabase and are intentionally gated behind dry-run flags.
-- Mocking: keep tests pure and avoid network calls. For services that contact Supabase or external APIs, wrap calls behind adapters (services/dataAdapter.js, supabaseClient.js) so they can be replaced by fakes in tests.
-- When to add tests:
-  - Always add unit tests for parsers, formatters, and math (timing) logic.
-  - Add integration tests for sequence expansion, macro resolution, or persistence only when running against a dedicated test instance.
+## 2. Project Structure
 
-#### 4. Code Style
-- Language: modern ES modules (package.json type: module) and plain JavaScript. No TypeScript in the repo currently.
-- Async: use async/await for asynchronous code; services often return Promises. Keep async boundary explicit in services and callers.
-- Immutability: prefer returning new objects from pure helpers (e.g., parseHoldTimes) rather than mutating inputs.
-- Naming conventions:
-  - files: kebab-case or camelCase under src/ (e.g., sequenceUtils.js, builderParser.js)
-  - functions: camelCase
-  - constants: UPPER_SNAKE or camelCase depending on context; central config lives in src/config/appConfig.js
-  - test files: module.test.js adjacent to module file
-- Comments & documentation:
-  - Use inline comments sparingly for non-obvious behavior (e.g., normalization rules, legacy compatibility). Keep top-of-file notes for assumptions (e.g., DB formats).
-  - Keep docs/ updated for architecture notes and migration instructions.
-- Error handling:
-  - Use try/catch at service boundaries. Log errors with console.error and return graceful fallbacks when appropriate.
-  - Operational scripts should exit non-zero on unrecoverable errors and support dry-run flags.
+### Top-level files
+- `package.json`: project metadata and scripts
+- `index.html`, `app.js`: browser app entry points
+- `README.md`, `docs/`: project documentation, notes, and refactor guidance
 
-#### 5. Common Patterns
-- Adapter pattern for external services: supabaseClient.js and dataAdapter.js centralize DB calls and make it easier to mock or swap backends.
-- Small pure utilities in src/utils/ that are fully unit-tested (parsing.js, sequenceUtils.js).
-- UI wiring: UI modules export functions that operate on DOM nodes (dom.js helps element selection/shortcuts).
-- Scripts vs app: scripts/ are separate CLIs; avoid importing runtime UI modules into these scripts to prevent browser-only assumptions.
-- Global exposure: a few helpers are exposed to window when running in-browser (e.g., getHoldTimes). Prefer explicit imports over global access in new code.
+### Key directories
+- `src/`: active application code
+  - `config/`: runtime configuration
+  - `playback/`: timer, audio, and playback logic
+  - `services/`: Supabase access, persistence, data adapters, and sequence-related services
+  - `store/`: application state modules
+  - `ui/`: UI modules for builder flows, browsing, playback screens, and wiring
+  - `utils/`: pure helpers, parsers, DOM utilities, and formatting logic
+- `styles/`: active styling system for the current app
+  - use modular stylesheet files here for new styling work
+  - this is the source of truth for active styling
+- `scripts/`: operational scripts for audits, migration, repair jobs, and data tooling
+  - these are separate CLIs and should be treated differently from browser app code
+- `supabase/`: SQL migrations, policies, and related backend assets
+- `legacy/`: a personal holding area for old or discarded files
+  - treat this as a trash-can/archive folder, not part of the active app
+  - do not use files here for implementation unless explicitly instructed
 
-#### 6. Do's and Don'ts
-- ✅ Do write unit tests for all parsing and timing logic. Keep tests fast and deterministic.
-- ✅ Do wrap network calls behind service adapters to enable mocking in tests.
-- ✅ Do keep operational scripts idempotent and provide --dry-run modes.
-- ✅ Do prefer pure functions in utils; avoid side-effects.
-- ✅ Do run lint (npm run lint) and tests (npm test) before committing.
+### Important structure rules
+- Do not modify files under `legacy/`. They are not part of the active app.
+- Do not add new styling to `style.css`. It is inactive.
+- Use style modules under `styles/` for all current frontend styling work.
+- Keep browser/runtime code separate from scripts/CLI code.
 
-- ❌ Don't embed credentials in code. Use environment variables and dotenv in scripts.
-- ❌ Don't rely on window.* globals in modules that may run in Node (keep browser-only code behind guards).
-- ❌ Don't add heavy integration tests that require production data — use local or test instances.
-- ❌ Don't change DB schema behavior without updating SQL migrations under supabase/migrations and docs/.
+## 3. Current Architecture Principles
 
-#### 7. Tools & Dependencies
-- Key tooling
-  - Vite: development server & build for frontend (npm run dev).
-  - Node's built-in test runner: tests executed with `node --test` (npm test).
-  - ESLint with @eslint/js and eslint-plugin-check-file for linting.
-  - @supabase/supabase-js: Supabase client used by services.
-  - Python: many operational scripts are Python-based; requirements.txt lists dependencies.
-- Setup
-  - Copy .env.example → .env and fill Supabase keys when running scripts that require DB access.
-  - For dev: npm install, npm run dev to start the Vite dev server. Use npm run build / preview for production build.
+### Frontend app
+The active frontend is organized by feature and responsibility:
+- UI modules handle DOM rendering, event wiring, and interaction flows
+- service modules handle persistence and external data access
+- store modules hold shared UI/app state
+- utility modules contain pure reusable logic
 
-#### 8. Other Notes (for LLMs generating code)
-- Prefer small, incremental changes. The codebase mixes browser and Node contexts; ensure code intended for Node does not reference window or DOM APIs.
-- Keep exports explicit and use ES module syntax. Tests rely on named exports from modules (e.g., parsing.js).
-- Preserve backward-compatible behavior: many scripts are one-off operational tools expected to print human-readable output — do not remove logging there.
-- Domain edge cases:
-  - Sequence text parsing accepts `|`-delimited rows and expects IDs padded to 3 digits; maintain normalization rules.
-  - Hold-time strings may be `MM:SS` or seconds-only and keys are case-insensitive (Standard, Short, Long, Flow).
-- When adding tests, use node:test & assert to match existing test style and keep them adjacent to modules.
+### Services and data access
+Supabase access should be centralized through service/adaptor layers rather than scattered through UI code. This makes the code easier to reason about, test, and refactor.
 
----
+### Operational scripts
+Scripts under `scripts/` are maintenance tools, not app modules. They may be Node or Python. Avoid importing browser-only code into these scripts.
+
+## 4. Styling Rules
+- The active styling system lives in `styles/`.
+- New styling should go into the appropriate style module in `styles/`, not into deprecated or inactive global files.
+- `style.css` is inactive and should not be used for new changes.
+- Avoid editing anything in `legacy/`.
+- Keep styles modular and scoped by feature where practical.
+- Prefer clean, minimal UI patterns and avoid one-off inline styling unless there is a strong reason.
+
+## 5. Development Workflow
+- The app is now developed and tested primarily through **VS Code Go Live**.
+- Do not assume Vite is the active development workflow unless explicitly reintroduced.
+- Changes should work in the current browser-first local setup.
+
+## 6. Code Style
+- Language: modern JavaScript using ES modules
+- No TypeScript unless the project is intentionally migrated later
+- Prefer `async/await` for asynchronous code
+- Keep async boundaries explicit in services and callers
+- Prefer pure functions in utility modules
+- Avoid unnecessary mutation where a returned value is clearer
+
+### Naming conventions
+- files: follow existing repo conventions consistently
+- functions: `camelCase`
+- constants: `UPPER_SNAKE_CASE` or clear local constants as appropriate
+- test files: `*.test.js`, ideally adjacent to the module being tested
+
+### Comments and documentation
+- Use comments sparingly and only where behavior is not obvious
+- Prefer clear naming over explanatory comments
+- Keep docs updated when architecture or workflows change
+- When handling legacy or compatibility behavior, document the assumption clearly
+
+### Error handling
+- Use `try/catch` at service boundaries
+- Log useful errors without hiding important failures
+- Return graceful fallbacks where appropriate in UI code
+- Operational scripts should fail clearly on unrecoverable errors and ideally support dry-run modes
+
+## 7. Testing Strategy
+- Prefer small, deterministic unit tests for pure logic
+- Best candidates for tests:
+  - parsing
+  - timing logic
+  - formatting/normalization
+  - sequence expansion and transformation logic
+- Avoid tests that require live production data
+- Keep network/database access behind adapters so pure logic remains testable
+- Integration-style checks can be done via dedicated scripts or controlled test environments
+
+## 8. Common Patterns
+- Adapter/service pattern for Supabase and persistence
+- Small pure utilities in `src/utils/`
+- State kept in store modules rather than hidden globals where possible
+- UI modules should work through explicit imports and DOM queries rather than broad global coupling
+- If something must be exposed on `window` for browser compatibility, keep that surface small and deliberate
+
+## 9. Do’s and Don’ts
+
+### Do
+- Do make small, incremental changes
+- Do verify import/reference chains before editing files
+- Do treat `styles/` as the active styling layer
+- Do keep scripts idempotent where possible
+- Do keep browser code separate from Node/Python tooling
+- Do preserve existing behavior unless intentionally changing it
+- Do check whether a file is actually part of the active app before modifying it
+- Do prefer explicit imports over implicit globals in new code
+
+### Don’t
+- Don’t edit `legacy/`
+- Don’t add new styling to `style.css`
+- Don’t mix browser DOM code into Node or Python operational scripts
+- Don’t embed credentials in code
+- Don’t assume older files are still part of the live app
+- Don’t introduce heavy frameworks for small UI changes
+- Don’t make broad refactors when a local fix is enough
+
+## 10. Tools and Dependencies
+- Supabase for backend persistence/data access
+- Vanilla JavaScript modules for frontend logic
+- Plain CSS modules/files under `styles/` for styling
+- Node-based tooling for some scripts
+- Python for some operational scripts and audits
+
+### Setup
+- Use environment variables for secrets and keys
+- Keep `.env`-driven configuration out of committed code
+- Run only the tooling relevant to the part of the repo you are changing
+
+## 11. Notes for AI Coding Assistants
+- Verify before editing: do not assume a file is active just because it exists
+- Trace real imports/references before changing CSS, JS, or HTML entry points
+- Prefer the active app code under `src/` and active styles under `styles/`
+- Do not use `legacy/`
+- Do not use `style.css`
+- Keep changes minimal, focused, and production-safe
+- When fixing UI/export issues, inspect the actual render path rather than guessing
+- When a runtime error appears, trace the real call chain and fix the root cause rather than patching symptoms
+- Do not replace active modular code with new global patterns unless explicitly requested
+
+## 12. Domain-Specific Notes
+- Sequence text parsing and formatting logic is sensitive and should be changed carefully
+- Builder/editor flows often involve modal UI, dynamic DOM updates, and stateful interactions
+- Export/print behavior should be handled carefully because live modal DOM is not always suitable for direct capture
+- Some browser-only helpers may still be exposed globally for compatibility, but new code should prefer explicit module boundaries
