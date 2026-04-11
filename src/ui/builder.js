@@ -108,10 +108,13 @@ function builderRender() {
             <div class="view-mode-props-container">
                 ${pose.props.map(pid => {
                     const p = PROP_REGISTRY[pid];
-                    if (!p) return '';
-                    const r = parseInt(p.color.slice(1,3), 16), g = parseInt(p.color.slice(3,5), 16), b = parseInt(p.color.slice(5,7), 16);
-                    return `<span class="b-prop-chip" style="border-color: ${p.color}; color: ${p.color}; background: rgba(${r},${g},${b},0.08);">
-                        ${p.icon} ${p.label}
+                    const color = p ? p.color : '#86868b';
+                    const icon = p ? p.icon : '❓';
+                    const label = p ? p.label : pid;
+                    const r = parseInt(color.slice(1,3), 16), g = parseInt(color.slice(3,5), 16), b = parseInt(color.slice(5,7), 16);
+                    
+                    return `<span class="b-prop-chip" style="border-color: ${color}; color: ${color}; background: rgba(${r},${g},${b},0.08);">
+                        ${icon} ${label}
                     </span>`;
                 }).join('')}
             </div>

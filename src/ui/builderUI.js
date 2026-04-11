@@ -143,6 +143,11 @@ function ensureExportStyles() {
             transform: none !important;
             background: #ffffff !important;
         }
+        
+        /* Force container visibility for export components */
+        .export-snapshot-host #viewModeHeader {
+            display: block !important;
+        }
 
         .export-snapshot-host .modal-header {
             position: static !important;
@@ -160,6 +165,43 @@ function ensureExportStyles() {
             height: auto !important; 
             padding: 0 20px 60px !important;
             flex: none !important; /* Remove flex-grow */
+        }
+        
+        /* Pleasant Header Styling for PDF */
+        .export-snapshot-host #displayTitle {
+            font-size: 28pt !important;
+            font-weight: 700 !important;
+            color: #1d1d1f !important;
+            margin: 0 0 10px 0 !important;
+            line-height: 1.1 !important;
+            display: block !important;
+        }
+
+        .export-snapshot-host #displayCategory {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 6px !important;
+            align-items: center !important;
+            margin-bottom: 20px !important;
+        }
+
+        .export-snapshot-host #displayCategory .cat-pill {
+            padding: 4px 10px !important;
+            border-radius: 8px !important;
+            font-size: 9pt !important;
+            text-transform: uppercase !important;
+            font-weight: 700 !important;
+        }
+
+        .export-snapshot-host #displayCategory .cat-main {
+            background: #007aff !important;
+            color: #ffffff !important;
+        }
+
+        .export-snapshot-host #displayCategory .cat-sub {
+            background: #f5f5f7 !important;
+            color: #6e6e73 !important;
+            border: 1px solid #d2d2d7 !important;
         }
 
         .export-snapshot-host #builderTable {
@@ -235,12 +277,36 @@ function ensureExportStyles() {
  */
 function createExportSnapshot(sourceElement) {
     const clone = sourceElement.cloneNode(true);
-    
+
     // 1. Apply classes to trigger presentation styles
     clone.classList.add('export-snapshot-host');
     clone.classList.add('builder-view-mode');
 
-    // 2. Selectively remove UI elements (keeping indicators like Tier buttons)
+    // 2. Sync data manually to the clone to ensure title/category "comes through"
+    const titleVal = getSequenceTitle() || 'Untitled Sequence';
+    const catVal = (document.getElementById('builderCategory')?.value || '').trim();
+
+    const displayTitle = clone.querySelector('#displayTitle');
+    const displayCategory = clone.querySelector('#displayCategory');
+
+    if (displayTitle) {
+        displayTitle.textContent = titleVal;
+        displayTitle.style.display = 'block';
+    }
+
+    if (displayCategory && catVal) {
+        displayCategory.style.display = 'flex';
+        const parts = catVal.split('>').map(p => p.trim()).filter(Boolean);
+        displayCategory.innerHTML = parts.map((p, i) => {
+            const isFirst = i === 0;
+            const cls = isFirst ? 'cat-main' : 'cat-sub';
+            const pill = `<span class="cat-pill ${cls}">${escapeHtml(p)}</span>`;
+            const sep = i < parts.length - 1 ? `<span style="color:#86868b; margin: 0 4px; font-weight:bold;">›</span>` : '';
+            return pill + sep;
+        }).join('');
+    }
+
+    // 3. Selectively remove UI elements
     const selectorsToRemove = [
         '.modal-footer',
         '.builder-toolbar-primary',
@@ -248,17 +314,35 @@ function createExportSnapshot(sourceElement) {
         '#builderModeToggleBtn',
         '#editCourseCloseBtn',
         '.edit-only-inline',
-        '.modal-header > div:not(#displayTitle):not(#displayCategory)'
+        '#editModeHeader',
+        '.modal-header button',
+        '.builder-export-root',
+        '#exportOptionsPanel',
+        '.builder-toolbar-primary'
     ];
 
     selectorsToRemove.forEach(sel => {
         clone.querySelectorAll(sel).forEach(el => el.remove());
     });
 
-    // 3. Clean table rows (Remove checkboxes and Order column controls)
+    // Ensure the view mode header is explicitly shown in the clone
+    const vh = clone.querySelector('#viewModeHeader');
+    if (vh) {
+        vh.style.setProperty('display', 'block', 'important');
+    }
+
+    // 4. Clean table rows
     clone.querySelectorAll('#builderTable tr').forEach(tr => {
         const cells = tr.querySelectorAll('th, td');
         if (cells[0]) cells[0].querySelectorAll('input').forEach(i => i.remove());
+
+        // Fix: Ensure selects (like variations) show their text value instead of an empty box in the PDF
+        tr.querySelectorAll('select').forEach(sel => {
+            const span = document.createElement('span');
+            span.textContent = sel.options[sel.selectedIndex]?.text || '';
+            sel.replaceWith(span);
+        });
+
         // Column 4 is "Order" - we remove it to match print layout
         if (cells.length >= 4) cells[3].remove();
     });
@@ -317,12 +401,46 @@ async function ensureLibrariesLoaded() {
     }
 }
 
+/**
+ * UI Progress Feedback
+ */
+function showPdfProgress(msg) {
+    let el = document.getElementById('pdfProgressOverlay');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'pdfProgressOverlay';
+        el.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.85); z-index: 10001;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column; font-family: system-ui, sans-serif;
+        `;
+        document.body.appendChild(el);
+    }
+    el.innerHTML = `
+        <div style="background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; border: 1px solid #eee;">
+            <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007aff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+            <div style="font-weight: 600; color: #1d1d1f; font-size: 1.1rem;">${msg}</div>
+            <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+        </div>
+    `;
+    document.body.style.cursor = 'progress';
+}
+
+function hidePdfProgress() {
+    const el = document.getElementById('pdfProgressOverlay');
+    if (el) el.remove();
+    document.body.style.cursor = '';
+}
+
 export async function downloadSequencePdf() {
     const sourceElement = getExportElement();
     if (!sourceElement) return;
 
     // Ensure standalone libraries are ready
     await ensureLibrariesLoaded();
+
+    showPdfProgress('Preparing document...');
 
     const snapshot = createExportSnapshot(sourceElement);
     document.body.appendChild(snapshot);
@@ -339,6 +457,7 @@ export async function downloadSequencePdf() {
         printSequence();
     } finally {
         snapshot.remove();
+        hidePdfProgress();
     }
 }
 
@@ -347,38 +466,86 @@ export async function downloadSequencePdf() {
  * Renders snapshot to high-res canvas and generates PDF manually.
  */
 async function manualExportPdf(snapshot) {
-    // Get constructor from UMD namespace
     const { jsPDF } = window.jspdf;
-    
-    const canvas = await html2canvas(snapshot, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-    });
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.98);
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
-    
-    const imgProps = pdf.getImageProperties(imgData);
-    const ratio = pdfWidth / imgProps.width;
-    const renderedHeight = imgProps.height * ratio;
+    const margin = 10;
+    const contentWidth = pdfWidth - (2 * margin);
+    const pageHeightLimit = pdfHeight - margin;
 
-    let heightLeft = renderedHeight;
-    let position = 0;
+    // Helper for high-quality structural capture
+    const capture = async (el) => {
+        try {
+            const canvas = await html2canvas(el, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                logging: false,
+                width: 800 // Standardized width for table consistency
+            });
+            if (!canvas || canvas.width === 0 || canvas.height === 0) return null;
+            return canvas;
+        } catch (e) {
+            console.warn('[PDF] Capture failed for element:', el, e);
+            return null;
+        }
+    };
 
-    // Page 1
-    pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, renderedHeight);
-    heightLeft -= pdfHeight;
+    const headerEl = snapshot.querySelector('.modal-header');
+    const dateEl = snapshot.querySelector('.export-date-tag');
+    let currentY = margin;
 
-    // Multi-page Splitting
-    while (heightLeft >= 0) {
-        position = heightLeft - renderedHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, renderedHeight);
-        heightLeft -= pdfHeight;
+    // 1. Render Header (Title + Category) and Practice Date
+    // We capture the headerEl which contains both #displayTitle and #displayCategory
+    const headerComponents = [headerEl, dateEl].filter(Boolean);
+    for (let el of headerComponents) {
+        const canvas = await capture(el);
+        if (!canvas) continue;
+        const h = canvas.height * (contentWidth / canvas.width);
+        if (h > 0 && isFinite(h)) {
+            pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', margin, currentY, contentWidth, h);
+            currentY += h + 4;
+        }
+    }
+
+    // 2. Prepare Table Header (for repetition)
+    const thead = snapshot.querySelector('#builderTable thead');
+    const headCanvas = thead ? await capture(thead) : null;
+    const headH = headCanvas ? headCanvas.height * (contentWidth / headCanvas.width) : 0;
+    const headImg = headCanvas ? headCanvas.toDataURL('image/jpeg', 0.98) : null;
+
+    const drawHeader = () => {
+        if (headImg && headH > 0 && isFinite(headH)) {
+            pdf.addImage(headImg, 'JPEG', margin, currentY, contentWidth, headH);
+            currentY += headH;
+        }
+    };
+
+    drawHeader();
+
+    // 3. Render Table Rows structurally
+    const rows = Array.from(snapshot.querySelectorAll('#builderTable tbody tr'));
+    const totalRows = rows.length;
+
+    for (let i = 0; i < totalRows; i++) {
+        const row = rows[i];
+        showPdfProgress(`Rendering row ${i + 1} of ${totalRows}...`);
+
+        const rowCanvas = await capture(row);
+        if (!rowCanvas) continue;
+        const rowH = rowCanvas.height * (contentWidth / rowCanvas.width);
+        if (!isFinite(rowH) || rowH <= 0) continue;
+
+        // Logic: If the row doesn't fit, move it in full to the next page
+        if (currentY + rowH > pageHeightLimit) {
+            pdf.addPage();
+            currentY = margin;
+            drawHeader(); // Requirement: show headers on new page
+        }
+
+        pdf.addImage(rowCanvas.toDataURL('image/jpeg', 0.98), 'JPEG', margin, currentY, contentWidth, rowH);
+        currentY += rowH;
     }
 
     pdf.save(sanitizeFilename(getSequenceTitle()));
@@ -478,8 +645,15 @@ export function updateBuilderModeUI() {
                 const parts = rawVal.split('>').map((p) => p.trim()).filter(Boolean);
 
                 displayCategory.innerHTML = parts.map((p, i) => {
+                    const isFirst = i === 0;
                     const isLast = i === parts.length - 1;
-                    const pill = `<span style="background:#e3f2fd; color:#005580; padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; white-space:normal; word-break:break-word; text-align:left;">${escapeHtml(p)}</span>`;
+                    
+                    const bg = isFirst ? '#007aff' : '#f5f5f7';
+                    const tc = isFirst ? '#ffffff' : '#6e6e73';
+                    const border = isFirst ? 'none' : '1px solid #d2d2d7';
+                    const fw = isFirst ? '700' : '600';
+
+                    const pill = `<span style="background:${bg}; color:${tc}; padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:${fw}; text-transform:uppercase; letter-spacing:0.04em; white-space:normal; word-break:break-word; text-align:left; border:${border};">${escapeHtml(p)}</span>`;
                     const sep = !isLast ? `<span style="color:#86868b; font-weight:bold; font-size:1.1rem; margin-top:-2px;">›</span>` : '';
                     return pill + (sep ? ` ${sep} ` : '');
                 }).join('');

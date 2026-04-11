@@ -198,7 +198,7 @@ function setPose(idx, keepSamePose = false) {
     
     // JSON-Native First: Rely strictly on the props array
     const registry = window.PROP_REGISTRY || {};
-    let activeProps = Array.isArray(poseMeta.props) ? poseMeta.props.filter(p => registry[p]) : [];
+    let activeProps = Array.isArray(poseMeta.props) ? [...poseMeta.props] : [];
     if (activeProps.length > 0) propModifier = activeProps[0];
 
     // Legacy Note Cleanup (Strips it out for display hygiene and adds to active list)
@@ -499,7 +499,7 @@ function setPose(idx, keepSamePose = false) {
     const focusPropWrap = document.getElementById("focusPropIndicator");
     if (focusPropWrap) {
         const propNames = activeProps.map(pid => registry[pid]?.label || pid).filter(Boolean).join(", ");
-        const propIcons = activeProps.map(pid => registry[pid]?.icon).filter(Boolean).join(" ");
+        const propIcons = activeProps.map(pid => registry[pid]?.icon || '❓').filter(Boolean).join(" ");
         focusPropWrap.innerHTML = activeProps.length > 0 ? `<div style="background:rgba(255,255,255,0.95); padding:8px 18px; border-radius:24px; font-weight:700; color:#1d1d1f; border:1px solid #d2d2d7; display:flex; align-items:center; gap:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1);">${propIcons} <span style="font-size:0.95rem; opacity:0.9;">${propNames}</span></div>` : "";
         focusPropWrap.style.display = activeProps.length > 0 ? "flex" : "none";
     }
