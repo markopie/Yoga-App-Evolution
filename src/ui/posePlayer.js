@@ -17,7 +17,11 @@ function nextPose() {
     if (window.needsSecondSide) {
         window.setCurrentSide("left");
         window.setNeedsSecondSide(false); 
-        setPose(window.currentIndex, true);
+        // Fix: Use window.currentIndex to ensure we stay on the same pose for the second side
+        const currentIdx = window.currentIndex;
+        // Update playback engine to reflect the side change
+        if (window.playbackEngine) window.playbackEngine.currentSide = "left";
+        setPose(currentIdx, true);
         return true;
     }
 
@@ -61,8 +65,10 @@ function prevPose() {
         const isBilateralContext = asana && (asana.requiresSides || asana.requires_sides) && !meta.explicitSide && !meta.flowSegment;
 
         if (isBilateralContext) {
+            // Moving back from Pose N (Right) to Pose N-1 (Left)
             window.setCurrentSide("left");
             window.setNeedsSecondSide(false);
+            if (window.playbackEngine) window.playbackEngine.currentSide = "left";
             setPose(newIndex, true); 
         } else {
             setPose(newIndex);
@@ -84,16 +90,20 @@ function setPose(idx, keepSamePose = false) {
     // 1. SAVE PROGRESS
     window.setCurrentIndex(idx);
     if (typeof window.saveCurrentProgress === "function") window.saveCurrentProgress();
-
+    
     if (!keepSamePose) {
         window.setCurrentSide("right");
         window.setNeedsSecondSide(false);
         if (idx === 0 && typeof window.resetBridgeState === "function") window.resetBridgeState();
     }
 
+    // Sync playback engine side
+    if (window.playbackEngine) window.playbackEngine.currentSide = window.getCurrentSide();
+
     // 2. DATA EXTRACTION
     const currentPose = poses[idx];
     const poseMeta = currentPose[7] || {};
+    const explicitSide = poseMeta.explicitSide;
     const originalRowIndex = (currentPose && currentPose[5] !== undefined) 
                             ? currentPose[5] 
                             : idx;
@@ -137,10 +147,18 @@ function setPose(idx, keepSamePose = false) {
     // Final absolute safety fallback
     if (!seconds) seconds = 30;
 
+    // 🌟 TIMER SYNC: Moved after resolution to ensure library-standard times are also synced
+    if (window.playbackEngine) {
+        window.playbackEngine.currentPoseSeconds = seconds;
+        window.playbackEngine.remaining = seconds;
+        // Immediately update the UI display (the "Pill") to prevent visual lag
+        if (typeof window.updateTimerUI === "function") {
+            window.updateTimerUI(seconds, seconds);
+        }
+    }
+
     if (asana && (asana.requiresSides || asana.requires_sides)) {
         if (!keepSamePose) {
-            const explicitSide = poseMeta.explicitSide;
-
             if (explicitSide === 'L' || explicitSide === 'R') {
                 // Strict override from Flow Builder: Lock the side, kill the bilateral loop.
                 window.setCurrentSide(explicitSide === 'L' ? 'left' : 'right');
@@ -175,33 +193,34 @@ function setPose(idx, keepSamePose = false) {
     }
     }
 
-    // 2. THE PROP SANITIZER (Invisible Extraction)
-    let propModifier = null;
+    // 2. THE PROP SANITIZER (Multi-Prop Logic)
+    let propModifier = null; // Legacy single-prop pointer
     
     // JSON-Native First: Rely strictly on the props array
-    if (poseMeta.props && poseMeta.props.includes('bandage')) {
-        propModifier = 'bandage';
-    }
+    const registry = window.PROP_REGISTRY || {};
+    let activeProps = Array.isArray(poseMeta.props) ? poseMeta.props.filter(p => registry[p]) : [];
+    if (activeProps.length > 0) propModifier = activeProps[0];
 
-    // Legacy Note Cleanup (Strips it out for display hygiene)
-    if (actualNote.toLowerCase().includes(':bandage')) {
-        actualNote = actualNote.replace(/:bandage/gi, '').trim();
-    }
-    
-    // Check and clean the Variation field (in case the adapter shifted it)
-    if (variationTitle.toLowerCase().includes(':bandage')) {
-        propModifier = 'bandage';
-        variationTitle = variationTitle.replace(/:bandage/gi, '').trim();
-    }
-    
-    // Check and clean the Name Override field
-    if (baseOverrideName.toLowerCase().includes(':bandage')) {
-        propModifier = 'bandage';
-        baseOverrideName = baseOverrideName.replace(/:bandage/gi, '').trim();
-    }
+    // Legacy Note Cleanup (Strips it out for display hygiene and adds to active list)
+    Object.keys(registry).forEach(propName => {
+        const tag = `:${propName}`;
+        const searchStr = (actualNote + " " + variationTitle + " " + baseOverrideName).toLowerCase();
+        
+        if (searchStr.includes(tag)) {
+            if (!activeProps.includes(propName)) activeProps.push(propName);
+            actualNote = actualNote.replace(new RegExp(tag, 'gi'), '').trim();
+            variationTitle = variationTitle.replace(new RegExp(tag, 'gi'), '').trim();
+            baseOverrideName = baseOverrideName.replace(new RegExp(tag, 'gi'), '').trim();
+        }
+    });
+
+    // 🌟 ENSURE UNIQUENESS: Prevents double banners if a prop is in both JSON and Note string
+    activeProps = [...new Set(activeProps)];
+
+    if (!propModifier && activeProps.length > 0) propModifier = activeProps[0];
 
     // 3. Global State for Focus Mode Auto-Audio Trigger
-    window.currentPropModifier = propModifier;
+    window.currentPropModifier = activeProps;
 
     // VARIATION TECHNIQUE & SHORTHAND
     let displayShorthand = "";
@@ -302,13 +321,20 @@ function setPose(idx, keepSamePose = false) {
     }
 
     // 🌟 RE-SANitize Props: If lookup updated variationTitle, check again for bandage/side
-    if (variationTitle && variationTitle.toLowerCase().includes(':bandage')) {
-        propModifier = 'bandage';
-        window.currentPropModifier = propModifier;
+    if (variationTitle && registry && typeof variationTitle === 'string') {
+        const vtLower = variationTitle.toLowerCase();
+        Object.keys(registry).forEach(p => {
+            if (vtLower.includes(`:${p}`)) {
+                if (!activeProps.includes(p)) activeProps.push(p);
+                variationTitle = variationTitle.replace(new RegExp(`:${p}`, 'gi'), '').trim();
+            }
+        });
+        window.currentPropModifier = activeProps;
     }
 
     // 4. HEADER UI
     const nameEl = document.getElementById("poseName");
+    const focusNameEl = document.getElementById("focusPoseName");
     const labelEl = document.getElementById("poseLabel");
     
     if (labelEl) {
@@ -320,49 +346,41 @@ function setPose(idx, keepSamePose = false) {
         }
     }
 
-    if (nameEl) {
-        // Index 2 is baseOverrideName. This will now correctly be empty unless you actually typed a custom name.
-        const baseOverrideName = currentPose[2];
-        let finalTitle = baseOverrideName || (asana ? (asana.english_name || asana.english || asana.name) : "Pose");
+    // 🌟 UNIFIED TITLE CONSTRUCTION: Works for both Navigator and Focus Mode
+    const baseName = currentPose[2] || (asana ? (asana.english_name || asana.english || asana.name) : "Pose");
+    let finalTitle = baseName;
 
-        if (variationTitle) {
-            finalTitle += ` <span style="font-weight:300; opacity:0.7; font-size:0.85em;">— ${variationTitle}</span>`;
-        }
-        if (propModifier === 'bandage') {
-            finalTitle += ` <span style="color:var(--accent-color, #d35400); margin-left:8px;" title="Therapeutic Bandage">🩹</span>`;
-        }
-        if (asana && asana.requiresSides) {
-            // 👇 Read our explicit side from the meta object we just injected
-            const poseMeta = currentPose[7] || {};
-            const explicitSide = poseMeta.explicitSide;
-            
-            let sideMarker = "";
-            if (explicitSide === "L" || explicitSide === "R") {
-                sideMarker = explicitSide; // Strict override from Flow Builder
-            } else {
-                sideMarker = window.currentSide === "right" ? "R" : "L"; // Standard fallback
-            }
-            
-            finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.8em; vertical-align: middle;">• ${sideMarker}</span>`;
-        }
-        
-        const poseMeta = currentPose[7] || {};
-        const showMacro = poseMeta.macroTitle;
-        const showLoop = poseMeta.loopCurrent && poseMeta.loopTotal > 1;
-
-        if (showMacro || showLoop) {
-            const contextLabel = poseMeta.macroTitle || poseMeta.loopLabel || "";
-            const labelDisplay = contextLabel ? ` (${contextLabel})` : "";
-            const roundInfo = showLoop ? ` ${poseMeta.loopCurrent}/${poseMeta.loopTotal}` : "";
-            const icon = showLoop ? '↻' : '🔗';
-
-            finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.72em; vertical-align: middle; margin-left: 8px;">
-                              ${icon}${roundInfo}${labelDisplay}
-                           </span>`;
-        }
-
-        nameEl.innerHTML = finalTitle; 
+    if (variationTitle) {
+        finalTitle += ` <span style="font-weight:300; opacity:0.7; font-size:0.85em;">— ${variationTitle}</span>`;
     }
+
+    activeProps.forEach(pid => {
+        const p = registry[pid];
+        if (p) finalTitle += ` <span style="color:${p.color}; margin-left:6px;" title="${p.label}">${p.icon || '🩹'}</span>`;
+    });
+
+    if (asana && (asana.requiresSides || asana.requires_sides)) {
+        let sideMarker = "";
+        if (explicitSide === "L" || explicitSide === "R") {
+            sideMarker = explicitSide; 
+        } else {
+            sideMarker = window.getCurrentSide() === "right" ? "R" : "L";
+        }
+        finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.8em; vertical-align: middle;">• ${sideMarker}</span>`;
+    }
+    
+    const showMacro = poseMeta.macroTitle;
+    const showLoop = poseMeta.loopCurrent && poseMeta.loopTotal > 1;
+    if (showMacro || showLoop) {
+        const contextLabel = poseMeta.macroTitle || poseMeta.loopLabel || "";
+        const labelDisplay = contextLabel ? ` (${contextLabel})` : "";
+        const roundInfo = showLoop ? ` ${poseMeta.loopCurrent}/${poseMeta.loopTotal}` : "";
+        const icon = showLoop ? '↻' : '🔗';
+        finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.72em; vertical-align: middle; margin-left: 8px;">${icon}${roundInfo}${labelDisplay}</span>`;
+    }
+
+    if (nameEl) nameEl.innerHTML = finalTitle;
+    if (focusNameEl) focusNameEl.innerHTML = finalTitle;
 
     // 5. SHORTHAND UI
     const shEl = document.getElementById("poseShorthand");
@@ -430,34 +448,32 @@ function setPose(idx, keepSamePose = false) {
 
         if (asana) {
             const btn = document.createElement("button");
-            btn.className = "tiny"; 
-            btn.innerHTML = "🔊";   
-            btn.style.marginLeft = "12px"; // Slightly more whitespace for that premium feel
-            btn.style.opacity = "0.7";     // Subtly lighter until hovered
+            btn.className = "tiny"; btn.innerHTML = "🔊"; btn.style.marginLeft = "12px"; btn.style.opacity = "0.7";
             btn.onclick = (e) => { 
                 e.stopPropagation(); 
-                // Correctly passes the variation key to the audio engine
-            window.playAsanaAudio(asana, null, true, null, matchedVariationKey, false, propModifier);            };
+                window.playAsanaAudio(asana, null, true, null, matchedVariationKey, false, activeProps);
+            };
             metaContainer.appendChild(btn);
         }
     }
-
-    // 10. TIMER & IMAGE LOGIC + THERAPEUTIC BANNER
-    window.playbackEngine.setPoseTime(seconds);
-    window.updateTimerUI(window.playbackEngine.remaining, window.playbackEngine.currentPoseSeconds);
-
+    // 10. THERAPEUTIC BANNERS
     const wrap = document.getElementById("collageWrap");
     if (wrap) {
-        // Clear the container first
-        wrap.innerHTML = "";
-        
-        
-        if (propModifier === 'bandage') {
-            wrap.insertAdjacentHTML('afterbegin', `<div class="therapeutic-banner" style="background:rgba(211,84,0,0.1); border-left:4px solid #d35400; padding:12px; margin-bottom:15px; border-radius:4px; font-size:0.92em; color:#333; width: 100%; box-sizing: border-box;">
-                <strong style="color:#d35400;">🩹 Therapeutic Protocol: Head Bandage</strong><br>
-                A firmly tied bandage round the head is soothing for headaches. Wind bandage around the forehead and back of the skull. Pull firmly but not tight. 
-                <br><small><em>Eyestrain: cover eyes lightly 2-3 times at start.</em></small></div>`);
+        // Ensure a dedicated banner stack exists
+        let bannerStack = wrap.querySelector(".banner-stack");
+        if (!bannerStack || wrap.innerHTML.includes('No image found')) {
+            wrap.innerHTML = '<div class="banner-stack" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px; width:100%;"></div>';
+            bannerStack = wrap.querySelector(".banner-stack");
+        } else {
+            bannerStack.innerHTML = "";
         }
+        
+        activeProps.forEach(pid => {
+            const p = registry[pid];
+            const hexToRgba = (hex, a) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})`; };
+            bannerStack.insertAdjacentHTML('beforeend', `<div class="therapeutic-banner" style="background:${hexToRgba(p.color, 0.08)}; border-left:4px solid ${p.color}; padding:12px; border-radius:6px; font-size:0.9em; color:#1d1d1f; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                <strong style="color:${p.color};">${p.icon || '🩹'} ${p.bannerTitle}</strong><br>${p.bannerHtml}</div>`);
+        });
 
         const urls = window.smartUrlsForPoseId(lookupId, matchedVariationKey);
         if (urls.length > 0) { 
@@ -467,13 +483,9 @@ function setPose(idx, keepSamePose = false) {
         }
     }
 
-    // SYNC OVERLAY CONTENT
-    const overlayName = document.getElementById("focusPoseName");
     const overlayLabel = document.getElementById("focusPoseLabel");
     const overlayImageWrap = document.getElementById("focusImageWrap");
-    
-    if (overlayName && nameEl) overlayName.innerHTML = nameEl.innerHTML;
-    
+
     if (overlayLabel) {
         if (currentPose[6]) {
             overlayLabel.textContent = currentPose[6];
@@ -481,6 +493,15 @@ function setPose(idx, keepSamePose = false) {
         } else {
             overlayLabel.style.display = "none";
         }
+    }
+
+    // 🌟 FOCUS MODE PROP LABELS (Accessibility & Audio Sync)
+    const focusPropWrap = document.getElementById("focusPropIndicator");
+    if (focusPropWrap) {
+        const propNames = activeProps.map(pid => registry[pid]?.label || pid).filter(Boolean).join(", ");
+        const propIcons = activeProps.map(pid => registry[pid]?.icon).filter(Boolean).join(" ");
+        focusPropWrap.innerHTML = activeProps.length > 0 ? `<div style="background:rgba(255,255,255,0.95); padding:8px 18px; border-radius:24px; font-weight:700; color:#1d1d1f; border:1px solid #d2d2d7; display:flex; align-items:center; gap:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1);">${propIcons} <span style="font-size:0.95rem; opacity:0.9;">${propNames}</span></div>` : "";
+        focusPropWrap.style.display = activeProps.length > 0 ? "flex" : "none";
     }
     
     if (overlayImageWrap) {
@@ -495,9 +516,10 @@ function setPose(idx, keepSamePose = false) {
 
     // 11. AUDIO TRIGGER
     window.currentVariationKey = matchedVariationKey;
+    window.currentPropModifier = activeProps; // 🌟 SYNC: Ensure audio engine sees the props
     if (window.playbackEngine && window.playbackEngine.running && asana) {
         const isSecondSide = window.getCurrentSide() === "left" && !!(asana.requiresSides || asana.requires_sides);
-        window.playAsanaAudio(asana, baseOverrideName, false, window.getCurrentSide(), matchedVariationKey, isSecondSide, propModifier);
+        window.playAsanaAudio(asana, baseOverrideName, false, window.getCurrentSide(), matchedVariationKey, isSecondSide, activeProps);
     }
 
     // SKIP BUTTON VISIBILITY (Recovery / Preparatory)
@@ -521,8 +543,7 @@ function setPose(idx, keepSamePose = false) {
                 const nextIdx = idx + 1;
                 if (nextIdx < poses.length) {
                     window.setPose(nextIdx); // Load the UI
-                    if (window.playbackEngine) window.playbackEngine.start(); // Auto-start next
-                } else {
+                    if (window.playbackEngine) window.playbackEngine.start(); // Auto-start nexts
                     if (typeof window.triggerSequenceEnd === 'function') window.triggerSequenceEnd();
                 }
             };
@@ -530,6 +551,9 @@ function setPose(idx, keepSamePose = false) {
             activeSkipBtn.style.display = "none";
         }
     }
+
+    // 🌟 SYNC: Update the 'Next' vs 'Complete' button text whenever the pose changes
+    if (typeof window.updateNextBtnText === "function") window.updateNextBtnText();
 }
 
 // Export for Wiring

@@ -852,6 +852,14 @@ th {
     transform: scale(1.02);
 }
 
+/* 7. Prop Indicator (Focus Mode specific layout) */
+#focusPropIndicator {
+    margin: 10px 0;
+    width: 100%;
+    justify-content: center;
+    z-index: 5;
+}
+
 /* Filter Styling */
 #categoryFilter {
     background-color: #f0f4f8; /* Light blue-grey to distinguish it */

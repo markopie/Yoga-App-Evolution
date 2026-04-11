@@ -198,12 +198,14 @@ export async function playAsanaAudio(
     currentSide = null,
     variationKey = null,
     isSecondSide = false,
-    propModifier = null
+    props = []
 ) {
     if (!asana) return;
 
-    // AUDIO FIX: Use local propModifier, fallback to global state for Focus Mode
-    const activeProp = propModifier || window.currentPropModifier;
+    // AUDIO FIX: Accept array or single string, fallback to global state
+    const activeProps = (Array.isArray(props) && props.length > 0) 
+        ? props 
+        : (props && !Array.isArray(props) ? [props] : (Array.isArray(window.currentPropModifier) ? window.currentPropModifier : []));
 
     if (currentAudio) {
         try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
@@ -213,11 +215,13 @@ export async function playAsanaAudio(
     // 1. Await the Main Asana Audio & Bridge Files
     await playPoseMainAudio(asana, poseLabel, null, variationKey);
 
-    // 2. Play Verbal Prop Cue
-    if (activeProp === 'bandage') {
-        // A short timeout ensures browser speech engine clears the MP3 buffer
-        await new Promise(resolve => setTimeout(resolve, 150));
-        await speakText("Wearing a bandage.");
+    // 2. Play Verbal Prop Cues (Queued)
+    const registry = window.PROP_REGISTRY || {};
+    for (const pId of activeProps) {
+        if (registry[pId]) {
+            await new Promise(resolve => setTimeout(resolve, 250));
+            await speakText(registry[pId].audioCue);
+        }
     }
 
     // 3. Await Side Cue if required

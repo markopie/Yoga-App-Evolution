@@ -68,8 +68,10 @@ function parseSequenceText(sequenceText) {
     const side = sideMatch ? sideMatch[1].toUpperCase() : '';
 
     const props = [];
-    if (note.toLowerCase().includes(':bandage')) props.push('bandage');
-
+    const registry = window.PROP_REGISTRY || {};
+    Object.keys(registry).forEach(p => {
+        if (note.toLowerCase().includes(`:${p}`)) props.push(p);
+    });
     // MACRO: rows (e.g. "MACRO:Surya Namaskar A") are expected linked-sequence
     // markers and must round-trip through persistence intact.
     if (/^MACRO:/i.test(id)) {

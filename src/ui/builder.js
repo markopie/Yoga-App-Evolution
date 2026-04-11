@@ -9,6 +9,7 @@ import { formatHMS, displayName, formatCategory } from "../utils/format.js";
 import { builderPoseName, generateVariationSelectHTML, generateInfoCellHTML, resolvePoseInfo, buildMacroInfoHTML } from "./builderTemplates.js";
 import { builderState, setPoseSide, movePose, movePoseToIndex, removePose, addPoseToBuilder, isFlowSequence } from '../store/builderState.js';
 import { updateBuilderModeUI, openLinkSequenceModal } from "./builderUI.js";
+import { PROP_REGISTRY } from "../config/propRegistry.js";
 
 const getEffectiveTime = (id, time) => window.getEffectiveTime ? window.getEffectiveTime(id, time) : time;
 const getAsanaIndex = () => Object.values(window.asanaLibrary || {}).filter(Boolean);
@@ -162,8 +163,10 @@ function builderRender() {
 
             if (selectedVar && asana.variations && asana.variations[selectedVar]) {
                 const vd = asana.variations[selectedVar];
-                if (vd.preparatory_pose_id) prepId = vd.preparatory_pose_id;
-                if (vd.recovery_pose_id) recovId = vd.recovery_pose_id;
+                // ARCHITECT FIX: Explicitly set to null if the variation has no value, overriding base asana.
+                // This ensures that a variation can explicitly "cancel" a base asana's injection.
+                prepId = (vd.preparatory_pose_id === undefined || vd.preparatory_pose_id === '') ? null : vd.preparatory_pose_id;
+                recovId = (vd.recovery_pose_id === undefined || vd.recovery_pose_id === '') ? null : vd.recovery_pose_id;
             }
 
             const prepInfo = resolvePoseInfo(prepId, libMap);
@@ -203,13 +206,13 @@ function builderRender() {
                    (isMacro ? `ID: <span style="font-family:monospace; background:#f0f0f0; padding:2px 6px; border-radius:4px; border:1px solid #ddd; font-size:0.7rem; color:#333;">${pose.id.replace("MACRO:", "")}</span>
                                <button class="tiny b-macro-swap" data-idx="${idx}" style="padding:2px 8px; border-radius:4px; border:1px solid #007aff; background:#fff; color:#007aff; cursor:pointer; font-weight:600; font-size:0.65rem;" title="Change Linked Sequence">Swap</button>` :
                                 `ID: <input type="text" class="b-id" data-idx="${idx}" value="${pose.id}" style="width:50px; padding:2px; border:1px solid #ccc; border-radius:4px;">
-                                <button class="tiny b-prop-toggle" data-idx="${idx}" data-prop="bandage" title="Therapeutic Bandage" 
-                                        style="padding:2px 4px; border:none; background:transparent; cursor:pointer; font-size:1.1rem; line-height:1; vertical-align:middle; transition:all 0.2s;
-                                               filter:${pose.props?.includes('bandage') ? 'none' : 'grayscale(1)'}; 
-                                               opacity:${pose.props?.includes('bandage') ? '1' : '0.2'}; 
-                                               color:${pose.props?.includes('bandage') ? '#007aff' : 'inherit'};">
-                                    🩹
-                                </button>
+                                <div style="display:inline-flex; align-items:center; margin-left:4px; vertical-align:middle;">
+                                    <div class="b-prop-picker-btn" data-idx="${idx}" 
+                                         title="${(pose.props || []).length > 0 ? 'Active Props: ' + pose.props.map(p => PROP_REGISTRY[p]?.label).join(', ') : 'Select Props'}"
+                                         style="cursor:pointer; font-size:1.1rem; opacity:${(pose.props || []).length > 0 ? '1' : '0.3'}; filter:${(pose.props || []).length > 0 ? 'none' : 'grayscale(1)'};">
+                                        🧰
+                                    </div>
+                                </div>
                                 <button onclick="window.triggerRowSearch(event, ${idx})" type="button" class="tiny b-row-search-btn" data-idx="${idx}" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer;" title="Search Asana">🔍</button>`
                    )
                  }
@@ -287,16 +290,10 @@ function builderRender() {
         updateToolbarState(); // 👈 ADDED: Triggers the Delete/Repeat buttons to appear
     });
 
-    qS('.b-prop-toggle').forEach(btn => btn.onclick = (e) => {
-        e.preventDefault();
+    qS('.b-prop-picker-btn').forEach(btn => btn.onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
         const idx = parseInt(btn.dataset.idx, 10);
-        const prop = btn.dataset.prop;
-        const p = builderState.poses[idx];
-        if (!p.props) p.props = [];
-        p.props = p.props.includes(prop) 
-            ? p.props.filter(item => item !== prop) 
-            : [...p.props, prop];
-        builderRender();
+        openPropPicker(idx);
     });
 
     qS('.b-side').forEach(btn => btn.onmousedown = (e) => {
@@ -307,6 +304,111 @@ function builderRender() {
         setPoseSide(idx, side);
         builderRender();
     });
+
+function openPropPicker(idx) {
+    const pose = builderState.poses[idx];
+    if (!pose) return;
+    
+    let overlay = document.getElementById("propPickerOverlay");
+    if (!overlay) {
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="propPickerOverlay" class="modal-backdrop" style="display:none; align-items:center; justify-content:center;">
+                <div class="modal" style="max-width:340px; height:auto; border-radius:16px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+                    <div class="modal-header">
+                        <strong>Prop Toolbox</strong>
+                        <button class="tiny" onclick="document.getElementById('propPickerOverlay').style.display='none'">✕</button>
+                    </div>
+                    <div class="modal-body" id="propPickerList" style="padding:15px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; max-height:300px;"></div>
+                    
+                    <details id="customPropAccordion" style="border-top:1px solid #eee; background:#f9f9f9; border-bottom-left-radius:16px; border-bottom-right-radius:16px;">
+                        <summary style="padding:14px; font-size:0.75rem; color:#007aff; font-weight:700; text-transform:uppercase; cursor:pointer; outline:none; user-select:none;">
+                            + Add Custom Prop
+                        </summary>
+                        <div style="padding:0 12px 12px 12px; display:flex; flex-direction:column; gap:8px;">
+                            <div style="display:flex; gap:6px;">
+                                <input type="text" id="customPropIcon" placeholder="Icon" style="width:40px; padding:6px; text-align:center;">
+                                <input type="text" id="customPropLabel" placeholder="Prop Name (e.g. Chair)" style="flex:1; padding:6px;">
+                            </div>
+                            <input type="text" id="customPropAudio" placeholder="Audio Cue (e.g. Use a chair for support)" style="width:100%; padding:6px; font-size:0.8rem; border:1px solid #ccc; border-radius:4px;">
+                            <input type="text" id="customPropBannerTitle" placeholder="Banner Title" style="width:100%; padding:6px; font-size:0.8rem; border:1px solid #ccc; border-radius:4px;">
+                            <textarea id="customPropBannerHtml" placeholder="Banner Details (HTML allowed)" style="width:100%; height:60px; padding:6px; font-size:0.8rem; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
+                            <button id="btnAddCustomProp" style="background:#007aff; color:#fff; border:none; border-radius:8px; padding:8px; font-weight:600; cursor:pointer; margin-top:4px;">Create Prop</button>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        `);
+        overlay = document.getElementById("propPickerOverlay");
+    }
+
+    const list = document.getElementById("propPickerList");
+    list.innerHTML = Object.values(PROP_REGISTRY).map(p => {
+        const isActive = pose.props?.includes(p.id);
+        return `
+            <label style="display:flex; align-items:center; gap:12px; cursor:pointer; padding:10px; border-radius:10px; border:1px solid ${isActive ? '#007aff' : '#eee'}; background:${isActive ? 'rgba(0,122,255,0.05)' : '#fff'}; transition: all 0.2s;">
+                <input type="checkbox" class="prop-checkbox" data-pid="${p.id}" ${isActive ? 'checked' : ''} style="width:18px; height:18px;">
+                <span style="font-size:1.2rem;">${p.icon}</span>
+                <div style="flex:1;">
+                    <div style="font-weight:600; font-size:0.9rem;">${p.label}</div>
+                </div>
+            </label>
+        `;
+    }).join('');
+
+    list.querySelectorAll('.prop-checkbox').forEach(cb => {
+        cb.onchange = () => {
+            const pid = cb.dataset.pid;
+            if (!pose.props) pose.props = [];
+            if (cb.checked) {
+                if (!pose.props.includes(pid)) pose.props.push(pid);
+            } else {
+                pose.props = pose.props.filter(id => id !== pid);
+            }
+            builderRender();
+            // Refresh background color for the row in the modal
+            const lbl = cb.closest('label');
+            lbl.style.background = cb.checked ? 'rgba(0,122,255,0.05)' : '#fff';
+            lbl.style.borderColor = cb.checked ? '#007aff' : '#eee';
+        };
+    });
+
+    // 🌟 Custom Prop logic: allows on-the-fly expansion of the registry
+    const addBtn = document.getElementById("btnAddCustomProp");
+    if (addBtn) {
+        addBtn.onclick = () => {
+            const iconInp = document.getElementById("customPropIcon");
+            const labelInp = document.getElementById("customPropLabel");
+            const audioInp = document.getElementById("customPropAudio");
+            const titleInp = document.getElementById("customPropBannerTitle");
+            const htmlInp = document.getElementById("customPropBannerHtml");
+
+            const icon = iconInp.value.trim() || "🩹";
+            const label = labelInp.value.trim();
+            const audioCue = audioInp.value.trim() || `Using a ${label}.`;
+            const bannerTitle = titleInp.value.trim() || label;
+            const bannerHtml = htmlInp.value.trim() || `Instructions for ${label} go here.`;
+
+            if (!label) return alert("Please provide a name for the prop.");
+            
+            const pid = label.toLowerCase().replace(/\s+/g, '_');
+            if (PROP_REGISTRY[pid]) return alert("This prop already exists.");
+
+            // Inject into memory
+            PROP_REGISTRY[pid] = { id: pid, label, icon, color: "#007aff", audioCue, bannerTitle, bannerHtml };
+            
+            if (!pose.props) pose.props = [];
+            pose.props.push(pid);
+            
+            // Reset fields and close accordion
+            [iconInp, labelInp, audioInp, titleInp, htmlInp].forEach(el => el.value = "");
+            document.getElementById("customPropAccordion").open = false;
+
+            openPropPicker(idx); // Recursive refresh to show the new item
+            builderRender();
+        };
+    }
+    overlay.style.display = "flex";
+}
 
 // 1. Trigger the Overlay (Delegated to builderUI.js)
 qS('.b-macro-swap').forEach(btn => {
@@ -581,20 +683,52 @@ function builderOpen(mode, seq) {
 
     builderState.isViewMode = (mode === "edit"); 
 
-    const catInput = $("builderCategory"); 
+    const catSelect = $("builderCategory"); 
+    const catCustom = $("builderCategoryCustom");
     const titleEl = $("builderTitle");
     const modeLabel = $("builderModeLabel");
-    const datalist = $("builderCategoryList");
     const displayCategory = document.getElementById("displayCategory");
 
-    if (catInput) {
-        catInput.oninput = () => { builderRender(); };
+    // 🌟 CATEGORY INITIALIZATION
+    if (catSelect) {
+        // Filter strictly for course categories (showing asana categories here was confusing)
+        const allCats = [...new Set((window.courses || []).map(c => c.category))].filter(Boolean).sort();
+
+        if (catSelect.tagName === "SELECT") {
+            catSelect.innerHTML = '<option value="">-- Select category --</option>' + 
+                allCats.map(c => `<option value="${c}">${c}</option>`).join('') +
+                '<option value="__NEW__" style="font-weight:bold; color:#007aff;">+ Create New Category...</option>';
+        } else {
+            // Handle Datalist lookup for the text input provided in the prompt
+            const datalist = document.getElementById("builderCategoryList");
+            if (datalist) {
+                datalist.innerHTML = allCats.map(c => `<option value="${c}">`).join("");
+            }
+        }
+
+        catSelect.onchange = () => {
+            if (catCustom) {
+                const isNew = catSelect.value === "__NEW__";
+                catCustom.style.display = isNew ? "block" : "none";
+                if (isNew) {
+                    catCustom.focus();
+                    // Give it a distinct "new" look if empty
+                    catCustom.placeholder = "Enter New Category (e.g. Course > Subcourse)";
+                }
+            }
+            builderRender();
+        };
     }
 
-    if (catInput && datalist) {
-        const existingCategories = [...new Set(window.courses.map(c => c.category).filter(Boolean))].sort();
-        datalist.innerHTML = existingCategories.map(cat => `<option value="${cat}">`).join("");
-        catInput.ondblclick = () => { catInput.value = ''; };
+    if (catCustom) {
+        catCustom.value = "";
+        catCustom.style.display = "none";
+        catCustom.oninput = () => builderRender();
+        // Style sync to make it clear this is an extension of the select
+        catCustom.style.borderTop = "none";
+        catCustom.style.borderTopLeftRadius = "0";
+        catCustom.style.borderTopRightRadius = "0";
+        if (catSelect) catSelect.style.marginBottom = "0";
     }
 
     builderState.editingSupabaseId = targetId;
@@ -635,14 +769,42 @@ function builderOpen(mode, seq) {
     if (mode === "new") {
        if (modeLabel) modeLabel.textContent = "New Sequence";
        if (titleEl) titleEl.value = "";
-       if (catInput) catInput.value = ""; 
+       if (catSelect) catSelect.value = "";
+       if (catCustom) catCustom.value = "";
+       builderState.currentSubCategoryId = null;
         builderState.currentPlaybackMode = null;
        if (displayCategory) displayCategory.style.display = "none";
     } else {
        if (!seq) return;
        if (modeLabel) modeLabel.textContent = "Sequence Review";
        if (titleEl) titleEl.value = seq.title || "";
-       if (catInput) catInput.value = seq.category || "";
+
+       if (catSelect) {
+           const isSelect = catSelect.tagName === "SELECT";
+           const exists = isSelect && catSelect.options 
+               ? Array.from(catSelect.options).some(opt => opt.value === seq.category) 
+               : !!seq.category;
+
+           if (exists && seq.category) {
+               catSelect.value = seq.category;
+               if (isSelect && catCustom) catCustom.style.display = "none";
+           } else if (seq.category) {
+               if (isSelect) {
+                   catSelect.value = "__NEW__";
+                   if (catCustom) {
+                       catCustom.style.display = "block";
+                       catCustom.value = seq.category;
+                   }
+               } else {
+                   catSelect.value = seq.category;
+               }
+           } else {
+               catSelect.value = "";
+               if (catCustom) catCustom.style.display = "none";
+           }
+       }
+
+       builderState.currentSubCategoryId = seq.subCategoryId || seq.sub_category_id || null;
        builderState.currentPlaybackMode = seq.playbackMode || (seq.isFlow ? "flow" : "standard");       
        const seqIsFlow = builderState.currentPlaybackMode === "flow";
        const libraryArray = Object.values(window.asanaLibrary || {});
@@ -709,11 +871,13 @@ function builderOpen(mode, seq) {
                  rawExtras = rawExtras.replace(tierMatch[0], '').trim();
              }
 
-             const bandageInNote = rawExtras.toLowerCase().includes(':bandage');
-             if (bandageInNote) {
-                 rawExtras = rawExtras.replace(/:bandage/gi, '').trim();
-             }
-             if (bandageInNote && !initialProps.includes('bandage')) initialProps.push('bandage');
+             Object.keys(PROP_REGISTRY).forEach(propName => {
+                 const tag = `:${propName}`;
+                 if (rawExtras.toLowerCase().includes(tag)) {
+                     rawExtras = rawExtras.replace(new RegExp(tag, 'gi'), '').trim();
+                     if (!initialProps.includes(propName)) initialProps.push(propName);
+                 }
+             });
     
              if (!variation && asana?.variations && extractedLabel) {
                  const sortedKeys = Object.keys(asana.variations).sort((a,b) => b.length - a.length);
@@ -779,12 +943,15 @@ function builderCompileSequenceText() {
             }
         }
 
-        // Check if the bandage prop is present in the note BEFORE scrubbing
-        const hasBandage = (p.note || '').toLowerCase().includes(':bandage') || p.props?.includes('bandage');
+        // Check if therapeutic props are present in the note BEFORE scrubbing
+        const activeProps = (p.props || []).filter(prop => ['bandage', 'block'].includes(prop));
+        if ((p.note || '').toLowerCase().includes(':bandage') && !activeProps.includes('bandage')) activeProps.push('bandage');
+        if ((p.note || '').toLowerCase().includes(':block') && !activeProps.includes('block')) activeProps.push('block');
 
         // Scrub old tags (Preserving the note text, removing brackets with Roman numerals)
         let cleanNote = (p.note || '').replace(/\[.*?\b([IVX]+)([a-z]?)\b.*?\]/ig, '')
                                       .replace(/:bandage/gi, '') // Remove existing bandage tag to re-insert cleanly
+                                      .replace(/:block/gi, '')
                                       .replace(/\btier:[SL]\b/gi, '')
                                       .replace(/\bside:[LR]\b/gi, '') 
                                       .replace(/\s+/g, ' ')
@@ -795,9 +962,9 @@ function builderCompileSequenceText() {
         // If just bandage: [:bandage]
         // If just variation: [I]
         let bracketContent = validatedVariation;
-        if (hasBandage) {
-            bracketContent = bracketContent ? `${bracketContent}:bandage` : `:bandage`;
-        }
+        activeProps.forEach(prop => {
+            bracketContent = bracketContent ? `${bracketContent}:${prop}` : `:${prop}`;
+        });
         
         const varPart = bracketContent ? `[${bracketContent}]` : `[]`;
         const tierTag = (p.holdTier && p.holdTier !== 'standard') ? ` tier:${p.holdTier === 'short' ? 'S' : 'L'}` : '';
@@ -838,7 +1005,9 @@ function builderCompileSequenceJSON() {
         if (p.side && !props.includes(`side:${p.side}`)) props.push(`side:${p.side}`);
         
         // Also check if the user manually typed a marker in the note field during this session
-        if (p.note && p.note.toLowerCase().includes(':bandage') && !props.includes('bandage')) props.push('bandage');
+        Object.keys(PROP_REGISTRY).forEach(prop => {
+            if (p.note && p.note.toLowerCase().includes(`:${prop}`) && !props.includes(prop)) props.push(prop);
+        });
         
         let stageId = null;
         if (p.variation) {
@@ -855,16 +1024,21 @@ function builderCompileSequenceJSON() {
             duration: Number(p.duration) || 0,
             tier: p.holdTier === 'short' ? 'S' : (p.holdTier === 'long' ? 'L' : null),
             props: props,
-            note: p.note ? p.note.replace(/:bandage/gi, '').replace(/\btier:[SL]\b/gi, '').trim() : ""
+            note: p.note ? (() => {
+                let n = p.note.replace(/\btier:[SL]\b/gi, '');
+                Object.keys(PROP_REGISTRY).forEach(pk => { n = n.replace(new RegExp(`:${pk}`, 'gi'), ''); });
+                return n.trim();
+            })() : ""
         };
     });
 }
 
 function builderGetTitle() { return ($("builderTitle")?.value || "").trim(); }
 function builderGetCategory() { 
-    const el = document.getElementById("builderCategory");
-    if (!el) return "";
-    return el.value.trim(); 
+    const sel = document.getElementById("builderCategory");
+    const custom = document.getElementById("builderCategoryCustom");
+    if (sel && sel.value === "__NEW__") return (custom?.value || "").trim();
+    return (sel?.value || "").trim(); 
 }
 
 async function builderSave() {
@@ -874,8 +1048,8 @@ async function builderSave() {
     
     if (!title) return alert("Please enter a title.");
 
-    const originalSeq = window.courses?.find(c => String(c.id) === String(builderState.editingSupabaseId));
-    
+    const originalSeq = window.courses?.find(c => String(c.id || c.supabaseId) === String(builderState.editingSupabaseId));
+
     if (originalSeq && originalSeq.category !== categoryString) {
         const confirmMove = confirm(`Moving sequence from "${originalSeq.category || 'Uncategorized'}" to "${categoryString}". \n\nContinue?`);
         if (!confirmMove) return;
@@ -888,7 +1062,7 @@ async function builderSave() {
 
         const payload = { 
             title, 
-            category: categoryString, 
+            category: categoryString, // 🌟 Pass string to persistence.js to resolve ID automatically
             sequence_json: sequenceJson,
             last_edited: new Date().toISOString(), 
             user_id: window.currentUserId 
@@ -902,6 +1076,11 @@ async function builderSave() {
 
         await window.loadCourses(); 
         
+        // 🛡️ Ensure the new course is visible by resetting the filter
+        const filterEl = document.getElementById("categoryFilter");
+        if (filterEl) filterEl.value = "ALL";
+        if (typeof window.renderCourseUI === "function") window.renderCourseUI();
+
         const sel = document.getElementById("sequenceSelect");
         if (sel) {
             const newIdx = window.courses.findIndex(c => String(c.id) === String(savedId));

@@ -30,8 +30,10 @@ window.updateNextBtnText = function updateNextBtnText() {
         ? window.activePlaybackList
         : (window.currentSequence?.poses || []);
         
-    const isLast = poses.length > 0 && window.currentIndex >= poses.length - 1;
-    nextBtn.textContent = isLast ? 'Complete ▶' : 'Next ▶';
+    // ARCHITECT FIX: Only show 'Complete' if it's the last pose AND no second side is pending.
+    const isLastIndex = poses.length > 0 && window.currentIndex >= poses.length - 1;
+    const isFinalStep = isLastIndex && !window.needsSecondSide;
+    nextBtn.textContent = isFinalStep ? 'Complete ▶' : 'Next ▶';
 };
 
 // ── 1. Sequence Selection & Dynamic Buttons ──────────────────────────────────

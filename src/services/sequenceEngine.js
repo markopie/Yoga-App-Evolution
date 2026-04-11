@@ -212,8 +212,12 @@ export function getExpandedPoses(sequence, ctx = {}) {
                 for (const [vk, vd] of Object.entries(asana.variations)) {
                     const vtitle = (vd.title || vd.Title || "").toLowerCase().trim();
                     if (vk.toLowerCase() === cleanNk || vtitle.includes(cleanNk)) {
-                        if (vd.preparatory_pose_id) prep  = vd.preparatory_pose_id;
-                        if (vd.recovery_pose_id)    recov = vd.recovery_pose_id;
+                    // 🌟 ARCHITECT FIX: The matched variation (Stage) is the authority.
+                    // We assign the IDs directly. If the Stage record has a null/blank 
+                    // value, it effectively "cancels" the base asana's injection 
+                    // defaults, which is the expected behavior for specific variations.
+                    prep  = vd.preparatory_pose_id;
+                    recov = vd.recovery_pose_id;
                         break;
                     }
                 }

@@ -84,7 +84,7 @@ window.playbackEngine.onStart = () => {
                         const isSecondSide = side === "left" && !!(asana.requiresSides || asana.requires_sides);
                         
                         window.playbackEngine.suspend(); 
-                        window.playAsanaAudio(asana, currentPose[4] || "", false, side, window.currentVariationKey || null, isSecondSide)
+                        window.playAsanaAudio(asana, currentPose[4] || "", false, side, window.currentVariationKey || null, isSecondSide, meta.props || [])
                             .then(() => {
                                 if (window.currentIndex === idx && window.playbackEngine.running) {
                                     window.playbackEngine.resume(); 
