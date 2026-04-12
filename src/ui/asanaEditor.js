@@ -271,8 +271,17 @@ window.openAsanaEditor = async function (id) {
         $("asanaEditorTitle").textContent = `Edit Asana: ${id}`;
         const a = lib[id] || {};
 
+        // 🗑️ UI Cleanup: Remove legacy "(Audio L/R)" label text if present
+        const sidesLabel = $("editAsanaRequiresSides")?.parentElement;
+        if (sidesLabel && sidesLabel.tagName === "LABEL") {
+            const rawText = sidesLabel.innerHTML;
+            if (rawText.includes("(Audio L/R)")) {
+                sidesLabel.innerHTML = rawText.replace("(Audio L/R)", "").trim();
+            }
+        }
+
         $("editAsanaId").value       = a.id || a.asanaNo || id;
-        $("editAsanaName").value     = a.name || "";
+        $("editAsanaName").value     = a.devanagari || "";
         $("editAsanaIAST").value     = a.iast || a.IAST || "";
         $("editAsanaEnglish").value  = a.english || a.english_name || "";
         // Pre-select category in the select element
@@ -313,7 +322,8 @@ window.openAsanaEditor = async function (id) {
         $("editAsanaNote").value      = a.note || a.Note || "";
         $("editAsanaDescription").value = a.description || a.Description || "";
         $("editAsanaTechnique").value = a.technique || a.Technique || "";
-        $("editAsanaRequiresSides").checked = !!(a.requiresSides || a.Requires_Sides);
+        // 🌟 NATIVE SCHEMA: Strictly use requires_sides boolean from Supabase
+        $("editAsanaRequiresSides").checked = !!a.requires_sides;
 
         if (a.variations) {
             Object.entries(a.variations).forEach(([sKey, sData]) => {
@@ -467,6 +477,9 @@ function wireEditorSave() {
             return;
         }
 
+        const iastValue = $("editAsanaIAST").value.trim();
+        const normalizedName = iastValue.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
         const lib = window.asanaLibrary || {};
         const baseAsana = lib[id] || {};
         const existingAsanaFlow = parseHoldTimes(baseAsana.hold || '').flow;
@@ -480,10 +493,14 @@ function wireEditorSave() {
         // 🌟 CLEAN PAYLOAD: Only columns that actually exist in the 'asanas' table
         const asanaData = {
             id,
-            name:          $("editAsanaName").value.trim(),
-            iast:          $("editAsanaIAST").value.trim(),
+            name:          normalizedName,
+            devanagari:    $("editAsanaName").value.trim(), // Map Sanskrit box to both name & script columns
+            iast:          iastValue,
             english_name:  $("editAsanaEnglish").value.trim(),
+            description:   $("editAsanaDescription").value.trim(),
             technique:     $("editAsanaTechnique").value.trim(),
+            note:          $("editAsanaNote").value.trim(),
+            intensity:     $("editAsanaIntensity").value.trim(),
             hold:          asanaHoldStr,
             plate_numbers: $("editAsanaPlates").value.trim(),
             requires_sides: $("editAsanaRequiresSides").checked,
@@ -574,6 +591,7 @@ function wireEditorSave() {
                     ...asanaData,
                     category: finalCategoryText, // Reconstruct for UI cache
                     english:  asanaData.english_name,
+                    requires_sides: asanaData.requires_sides, // Ensure player logic sees the update
                     variations: localVariations // 🌟 REPLACE instead of MERGE to ensure list synchronization
                 };
                 window.asanaLibrary[id] = updatedAsana;

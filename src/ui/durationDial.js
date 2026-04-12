@@ -121,7 +121,7 @@ export function applyDurationDial() {
         const tierMatch = noteStr.match(/\btier:(S|L|STD)\b/i);
         const tier = tierMatch ? tierMatch[1].toUpperCase() : null;
 
-        const needsSides = asana && (asana.requiresSides === true || asana.requires_sides === true || asana.requiresSides === "true" || asana.requires_sides === "true");
+        const needsSides = asana && (asana.requires_sides === true || asana.requires_sides === "true");
         
         let targetForHold = asana;
         let variation = cloned[3] || "";

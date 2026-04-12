@@ -62,7 +62,7 @@ function prevPose() {
         const meta = prevPoseData[7] || {};
 
         // Only treat as bilateral if it's not a flow segment and has no explicit side lock
-        const isBilateralContext = asana && (asana.requiresSides || asana.requires_sides) && !meta.explicitSide && !meta.flowSegment;
+        const isBilateralContext = asana && asana.requires_sides && !meta.explicitSide && !meta.flowSegment;
 
         if (isBilateralContext) {
             // Moving back from Pose N (Right) to Pose N-1 (Left)
@@ -157,7 +157,7 @@ function setPose(idx, keepSamePose = false) {
         }
     }
 
-    if (asana && (asana.requiresSides || asana.requires_sides)) {
+    if (asana && asana.requires_sides) {
         if (!keepSamePose) {
             if (explicitSide === 'L' || explicitSide === 'R') {
                 // Strict override from Flow Builder: Lock the side, kill the bilateral loop.
@@ -359,7 +359,7 @@ function setPose(idx, keepSamePose = false) {
         if (p) finalTitle += ` <span style="color:${p.color}; margin-left:6px;" title="${p.label}">${p.icon || '🩹'}</span>`;
     });
 
-    if (asana && (asana.requiresSides || asana.requires_sides)) {
+    if (asana && asana.requires_sides) {
         let sideMarker = "";
         if (explicitSide === "L" || explicitSide === "R") {
             sideMarker = explicitSide; 
@@ -514,7 +514,7 @@ function setPose(idx, keepSamePose = false) {
     window.currentVariationKey = matchedVariationKey;
     window.currentPropModifier = activeProps; // 🌟 SYNC: Ensure audio engine sees the props
     if (window.playbackEngine && window.playbackEngine.running && asana) {
-        const isSecondSide = window.getCurrentSide() === "left" && !!(asana.requiresSides || asana.requires_sides);
+        const isSecondSide = window.getCurrentSide() === "left" && !!asana.requires_sides;
         window.playAsanaAudio(asana, baseOverrideName, false, window.getCurrentSide(), matchedVariationKey, isSecondSide, activeProps);
     }
 
