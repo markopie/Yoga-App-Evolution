@@ -195,6 +195,10 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
     `;
 
     div.querySelector(".remove-stage-btn").onclick = () => {
+        const dbId = div.dataset.dbId;
+        if (dbId && dbId !== "undefined") {
+            window._asanaEditorDeletedStageIds.push(parseInt(dbId));
+        }
         div.remove();
         window.refreshStageIndices?.();
     };
@@ -214,6 +218,7 @@ window.openAsanaEditor = async function (id) {
         return alert("Editor HTML missing");
     }
     bd.style.display = "flex";
+    window._asanaEditorDeletedStageIds = [];
 
     // Populate Category Select dynamically
     const catSel = $("editAsanaCategory");
@@ -503,6 +508,15 @@ function wireEditorSave() {
                 
             if (asanaErr) throw new Error(`Asana Save Error: ${asanaErr.message}`);
 
+            // 🗑️ HANDLE STAGE DELETIONS
+            if (window._asanaEditorDeletedStageIds && window._asanaEditorDeletedStageIds.length > 0) {
+                const { error: delErr } = await supabase
+                    .from("stages")
+                    .delete()
+                    .in("id", window._asanaEditorDeletedStageIds);
+                if (delErr) console.warn("Stage Deletion Error:", delErr.message);
+            }
+
             // Process variation/stage rows
             const stageDivs = Array.from($("stagesContainer").querySelectorAll(".stage-row"));
             const localVariations = {};
@@ -554,12 +568,13 @@ function wireEditorSave() {
 
             // Update in-memory library
             if (window.asanaLibrary) {
+                const existing = window.asanaLibrary[id] || {};
                 const updatedAsana = {
-                    ...window.asanaLibrary[id],
+                    ...existing,
                     ...asanaData,
                     category: finalCategoryText, // Reconstruct for UI cache
                     english:  asanaData.english_name,
-                    variations: { ...(window.asanaLibrary[id]?.variations || {}), ...localVariations }
+                    variations: localVariations // 🌟 REPLACE instead of MERGE to ensure list synchronization
                 };
                 window.asanaLibrary[id] = updatedAsana;
                 if (window.asanaIndex) window.asanaIndex[id] = updatedAsana;
@@ -572,9 +587,12 @@ function wireEditorSave() {
                 saveBtn.textContent = "Save Asana";
 
                 // 🔄 AUTO-REFRESH UI COMPONENTS
-                if (window.showAsanaDetail) window.showAsanaDetail(window.asanaLibrary[id]);
-                if (window.populateBrowseCategoryDropdown) window.populateBrowseCategoryDropdown();
+                const freshAsana = window.asanaLibrary[id];
+                
+                // Trigger filter re-calculation first so the list reflects changes immediately
                 if (window.applyBrowseFilters) window.applyBrowseFilters();
+                if (window.showAsanaDetail) window.showAsanaDetail(freshAsana); 
+                if (window.populateBrowseCategoryDropdown) window.populateBrowseCategoryDropdown();
                 if (window.renderSequenceDropdown) window.renderSequenceDropdown();
                 
                 // Refresh player if the current pose asana was edited
