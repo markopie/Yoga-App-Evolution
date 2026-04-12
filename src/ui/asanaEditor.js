@@ -190,17 +190,6 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
         </div>
         <div>
            <label class="muted" style="font-size:0.75rem;">Technique</label>
-           <div style="margin-bottom:4px;">
-             <select class="stage-prefix-tpl" style="font-size:0.78rem; padding:3px 6px; border:1px solid #ddd; border-radius:4px; background:#f9f9f9; color:#555;">
-               <option value="">— prepend technique prefix —</option>
-               <option value="Back against the wall: ">Back against the wall</option>
-               <option value="Bent legs throughout: ">Bent legs throughout</option>
-               <option value="With chair support: ">With chair support</option>
-               <option value="Using a bolster / prop: ">Using a bolster / prop</option>
-               <option value="Against the wall (side): ">Against the wall (side)</option>
-               <option value="Supported inverted: ">Supported inverted</option>
-             </select>
-           </div>
            <textarea class="stage-tech" style="height:60px; padding:6px; width:100%; font-family:inherit; border:1px solid #ccc; border-radius:4px;">${existingTech}</textarea>
         </div>
     `;
@@ -209,19 +198,6 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
         div.remove();
         window.refreshStageIndices?.();
     };
-
-    // Prefix template picker: prepend chosen text then reset select
-    const prefixSel = div.querySelector(".stage-prefix-tpl");
-    const techArea  = div.querySelector(".stage-tech");
-    if (prefixSel && techArea) {
-        prefixSel.onchange = () => {
-            const chosen = prefixSel.value;
-            if (!chosen) return;
-            techArea.value = chosen + techArea.value;
-            techArea.focus();
-            prefixSel.value = ""; // reset so it can be reused
-        };
-    }
 
     container.appendChild(div);
     window.refreshStageIndices?.();
@@ -463,14 +439,8 @@ function wireEditorSave() {
         saveBtn.disabled = true;
         saveBtn.textContent = "Saving...";
 
-        let userEmail = null;
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            userEmail = user?.email;
-        } catch (e) {
-            console.warn("User fetch failed:", e.message);
-        }
-
+        // Use the globally cached email from wiring.js to avoid unnecessary token refresh calls
+        const userEmail = window.currentUserEmail;
         const isAdmin = userEmail === 'mark.opie@gmail.com';
 
         // 🌟 NEW RELATIONAL LOGIC: Resolve Category ID
@@ -584,13 +554,15 @@ function wireEditorSave() {
 
             // Update in-memory library
             if (window.asanaLibrary) {
-                window.asanaLibrary[id] = {
+                const updatedAsana = {
                     ...window.asanaLibrary[id],
                     ...asanaData,
                     category: finalCategoryText, // Reconstruct for UI cache
                     english:  asanaData.english_name,
                     variations: { ...(window.asanaLibrary[id]?.variations || {}), ...localVariations }
                 };
+                window.asanaLibrary[id] = updatedAsana;
+                if (window.asanaIndex) window.asanaIndex[id] = updatedAsana;
             }
 
             $("asanaEditorStatus").textContent = "✓ Saved Successfully!";
@@ -598,7 +570,17 @@ function wireEditorSave() {
                 $("asanaEditorBackdrop").style.display = "none";
                 saveBtn.disabled = false;
                 saveBtn.textContent = "Save Asana";
+
+                // 🔄 AUTO-REFRESH UI COMPONENTS
                 if (window.showAsanaDetail) window.showAsanaDetail(window.asanaLibrary[id]);
+                if (window.populateBrowseCategoryDropdown) window.populateBrowseCategoryDropdown();
+                if (window.applyBrowseFilters) window.applyBrowseFilters();
+                if (window.renderSequenceDropdown) window.renderSequenceDropdown();
+                
+                // Refresh player if the current pose asana was edited
+                if (window.setPose && window.currentSequence && window.currentIndex !== undefined) {
+                    window.setPose(window.currentIndex, true);
+                }
             }, 1000);
             
         } catch (e) {
