@@ -199,7 +199,7 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
     // 1. Header Logic
     const titleEl = document.createElement("h2");
     titleEl.style.margin = "0 0 10px 0";
-    titleEl.textContent = typeof displayName === "function" ? displayName(asana) : (asana.english || asana.name || asana.iast || "(no name)");
+    titleEl.textContent = typeof displayName === "function" ? displayName(asana) : (asana.english || asana.devanagari || asana.iast || "(no name)");
     d.appendChild(titleEl);
 
     const editBtn = document.createElement("button");
@@ -515,7 +515,7 @@ function renderBrowseList(items) {
        // ── Jobsian Typographic Hierarchy Implementation ──
        const primaryName = asma._sourceType === 'stage' && asma._stageTitle 
            ? asma._stageTitle 
-           : (asma.english || asma.name || "(no name)");
+           : (asma.english || asma.devanagari || "(no name)");
            
        title.innerHTML = `<span style="font-weight:700; color:#1d1d1f;">${primaryName}</span>`;
 

@@ -101,7 +101,7 @@ function builderRender() {
             totalSec += getEffectiveTime(idStr, activeTime);
         }
 
-        const devanagari = asana?.devanagari || asana?.name || ""; 
+        const devanagari = asana?.devanagari || ""; 
         const iast = asana?.iast || "";
 
         const viewModePropsHTML = (pose.props || []).length > 0 ? `
@@ -473,7 +473,8 @@ function openPropPicker(idx) {
         const normId = typeof normalizePlate === "function" ? normalizePlate(val) : val;
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
         if (asanaMatch) {
-            builderState.poses[i].name = asanaMatch.name;
+            // Use English or Devanagari for the display name in the builder state
+            builderState.poses[i].name = asanaMatch.english || asanaMatch.devanagari || asanaMatch.name;
             if (asanaMatch && window.getHoldTimes) {
                 const ah = window.getHoldTimes(asanaMatch, builderState.poses[i].variation || null);
                 const nextDuration = isFlow ? (ah.flow || ah.standard || 5) : (ah.standard || 30);
@@ -1350,7 +1351,7 @@ window.selectRowSearch = (id) => {
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
         
         if (asanaMatch) {
-            targetPose.name = asanaMatch.name;
+            targetPose.name = asanaMatch.english || asanaMatch.devanagari || asanaMatch.name;
             if (window.getHoldTimes) {
                 const holdTimes = window.getHoldTimes(asanaMatch);
                 const nextDuration = isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30);

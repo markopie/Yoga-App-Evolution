@@ -3,8 +3,8 @@ import { isFlowSequence } from '../store/builderState.js';
 
 export function builderPoseName(asana, poseName, showSanskrit) {
     if (!asana) return poseName || 'Unknown';
-    if (showSanskrit) return asana.name || asana.iast || asana.english || poseName || 'Unknown';
-    return asana.english || asana.name || poseName || 'Unknown';
+    if (showSanskrit) return asana.devanagari || asana.iast || asana.english || poseName || 'Unknown';
+    return asana.english || asana.devanagari || poseName || 'Unknown';
 }
 
 
@@ -126,7 +126,7 @@ export const resolvePoseInfo = (rawId, lib) => {
     if (!target) return null;
     const targetHold = window.getHoldTimes ? window.getHoldTimes(target) : {};
     let dur = targetHold.standard ?? target.standard_seconds ?? 30;
-    let name = target.english || target.name || `ID ${numId}`;
+    let name = target.english || target.devanagari || `ID ${numId}`;
     if (varSuffix && target.variations) {
         const vd = target.variations[varSuffix];
         if (vd) {
