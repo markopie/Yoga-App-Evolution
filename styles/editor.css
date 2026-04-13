@@ -259,6 +259,49 @@
     pointer-events: none !important;
 }
 
+/* --- 3a. Builder Header & Notes Layout --- */
+#editModeHeader, #viewModeHeader {
+    display: flex;
+    flex-wrap: wrap; /* Ensures notes drop to new line and take full width */
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1 1 0%;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#builderNotes {
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid #d2d2d7;
+    font-size: 0.9rem;
+    height: 90px;
+    resize: vertical;
+    background: #fff;
+    font-family: inherit;
+    box-sizing: border-box;
+    line-height: 1.4;
+}
+
+.btn-builder-mode-edit {
+    background: #f5f5f7;
+    color: #1d1d1f;
+    border: 1px solid #d2d2d7;
+    border-radius: 8px;
+}
+
+.btn-builder-mode-view {
+    background: #007aff;
+    color: #fff;
+    border: 1px solid #007aff;
+    border-radius: 8px;
+}
+
 
 /* --- 4. Editor Search & Toolbar --- */
 #builderSearch { width: 100%; box-sizing: border-box; border: 1px solid var(--color-border); border-radius: 8px; font-size: 16px; line-height: 1.4; transition: height 0.2s ease; }
@@ -345,7 +388,7 @@
 @media (max-width: 700px) {
     #editCourseBackdrop .modal { width: 100%; height: 100vh; max-width: 100%; margin: 0; border-radius: 0; display: flex; flex-direction: column; }
     #editCourseBackdrop .modal-body { flex: 1 !important; overflow-x: auto; overflow-y: auto; max-height: calc(100dvh - 190px) !important; -webkit-overflow-scrolling: touch; }
-    #editCourseBackdrop .modal-header { flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 12px; }
+    #editCourseBackdrop .modal-header { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px; }
     #editCourseBackdrop .modal-header > div, #builderTitle { width: 100%; }
     #editCourseBackdrop .modal-footer { flex-direction: column; gap: 8px; padding: 10px 12px; }
     #editCourseBackdrop .modal-footer > div { width: 100%; display: flex; gap: 6px; flex-wrap: wrap; }

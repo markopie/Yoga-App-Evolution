@@ -36,19 +36,6 @@ window.updateNextBtnText = function updateNextBtnText() {
     nextBtn.textContent = isFinalStep ? 'Complete ▶' : 'Next ▶';
 };
 
-/** Global handlers for Briefing Phase interactions */
-window.handleStart = () => {
-    window.isBriefingActive = false;
-    updateAliasUIFeedback();
-    if (typeof window.startTimer === 'function') window.startTimer();
-};
-
-window.handleNext = () => {
-    window.isBriefingActive = false;
-    updateAliasUIFeedback();
-    // No timer start, just shows the first pose
-};
-
 /** Updates UI notifications for Aliases and Remedial Notes */
 function updateAliasUIFeedback() {
     let notifyArea = document.getElementById("aliasNotificationArea");
@@ -61,13 +48,23 @@ function updateAliasUIFeedback() {
     const collageWrap = document.getElementById("collageWrap");
     const playerHeader = document.querySelector(".player-header");
 
-    // 2. Remedial Callout: Prominent safety guidance (Prioritizes Alias notes over Master)
-    if (window.remedialNote) {
+    const fallbackNotes = 'Welcome to your practice. Work within your limits. Ensure props are ready and the space is clear. Press Start to begin.';
+    
+    // Correctly reference the imported playbackEngine if window.playbackEngine isn't set yet
+    const engine = window.playbackEngine || playbackEngine;
+    const isSessionActive = (engine && engine.activePracticeSeconds > 5) || window.currentIndex > 0 || (typeof window.getCompletionTracker === 'function' && Object.values(window.getCompletionTracker()).some(v => v > 0));
+    const isSwitching = window.pendingSequence && isSessionActive;
+
+    // 2. Universal Briefing & Remedial Callout (Now visible by default for all sequences)
+    if (window.isBriefingActive) {
         if (!remedialArea) {
             const stage = document.createElement("div");
             stage.className = "briefing-stage";
+            stage.style.cssText = "display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:10001; background:rgba(255,255,255,0.98); align-items:center; justify-content:center; padding: 20px; box-sizing: border-box; overflow-y: auto;";
             remedialArea = document.createElement("div");
             remedialArea.id = "remedialNoteArea";
+            // Standardize centering and width
+            remedialArea.style.cssText = "width:100%; max-width:800px; margin:auto; box-sizing:border-box; flex-shrink: 0;";
             const playerTop = document.querySelector(".player-header") || document.getElementById("poseName")?.parentNode;
             if (playerTop) {
                 stage.appendChild(remedialArea);
@@ -75,17 +72,31 @@ function updateAliasUIFeedback() {
             }
         }
 
+        const displaySeq = window.pendingSequence || window.currentSequence;
+        const activeNotes = (displaySeq?.condition_notes || window.remedialNote || '').trim() || fallbackNotes;
+
+        let breadcrumbHtml = "";
+        if (isSwitching) {
+            breadcrumbHtml = `
+                <div style="background:#f2f2f7; padding:8px 16px; border-radius:12px; margin-bottom:1.5rem; font-size:0.85rem; color:#6e6e73; font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; border:1px solid #d2d2d7;">
+                    <span>⏸ Session Paused: ${window.currentSequence?.title}</span>
+                    <span style="opacity:0.3;">•</span>
+                    <span>Step ${window.currentIndex + 1}</span>
+                </div>`;
+        }
+
         const stage = remedialArea.parentNode;
 
-        if (window.isBriefingActive) {
+        if (true) {
             // 1. Briefing "Cover" Mode Card
             if (stage) stage.style.display = "flex";
             
-            const sequenceName = window.currentSequence?.title || "Sequence";
+            const sequenceName = (window.pendingSequence || window.currentSequence)?.title || "Sequence";
             const masterSub = window.isAliasView ? `<div style="font-size: 0.9rem; color: #86868b; margin-top: 4px; font-weight: 500;">Protocol: ${window.masterCourseTitle}</div>` : "";
 
             remedialArea.innerHTML = `
-                <div class="briefing-card-content">
+                <div class="briefing-card-content" style="width: 100%; box-sizing: border-box;">
+                    ${breadcrumbHtml}
                     <div style="margin-bottom: 2rem;">
                         <h1 style="margin: 0; font-size: 1.8rem; font-weight: 700; color: #1d1d1f;">${sequenceName}</h1>
                         ${masterSub}
@@ -94,7 +105,7 @@ function updateAliasUIFeedback() {
                         <span style="font-size: 1.4rem;">⚕️</span> Safety Briefing
                     </div>
                     <div style="width: 100%;">
-                        <p style="margin: 0; line-height: 1.7; color: #1d1d1f; font-weight: 500; text-align: center;">${window.remedialNote}</p>
+                        <p style="margin: 0; line-height: 1.7; color: #1d1d1f; font-weight: 500; text-align: center;">${activeNotes}</p>
                     </div>
                     <div style="margin-top: 2rem; font-size: 0.9rem; color: #86868b; font-weight: 600; border-top: 1px solid #f2f2f7; padding-top: 1.5rem; width: 100%;">
                         Press <span class='briefing-link' onclick='handleStart()'>Start</span> to begin, or the <span class='briefing-link' onclick='handleNext()'>Next</span> button to browse sequence.
@@ -113,25 +124,21 @@ function updateAliasUIFeedback() {
             if (metaArea) metaArea.style.display = 'none';
             
             remedialArea.style.display = "block";
-        } else {
-            // 2. Dismiss Briefing and show Asana
-            if (stage) stage.style.display = "none";
-            remedialArea.style.display = "none";
-            if (poseName) poseName.style.display = '';
-            if (focusPoseName) focusPoseName.style.display = '';
-            if (contentDisplay) contentDisplay.style.display = 'block';
-            else {
-                if (collageWrap) collageWrap.style.display = 'block';
-                if (playerHeader) playerHeader.style.display = 'block';
-            }
-            if (metaArea) metaArea.style.display = '';
         }
-    } else if (remedialArea) {
-        remedialArea.style.display = "none";
-        if (remedialArea.parentNode) remedialArea.parentNode.style.display = "none";
+    } else {
+        // 2. Dismiss Briefing and show Asana
+        if (remedialArea) remedialArea.style.display = "none";
+        if (remedialArea && remedialArea.parentNode) remedialArea.parentNode.style.display = "none";
         if (poseName) poseName.style.display = '';
+        if (focusPoseName) focusPoseName.style.display = '';
         const contentDisplay = document.getElementById("pose-content-display");
-        if (contentDisplay) contentDisplay.style.display = 'block';
+        if (contentDisplay) {
+            contentDisplay.style.display = 'block';
+        } else {
+            if (collageWrap) collageWrap.style.display = 'block';
+            if (playerHeader) playerHeader.style.display = 'block';
+        }
+        if (metaArea) metaArea.style.display = '';
     }
 
     // 1. Alias Notice (Only show if NOT in briefing mode)
@@ -149,6 +156,38 @@ function updateAliasUIFeedback() {
         notifyArea.style.display = "none";
     }
 }
+
+window.applySequenceInternal = (seq) => {
+    if (typeof window.getExpandedPoses === "function") {
+        window.activePlaybackList = window.getExpandedPoses(seq);
+    } else {
+        window.activePlaybackList = seq.poses ? [...seq.poses] : [];
+    } 
+
+    if (typeof window.applyDurationDial === 'function') window.applyDurationDial();
+    if (typeof window.updateDialUI === 'function') window.updateDialUI();
+    if (typeof window.updateTotalAndLastUI === 'function') window.updateTotalAndLastUI();
+    if (typeof window.updateActiveCategoryTitle === 'function') window.updateActiveCategoryTitle();
+
+    window.currentIndex = 0; 
+    if (typeof window.setPose === "function") window.setPose(0);
+};
+
+window.applyPendingSequence = () => {
+    if (window.pendingSequence) {
+        window.currentSequence = window.pendingSequence;
+        window.applySequenceInternal(window.currentSequence);
+        window.pendingSequence = null;
+    }
+};
+
+window.syncSequenceSelector = () => {
+    const sel = $("sequenceSelect");
+    if (sel && window.currentSequence) {
+        const idx = (window.courses || []).findIndex(c => c.title === window.currentSequence.title);
+        if (idx !== -1) sel.value = String(idx);
+    }
+};
 
 /** Internal helper to reset to briefing if applicable */
 function checkAndRestoreBriefing() {
@@ -229,25 +268,22 @@ function setupSequenceSelector() {
             window.remedialNote = rawSequence.condition_notes || "";
         }
 
-        window.isBriefingActive = !!window.remedialNote;
-        window.currentSequence = resolvedSequence; 
+        const engine = window.playbackEngine || playbackEngine;
+        const isSessionActive = (engine && engine.activePracticeSeconds > 5) || window.currentIndex > 0 || (typeof window.getCompletionTracker === 'function' && Object.values(window.getCompletionTracker()).some(v => v > 0));
+        
+        // Universal Briefing: Always enabled on load
+        window.isBriefingActive = true;
 
-        // Reset active-practice timer so duration only counts this session
-        playbackEngine.resetPracticeTimer();
-
-        if (typeof window.getExpandedPoses === "function") {
-            window.activePlaybackList = window.getExpandedPoses(rawSequence);
+        if (isSessionActive && window.currentSequence && window.currentSequence.title !== resolvedSequence.title) {
+            // Keep current session in background, treat this as a "preview" briefing
+            window.pendingSequence = resolvedSequence;
         } else {
-            window.activePlaybackList = rawSequence.poses ? [...rawSequence.poses] : [];
-        } 
-
-        if (typeof window.applyDurationDial === 'function') window.applyDurationDial();
-        if (typeof window.updateDialUI === 'function') window.updateDialUI();
-        if (typeof window.updateTotalAndLastUI === 'function') window.updateTotalAndLastUI();
-        if (typeof window.updateActiveCategoryTitle === 'function') window.updateActiveCategoryTitle();
-
-        window.currentIndex = 0; 
-        if (typeof window.setPose === "function") window.setPose(0);
+            window.pendingSequence = null;
+            window.currentSequence = resolvedSequence;
+            window.remedialNote = resolvedSequence.condition_notes || "";
+            if (engine) engine.resetPracticeTimer();
+            window.applySequenceInternal(resolvedSequence);
+        }
         updateAliasUIFeedback();
         window.updateNextBtnText();
         
@@ -673,6 +709,10 @@ if (mainResetBtn) {
 
 // ── Global Bootstrapper ──────────────────────────────────────────────────────
 function initWiring() {
+    // Ensure engine and UI functions are globally accessible across modules
+    window.playbackEngine = playbackEngine;
+    window.updateAliasUIFeedback = updateAliasUIFeedback;
+
     setupAuthListeners();
     setupSequenceSelector();
     setupPlaybackControls();

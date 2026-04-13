@@ -7,6 +7,91 @@
 //     instances and Supabase auth breakage.
 // ────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Universal Conflict Modal for session switching.
+ */
+window.showConflictModal = function(onConfirm, onResume) {
+    let modal = document.getElementById("sessionConflictModal");
+    if (!modal) {
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="sessionConflictModal" class="modal-backdrop" style="display:none; z-index:10002; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); position:fixed; top:0; left:0; width:100%; height:100%;">
+                <div class="modal" style="max-width:400px; padding:24px; text-align:center; border-radius:24px; background:#fff; box-shadow:0 20px 40px rgba(0,0,0,0.2); pointer-events:auto;">
+                    <div style="font-size:2.5rem; margin-bottom:12px;">⚠️</div>
+                    <h2 style="margin: 0 0 12px 0; font-size:1.4rem; font-weight:700; color:#1d1d1f;">Active Session in Progress</h2>
+                    <p style="color:#6e6e73; line-height:1.6; margin-bottom:24px; font-size:0.95rem;">Starting this new sequence will end your current session and reset your progress. Do you wish to proceed? Or click to resume the current session at last pose.</p>
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        <button id="btnConfirmNewSession" style="width:100%; background:#ff3b30; color:#fff; border:none; padding:14px; border-radius:14px; font-weight:600; cursor:pointer; transition: opacity 0.2s;">End Current & Start New</button>
+                        <button id="btnResumeOldSession" style="width:100%; background:#f5f5f7; color:#1d1d1f; border:1px solid #d2d2d7; padding:14px; border-radius:14px; font-weight:600; cursor:pointer;">Resume Current Session</button>
+                    </div>
+                </div>
+            </div>
+        `);
+        modal = document.getElementById("sessionConflictModal");
+    }
+    
+    modal.style.display = "flex";
+    
+    document.getElementById("btnConfirmNewSession").onclick = () => {
+        modal.style.display = "none";
+        onConfirm();
+    };
+    document.getElementById("btnResumeOldSession").onclick = () => {
+        modal.style.display = "none";
+        onResume();
+    };
+};
+
+window.handleStart = () => {
+    const proceed = () => {
+        window.isBriefingActive = false;
+        if (typeof window.updateAliasUIFeedback === 'function') window.updateAliasUIFeedback();
+        if (typeof window.startTimer === 'function') window.startTimer();
+    };
+
+    const isSessionActive = (window.playbackEngine && window.playbackEngine.activePracticeSeconds > 5) || window.currentIndex > 0 || (typeof window.getCompletionTracker === 'function' && Object.values(window.getCompletionTracker()).some(v => v > 0));
+
+    if (window.pendingSequence && isSessionActive) {
+        window.showConflictModal(() => {
+            window.applyPendingSequence();
+            proceed();
+        }, () => {
+            window.pendingSequence = null;
+            window.isBriefingActive = false;
+            if (typeof window.syncSequenceSelector === 'function') window.syncSequenceSelector();
+            if (typeof window.updateAliasUIFeedback === 'function') window.updateAliasUIFeedback();
+            if (typeof window.setPose === 'function') window.setPose(window.currentIndex, true);
+        });
+    } else {
+        if (window.pendingSequence) window.applyPendingSequence();
+        proceed();
+    }
+};
+
+window.handleNext = () => {
+    const proceed = () => {
+        window.isBriefingActive = false;
+        if (typeof window.updateAliasUIFeedback === 'function') window.updateAliasUIFeedback();
+    };
+
+    const isSessionActive = (window.playbackEngine && window.playbackEngine.activePracticeSeconds > 5) || window.currentIndex > 0 || (typeof window.getCompletionTracker === 'function' && Object.values(window.getCompletionTracker()).some(v => v > 0));
+
+    if (window.pendingSequence && isSessionActive) {
+        window.showConflictModal(() => {
+            window.applyPendingSequence();
+            proceed();
+        }, () => {
+            window.pendingSequence = null;
+            window.isBriefingActive = false;
+            if (typeof window.syncSequenceSelector === 'function') window.syncSequenceSelector();
+            if (typeof window.updateAliasUIFeedback === 'function') window.updateAliasUIFeedback();
+            if (typeof window.setPose === 'function') window.setPose(window.currentIndex, true);
+        });
+    } else {
+        if (window.pendingSequence) window.applyPendingSequence();
+        proceed();
+    }
+};
+
 function nextPose() {
     const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
                   ? window.activePlaybackList 

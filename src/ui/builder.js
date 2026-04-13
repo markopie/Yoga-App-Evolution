@@ -737,8 +737,8 @@ function builderOpen(mode, seq) {
         if (parent) {
             notesEl = document.createElement("textarea");
             notesEl.id = "builderNotes";
+            notesEl.className = "full-width-note hidden";
             notesEl.placeholder = "Add safety or remedial notes (e.g., medical guidance)...";
-            notesEl.style.cssText = "width:100%; margin: 12px 0; padding: 14px; border-radius: 12px; border: 1px solid #d2d2d7; font-size: 0.9rem; height: 90px; resize: vertical; display: none; background: #fff; font-family: inherit; box-sizing: border-box; line-height: 1.4;";
             parent.appendChild(notesEl);
         }
     }
@@ -747,7 +747,7 @@ function builderOpen(mode, seq) {
         if (vHeader) {
             displayNotes = document.createElement("div");
             displayNotes.id = "displayNotes";
-            displayNotes.style.cssText = "margin-top: 12px; padding: 16px; background: #fff3e0; color: #e65100; border-radius: 14px; border: 1px solid #ffb74d; font-size: 0.95rem; font-weight: 500; display: none; line-height: 1.4;";
+            displayNotes.className = "full-width-note hidden";
             vHeader.appendChild(displayNotes);
         }
     }

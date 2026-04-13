@@ -119,7 +119,7 @@ function ensureExportStyles() {
             position: absolute !important;
             left: -10000px !important;
             top: 0 !important;
-            width: 900px !important;
+            width: 800px !important; /* Stable width for capture */
             opacity: 1 !important;
             visibility: visible !important;
             display: block !important;
@@ -165,6 +165,8 @@ function ensureExportStyles() {
             height: auto !important; 
             padding: 0 20px 60px !important;
             flex: none !important; /* Remove flex-grow */
+            word-wrap: break-word !important;
+            white-space: normal !important;
         }
         
         /* Pleasant Header Styling for PDF */
@@ -247,6 +249,15 @@ function ensureExportStyles() {
             color: #6e6e73;
             font-weight: 500;
         }
+        
+        .export-safety-note {
+            word-wrap: break-word !important;
+            white-space: normal !important;
+        }
+
+        @media print {
+            .briefing-stage { padding: 20px !important; box-sizing: border-box !important; display: block !important; }
+        }
 
         @media (max-width: 640px) {
             .builder-export-root,
@@ -293,14 +304,6 @@ function createExportSnapshot(sourceElement) {
     if (displayTitle) {
         displayTitle.textContent = titleVal;
         displayTitle.style.display = 'block';
-    }
-
-    if (notesVal) {
-        const notesDiv = document.createElement('div');
-        notesDiv.className = 'export-safety-note';
-        notesDiv.style.cssText = "background:#fff3e0; color:#e65100; padding:12px; border-radius:8px; margin-bottom:20px; border:1px solid #ffb74d; font-size:10pt; line-height:1.4;";
-        notesDiv.innerHTML = `⚠️ <strong>Safety Note:</strong> ${escapeHtml(notesVal)}`;
-        if (displayCategory) displayCategory.insertAdjacentElement('afterend', notesDiv);
     }
 
     if (displayCategory && catVal) {
@@ -490,8 +493,7 @@ async function manualExportPdf(snapshot) {
                 scale: 2,
                 useCORS: true,
                 backgroundColor: '#ffffff',
-                logging: false,
-                width: 800 // Standardized width for table consistency
+                logging: false
             });
             if (!canvas || canvas.width === 0 || canvas.height === 0) return null;
             return canvas;
@@ -619,6 +621,7 @@ export function updateBuilderModeUI() {
     const saveBtn = document.getElementById('editCourseSaveBtn');
     const cancelBtn = document.getElementById('editCourseCancelBtn');
     const printBtn = document.getElementById('builderPrintBtn');
+    const notesRow = document.getElementById('modalNotesRow');
     const topCloseBtn = document.getElementById('editCourseCloseBtn');
 
     const viewHeader = document.getElementById('viewModeHeader');
@@ -640,7 +643,7 @@ export function updateBuilderModeUI() {
 
         if (inputCategory) inputCategory.readOnly = true;
         if (inputTitle) inputTitle.readOnly = true;
-        if (inputNotes) inputNotes.style.display = 'none'; // Hide editor in View Mode
+        if (inputNotes) inputNotes.classList.add('hidden'); // Hide editor in View Mode
 
         if (displayTitle && inputTitle) {
             displayTitle.textContent = inputTitle.value.trim() || 'Untitled Sequence';
@@ -648,16 +651,23 @@ export function updateBuilderModeUI() {
 
         if (displayNotes && inputNotes) {
             const val = inputNotes.value.trim();
+            const hasNotes = !!val;
+            
+            displayNotes.classList.toggle('hidden', !hasNotes);
+            if (notesRow) notesRow.classList.toggle('hidden', !hasNotes);
+
             if (val) {
-                displayNotes.style.display = 'block';
+                // Jobsian Hierarchy: Emphasize IAST terms (e.g., Trikonasana, Sirsasana II) 
+                // specifically to distinguish Sanskrit terminology from safety instructions.
+                const emphasizedVal = escapeHtml(val)
+                    .replace(/\b([A-Z][a-zāīūṛḷṅñṭḍṇśṣḥ]+( [IVX]+)?)\b/g, '<em>$1</em>');
+
                 // Jobbsian Review Style: Uses the same card layout as the player preamble
                 displayNotes.innerHTML = `
                     <div style="display:flex; align-items:center; gap:8px; color:#e65100; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">
-                        <span style="font-size:1.1rem;">⚕️</span> Safety Note
+                        <span style="font-size:1.1rem;">⚕️</span> <strong>Safety Note</strong>
                     </div>
-                    <div style="line-height:1.5;">${escapeHtml(val)}</div>`;
-            } else {
-                displayNotes.style.display = 'none';
+                    <div style="line-height:1.5;">${emphasizedVal}</div>`;
             }
         }
 
@@ -692,9 +702,7 @@ export function updateBuilderModeUI() {
 
         if (toggleBtn) {
             toggleBtn.innerHTML = '✏️ Edit';
-            toggleBtn.style.background = '#f5f5f7';
-            toggleBtn.style.color = '#1d1d1f';
-            toggleBtn.style.borderColor = '#d2d2d7';
+            toggleBtn.className = 'btn-builder-mode-edit';
         }
 
         if (printBtn) {
@@ -715,17 +723,16 @@ export function updateBuilderModeUI() {
 
         if (inputCategory) inputCategory.readOnly = false;
         if (inputTitle) inputTitle.readOnly = false;
-        if (inputNotes) inputNotes.style.display = 'block';
+        if (inputNotes) inputNotes.classList.remove('hidden');
+        if (notesRow) notesRow.classList.remove('hidden');
 
         if (viewHeader) viewHeader.style.display = 'none';
         if (editHeader) editHeader.style.display = 'flex';
-        if (displayNotes) displayNotes.style.display = 'none';
+        if (displayNotes) displayNotes.classList.add('hidden');
 
         if (toggleBtn) {
             toggleBtn.innerHTML = '👁️ View';
-            toggleBtn.style.background = '#007aff';
-            toggleBtn.style.color = '#fff';
-            toggleBtn.style.borderColor = '#007aff';
+            toggleBtn.className = 'btn-builder-mode-view';
         }
 
         const exportRoot = document.getElementById('builderPrintBtn');

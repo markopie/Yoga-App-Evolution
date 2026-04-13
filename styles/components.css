@@ -95,3 +95,45 @@ button.tiny {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 10px;
 }
+
+/* --- Modal Header Standard Layout (No Notes) --- */
+.modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+}
+
+.header-content-wrapper {
+    flex: 1;
+    min-width: 0;
+}
+
+/* --- Modal Header Layout Fixes --- */
+
+.modal-notes-row {
+    width: 100%;
+    padding: 0 20px 16px 20px;
+    display: block;
+    box-sizing: border-box;
+    background: var(--color-bg-surface);
+    border-bottom: 1px solid var(--color-border);
+}
+
+#modalNotesRow.hidden { display: none !important; }
+
+#displayNotes {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0;
+    display: block;
+    padding: 16px;
+    background: #fff3e0;
+    color: #e65100;
+    border-radius: 14px;
+    border: 1px solid #ffb74d;
+    font-size: 0.95rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
