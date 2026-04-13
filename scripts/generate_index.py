@@ -1,67 +1,80 @@
 import os
 import re
-import sys
-import json
-from datetime import datetime
-from dotenv import load_dotenv
 
-load_dotenv()
+def generate_function_index(source_dir, output_file):
+    print(f"Scanning '{source_dir}' for exports and window bindings...\n")
 
-try:
-    from workbench import supabase
-except Exception as e:
-    print(f"❌ Connection Error: {e}")
-    sys.exit(1)
-
-# Configuration
-OUTPUT_DIR = r"G:\My Drive\Personal\02_Education_Yoga\Yoga_Project_Files"
-ASANA_FILE = os.path.join(OUTPUT_DIR, "asana.md")
-STAGES_FILE = os.path.join(OUTPUT_DIR, "stages.md")
-
-def sync_table_to_markdown(table_name, select_query, file_path, title):
-    """Fetches data and creates a Markdown table with exact column headers."""
-    print(f"📡 Syncing {table_name}...")
-    try:
-        # Extract headers from the select query (handles spaces/commas)
-        headers = [h.strip() for h in select_query.split(',')]
-        
-        res = supabase.table(table_name).select(select_query).order('id').execute()
-        
-        if res.data:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(f"# {title}\n\n")
-                f.write(f"> Last Sync: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-                
-                # Generate Markdown Table Header
-                f.write("| " + " | ".join(headers) + " |\n")
-                f.write("| " + " | ".join(["---"] * len(headers)) + " |\n")
-                
-                # Generate Rows
-                for row in res.data:
-                    row_data = [str(row.get(h, "")) for h in headers]
-                    f.write("| " + " | ".join(row_data) + " |\n")
-            print(f"✅ Created {os.path.basename(file_path)}")
-    except Exception as e:
-        print(f"❌ Failed {table_name}: {e}")
-
-def run_sync():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    # Regex to catch: export function foo(), export const bar =, export class Baz
+    # Uses MULTILINE to match the start of lines
+    export_pattern = re.compile(r'^export\s+(?:async\s+)?(function|const|let|var|class|default)\s+([a-zA-Z0-9_]+)', re.MULTILINE)
     
-    # Sync Asanas: Focus on ID, Name, and Side requirements
-    sync_table_to_markdown(
-        'asanas', 
-        'id, name, iast, requires_sides', 
-        ASANA_FILE, 
-        "Primary Asana Database"
-    )
+    # Regex to catch: export { foo, bar } spanning multiple lines
+    bracket_export_pattern = re.compile(r'^export\s+\{([^}]+)\}', re.MULTILINE)
     
-    # Sync Stages: Direct mapping of variation IDs to base Asanas
-    sync_table_to_markdown(
-        'stages', 
-        'id, asana_id, stage_name, title', 
-        STAGES_FILE, 
-        "Asana Stages & Variations Mapping"
-    )
+    # NEW: Catch window.functionName = ...
+    # Looks for 'window.something =' anywhere, even indented
+    window_pattern = re.compile(r'window\.([a-zA-Z0-9_]+)\s*=', re.MULTILINE)
+
+    index_data = {}
+
+    for root, dirs, files in os.walk(source_dir):
+        # Skip node_modules and .git
+        dirs[:] = [d for d in dirs if d not in ('node_modules', '.git')]
+
+        for file in files:
+            if file.endswith('.js'):
+                file_path = os.path.join(root, file)
+                # Get path relative to the source directory for cleaner reading
+                rel_path = os.path.relpath(file_path, source_dir).replace('\\', '/')
+                
+                exports = set() # Use a set to prevent duplicates
+
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        
+                        # 1. Match direct exports
+                        for match in export_pattern.finditer(content):
+                            export_type = match.group(1)
+                            export_name = match.group(2)
+                            exports.add(f"`{export_name}` ({export_type})")
+
+                        # 2. Match multiline bracket exports
+                        for match in bracket_export_pattern.finditer(content):
+                            # Split by comma, strip whitespace and newlines
+                            items = [item.strip() for item in match.group(1).replace('\n', '').split(',')]
+                            for item in items:
+                                if item:
+                                    exports.add(f"`{item}` (module export)")
+                                    
+                        # 3. Match window.* bindings
+                        for match in window_pattern.finditer(content):
+                            window_name = match.group(1)
+                            exports.add(f"`{window_name}` (window binding)")
+
+                except Exception as e:
+                    print(f"Could not read {file_path}: {e}")
+
+                if exports:
+                    # Sort the set before adding to dict for consistent output
+                    index_data[rel_path] = sorted(list(exports))
+
+    # Write the Markdown file
+    with open(output_file, 'w', encoding='utf-8') as md:
+        md.write("# 🗺️ Application Architecture & Function Index\n\n")
+        md.write("> *Auto-generated map of all exported modules and window bindings.*\n\n")
+
+        for file_path in sorted(index_data.keys()):
+            md.write(f"### 📄 `{file_path}`\n")
+            for item in index_data[file_path]:
+                md.write(f"- {item}\n")
+            md.write("\n")
+
+    print(f"✅ Success! Map generated at: {output_file}")
 
 if __name__ == "__main__":
-    run_sync()
+    # CONFIGURATION
+    SOURCE_DIRECTORY = "./src"            # Point this to your JS folder
+    OUTPUT_FILENAME = "FUNCTION_INDEX.md" # The file it will create
+    
+    generate_function_index(SOURCE_DIRECTORY, OUTPUT_FILENAME)

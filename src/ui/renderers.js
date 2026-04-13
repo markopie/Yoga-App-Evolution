@@ -59,7 +59,14 @@ export function updatePoseAsanaDescription(asana, matchedTechnique = "") {
         techDetails.style.display = "none";
     }
 
-    if (stack) stack.style.display = hasContent ? "block" : "none";
+    if (stack) {
+        // Safety Briefing Isolation: Ensure sidebar is hidden during briefing
+        if (window.isBriefingActive) {
+            stack.style.display = "none";
+        } else {
+            stack.style.display = hasContent ? "block" : "none";
+        }
+    }
 }
 
 export function getContentForPose(asana, fullLabel) {

@@ -726,6 +726,32 @@ function builderOpen(mode, seq) {
     const modeLabel = $("builderModeLabel");
     const displayCategory = document.getElementById("displayCategory");
 
+    // --- Jobbsian Note Entry Injection ---
+    let notesEl = $("builderNotes");
+    let displayNotes = $("displayNotes");
+    
+    if (!notesEl) {
+        // Robust Injection: Use Title parent as fallback to ensure the box is always created
+        const titleEl = document.getElementById("builderTitle");
+        const parent = document.getElementById("editModeHeader") || titleEl?.parentNode;
+        if (parent) {
+            notesEl = document.createElement("textarea");
+            notesEl.id = "builderNotes";
+            notesEl.placeholder = "Add safety or remedial notes (e.g., medical guidance)...";
+            notesEl.style.cssText = "width:100%; margin: 12px 0; padding: 14px; border-radius: 12px; border: 1px solid #d2d2d7; font-size: 0.9rem; height: 90px; resize: vertical; display: none; background: #fff; font-family: inherit; box-sizing: border-box; line-height: 1.4;";
+            parent.appendChild(notesEl);
+        }
+    }
+    if (!displayNotes) {
+        const vHeader = document.getElementById("viewModeHeader");
+        if (vHeader) {
+            displayNotes = document.createElement("div");
+            displayNotes.id = "displayNotes";
+            displayNotes.style.cssText = "margin-top: 12px; padding: 16px; background: #fff3e0; color: #e65100; border-radius: 14px; border: 1px solid #ffb74d; font-size: 0.95rem; font-weight: 500; display: none; line-height: 1.4;";
+            vHeader.appendChild(displayNotes);
+        }
+    }
+
     // 🌟 CATEGORY INITIALIZATION
     if (catSelect) {
         // Filter strictly for course categories (showing asana categories here was confusing)
@@ -806,6 +832,7 @@ function builderOpen(mode, seq) {
     if (mode === "new") {
        if (modeLabel) modeLabel.textContent = "New Sequence";
        if (titleEl) titleEl.value = "";
+       if (notesEl) notesEl.value = "";
        if (catSelect) catSelect.value = "";
        if (catCustom) catCustom.value = "";
        builderState.currentSubCategoryId = null;
@@ -815,6 +842,7 @@ function builderOpen(mode, seq) {
        if (!seq) return;
        if (modeLabel) modeLabel.textContent = "Sequence Review";
        if (titleEl) titleEl.value = seq.title || "";
+       if (notesEl) notesEl.value = seq.condition_notes || "";
 
        if (catSelect) {
            const isSelect = catSelect.tagName === "SELECT";
@@ -1071,6 +1099,10 @@ function builderCompileSequenceJSON() {
 }
 
 function builderGetTitle() { return ($("builderTitle")?.value || "").trim(); }
+function builderGetNotes() { 
+    const el = document.getElementById("builderNotes");
+    return (el?.value || "").trim();
+}
 function builderGetCategory() { 
     const sel = document.getElementById("builderCategory");
     const custom = document.getElementById("builderCategoryCustom");
@@ -1081,6 +1113,7 @@ function builderGetCategory() {
 async function builderSave() {
     const title = builderGetTitle();
     const categoryString = builderGetCategory();
+    const conditionNotes = builderGetNotes();
     const sequenceJson = builderCompileSequenceJSON();
     
     if (!title) return alert("Please enter a title.");
@@ -1100,6 +1133,7 @@ async function builderSave() {
         const payload = { 
             title, 
             category: categoryString, // 🌟 Pass string to persistence.js to resolve ID automatically
+            condition_notes: conditionNotes,
             sequence_json: sequenceJson,
             last_edited: new Date().toISOString(), 
             user_id: window.currentUserId 

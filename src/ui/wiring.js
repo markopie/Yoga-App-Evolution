@@ -36,6 +36,130 @@ window.updateNextBtnText = function updateNextBtnText() {
     nextBtn.textContent = isFinalStep ? 'Complete ▶' : 'Next ▶';
 };
 
+/** Global handlers for Briefing Phase interactions */
+window.handleStart = () => {
+    window.isBriefingActive = false;
+    updateAliasUIFeedback();
+    if (typeof window.startTimer === 'function') window.startTimer();
+};
+
+window.handleNext = () => {
+    window.isBriefingActive = false;
+    updateAliasUIFeedback();
+    // No timer start, just shows the first pose
+};
+
+/** Updates UI notifications for Aliases and Remedial Notes */
+function updateAliasUIFeedback() {
+    let notifyArea = document.getElementById("aliasNotificationArea");
+    let remedialArea = document.getElementById("remedialNoteArea");
+    const poseName = document.getElementById("poseName");
+    const focusPoseName = document.getElementById("focusPoseName");
+    const contentDisplay = document.getElementById("pose-content-display");
+    const infoStack = document.getElementById("poseInfoStack");
+    const metaArea = document.getElementById("poseMeta");
+    const collageWrap = document.getElementById("collageWrap");
+    const playerHeader = document.querySelector(".player-header");
+
+    // 2. Remedial Callout: Prominent safety guidance (Prioritizes Alias notes over Master)
+    if (window.remedialNote) {
+        if (!remedialArea) {
+            const stage = document.createElement("div");
+            stage.className = "briefing-stage";
+            remedialArea = document.createElement("div");
+            remedialArea.id = "remedialNoteArea";
+            const playerTop = document.querySelector(".player-header") || document.getElementById("poseName")?.parentNode;
+            if (playerTop) {
+                stage.appendChild(remedialArea);
+                playerTop.parentNode.insertBefore(stage, playerTop);
+            }
+        }
+
+        const stage = remedialArea.parentNode;
+
+        if (window.isBriefingActive) {
+            // 1. Briefing "Cover" Mode Card
+            if (stage) stage.style.display = "flex";
+            
+            const sequenceName = window.currentSequence?.title || "Sequence";
+            const masterSub = window.isAliasView ? `<div style="font-size: 0.9rem; color: #86868b; margin-top: 4px; font-weight: 500;">Protocol: ${window.masterCourseTitle}</div>` : "";
+
+            remedialArea.innerHTML = `
+                <div class="briefing-card-content">
+                    <div style="margin-bottom: 2rem;">
+                        <h1 style="margin: 0; font-size: 1.8rem; font-weight: 700; color: #1d1d1f;">${sequenceName}</h1>
+                        ${masterSub}
+                    </div>
+                    <div style="color: #e65100; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 1rem;">
+                        <span style="font-size: 1.4rem;">⚕️</span> Safety Briefing
+                    </div>
+                    <div style="width: 100%;">
+                        <p style="margin: 0; line-height: 1.7; color: #1d1d1f; font-weight: 500; text-align: center;">${window.remedialNote}</p>
+                    </div>
+                    <div style="margin-top: 2rem; font-size: 0.9rem; color: #86868b; font-weight: 600; border-top: 1px solid #f2f2f7; padding-top: 1.5rem; width: 100%;">
+                        Press <span class='briefing-link' onclick='handleStart()'>Start</span> to begin, or the <span class='briefing-link' onclick='handleNext()'>Next</span> button to browse sequence.
+                    </div>
+                </div>`;
+            
+            // Component Isolation & Cleanup: Hide underlying Asana UI components
+            if (poseName) poseName.style.display = 'none';
+            if (focusPoseName) focusPoseName.style.display = 'none';
+            if (contentDisplay) contentDisplay.style.display = 'none';
+            else {
+                if (collageWrap) collageWrap.style.display = 'none';
+                if (playerHeader) playerHeader.style.display = 'none';
+            }
+            if (infoStack) infoStack.style.display = 'none';
+            if (metaArea) metaArea.style.display = 'none';
+            
+            remedialArea.style.display = "block";
+        } else {
+            // 2. Dismiss Briefing and show Asana
+            if (stage) stage.style.display = "none";
+            remedialArea.style.display = "none";
+            if (poseName) poseName.style.display = '';
+            if (focusPoseName) focusPoseName.style.display = '';
+            if (contentDisplay) contentDisplay.style.display = 'block';
+            else {
+                if (collageWrap) collageWrap.style.display = 'block';
+                if (playerHeader) playerHeader.style.display = 'block';
+            }
+            if (metaArea) metaArea.style.display = '';
+        }
+    } else if (remedialArea) {
+        remedialArea.style.display = "none";
+        if (remedialArea.parentNode) remedialArea.parentNode.style.display = "none";
+        if (poseName) poseName.style.display = '';
+        const contentDisplay = document.getElementById("pose-content-display");
+        if (contentDisplay) contentDisplay.style.display = 'block';
+    }
+
+    // 1. Alias Notice (Only show if NOT in briefing mode)
+    if (window.isAliasView && window.masterCourseTitle && !window.isBriefingActive) {
+        if (!notifyArea) {
+            notifyArea = document.createElement("div");
+            notifyArea.id = "aliasNotificationArea";
+            notifyArea.style.cssText = "background:#e3f2fd; color:#0d47a1; padding:10px; border-radius:8px; margin-bottom:12px; font-size:0.9rem; border:1px solid #bbdefb; display:none;";
+            const playerTop = document.querySelector(".player-header") || document.getElementById("poseName")?.parentNode;
+            if (playerTop) playerTop.prepend(notifyArea);
+        }
+        notifyArea.innerHTML = `ℹ️ Displaying protocol for <strong>${window.masterCourseTitle}</strong>`;
+        notifyArea.style.display = "block";
+    } else if (notifyArea) {
+        notifyArea.style.display = "none";
+    }
+}
+
+/** Internal helper to reset to briefing if applicable */
+function checkAndRestoreBriefing() {
+    if (window.currentIndex === 0 && window.remedialNote) {
+        window.isBriefingActive = true;
+        updateAliasUIFeedback();
+        return true;
+    }
+    return false;
+}
+
 // ── 1. Sequence Selection & Dynamic Buttons ──────────────────────────────────
 function setupSequenceSelector() {
     const seqSelect = $("sequenceSelect");
@@ -48,12 +172,20 @@ function setupSequenceSelector() {
         
         // Reset granular progress so we don't carry over completion data to the new sequence
         if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
+        
+        // Clear Alias/Remedial state
+        window.isAliasView = false;
+        window.masterCourseTitle = null;
+        window.remedialNote = "";
+        window.isBriefingActive = false;
 
         if (!idx) {
             window.currentSequence = null;
             window.activePlaybackList = [];
             window.currentIndex = 0;
             
+            updateAliasUIFeedback();
+
             if ($("poseName"))         $("poseName").textContent = "Select a sequence";
             if ($("poseMeta"))         $("poseMeta").textContent = "";
             if ($("poseInstructions")) $("poseInstructions").textContent = "";
@@ -68,7 +200,37 @@ function setupSequenceSelector() {
         }
 
         const rawSequence = window.courses[parseInt(idx, 10)];
-        window.currentSequence = rawSequence; 
+        
+        // --- RECURSIVE ALIAS RESOLUTION ---
+        let resolvedSequence = { ...rawSequence };
+
+        if (rawSequence.is_alias) {
+            const master = (window.courses || []).find(c => 
+                String(c.supabaseId || c.id) === String(rawSequence.redirect_id)
+            );
+
+            if (!master || !rawSequence.redirect_id) {
+                showError("Missing Master Link: The master sequence for this alias could not be found.");
+                seqSelect.value = "";
+                seqSelect.dispatchEvent(new Event('change'));
+                return;
+            }
+
+            // Resolve Data: Use master content while maintaining Alias metadata
+            resolvedSequence.poses = master.poses;
+            resolvedSequence.sequence_json = master.sequence_json;
+            resolvedSequence.playbackMode = master.playbackMode;
+
+            window.isAliasView = true;
+            window.masterCourseTitle = master.title;
+            // Prioritize condition_notes from Alias record
+            window.remedialNote = rawSequence.condition_notes || master.condition_notes || "";
+        } else {
+            window.remedialNote = rawSequence.condition_notes || "";
+        }
+
+        window.isBriefingActive = !!window.remedialNote;
+        window.currentSequence = resolvedSequence; 
 
         // Reset active-practice timer so duration only counts this session
         playbackEngine.resetPracticeTimer();
@@ -86,6 +248,7 @@ function setupSequenceSelector() {
 
         window.currentIndex = 0; 
         if (typeof window.setPose === "function") window.setPose(0);
+        updateAliasUIFeedback();
         window.updateNextBtnText();
         
         if ($("statusText")) $("statusText").textContent = "Ready to Start"; 
@@ -103,7 +266,7 @@ function setupSequenceSelector() {
         
         // Normal button styling (matching the + New button)
         editBtn.style.cssText = "margin-left: 8px; padding: 4px 12px; font-size: 0.9rem; font-weight: 600; border-radius: 8px;";
-        
+
         seqSelect.parentNode.insertBefore(editBtn, seqSelect.nextSibling);
         
         editBtn.onclick = () => {
@@ -123,11 +286,23 @@ function setupSequenceSelector() {
 
 // ── 2. Playback & Dial Wiring ────────────────────────────────────────────────
 function setupPlaybackControls() {
-    safeListen("nextBtn", "click", () => { window.stopTimer(); window.nextPose(); window.updateNextBtnText(); });
+    safeListen("nextBtn", "click", () => { 
+        if (window.isBriefingActive) {
+            window.isBriefingActive = false;
+            updateAliasUIFeedback();
+            return; // Dismiss briefing to reveal first pose
+        }
+        window.stopTimer(); window.nextPose(); window.updateNextBtnText(); 
+    });
     safeListen("prevBtn", "click", () => { window.stopTimer(); window.prevPose(); window.updateNextBtnText(); });
     
     safeListen("startStopBtn", "click", () => {
         if (!getCurrentSequence()) return;
+        if (window.isBriefingActive) {
+            window.isBriefingActive = false;
+            updateAliasUIFeedback();
+        }
+
         if (!playbackEngine.running) window.startTimer();
         else window.stopTimer();
     });
@@ -137,6 +312,11 @@ function setupPlaybackControls() {
             window.stopTimer();
         }
         
+        // If on step 0, clicking reset should ideally just show the briefing again
+        if (window.currentIndex === 0 && checkAndRestoreBriefing()) {
+            return;
+        }
+
         // 🛡️ ARCHITECT FIX 1: Wipe the engine's internal duration memory for the next sequence
         if (window.playbackEngine && typeof window.playbackEngine.resetPracticeTimer === 'function') {
             window.playbackEngine.resetPracticeTimer();
@@ -447,6 +627,12 @@ function setupAuthListeners() {
 const mainResetBtn = document.getElementById('resetBtn');
 if (mainResetBtn) {
     mainResetBtn.addEventListener('click', () => {
+        // If we are currently in a sequence, check if we should just show briefing
+        if (window.currentSequence && window.currentIndex === 0 && window.remedialNote) {
+            window.isBriefingActive = true;
+            updateAliasUIFeedback();
+        }
+
         // 1. Log incomplete session (if > 5 secs)
         const focusDuration = window.playbackEngine?.activePracticeSeconds || 0;
         if (focusDuration > 5 && typeof window.appendServerHistory === "function") {
@@ -478,6 +664,10 @@ if (mainResetBtn) {
         // 6. Reset UI to Pose 0 using your exact render function
         if (typeof window.setPose === 'function') window.setPose(0);
         if (typeof window.updateNextBtnText === 'function') window.updateNextBtnText();
+
+        window.remedialNote = "";
+        window.isBriefingActive = false;
+        updateAliasUIFeedback();
     });
 }
 

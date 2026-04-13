@@ -68,7 +68,10 @@ export async function saveSequence(payload, knownId = null) {
         sequence_json: payload.sequence_json, // JSON-Native Migration: Primary Source of Truth
         sub_category_id: subCategoryId, 
         last_edited: payload.last_edited,
-        user_id: payload.user_id
+        user_id: payload.user_id,
+        condition_notes: payload.condition_notes,
+        is_alias: payload.is_alias,
+        redirect_id: payload.redirect_id
     };
 
     // Legacy sync: only write sequence_text if explicitly provided (Builder now stops sending it)

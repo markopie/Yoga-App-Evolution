@@ -13,6 +13,7 @@
 @import url('./editor.css');         
 @import url('./asana-editor.css');
 @import url('./viewer.css');
+@import url('../src/ui/briefing.css');
 @import url('./playback.css');
 
 /* 3. UTILITIES & THEME OVERRIDES */

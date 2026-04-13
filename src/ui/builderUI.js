@@ -285,6 +285,7 @@ function createExportSnapshot(sourceElement) {
     // 2. Sync data manually to the clone to ensure title/category "comes through"
     const titleVal = getSequenceTitle() || 'Untitled Sequence';
     const catVal = (document.getElementById('builderCategory')?.value || '').trim();
+    const notesVal = (document.getElementById('builderNotes')?.value || '').trim();
 
     const displayTitle = clone.querySelector('#displayTitle');
     const displayCategory = clone.querySelector('#displayCategory');
@@ -292,6 +293,14 @@ function createExportSnapshot(sourceElement) {
     if (displayTitle) {
         displayTitle.textContent = titleVal;
         displayTitle.style.display = 'block';
+    }
+
+    if (notesVal) {
+        const notesDiv = document.createElement('div');
+        notesDiv.className = 'export-safety-note';
+        notesDiv.style.cssText = "background:#fff3e0; color:#e65100; padding:12px; border-radius:8px; margin-bottom:20px; border:1px solid #ffb74d; font-size:10pt; line-height:1.4;";
+        notesDiv.innerHTML = `⚠️ <strong>Safety Note:</strong> ${escapeHtml(notesVal)}`;
+        if (displayCategory) displayCategory.insertAdjacentElement('afterend', notesDiv);
     }
 
     if (displayCategory && catVal) {
@@ -617,8 +626,10 @@ export function updateBuilderModeUI() {
 
     const displayTitle = document.getElementById('displayTitle');
     const displayCategory = document.getElementById('displayCategory');
+    const displayNotes = document.getElementById('displayNotes');
     const inputCategory = document.getElementById('builderCategory');
     const inputTitle = document.getElementById('builderTitle');
+    const inputNotes = document.getElementById('builderNotes');
 
     if (!backdrop) return;
 
@@ -629,9 +640,25 @@ export function updateBuilderModeUI() {
 
         if (inputCategory) inputCategory.readOnly = true;
         if (inputTitle) inputTitle.readOnly = true;
+        if (inputNotes) inputNotes.style.display = 'none'; // Hide editor in View Mode
 
         if (displayTitle && inputTitle) {
             displayTitle.textContent = inputTitle.value.trim() || 'Untitled Sequence';
+        }
+
+        if (displayNotes && inputNotes) {
+            const val = inputNotes.value.trim();
+            if (val) {
+                displayNotes.style.display = 'block';
+                // Jobbsian Review Style: Uses the same card layout as the player preamble
+                displayNotes.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:8px; color:#e65100; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">
+                        <span style="font-size:1.1rem;">⚕️</span> Safety Note
+                    </div>
+                    <div style="line-height:1.5;">${escapeHtml(val)}</div>`;
+            } else {
+                displayNotes.style.display = 'none';
+            }
         }
 
         if (displayCategory && inputCategory) {
@@ -688,9 +715,11 @@ export function updateBuilderModeUI() {
 
         if (inputCategory) inputCategory.readOnly = false;
         if (inputTitle) inputTitle.readOnly = false;
+        if (inputNotes) inputNotes.style.display = 'block';
 
         if (viewHeader) viewHeader.style.display = 'none';
         if (editHeader) editHeader.style.display = 'flex';
+        if (displayNotes) displayNotes.style.display = 'none';
 
         if (toggleBtn) {
             toggleBtn.innerHTML = '👁️ View';

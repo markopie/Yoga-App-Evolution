@@ -1,0 +1,62 @@
+.briefing-stage {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 400px;
+    width: 100%;
+    padding: 2rem 1rem;
+    box-sizing: border-box;
+}
+
+#remedialNoteArea {
+    background: #ffffff;
+    color: #1d1d1f;
+    padding: 2.5rem;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 550px;
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+    transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.briefing-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+    width: 100%;
+    text-align: center;
+}
+
+.briefing-card-content > div {
+    width: 100%;
+    text-align: center;
+}
+
+.briefing-link {
+    color: #007aff;
+    background: #f2f2f7;
+    padding: 4px 14px;
+    border-radius: 12px;
+    text-decoration: underline !important;
+    cursor: pointer;
+    font-weight: 700;
+    border: 1px solid #d1d1d6;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.briefing-link:hover {
+    background: #007aff;
+    color: #ffffff;
+    border-color: #007aff;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
+}

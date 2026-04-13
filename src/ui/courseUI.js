@@ -268,8 +268,10 @@ export function renderCourseUI() {
             const title = item.course.title || `Course ${item.idx + 1}`;
             const courseId = item.course.id || item.course.supabaseId; 
             
-            // Format: "104 — Core Flow" (Using an em-dash for elegance)
-            opt.textContent = courseId ? `${courseId} — ${title}` : title;
+            // Format: "104 — Core Flow 🏷️ (Alias)"
+            // Tagging Aliases ensures they are indexed and distinguishable in search.
+            const aliasSuffix = item.course.is_alias ? " 🏷️ (Alias)" : "";
+            opt.textContent = (courseId ? `${courseId} — ${title}` : title) + aliasSuffix;
             
             groupEl.appendChild(opt);
         });

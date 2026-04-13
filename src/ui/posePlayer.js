@@ -41,6 +41,14 @@ function prevPose() {
                   ? window.activePlaybackList 
                   : (window.currentSequence.poses || []);
 
+    if (window.currentIndex === 0) {
+        if (window.remedialNote) {
+            window.isBriefingActive = true;
+            if (typeof window.updateAliasUIFeedback === 'function') window.updateAliasUIFeedback();
+        }
+        return;
+    }
+
     if (window.getCurrentSide() === "left") {
         const currentPose = poses[window.currentIndex];
         const meta = currentPose?.[7] || {};
@@ -424,7 +432,10 @@ function setPose(idx, keepSamePose = false) {
     // 9. META UI & AUDIO BUTTON
     const metaContainer = document.getElementById("poseMeta");
     if (metaContainer) {
-        metaContainer.innerHTML = ""; 
+        metaContainer.innerHTML = "";
+        // The metadata container visibility is now primarily managed by updateAliasUIFeedback
+        // but we keep this as a secondary safety guard for focused mode rendering.
+        if (window.isBriefingActive) metaContainer.style.display = "none";
 
         const infoSpan = document.createElement("span");
         infoSpan.className = "meta-text-only"; 
