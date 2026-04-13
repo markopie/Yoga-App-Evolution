@@ -16,3 +16,26 @@
 - Audit vertical scrolling behavior on mobile viewports to ensure the extra row doesn't push the sequence table off-screen.
 - Verify theme/color contrast for the orange "Safety Note" card in Dark Mode.
 ---
+
+**Next Steps for Next Session:**
+- Audit vertical scrolling behavior on mobile viewports to ensure the extra row doesn't push the sequence table off-screen.
+- Verify theme/color contrast for the orange "Safety Note" card in Dark Mode.
+
+## [2026-03-13] - Session [02]
+**Goal:** Finalize Mehta (Yoga the Iyengar Way) bulk integration, ambiguity resolution, and reactive Flow-mode timing.
+**Architectural Decisions:**
+- **Mehta Namespace Support:** Introduced the `MEHTA:` prefix for bulk commands to explicitly target `page_primary` lookups, distinguishing them from `LOY:` (Light on Yoga) identifiers.
+- **Deep Page Resolution:** Updated the parser to scan both base asanas and the `stages` (variations) table for page matches. This ensures that specific remedial variations appearing on a Mehta page are correctly identified.
+- **Ambiguity Handling:** Implemented a non-blocking "Ambiguity State" in the builder. When a page number maps to multiple poses, the UI now flags the row with a warning and provides "Switch to..." options rather than failing silently.
+- **Reactive Flow Timing:** Established a "Flow-First" resolution hierarchy. The builder now detects "Flow" sequences via category text or playback mode and automatically hydrates `flowHoldOverride`. These values now reactively update whenever a user changes a pose variation.
+- **Briefing Persistence:** Decided to persist the default safety briefing to the `condition_notes` field upon saving if the field is empty. This "bakes" the safety data into the database, allowing users to append specific medical guidance to the standard disclaimer during future edits.
+**Code Changed:**
+- `src/services/dataAdapter.js`: Mapped `page_primary` into the core library object.
+- `src/utils/builderParser.js`: Updated to handle `MEHTA:` prefix and resolve variation-level page numbers.
+- `src/ui/builderSearch.js`: Added batch command detection for the search input.
+- `src/ui/builder.js`: Integrated dynamic flow hold logic and default briefing injection on save.
+- `src/ui/builderTemplates.js`: Updated to reflect resolved Mehta page info in the builder rows.
+**Next Steps for Next Session:**
+- Investigate a "Prop Picker" UI (briefcase icon) to manage the growing list of therapeutic props without cluttering the builder rows.
+- Audit the "Ambiguity" UI on mobile to ensure the switch buttons are easily tappable.
+---

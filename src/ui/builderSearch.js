@@ -14,15 +14,17 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
 
         const idStrLoy = String(asma.id || '');
         const idStrMehta = String(asma.yoga_the_iyengar_way_id || '');
+        const idStrPage = String(asma.page_primary || '');
         const idNormLoy = idStrLoy.toLowerCase();
         
-        // Exact Numeric Match (Prioritize LOY, then Mehta)
+        // Exact Numeric Match (Prioritize LOY, then Mehta/Page)
         if (/^\d+$/.test(q)) {
             if (idStrLoy.padStart(3, '0') === q.padStart(3, '0')) return 100;
             if (idStrMehta && idStrMehta.padStart(3, '0') === q.padStart(3, '0')) return 90;
+            if (idStrPage && idStrPage.padStart(3, '0') === q.padStart(3, '0')) return 85;
         }
         
-        if (idNormLoy === q || idStrMehta.toLowerCase() === q) return 100;
+        if (idNormLoy === q || idStrMehta.toLowerCase() === q || idStrPage.toLowerCase() === q) return 100;
 
         const eng  = normaliseText(asma.english || '');
         const iast = normaliseText(asma.iast || '');
@@ -32,7 +34,7 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
         if (eng.startsWith(q) || iast.startsWith(q) || sans.startsWith(q)) return 50;
         if (eng.includes(q) || iast.includes(q) || sans.includes(q)) return 20;
         if (plate.includes(q)) return 10;
-        if (idNormLoy.includes(q) || (idStrMehta && idStrMehta.includes(q))) return 5;
+        if (idNormLoy.includes(q) || (idStrMehta && idStrMehta.includes(q)) || (idStrPage && idStrPage.includes(q))) return 5;
 
         return 0;
     }
@@ -52,9 +54,10 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
     if (e.key === "Enter" && !e.shiftKey) {
         const val = searchInput.value.trim();
         const isSemicolon = val.includes(';');
-        const isLOYBatch = val.toUpperCase().startsWith('LOY:');
+        const upperVal = val.toUpperCase();
+        const isBatch = isSemicolon || upperVal.startsWith('LOY:') || upperVal.startsWith('MEHTA:');
 
-        if (isSemicolon || isLOYBatch) {
+        if (isBatch) {
             e.preventDefault();
             
             // ARCHITECT'S NOTE: Ensure this name matches your defined function
@@ -86,8 +89,9 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
 
         searchInput.oninput = () => {
         const query = searchInput.value.trim();
-        // Logic Guard: Hide results if it's a batch command (Semicolon or LOY:)
-        if (query.length < 1 || query.includes(';') || query.toUpperCase().startsWith('LOY:')) {
+        const upperQuery = query.toUpperCase();
+        // Logic Guard: Hide results if it's a batch command (Semicolon, LOY:, or MEHTA:)
+        if (query.length < 1 || query.includes(';') || upperQuery.startsWith('LOY:') || upperQuery.startsWith('MEHTA:')) {
             resultsBox.style.display = "none";
             return;
         }

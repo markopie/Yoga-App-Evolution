@@ -17,19 +17,27 @@ export async function parseSemicolonCommand(commandString, libraryArray, asanaLi
     if (parts.length >= 3) {
         [title, category, idsStr] = parts;
     } 
-    // CASE B: Shorthand Command (Just LOY: 1, 2, 3)
-    else if (parts.length === 1 && parts[0].toUpperCase().startsWith('LOY:')) {
-        idsStr = parts[0];
+    // CASE B: Shorthand Command (LOY: or MEHTA:)
+    else if (parts.length === 1) {
+        const upper = parts[0].toUpperCase();
+        if (upper.startsWith('LOY:') || upper.startsWith('MEHTA:')) {
+            idsStr = parts[0];
+        } else {
+            return null;
+        }
     }
-    // CASE C: Invalid format
     else {
         return null;
     }
 
-    const isLOYBatch = idsStr.toUpperCase().startsWith('LOY:');
-    const cleanIdsStr = isLOYBatch ? idsStr.substring(4).trim() : idsStr;
+    const upperIds = idsStr.toUpperCase();
+    const isLOYBatch = upperIds.startsWith('LOY:');
+    const isMehtaBatch = upperIds.startsWith('MEHTA:');
+    
+    // Strip prefix if present (LOY: is 4 chars, MEHTA: is 6 chars)
+    const cleanIdsStr = isLOYBatch ? idsStr.substring(4).trim() : 
+                       (isMehtaBatch ? idsStr.substring(6).trim() : idsStr);
 
-    // Logic Preservation: Keep the range expansion (e.g. 51-55)
     const expandedTokens = cleanIdsStr.replace(/(\d+)\s*-\s*(\d+)/g, (m, start, end) => {
         const r = [];
         for (let i = parseInt(start); i <= parseInt(end); i++) r.push(String(i));
@@ -46,7 +54,7 @@ export async function parseSemicolonCommand(commandString, libraryArray, asanaLi
             return null;
         }
 
-        // Mehta Fallback (Legacy)
+        // Mehta / Page Number Lookup (page_primary)
         const pageNum = parseFloat(token);
         if (!isNaN(pageNum)) {
             const baseMatches = libraryArray.filter(a => parseFloat(a.page_primary) === pageNum);

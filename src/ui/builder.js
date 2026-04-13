@@ -43,6 +43,13 @@ export function clearBuilderSelection() {
     updateToolbarState(); 
 }
 
+function getEffectiveFlowStatus() {
+    const catElement = document.getElementById("builderCategory");
+    const currentCategory = (catElement ? (catElement.textContent || catElement.value || "") : "").toLowerCase();
+    // Checks both state and the current (unsaved) category input
+    return isFlowSequence() || (builderState.currentPlaybackMode == null && currentCategory.includes("flow"));
+}
+
 function builderRender() {
     const tbody = document.getElementById("builderTableBody");
     if (!tbody) return;
@@ -55,9 +62,7 @@ function builderRender() {
     const libraryArray = Object.values(window.asanaLibrary || {});
     const libMap = window.asanaLibrary || {};
     const catElement = document.getElementById("builderCategory");
-    const currentCategory = (catElement ? (catElement.textContent || catElement.value || "") : "").toLowerCase();
-    const isFlow = isFlowSequence()
-        || (builderState.currentPlaybackMode == null && currentCategory.includes("flow"));
+    const isFlow = getEffectiveFlowStatus();
     const macroDurationCache = new Map();
  
     builderState.poses.forEach((pose, idx) => {
@@ -475,11 +480,14 @@ function openPropPicker(idx) {
         if (asanaMatch) {
             // Use English or Devanagari for the display name in the builder state
             builderState.poses[i].name = asanaMatch.english || asanaMatch.devanagari || asanaMatch.name;
-            if (asanaMatch && window.getHoldTimes) {
-                const ah = window.getHoldTimes(asanaMatch, builderState.poses[i].variation || null);
-                const nextDuration = isFlow ? (ah.flow || ah.standard || 5) : (ah.standard || 30);
+
+            const isFlowNow = getEffectiveFlowStatus();
+            if (window.getHoldTimes) {
+                const variationKey = builderState.poses[i].variation || null;
+                const ah = window.getHoldTimes(asanaMatch, variationKey);
+                const nextDuration = isFlowNow ? (ah.flow || ah.standard || 5) : (ah.standard || 30);
                 builderState.poses[i].duration = nextDuration;
-                builderState.poses[i].flowHoldOverride = isFlow ? nextDuration : null;
+                builderState.poses[i].flowHoldOverride = isFlowNow ? nextDuration : null;
             }
         }
         builderRender();
@@ -490,12 +498,14 @@ function openPropPicker(idx) {
         builderState.poses[i].variation = el.value;
         const normId = typeof normalizePlate === "function" ? normalizePlate(builderState.poses[i].id) : builderState.poses[i].id;
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
-        const holdSource = asanaMatch?.variations?.[e.target.value]?.hold || asanaMatch?.hold || '';
-        if (holdSource) { 
-            const hd = parseHoldTimes(holdSource); 
-            const nextDuration = isFlow ? (hd.flow || hd.standard || 5) : (hd.standard || 30);
+
+        if (asanaMatch && window.getHoldTimes) {
+            const isFlowNow = getEffectiveFlowStatus();
+            const ah = window.getHoldTimes(asanaMatch, el.value);
+            
+            const nextDuration = isFlowNow ? (ah.flow || ah.standard || 5) : (ah.standard || 30);
             builderState.poses[i].duration = nextDuration; 
-            builderState.poses[i].flowHoldOverride = isFlow ? nextDuration : null;
+            builderState.poses[i].flowHoldOverride = isFlowNow ? nextDuration : null;
         }
         builderRender();
     });
@@ -688,12 +698,13 @@ async function processSemicolonCommand(commandString) {
     let insertAt = getTargetInsertionIndex(); 
 
     validItems.forEach(item => {
+        const isFlowNow = getEffectiveFlowStatus();
         const holdTimes = (item.asana && window.getHoldTimes) ? window.getHoldTimes(item.asana, item.stageKey || null) : { standard: 30, flow: 5 };
-        const duration = isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30);
+        const duration = isFlowNow ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30);
         
         addPoseToBuilder({
             id: item.id, name: item.name, duration, variation: item.stageKey || '', note: item.stageKey ? `[${item.stageKey}]` : '', 
-            holdTier: 'standard', flowHoldOverride: isFlowSequence() ? duration : null,
+            holdTier: 'standard', flowHoldOverride: isFlowNow ? duration : null,
             _ambiguous: item._ambiguous || false, _pageNum: item._pageNum || null, _alternatives: item._alternatives || []
         }, insertAt);
         
@@ -801,14 +812,21 @@ function builderOpen(mode, seq) {
         getAsanaIndex, 
         (asma) => { 
             const insertAt = getTargetInsertionIndex(); // 👈 Find ticked box
+            const isFlowNow = getEffectiveFlowStatus();
             
             addPoseToBuilder({
                 id: asma.id,
                 name: asma.name || asma.english,
-                duration: (() => { const holdTimes = window.getHoldTimes ? window.getHoldTimes(asma) : { standard: 30, flow: 5 }; return isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : ((holdTimes.standard || 30)); })(),
+                duration: (() => { 
+                    const holdTimes = window.getHoldTimes ? window.getHoldTimes(asma) : { standard: 30, flow: 5 }; 
+                    return isFlowNow ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30); 
+                })(),
                 variation: "",
                 note: "",
-                flowHoldOverride: (() => { const holdTimes = window.getHoldTimes ? window.getHoldTimes(asma) : { standard: 30, flow: 5 }; return isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : null; })()
+                flowHoldOverride: isFlowNow ? (() => { 
+                    const holdTimes = window.getHoldTimes ? window.getHoldTimes(asma) : { standard: 30, flow: 5 }; 
+                    return (holdTimes.flow || holdTimes.standard || 5); 
+                })() : null
             }, insertAt); // 👈 Pass insertion index
             
             clearBuilderSelection(); // 👈 Clear checkbox
@@ -1113,10 +1131,14 @@ function builderGetCategory() {
 async function builderSave() {
     const title = builderGetTitle();
     const categoryString = builderGetCategory();
-    const conditionNotes = builderGetNotes();
+    let conditionNotes = builderGetNotes();
     const sequenceJson = builderCompileSequenceJSON();
     
     if (!title) return alert("Please enter a title.");
+
+    if (!conditionNotes) {
+        conditionNotes = 'Welcome to your practice. Work within your limits. Ensure props are ready and the space is clear. Press Start to begin.';
+    }
 
     const originalSeq = window.courses?.find(c => String(c.id || c.supabaseId) === String(builderState.editingSupabaseId));
 

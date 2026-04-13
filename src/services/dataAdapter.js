@@ -193,6 +193,7 @@ async function loadAsanaLibrary() {
                     plates: typeof parsePlates === 'function' ? parsePlates(row.plate_numbers ?? '') : (row.plate_numbers ?? ''),
                     hold: rawHoldText,
                     holdTimes: parseHoldTimes(rawHoldText),
+                    page_primary: row.page_primary ?? null,
                     yoga_the_iyengar_way_id: row.yoga_the_iyengar_way_id ?? '',
                     recovery_pose_id: row.recovery_pose_id ?? null,
                     preparatory_pose_id: row.preparatory_pose_id ?? null,
