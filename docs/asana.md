@@ -1,21 +1,21 @@
 # Primary Asana Database
 
-> Last Sync: 2026-04-13 16:15:36 | Total Records: 237
+> Last Sync: 2026-04-14 16:59:49 | Total Records: 237
 
 | id | name | iast | requires_sides |
 | --- | --- | --- | --- |
 | 001 | Tadasana | Tāḍāsana | False |
 | 002 | Vrksasana | Vṛkṣāsana | True |
-| 003 | Utthita Trikonasana | Utthita Trikoṇāsana | False |
-| 004 | Parivrtta Trikonasana | Parivṛtta Trikoṇāsana | False |
+| 003 | Utthita Trikonasana | Utthita Trikoṇāsana | True |
+| 004 | Parivrtta Trikonasana | Parivṛtta Trikoṇāsana | True |
 | 005 | Uttihita Parsvakonasana | Utthita Pārśvakoṇāsana | True |
 | 006 | Parivrtta Parsvakonasana | Parivṛtta Pārśvakoṇāsana | True |
 | 007 | Virabhadrasana I | Vīrabhadrāsana I | True |
 | 008 | Virabhadrasana II | Vīrabhadrāsana II | True |
 | 009 | Virabhadrasana III | Vīrabhadrāsana III | True |
 | 010 | Ardha Chandrasana | Ardha Chandrāsana | True |
-| 011 | Utthita Padangusthasana | Utthita Pādāṅguṣṭhāsana | False |
-| 012 | Parsvottanasana | Pārśvōttānāsana | False |
+| 011 | Utthita Padangusthasana | Utthita Pādāṅguṣṭhāsana | True |
+| 012 | Parsvottanasana | Pārśvōttānāsana | True |
 | 013 | Prasarita Padotanasana I | Prasārita Pādottānāsana I | False |
 | 014 | Prasarita Padotanasana II | Prasārita Pādottānāsana II | False |
 | 015 | Parighasana | Parighāsana | True |
@@ -40,7 +40,7 @@
 | 034 | Paripurna Navasana | Paripūṛna Nāvāsana | False |
 | 035 | Dandasana | Dạṇdāsana | False |
 | 036 | Ardha Navasana | Ardha Nāvāsana | False |
-| 037 | Gomukhasana | Gomukhāsana | False |
+| 037 | Gomukhasana | Gomukhāsana | True |
 | 038 | Lolasana | Lolāsana | False |
 | 039 | Siddhasana | Siddhāsana | False |
 | 040 | Virasana | Vīrāsana | False |
@@ -61,7 +61,7 @@
 | 055 | Baddha Padmasana | Baddha Padmāsana | False |
 | 056 | Yoga Mudrasana | Yogadạṇdāsana | False |
 | 057 | Supta Vajrasana | Supta Vajrasana | False |
-| 058 | Maha Mudra | Mahā Mudrā | False |
+| 058 | Maha Mudra | Mahā Mudrā | True |
 | 059 | Janu Sirsasana | Jānu Śīṛsāsana | True |
 | 060 | Parivrtta Janu Sirsasana | Parivṛtta Jānu Śīṛsāsana | True |
 | 061 | Ardha Baddha Padma Paschimottanasana | Ardha Baddha Padma Paschimottānāsana | True |
@@ -112,7 +112,7 @@
 | 106 | Urdhva Prasarita Padasana | Ūrdhva Prasārita Pādāsana | False |
 | 107 | Chakrasana | Chakrāsana | False |
 | 108 | Supta Padangusthasana | Supta Pādāngụṣtāsana | True |
-| 109 | Anantasana | Anantāsana | False |
+| 109 | Anantasana | Anantāsana | True |
 | 110 | Uttana Padasana | Uttāna Pādāsana | False |
 | 111 | Setu Bandhasana | Setu Bandhasana | False |
 | 112 | Bharadvajasana I | Bharadvājāsana I | True |
@@ -159,7 +159,7 @@
 | 153 | Parsva Bakasana | Pārśva Bakāsana | True |
 | 154 | Urdhva Kukkutasana | Ūrdhva Kukkutāsana | False |
 | 155 | Parsva Kukkutasana | Pārśva Kukkụtāsana | True |
-| 156 | Galavasana | Gālavāsana | False |
+| 156 | Galavasana | Gālavāsana | True |
 | 157 | Eka Pada Galavasana | Eka Pāda Gālavāsana | True |
 | 158 | Dwi Pada Koundinyasana | Dwi Pāda Koụṇdinyāsana | True |
 | 159 | Eka Pada Koundinyasana I | Eka Pāda Koụṇdinyāsana I | True |
@@ -234,7 +234,7 @@
 | 227 | Ashwa Sanchalanasana | Aśwa Sañcalanāsana | True |
 | 228 | Ashtanga Namaskara | Aṣṭāṅga Namaskāra | False |
 | 229 | Swastikasana | Svastikāsana | False |
-| 230 | Ardha Padmasana | Ardha Padmāsana | False |
+| 230 | Ardha Padmasana | Ardha Padmāsana | True |
 | 231 | Sukhasana | Sukhāsana | False |
 | 232 | Nasa Mudra | Nāsā Mudrā | False |
 | 233 | Paschima Namaskarasana | Paścimānamaskārāsana | False |

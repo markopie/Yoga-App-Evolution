@@ -27,9 +27,9 @@ Object.assign(window, {
     updatePoseDescription, descriptionForPose, openHistoryModal, switchHistoryTab, renderGlobalHistory
 });
 
-import { globalState, setCourses, setSequences, setActivePlaybackList, setCurrentSequence, setCurrentIndex, setCurrentSide, setNeedsSecondSide } from "./src/store/state.js";
+import { globalState, setCourses, setActivePlaybackList, setCurrentSequence, setCurrentIndex, setCurrentSide, setNeedsSecondSide } from "./src/store/state.js";
 
-['courses', 'sequences', 'asanaLibrary', 'activePlaybackList', 'currentSequence', 'currentIndex', 'currentSide', 'needsSecondSide'].forEach(prop => {
+['courses', 'asanaLibrary', 'activePlaybackList', 'currentSequence', 'currentIndex', 'currentSide', 'needsSecondSide'].forEach(prop => {
     Object.defineProperty(window, prop, {
         get: () => globalState[prop],
         set: (v) => { globalState[prop] = v; },
@@ -103,7 +103,6 @@ window.loadCourses = async function() {
         
         window.courses = deduplicated;
         setCourses(deduplicated);
-        setSequences(deduplicated);
 
         if (typeof window.renderSequenceDropdown === "function") {
             window.renderSequenceDropdown();
@@ -164,7 +163,7 @@ function showResumePrompt(state) {
     banner.id = "resumeBanner";
     banner.style.cssText = `position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 20px; border-radius: 30px; z-index: 9999; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; gap: 15px; align-items: center; font-size: 14px;`;
     
-    const seq = window.sequences && window.sequences[state.sequenceIdx];
+    const seq = window.courses && window.courses[state.sequenceIdx];
     const seqName = seq ? seq.title : "your previous session";
     
     let poseName = `pose ${state.poseIdx + 1}`;

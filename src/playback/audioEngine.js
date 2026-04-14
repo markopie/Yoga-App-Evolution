@@ -31,7 +31,7 @@ function playSideCueFile(side) {
         try {
             a.currentTime = 0;
             a.play().catch(e => {
-                console.warn(`side cue play failed (${side}):`, e);
+                console.warn(`[AudioEngine] Side cue play failed (${side}):`, e);
                 resolve();
             });
             setCurrentAudio(a);
@@ -120,7 +120,7 @@ export function playSystemAudio(fileName) {
 
         a.onended = resolve;
         a.onerror = () => {
-            console.warn(`System audio failed/missing: ${src}`);
+            console.warn(`[AudioEngine] System audio failed/missing: ${src}`);
             resolve();
         };
 
@@ -184,7 +184,6 @@ export function toggleSpeak(text, btn) {
     });
 }
 
-
 // ── Main orchestrator ─────────────────────────────────────────────────────────
 
 /**
@@ -202,7 +201,7 @@ export async function playAsanaAudio(
 ) {
     if (!asana) return;
 
-    // AUDIO FIX: Accept array or single string, fallback to global state
+    // Prop modifier normalization
     const activeProps = (Array.isArray(props) && props.length > 0) 
         ? props 
         : (props && !Array.isArray(props) ? [props] : (Array.isArray(window.currentPropModifier) ? window.currentPropModifier : []));
@@ -225,7 +224,9 @@ export async function playAsanaAudio(
     }
 
     // 3. Await Side Cue if required
-    const requiresSides = !!(asana.requiresSides || asana.requires_sides);
+    // ARCHITECT CONTRACT: Strict reliance on normalized boolean
+    const requiresSides = !!asana.requires_sides;
+    
     if (!isBrowseContext && requiresSides && currentSide) {
         await playSideCueFile(currentSide);
     }
@@ -241,7 +242,7 @@ export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, va
             resolve();
         };
 
-        if (poseLabel && !asana.requiresSides) {
+        if (poseLabel && !asana.requires_sides) {
             const side = detectSide(poseLabel);
             if (side) setTimeout(() => playSideCue(side), 100);
         }
@@ -254,7 +255,7 @@ export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, va
             a.play()
                 .then(() => { setCurrentAudio(a); })
                 .catch(e => {
-                    console.warn(`Audio play failed: ${src}`, e);
+                    console.warn(`[AudioEngine] Audio play failed: ${src}`, e);
                     nextStep();
                 });
         };
@@ -283,14 +284,15 @@ export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, va
         const step1_Main = () => {
             let src = asana.audio;
             if (!src) {
-                const idStr   = normalizePlate(asana.asanaNo || asana.id);
+                // ARCHITECT CONTRACT: Strict schema mapping
+                const idStr   = normalizePlate(asana.id);
                 const fileList = window.serverAudioFiles || [];
                 const match   = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
                 
                 if (match) {
                     src = AUDIO_BASE + match;
                 } else if (idStr) {
-                    const cleanName = (asana.english || asana.name || "").replace(/[^a-zA-Z0-9]/g, "");
+                    const cleanName = (asana.english_name || asana.name || "").replace(/[^a-zA-Z0-9]/g, "");
                     src = `${AUDIO_BASE}${idStr}_${cleanName}.mp3`;
                 }
             }

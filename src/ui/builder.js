@@ -11,7 +11,7 @@ import { builderState, setPoseSide, movePose, movePoseToIndex, removePose, addPo
 import { updateBuilderModeUI, openLinkSequenceModal } from "./builderUI.js";
 import { PROP_REGISTRY } from "../config/propRegistry.js";
 
-const getEffectiveTime = (id, time) => window.getEffectiveTime ? window.getEffectiveTime(id, time) : time;
+const getEffectiveTime = (...args) => window.getEffectiveTime ? window.getEffectiveTime(...args) : args[1];
 const getAsanaIndex = () => Object.values(window.asanaLibrary || {}).filter(Boolean);
 
 const ADMIN_EMAIL = 'mark.opie@gmail.com';
@@ -99,11 +99,12 @@ function builderRender() {
         } else if (!isSpecial) {
             const normId = typeof normalizePlate === "function" ? normalizePlate(idStr) : idStr;
             asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
-            const holdTimes = asana ? window.getHoldTimes(asana, pose.variation || null) : { standard: 30, flow: 5 };
-            const libraryStd = holdTimes.standard || 30;
-            const flowTime = Number(pose.flowHoldOverride ?? durOrReps ?? holdTimes.flow ?? holdTimes.standard ?? 5) || 5;
-            const activeTime = isFlow ? flowTime : libraryStd;
-            totalSec += getEffectiveTime(idStr, activeTime);
+            
+            const hj = asana ? (window.getHoldTimes ? window.getHoldTimes(asana, pose.variation) : (asana.hold_json || { standard: 30 })) : { standard: 30 };
+            const activeTime = isFlow ? (pose.flowHoldOverride || hj.flow || hj.standard || 5) : (pose.duration || hj.standard || 30);
+            const tier = pose.holdTier === 'short' ? 'S' : (pose.holdTier === 'long' ? 'L' : null);
+            
+            totalSec += getEffectiveTime(idStr, activeTime, tier, pose.variation, pose.note);
         }
 
         const devanagari = asana?.devanagari || ""; 
@@ -501,9 +502,8 @@ function openPropPicker(idx) {
 
         if (asanaMatch && window.getHoldTimes) {
             const isFlowNow = getEffectiveFlowStatus();
-            const ah = window.getHoldTimes(asanaMatch, el.value);
-            
-            const nextDuration = isFlowNow ? (ah.flow || ah.standard || 5) : (ah.standard || 30);
+            const hj = window.getHoldTimes ? window.getHoldTimes(asanaMatch, el.value) : (asanaMatch.hold_json || { standard: 30 });
+            const nextDuration = isFlowNow ? (hj.flow || hj.standard || 5) : (hj.standard || 30);
             builderState.poses[i].duration = nextDuration; 
             builderState.poses[i].flowHoldOverride = isFlowNow ? nextDuration : null;
         }
@@ -699,8 +699,13 @@ async function processSemicolonCommand(commandString) {
 
     validItems.forEach(item => {
         const isFlowNow = getEffectiveFlowStatus();
-        const holdTimes = (item.asana && window.getHoldTimes) ? window.getHoldTimes(item.asana, item.stageKey || null) : { standard: 30, flow: 5 };
-        const duration = isFlowNow ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30);
+        
+        // Fix: Use asana.hold_json if window.getHoldTimes is missing/stale
+        const hj = item.asana 
+            ? (window.getHoldTimes ? window.getHoldTimes(item.asana, item.stageKey || null) : (item.asana.hold_json || { standard: 30, flow: 5 })) 
+            : { standard: 30, flow: 5 };
+            
+        const duration = isFlowNow ? (hj.flow || hj.standard || 5) : (hj.standard || 30);
         
         addPoseToBuilder({
             id: item.id, name: item.name, duration, variation: item.stageKey || '', note: item.stageKey ? `[${item.stageKey}]` : '', 

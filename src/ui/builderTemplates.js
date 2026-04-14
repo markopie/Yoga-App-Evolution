@@ -99,7 +99,7 @@ export function generateInfoCellHTML(asana, pose, idx, options = {}) {
                 <span class="builder-flow-unit">secs</span>
             </div>
             <div>${catChipHTML}</div>
-            ${asana?.requires_sides ? `<div class="binfo-sides">↔ Both sides</div>` : ''}
+            ${(asana?.requires_sides || asana?.requiresSides) ? `<div class="binfo-sides">↔ Both sides</div>` : ''}
         </td>`;
     }
 
@@ -111,7 +111,7 @@ export function generateInfoCellHTML(asana, pose, idx, options = {}) {
             ${tierBtn('long', 'L', holdSrc.long)}
         </div>
         <div>${catChipHTML}</div>
-        ${asana?.requires_sides ? `<div class="binfo-sides">↔ Both sides</div>` : ''}
+        ${(asana?.requires_sides || asana?.requiresSides) ? `<div class="binfo-sides">↔ Both sides</div>` : ''}
     </td>`;
 }
 

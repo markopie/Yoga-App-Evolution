@@ -15,8 +15,9 @@ function getPoseBaseTime(p) {
     const rawId = Array.isArray(p[0]) ? p[0][0] : p[0];
     const strId = String(rawId || "").trim();
     const noteStr = p[4] || "";
+    const poseMeta = p[7] || {};
     const tierMatch = noteStr.match(/\btier:(S|L|STD)\b/i);
-    const tier = tierMatch ? tierMatch[1].toUpperCase() : null;
+    const tier = tierMatch ? tierMatch[1].toUpperCase() : (poseMeta.tier || null);
 
     if (typeof window.getEffectiveTime === "function") {
         // 'true' ensures we get the "Per Side" time
@@ -35,8 +36,9 @@ export function getDialPosition() {
  * Resolves the short / standard / long anchors for a pose.
  * Resolves the short / standard / long anchors for a pose.
  */
-export function resolveDialAnchors(origDur, asana) {
-    const hd = asana && window.getHoldTimes(asana);
+export function resolveDialAnchors(origDur, asana, variationKey) {
+    // Fix: Pass variationKey to getHoldTimes so anchors are context-accurate
+    const hd = asana ? (window.getHoldTimes ? window.getHoldTimes(asana, variationKey) : (asana.hold_json || { standard: 30 })) : { standard: 30 };
     const defaultDur = origDur;
     const rawShort = (hd && typeof hd.short === "number") ? hd.short : defaultDur;
     const rawLong  = (hd && typeof hd.long  === "number") ? hd.long  : defaultDur;
@@ -143,7 +145,7 @@ export function applyDurationDial() {
         // Get the true base time (respecting authored 600s, Tiers, etc)
         let trueBase = getPoseBaseTime(p);
 
-        const { short, defaultDur, long } = window.resolveDialAnchors(trueBase, targetForHold);
+        const { short, defaultDur, long } = window.resolveDialAnchors(trueBase, targetForHold, variation);
         cloned[1] = window.interpolateDuration(val, short, defaultDur, long);
 
         return cloned;

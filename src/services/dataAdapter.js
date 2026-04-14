@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient.js';
 import { parseHoldTimes, parseSequenceText } from '../utils/parsing.js';
+import { setCourses, setAsanaLibrary } from '../store/state.js';
 
 /** 
  * Bridge: Converts new JSON schema into the app's internal array format 
@@ -135,29 +136,24 @@ async function fetchCourses(currentUserId = null) {
             return catSort !== 0 ? catSort : a.title.localeCompare(b.title, undefined, { numeric: true });
         });
 
-        window.courses = deduplicated;
+        setCourses(deduplicated);
         return deduplicated;
     } catch (e) {
-        console.error("Load courses failed:", e);
+        console.error("Exception loading courses:", e);
         return [];
     }
 }
 
 async function loadAsanaLibrary() {
-    // Library load is intentional eager cache warm (see refactor-roadmap.md Lesson #2)
     if (!supabase) {
         console.error("Supabase client not initialized");
         return {};
     }
 
     try {
-        // 1. Fetch Asanas WITH their relational category
         const { data: asanasData, error: asanasError } = await supabase
             .from('asanas')
-            .select(`
-                *,
-                asana_categories ( name )
-            `);
+            .select(`*, asana_categories ( name )`);
             
         if (asanasError) throw asanasError;
 
@@ -165,50 +161,14 @@ async function loadAsanaLibrary() {
 
         if (asanasData) {
             asanasData.forEach((row) => {
-                const rawId = row.id ?? row.ID ?? '';
-                const key = normaliseAsanaId(String(rawId));
-                if (!key) return;
-
-                const rawHoldText = String(row.hold ?? row.Hold ?? '');
-                
-                // 🌟 THE FLATTENING: Use relational category if it exists
-                let asanaCategory = row.category ?? '';
-                if (row.asana_categories) {
-                    asanaCategory = row.asana_categories.name || asanaCategory;
-                }
-
-                normalized[key] = {
-                    id: key,
-                    name: row.name ?? `Pose ${key}`, // Safety Fallback
-                    iast: row.iast ?? '',
-                    // CRITICAL FIX: Ensure 'english' is never empty
-                    english: row.english_name ?? row.name ?? `Pose ${key}`, 
-                    devanagari: row.devanagari ?? '', 
-                    audio: row.audio_url ?? '',
-                    image_url: row.image_url ?? '',
-                    technique: row.technique ?? row.Technique ?? '',
-                    description: row.description ?? row.Description ?? '',
-                    category: asanaCategory,
-                    requiresSides: !!(row.requires_sides ?? row.Requires_Sides ?? false),
-                    plates: typeof parsePlates === 'function' ? parsePlates(row.plate_numbers ?? '') : (row.plate_numbers ?? ''),
-                    hold: rawHoldText,
-                    holdTimes: parseHoldTimes(rawHoldText),
-                    page_primary: row.page_primary ?? null,
-                    yoga_the_iyengar_way_id: row.yoga_the_iyengar_way_id ?? '',
-                    recovery_pose_id: row.recovery_pose_id ?? null,
-                    preparatory_pose_id: row.preparatory_pose_id ?? null,
-                    variations: {},
-                    isCustom: false
-                };
+                const asana = normalizeAsana(row);
+                if (asana) normalized[asana.id] = asana;
             });
         }
 
-       // 2. Load Stages (Base table replaces both former globals and custom user stages)
         const { data: stagesData } = await supabase.from('stages').select('*');
-        
         let allStagesData = stagesData ? [...stagesData] : [];
 
-        // 🌟 REFACTOR: Group by asana_id to enforce continuous zero-indexed sort_order on load
         const stagesByAsana = {};
         allStagesData.forEach(stage => {
             const parentIdStr = stage.asana_id ?? (Array.isArray(stage.parent_id) ? stage.parent_id[0] : stage.parent_id) ?? null;
@@ -221,81 +181,154 @@ async function loadAsanaLibrary() {
 
         Object.keys(stagesByAsana).forEach(parentKey => {
             const stages = stagesByAsana[parentKey];
-            // Sort by existing sort_order, then by stage name as fallback
             stages.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || String(a.stage_name).localeCompare(String(b.stage_name)));
 
             stages.forEach((stage, i) => {
-                const stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
-            if (!stageKey) return;
-            const holdStr = stage.Hold ?? stage.hold ?? '';
-            
-            normalized[parentKey].variations[stageKey] = {
-                id: stage.id ?? '',
-                technique: stage.full_technique ?? stage.Full_Technique ?? stage.technique ?? stage.Technique ?? '',
-                full_technique: stage.full_technique ?? stage.Full_Technique ?? stage.technique ?? stage.Technique ?? '',
-                shorthand: stage.Shorthand ?? stage.shorthand ?? '',
-                title: stage.Title ?? stage.title ?? `Stage ${stageKey}`,
-                hold: holdStr,
-                holdTimes: parseHoldTimes(holdStr),
-                image_url: stage.image_url ?? '',
-                audio: stage.audio_url ?? stage.Audio_URL ?? '',
-                recovery_pose_id: stage.recovery_pose_id ?? stage.recover_pose_id ?? null,
-                preparatory_pose_id: stage.preparatory_pose_id ?? null,
-                page_primary: stage.page_primary ?? null,  
-                isCustom: !!stage.user_id,
-                sort_order: i 
-            };
-        });
+                const norm = normalizeStageRow(stage, i);
+                if (norm) {
+                    normalized[parentKey].variations[norm.key] = norm.data;
+                }
+            });
         });
 
-        window.asanaLibrary = normalized;
+        // Final pass for computed UI fields
+        Object.values(normalized).forEach(asana => {
+            asana.inlineVariations = Object.keys(asana.variations).map(k => ({
+                label: k,
+                text: asana.variations[k]
+            }));
+        });
+
+        setAsanaLibrary(normalized);
         return normalized;
 
     } catch (e) {
-        console.error("🔥 Exception loading asana library:", e);
-        // Ensure the app doesn't crash completely
+        console.error("Exception loading asana library:", e);
         window.asanaLibrary = window.asanaLibrary || {}; 
         return {};
     }
 }
 
+/**
+ * Hardens an asana row from Supabase or legacy object into a consistent application object.
+ * Standardizes keys: requires_sides (Boolean), page_primary (Number), is_variation (Boolean).
+ */
+function normalizeAsana(row, existingData = {}) {
+    if (!row) return null;
 
-function normalizeAsana(id, asana) {
-    if (!asana) return null;
-    return {
-       ...asana,
-       asanaNo: id,
-       english: asana.english || asana.name || "",
-       'Yogasana Name': asana.english || asana.name || "",
-       variation: "", // Variations are now in variations object
-       inlineVariations: asana.variations ? Object.keys(asana.variations).map(key => ({
-          label: key,
-          text: asana.variations[key]
-       })) : [],
-       allPlates: [id] // For search compatibility
-    };
- }
+    // Handle (id, asana) legacy signature
+    if (typeof row === 'string' && existingData && typeof existingData === 'object') {
+        return normalizeAsana({ ...existingData, id: row });
+    }
 
-function normalizeAsanaRow(row, existingData = {}) {
-    const rawHoldText = String(row.Hold ?? row.hold ?? '');
+    const rawId = row.id ?? row.ID ?? row.asanaNo ?? existingData.id ?? '';
+    const key = normaliseAsanaId(String(rawId));
+    if (!key) return null;
 
-    return {
-        ...existingData, // Preserve existing fields if overwriting
-        id: existingData.id || normaliseAsanaId(String(row.id || row.ID || '')),
-        name: row.name ?? '',
-        english: row.english_name ?? '',
-        iast: row.iast ?? '',
-        audio: row.audio_url ?? '',
+    const rawHoldText = String(row.Hold ?? row.hold ?? existingData.hold ?? '');
+    
+    // requires_sides (Boolean) -> Handles requiresSides, requires_sides, and "true" strings.
+    const rawSides = row.requires_sides ?? row.requiresSides ?? row.Requires_Sides ?? existingData.requires_sides ?? false;
+    const requires_sides = (typeof rawSides === 'string') 
+        ? (rawSides.toLowerCase() === 'true') 
+        : !!rawSides;
+
+    // page_primary (Number) -> Ensure it's a float/int, not a string.
+    let page_primary = row.page_primary ?? existingData.page_primary ?? null;
+    if (page_primary != null && page_primary !== "") {
+        page_primary = parseFloat(page_primary);
+        if (isNaN(page_primary)) page_primary = null;
+    }
+
+    // is_variation (Boolean)
+    const rawIsVar = row.is_variation ?? row.isVariation ?? existingData.is_variation ?? false;
+    const is_variation = (typeof rawIsVar === 'string') 
+        ? (rawIsVar.toLowerCase() === 'true') 
+        : !!rawIsVar;
+
+    // Relational category flattening
+    let asanaCategory = row.category ?? existingData.category ?? '';
+    if (row.asana_categories) {
+        asanaCategory = row.asana_categories.name || asanaCategory;
+    }
+
+    const asana = {
+        ...existingData,
+        id: key,
+        asanaNo: key,
+        name: row.name ?? existingData.name ?? `Pose ${key}`,
+        iast: row.iast ?? existingData.iast ?? '',
+        english: row.english_name ?? row.english ?? row.name ?? existingData.english ?? `Pose ${key}`,
+        devanagari: row.devanagari ?? existingData.devanagari ?? '', 
+        audio: row.audio_url ?? row.audio ?? existingData.audio ?? '',
         image_url: row.image_url ?? existingData.image_url ?? '',
-        category: row.category ?? existingData.category,
+        technique: row.technique ?? row.Technique ?? existingData.technique ?? '',
+        description: row.description ?? row.Description ?? existingData.description ?? '',
+        category: asanaCategory,
+        requires_sides,
+        is_variation,
+        plates: typeof parsePlates === 'function' ? parsePlates(row.plate_numbers ?? '') : (row.plate_numbers ?? ''),
         hold: rawHoldText,
         holdTimes: parseHoldTimes(rawHoldText),
+        page_primary,
         yoga_the_iyengar_way_id: row.yoga_the_iyengar_way_id ?? existingData.yoga_the_iyengar_way_id ?? '',
         recovery_pose_id: row.recovery_pose_id ?? row.recover_pose_id ?? existingData.recovery_pose_id ?? null,
         preparatory_pose_id: row.preparatory_pose_id ?? existingData.preparatory_pose_id ?? null,
-        standard_seconds: parseHoldTimes(rawHoldText).standard || 30,
-        isCustom: !!row.is_custom || false
+        variations: existingData.variations || {},
+        isCustom: !!(row.is_custom ?? row.isCustom ?? row.user_id ?? existingData.isCustom ?? false),
+        standard_seconds: parseHoldTimes(rawHoldText).standard || 30
     };
+
+    asana['Yogasana Name'] = asana.english;
+    asana.allPlates = [key];
+
+    return asana;
+}
+
+/**
+ * Hardens a stage/variation row from Supabase.
+ */
+function normalizeStageRow(stage, index = 0) {
+    const stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
+    if (!stageKey) return null;
+
+    const holdStr = stage.Hold ?? stage.hold ?? '';
+    
+    let page_primary = stage.page_primary ?? null;
+    if (page_primary != null && page_primary !== "") {
+        page_primary = parseFloat(page_primary);
+        if (isNaN(page_primary)) page_primary = null;
+    }
+
+    const rawIsVar = stage.is_variation ?? stage.isVariation ?? true; 
+    const is_variation = (typeof rawIsVar === 'string') 
+        ? (rawIsVar.toLowerCase() === 'true') 
+        : !!rawIsVar;
+
+    return {
+        key: stageKey,
+        data: {
+            id: stage.id ?? '',
+            technique: stage.full_technique ?? stage.Full_Technique ?? stage.technique ?? stage.Technique ?? '',
+            full_technique: stage.full_technique ?? stage.Full_Technique ?? stage.technique ?? stage.Technique ?? '',
+            shorthand: stage.Shorthand ?? stage.shorthand ?? '',
+            title: stage.Title ?? stage.title ?? `Stage ${stageKey}`,
+            hold: holdStr,
+            holdTimes: parseHoldTimes(holdStr),
+            image_url: stage.image_url ?? '',
+            audio: stage.audio_url ?? stage.Audio_URL ?? '',
+            recovery_pose_id: stage.recovery_pose_id ?? stage.recover_pose_id ?? null,
+            preparatory_pose_id: stage.preparatory_pose_id ?? null,
+            page_primary,
+            is_variation,
+            isCustom: !!stage.user_id,
+            sort_order: stage.sort_order ?? index 
+        }
+    };
+}
+
+function normalizeAsanaRow(row, existingData = {}) {
+    return normalizeAsana(row, existingData);
 }
 
 function normalizePlate(p) {

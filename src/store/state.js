@@ -3,7 +3,6 @@
 
 export const globalState = {
     courses: [],
-    sequences: [],
     asanaLibrary: {},
     plateGroups: {},
     serverAudioFiles: [],
@@ -25,10 +24,10 @@ export const globalState = {
 };
 
 /**
- * TRACKER: Internal state object to store seconds spent per pose index
- * Format: { 0: 30, 1: 45, ... }
+ * TRACKER: Synchronize window-level global with state object for legacy interoperability.
+ * Format: { index: seconds }
  */
-window.completionTracker = {};
+window.completionTracker = globalState.completionTracker;
 
 export function resetCompletionTracker() {
     globalState.completionTracker = {};
@@ -57,7 +56,7 @@ export function updateNodeCompletion(index, seconds) {
             localStorage.setItem("yoga_resume_state_v2", JSON.stringify(stateObj));
         }
     } catch (e) {
-        console.warn("Could not save live progress to local cache", e);
+        // Storage exceptions handled silently to maintain playback performance
     }
 }
 
@@ -65,10 +64,6 @@ export function updateNodeCompletion(index, seconds) {
 export function setCourses(newCourses) {
     globalState.courses = newCourses;
     window.courses = newCourses;
-}
-
-export function setSequences(newSequences) {
-    globalState.sequences = newSequences;
 }
 
 export function setAsanaLibrary(newLib) {
@@ -119,7 +114,6 @@ export function setNeedsSecondSide(needs) {
 
 // Getters
 export function getCourses() { return globalState.courses; }
-export function getSequences() { return globalState.sequences; }
 export function getAsanaLibrary() { return globalState.asanaLibrary; }
 export function getActivePlaybackList() { return globalState.activePlaybackList; }
 export function getCurrentSequence() { return globalState.currentSequence; }
@@ -136,7 +130,6 @@ Object.assign(window, {
     getCompletionTracker,
     getCurrentIndex, // Ensure this is available for your timer hook
     setCourses,
-    setSequences,
     setAsanaLibrary,
     setPlateGroups,
     setServerAudioFiles,

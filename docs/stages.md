@@ -1,6 +1,6 @@
 # Asana Stages & Variations Mapping
 
-> Last Sync: 2026-04-13 16:15:36 | Total Records: 203
+> Last Sync: 2026-04-14 16:59:50 | Total Records: 204
 
 | id | asana_id | stage_name | title |
 | --- | --- | --- | --- |
@@ -207,3 +207,4 @@
 | 248 | 040 | IV | Bending forward with blanket on the thighs |
 | 249 | 231 | III | With Sideways Bend |
 | 250 | 004 | II | With a chair |
+| 251 | 051 | II | On a bolster |

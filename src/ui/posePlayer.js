@@ -154,8 +154,8 @@ function prevPose() {
         const asana = window.findAsanaByIdOrPlate(window.normalizePlate(id));
         const meta = prevPoseData[7] || {};
 
-        // Only treat as bilateral if it's not a flow segment and has no explicit side lock
-        const isBilateralContext = asana && asana.requires_sides && !meta.explicitSide && !meta.flowSegment;
+        // ARCHITECT FIX: Ensure resilient bilateral check during backwards navigation
+        const isBilateralContext = asana && (asana.requires_sides === true || asana.requires_sides === "true" || asana.requiresSides === true) && !meta.explicitSide && !meta.flowSegment;
 
         if (isBilateralContext) {
             // Moving back from Pose N (Right) to Pose N-1 (Left)
@@ -226,17 +226,17 @@ function setPose(idx, keepSamePose = false) {
     // --- 🛑 DURATION RESOLUTION (TRUST THE PLAYBACK LIST) ---
     // applyDurationDial() has ALREADY evaluated the strict rules, 
     // applied the dial scaling, and calculated sides. We just read it directly!
-    let seconds = Number(currentPose[1]) || 0;
+    let seconds = Number(currentPose[1]);
 
-    // JSON-Native Fallback: If duration is 0/null, use library standard
+    // Fallback: If list value is 0/missing (corrupt or legacy sequence), resolve from library
     if (!seconds && asana) {
-        const varKey = currentPose[3]; 
-        const hj = window.getHoldTimes ? window.getHoldTimes(asana, varKey) : { standard: 30 };
         const tier = poseMeta.tier;
+        const hj = window.getHoldTimes ? window.getHoldTimes(asana, currentPose[3]) : (asana.hold_json || { standard: 30 });
         if (tier === 'S') seconds = hj.short || hj.standard || 30;
         else if (tier === 'L') seconds = hj.long || hj.standard || 30;
         else seconds = hj.standard || 30;
     }
+
     // Final absolute safety fallback
     if (!seconds) seconds = 30;
 
@@ -250,7 +250,12 @@ function setPose(idx, keepSamePose = false) {
         }
     }
 
-    if (asana && asana.requires_sides) {
+    // ARCHITECT FIX: Check both naming conventions for bilateral detection
+    const isBilateral = asana && (asana.requires_sides === true || asana.requires_sides === "true" || asana.requiresSides === true);
+    
+    
+
+    if (isBilateral) {
         if (!keepSamePose) {
             if (explicitSide === 'L' || explicitSide === 'R') {
                 // Strict override from Flow Builder: Lock the side, kill the bilateral loop.
@@ -452,7 +457,8 @@ function setPose(idx, keepSamePose = false) {
         if (p) finalTitle += ` <span style="color:${p.color}; margin-left:6px;" title="${p.label}">${p.icon || '🩹'}</span>`;
     });
 
-    if (asana && asana.requires_sides) {
+    // 🌟 RESTORE: Use the resilient isBilateral flag instead of strict property check
+    if (isBilateral) {
         let sideMarker = "";
         if (explicitSide === "L" || explicitSide === "R") {
             sideMarker = explicitSide; 
@@ -526,7 +532,7 @@ function setPose(idx, keepSamePose = false) {
         infoSpan.className = "meta-text-only"; 
 
         // ✅ Pass matchedVariationKey so Stage-specific times appear in the UI
-        const hj = asana ? window.getHoldTimes(asana, matchedVariationKey) : null;
+        const hj = asana ? (window.getHoldTimes ? window.getHoldTimes(asana, matchedVariationKey) : (asana.hold_json || asana.hold_data)) : null;
         
         let rangeText = "";
         if (hj && hj.short && hj.long) {
@@ -610,7 +616,8 @@ function setPose(idx, keepSamePose = false) {
     window.currentVariationKey = matchedVariationKey;
     window.currentPropModifier = activeProps; // 🌟 SYNC: Ensure audio engine sees the props
     if (window.playbackEngine && window.playbackEngine.running && asana) {
-        const isSecondSide = window.getCurrentSide() === "left" && !!asana.requires_sides;
+        // 🌟 RESTORE: Use resilient check for audio logic too
+        const isSecondSide = window.getCurrentSide() === "left" && !!isBilateral;
         window.playAsanaAudio(asana, baseOverrideName, false, window.getCurrentSide(), matchedVariationKey, isSecondSide, activeProps);
     }
 

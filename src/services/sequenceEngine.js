@@ -9,7 +9,8 @@
  * and automatic preparatory/recovery pose injection from asana metadata.
  *
  * @param {object} sequence - A course/sequence object with a .poses array
- * @returns {Array} Flat array of pose tuples [id, dur, overrideName, variation, note, origIdx, metaLabel]
+ * @param {object} ctx - Recursive context for macros and loops
+ * @returns {Array} Flat array of pose tuples [id, dur, overrideName, variation, note, origIdx, metaLabel, poseMeta]
  */
 export function getExpandedPoses(sequence, ctx = {}) {
     let expanded = [];
@@ -20,20 +21,21 @@ export function getExpandedPoses(sequence, ctx = {}) {
     const stack = Array.isArray(ctx.stack) ? [...ctx.stack] : [];
     const depth = Number(ctx.depth) || 0;
     const maxDepth = Number(ctx.maxDepth) || 12;
+    
     const seqTitle = String(sequence.title || '').trim();
-    const seqIsFlow = !!(sequence && (sequence.playbackMode === 'flow' || sequence.isFlow === true));
+    const seqIsFlow = !!(sequence && (sequence.playbackMode === 'flow' || sequence.isFlow === true || sequence.is_flow === true));
     const inheritedFlow = !!ctx.flowSegment;
     const flowSegment = inheritedFlow || seqIsFlow;
 
     if (depth > maxDepth) {
-        console.warn(`⚠️ getExpandedPoses: max macro depth (${maxDepth}) exceeded for "${seqTitle || 'Untitled Sequence'}".`);
+        console.warn(`[SequenceEngine] Max macro depth (${maxDepth}) exceeded for "${seqTitle || 'Untitled Sequence'}".`);
         return [];
     }
 
     if (seqTitle) {
         if (visitedTitles.has(seqTitle)) {
             const loopPath = [...stack, seqTitle].join(' → ');
-            console.warn(`⚠️ getExpandedPoses: macro cycle detected: ${loopPath}`);
+            console.warn(`[SequenceEngine] Macro cycle detected: ${loopPath}`);
             return [];
         }
         visitedTitles.add(seqTitle);
@@ -50,7 +52,6 @@ export function getExpandedPoses(sequence, ctx = {}) {
             const identifier = idStr.replace(/^MACRO:/i, "").trim();
             const normId = identifier.toLowerCase();
 
-            // Resilient lookup: Try Title (case-insensitive) OR ID match
             const sub = allCourses.find(c => {
                 const cTitle = String(c.title || "").trim().toLowerCase();
                 const cId = String(c.id || "").trim();
@@ -58,7 +59,7 @@ export function getExpandedPoses(sequence, ctx = {}) {
             });
             
             if (!sub || !sub.poses) {
-                console.warn(`⚠️ getExpandedPoses: linked sequence "${identifier}" was not found.`);
+                console.warn(`[SequenceEngine] Linked macro sequence "${identifier}" was not found.`);
                 return;
             }
 
@@ -77,7 +78,7 @@ export function getExpandedPoses(sequence, ctx = {}) {
                     
                     const meta = { 
                         ...(cloned[7] || {}), 
-                        macroTitle: sub.title || identifier, // Prefer human title for UI labels even if linked by ID
+                        macroTitle: sub.title || identifier,
                         flowSegment: !!(cloned[7]?.flowSegment || flowSegment) 
                     };
                     
@@ -103,7 +104,7 @@ export function getExpandedPoses(sequence, ctx = {}) {
     let loopBuffer = [];
     let inLoop = false;
     let loopCount = 1;
-    let loopLabel = ""; // NEW: Capture note from LOOP_START
+    let loopLabel = "";
 
     expanded.forEach(p => {
         const idStr = String(p[0]);
@@ -119,7 +120,6 @@ export function getExpandedPoses(sequence, ctx = {}) {
             }
             inLoop = true;
             loopCount = Number(p[1]) || 1;
-            // Capture the note (index 4) and strip brackets if present, e.g., "[Warmup]" -> "Warmup"
             loopLabel = p[4] ? p[4].replace(/[\[\]]/g, "").trim() : ""; 
             loopBuffer = [];
         } else if (idStr === "LOOP_END") {
@@ -153,7 +153,7 @@ export function getExpandedPoses(sequence, ctx = {}) {
         }
     }
 
-    // 3. Inject Preparatory & Recovery Poses dynamically
+    // 3. Inject Preparatory & Recovery Poses
     const _normalizePlate = typeof window.normalizePlate === "function" ? window.normalizePlate : (x => x);
     const findAsana = (id) =>
         typeof window.findAsanaByIdOrPlate === "function"
@@ -161,35 +161,31 @@ export function getExpandedPoses(sequence, ctx = {}) {
             : null;
 
     let withInjected = [];
+    
     finalExpanded.forEach(p => {
         const idStr = String(p[0] || "");
         const poseMeta = p[7] || {};
         
-        // 1. System Poses (Macros, Loops, etc.)
         if (idStr.startsWith("MACRO") || idStr.startsWith("LOOP_") || idStr === "GROUP_END") {
             withInjected.push(p);
             return;
         }
 
-        // 🌟 THE SAFETY NET: Treat explicit L/R choices as "Flow" segments.
-        // This prevents the bilateral doubler from triggering later.
+        // Evaluate Flow Context (Skip injections and side-doubling in pure flow / explicit single sides)
         const isExplicitSingleSide = poseMeta.explicitSide === 'L' || poseMeta.explicitSide === 'R';
         const isFlowContext = !!(poseMeta.flowSegment || isExplicitSingleSide);
 
         if (isFlowContext) {
-            // In a flow context, we push once and skip the prep/recovery injection 
-            // logic below to keep the flow "clean" and fast.
             let cloned = [...p];
             cloned[7] = { 
                 ...(cloned[7] || {}), 
                 flowSegment: true,
-                isBilateral: false // Signal the player to ignore standard bilateral doubling
+                isBilateral: false // Overrides default bilateral player logic
             };
             withInjected.push(cloned);
             return;
         }
 
-        // 2. Standard Sequence Logic (Prep/Recovery Injection)
         const asana = findAsana(idStr);
         let currKey = null;
         let keyMatch = [p[2], p[3], p[4]].filter(Boolean).join(" ").trim().match(/\[(.*?)\]/);
@@ -210,21 +206,18 @@ export function getExpandedPoses(sequence, ctx = {}) {
             if (currKey && asana.variations) {
                 const cleanNk = currKey.toLowerCase();
                 for (const [vk, vd] of Object.entries(asana.variations)) {
-                    const vtitle = (vd.title || vd.Title || "").toLowerCase().trim();
+                    const vtitle = (vd.title || "").toLowerCase().trim();
                     if (vk.toLowerCase() === cleanNk || vtitle.includes(cleanNk)) {
-                    // 🌟 ARCHITECT FIX: The matched variation (Stage) is the authority.
-                    // We assign the IDs directly. If the Stage record has a null/blank 
-                    // value, it effectively "cancels" the base asana's injection 
-                    // defaults, which is the expected behavior for specific variations.
-                    prep  = vd.preparatory_pose_id;
-                    recov = vd.recovery_pose_id;
+                        // Stage-level IDs override Base Asana IDs
+                        prep  = vd.preparatory_pose_id;
+                        recov = vd.recovery_pose_id;
                         break;
                     }
                 }
             }
 
-            if (prep  && prep  !== "NULL" && prep  !== "null") prepIds.push(prep);
-            if (recov && recov !== "NULL" && recov !== "null") recovIds.push(recov);
+            if (prep && prep.toUpperCase() !== "NULL") prepIds.push(prep);
+            if (recov && recov.toUpperCase() !== "NULL") recovIds.push(recov);
         }
 
         const createInjectedPose = (rawId, label) => {
@@ -254,7 +247,6 @@ export function getExpandedPoses(sequence, ctx = {}) {
                 }
             }
 
-            // 🌟 Updated: Ensure injected poses inherit the flow status of the parent
             return [
                 numId, 
                 duration, 
@@ -267,13 +259,12 @@ export function getExpandedPoses(sequence, ctx = {}) {
             ];
         };
 
-        prepIds.forEach(id  => { const pp = createInjectedPose(id,  "Preparatory Action"); if (pp) withInjected.push(pp); });
+        prepIds.forEach(id  => { const pp = createInjectedPose(id, "Preparatory Action"); if (pp) withInjected.push(pp); });
         withInjected.push(p);
-        recovIds.forEach(id => { const rp = createInjectedPose(id,  "Recovery Action");    if (rp) withInjected.push(rp); });
+        recovIds.forEach(id => { const rp = createInjectedPose(id, "Recovery Action");    if (rp) withInjected.push(rp); });
     });
 
     return withInjected;
 }
 
-// Make globally available for compatibility with app.js / wiring.js
 window.getExpandedPoses = getExpandedPoses;

@@ -66,7 +66,6 @@
 
 ### 📄 `services/dataAdapter.js`
 - `asanaLibrary` (window binding)
-- `courses` (window binding)
 - `fetchCourses` (module export)
 - `findAsanaByIdOrPlate` (module export)
 - `loadAsanaLibrary` (module export)
@@ -146,7 +145,6 @@
 - `getCurrentSequence` (function)
 - `getCurrentSide` (function)
 - `getNeedsSecondSide` (function)
-- `getSequences` (function)
 - `globalState` (const)
 - `idAliases` (window binding)
 - `resetCompletionTracker` (function)
@@ -161,15 +159,11 @@
 - `setIdAliases` (function)
 - `setNeedsSecondSide` (function)
 - `setPlateGroups` (function)
-- `setSequences` (function)
 - `setServerAudioFiles` (function)
 - `updateNodeCompletion` (function)
 
 ### 📄 `ui/asanaEditor.js`
 - `_asanaEditorDeletedStageIds` (window binding)
-- `_asanaEditorOriginalStageCount` (window binding)
-- `_asanaEditorOriginalStageData` (window binding)
-- `_asanaEditorSnapshot` (window binding)
 - `addStageToEditor` (window binding)
 - `openAsanaEditor` (window binding)
 - `refreshStageIndices` (window binding)
