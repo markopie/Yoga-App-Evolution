@@ -87,9 +87,16 @@ function builderRender() {
                 const cacheKey = String(subCourse.id || subCourse.supabaseId || subCourse.title || identifier);
                 let oneRoundSecs = macroDurationCache.get(cacheKey);
                 if (oneRoundSecs == null) {
-                    oneRoundSecs = typeof window.calculateTotalSequenceTime === "function"
-                        ? window.calculateTotalSequenceTime(subCourse)
-                        : subCourse.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1], '', sp[3], sp[4], false, subCourse, sp[7] || null), 0);
+            // Step 1 Fix: Align Info cell with the correct expansion-based calculation path.
+            if (typeof window.getExpandedPoses === "function" && typeof window.getPosePillTime === "function") {
+                const syntheticSeq = { poses: [[`MACRO:${subCourse.id || identifier}`, 1, "", "", "Linked Sequence: 1 Round"]] };
+                const expanded = window.getExpandedPoses(syntheticSeq);
+                oneRoundSecs = expanded.reduce((acc, p) => acc + window.getPosePillTime(p), 0);
+            } else {
+                oneRoundSecs = typeof window.calculateTotalSequenceTime === "function"
+                    ? window.calculateTotalSequenceTime(subCourse)
+                    : subCourse.poses.reduce((acc, sp) => acc + getEffectiveTime(sp[0], sp[1], '', sp[3], sp[4], false, subCourse, sp[7] || null), 0);
+            }
                     macroDurationCache.set(cacheKey, oneRoundSecs);
                 }
                 totalSec += (oneRoundSecs * durOrReps);
