@@ -87,41 +87,43 @@ export function getEffectiveTime(id, dur, tier, varKey, note, returnPerSide = fa
     const baseHj = targetForHold === asana ? hj : getHoldTimes(asana);
     const libStandard = (hj && hj.standard != null) ? Number(hj.standard) :
         ((baseHj && baseHj.standard != null) ? Number(baseHj.standard) : 30);
-    const idNum = parseInt(strId.replace(/\D/g, ''), 10);
-    const isPranayama = idNum >= 203 && idNum <= 230;
     const isFlow = !!(poseMeta && poseMeta.flowSegment) || isFlowPlaybackSequence(seq);
 
-    // RULE 1: Explicit Tiers (S/L/STD) override everything.
-    if (tier) {
-        const tierDur = resolveTierDuration(targetForHold, tier);
-        if (tierDur != null) {
-            return returnPerSide ? tierDur : (asana.requiresSides || asana.requires_sides ? tierDur * 2 : tierDur);
+    // RULE 1: Resolution Source of Truth
+    let baseDuration = 0;
+
+    if (isFlow) {
+        // FLOW context: Authored seconds in sequence_json are meaningful and authoritative.
+        baseDuration = Number(dur) || hj?.flow || baseHj?.flow || libStandard || 5;
+    } else {
+        // STANDARD context: Authored seconds are not authoritative (often persisted defaults).
+        // Resolve duration primarily from the library standard.
+        baseDuration = libStandard;
+
+        // Exception: Pranayama respects authored duration if no tier is present.
+        const idNum = parseInt(strId.replace(/\D/g, ''), 10);
+        const isPranayama = idNum >= 203 && idNum <= 230;
+        if (isPranayama && !tier) {
+            baseDuration = Number(dur) || libStandard;
+        }
+
+        // Tiers (S/L/STD) are valid override signals that resolve from the library.
+        if (tier) {
+            const tierDur = resolveTierDuration(targetForHold, tier);
+            if (tierDur != null) baseDuration = tierDur;
         }
     }
 
-    // RULE 2: Pranayama without explicit tier respects authored sequence time.
-    if (isPranayama) {
-        const pranayamaDuration = Number(dur) || libStandard;
-        return returnPerSide ? pranayamaDuration : (asana.requiresSides || asana.requires_sides ? pranayamaDuration * 2 : pranayamaDuration);
-    }
-
-    // RULE 3: Flow sequences respect authored flow timing; standard sequences prefer library standard.
-    let duration = isFlow
-        ? (Number(dur) || Number(hj?.flow) || Number(baseHj?.flow) || libStandard || 5)
-        : libStandard;
-    if (!(duration > 0)) {
-        duration = Number(dur) || (isFlow ? 5 : 30);
-    }
-    
-
-    // RULE 4: Bilateral Logic
+    // RULE 2: Bilateral Logic
+    // Preserve explicit-side handling: if a specific side (L or R) is requested, doubling is suppressed.
     const hasExplicitSide = !!(poseMeta && poseMeta.explicitSide);
-    const isBilateralActive = (asana.requiresSides || asana.requires_sides) && !hasExplicitSide && !isFlow;
-    if (isBilateralActive) {
-        return returnPerSide ? duration : (duration * 2);
+    const isBilateralActive = (asana.requiresSides || asana.requires_sides) && !hasExplicitSide;
+
+    if (isBilateralActive && !returnPerSide) {
+        return baseDuration * 2;
     }
 
-    return duration;
+    return baseDuration;
 }
 
 /**
@@ -142,14 +144,16 @@ export function calculateTotalSequenceTime(seq) {
 /**
  * Simple getter used by the UI (Pills/Dial Estimate).
  */
-export function getPosePillTime(p) {
-    const strId = normalizePoseId(p[0]);
-    if (strId.startsWith("MACRO:") || strId.startsWith("LOOP")) return 0;
+export function getPosePillTime(p, seq = null) {
+    if (!p || !Array.isArray(p)) return 0;
+    // p schema: [id, duration, name_override, variation_key, note, original_idx, label, meta_obj]
+    const id = p[0];
+    const dur = p[1];
+    const varKey = p[3];
+    const note = p[4];
+    const meta = p[7] || null;
     
-    const dur = Number(p[1]) || 0;
-    const { asana } = getAsanaForId(strId);
-
-    return (asana && (asana.requiresSides || asana.requires_sides)) ? dur * 2 : dur;
+    return getEffectiveTime(id, dur, extractTier(note), varKey, note, false, seq, meta);
 }
 
 

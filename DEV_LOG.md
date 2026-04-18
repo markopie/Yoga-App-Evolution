@@ -82,3 +82,16 @@
 - **PosePlayer Audit:** Perform a final pass on `src/ui/posePlayer.js` to remove redundant `isBilateral` helper logic now that the data source is hardened.
 - **UI Consistency Pass:** Migrate the "Selected Poses" list in the Builder and the Practice History modal to the new Bold English / Italic IAST hierarchy.
 ---
+
+## [2026-04-16] - Session [01]
+**Goal:** Implement support for the new `hold_json` columns to harden timing logic.
+**Architectural Decisions:**
+- Established `hold_json` (containing standard, short, long, and flow durations) as the primary source of truth for all pose timing.
+- Implemented a resilient fallback to legacy text `hold` field parsing in `getHoldTimes` to ensure backward compatibility.
+- Integrated `hold_json` hydration into the `dataAdapter.js` normalization path for both base asanas and stages (variations).
+**Code Changed:**
+- `src/services/dataAdapter.js`: Added JSON-based duration mapping and implemented null-safety checks in `parseSequenceJSON`.
+- `src/utils/parsing.js`: Refactored `getHoldTimes` to prioritize the JSON timing object.
+**Next Steps for Next Session:**
+- Audit the database for any asanas or stages where `hold_json` might be missing or inconsistent with the legacy text field.
+---

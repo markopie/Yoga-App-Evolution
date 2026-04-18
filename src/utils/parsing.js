@@ -120,15 +120,28 @@ function getHoldTimes(asana, variationKey = null) {
 
     let source = asana;
 
-    // Check if the specific variation has its own timing override
+    // 1. Resolve source (Variation or Base)
     if (variationKey && asana.variations && asana.variations[variationKey]) {
         const v = asana.variations[variationKey];
-        // Only switch source if the variation actually has a hold string
-        if (v.hold || v.Hold) {
+        // Switch to variation if it has either JSON or legacy text hold data
+        if ((v.hold_json && typeof v.hold_json === 'object') || v.hold || v.Hold) {
             source = v;
         }
     }
 
+    // 2. Primary Choice: Use native JSON if available
+    if (source && source.hold_json && typeof source.hold_json === 'object') {
+        const hj = source.hold_json;
+        // Return consistent shape even if DB row is partial
+        return {
+            standard: Number(hj.standard) || 30,
+            short:    Number(hj.short)    || 15,
+            long:     Number(hj.long)     || 60,
+            flow:     Number(hj.flow)     || 5
+        };
+    }
+
+    // 3. Legacy Fallback: Parse the text hold string
     return parseHoldTimes((source && (source.hold || source.Hold)) || '');
 }
 

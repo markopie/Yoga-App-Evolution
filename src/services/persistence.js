@@ -59,46 +59,48 @@ export async function getOrCreateSubCategoryId(fullCategoryString) {
  * Safely saves or updates a course, resolving category IDs automatically.
  */
 export async function saveSequence(payload, knownId = null) {
-    // 1. Resolve the relational ID
     const subCategoryId = await getOrCreateSubCategoryId(payload.category);
+    
+    // Logic Architect Note: Ensure user_id is explicitly present
+    if (!payload.user_id) {
+        throw new Error("Security Violation: Cannot save sequence without a valid user_id.");
+    }
 
-    // 2. Build the exact payload (Strictly matching your schema)
     const dbPayload = {
         title: payload.title,
-        sequence_json: payload.sequence_json, // JSON-Native Migration: Primary Source of Truth
+        sequence_json: payload.sequence_json,
         sub_category_id: subCategoryId, 
         last_edited: payload.last_edited,
-        user_id: payload.user_id,
+        user_id: payload.user_id, // Mandatory for the new RLS check
         condition_notes: payload.condition_notes,
         is_alias: payload.is_alias,
         redirect_id: payload.redirect_id
     };
 
-    // Legacy sync: only write sequence_text if explicitly provided (Builder now stops sending it)
-    if (payload.sequence_text !== undefined) {
-        dbPayload.sequence_text = payload.sequence_text;
-    }
+    if (payload.sequence_text !== undefined) dbPayload.sequence_text = payload.sequence_text;
+    
+    // Logic Architect Note: is_system should ONLY be allowed if the user has admin roles
+    if (payload.is_system !== undefined) dbPayload.is_system = payload.is_system;
 
-    if (payload.is_system !== undefined) {
-        dbPayload.is_system = payload.is_system;
-    }
-
-    // 3. Execute Update or Insert
+    // 1. Direct Update via knownId
     if (knownId) {
         const { error } = await supabase
             .from('courses')
             .update(dbPayload)
-            .eq('id', knownId);
+            .eq('id', knownId)
+            .eq('user_id', payload.user_id); // 🛡️ CRITICAL: Only update if user owns it
             
         if (error) throw error;
         return { id: knownId };
     } 
 
+    // 2. Ownership-Aware Upsert (Check title AND user_id)
     const { data: existing, error: selErr } = await supabase
         .from('courses')
         .select('id')
         .eq('title', dbPayload.title)
         .eq('sub_category_id', subCategoryId)
+        .eq('user_id', payload.user_id) // 🛡️ CRITICAL: Don't overwrite other users' titles
         .maybeSingle();
         
     if (selErr) throw selErr;
@@ -107,12 +109,14 @@ export async function saveSequence(payload, knownId = null) {
         const { error } = await supabase
             .from('courses')
             .update(dbPayload)
-            .eq('id', existing.id);
+            .eq('id', existing.id)
+            .eq('user_id', payload.user_id); // 🛡️ CRITICAL Safety redundancy
             
         if (error) throw error;
         return { id: existing.id };
     }
 
+    // 3. Fresh Insert
     const { data: inserted, error: insErr } = await supabase
         .from('courses')
         .insert([dbPayload])
@@ -120,7 +124,6 @@ export async function saveSequence(payload, knownId = null) {
         .single();
         
     if (insErr) throw insErr;
-    
     return { id: inserted.id };
 }
 /**

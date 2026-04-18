@@ -110,8 +110,9 @@ function builderRender() {
             const hj = asana ? (window.getHoldTimes ? window.getHoldTimes(asana, pose.variation) : (asana.hold_json || { standard: 30 })) : { standard: 30 };
             const activeTime = isFlow ? (pose.flowHoldOverride || hj.flow || hj.standard || 5) : (pose.duration || hj.standard || 30);
             const tier = pose.holdTier === 'short' ? 'S' : (pose.holdTier === 'long' ? 'L' : null);
+            const meta = { explicitSide: pose.side || null };
             
-            totalSec += getEffectiveTime(idStr, activeTime, tier, pose.variation, pose.note);
+            totalSec += getEffectiveTime(idStr, activeTime, tier, pose.variation, pose.note, false, null, meta);
         }
 
         const devanagari = asana?.devanagari || ""; 
@@ -653,7 +654,8 @@ function openPropPicker(idx) {
             const tierTag = (!p.holdTier || p.holdTier === 'standard') ? '' : ` tier:${p.holdTier === 'short' ? 'S' : 'L'}`;
             const cleanNote = (p.note || '').replace(/\btier:[SL]\b/gi, '').trim();
             const noteWithTier = (cleanNote + tierTag).trim();
-            return [p.id, p.duration, p.variation || "", p.variation || "", noteWithTier];
+            const meta = { explicitSide: p.side || null };
+            return [p.id, p.duration, p.variation || "", p.variation || "", noteWithTier, null, null, meta];
         });
         
         const tempSeq = { poses: tempPoses };
@@ -966,6 +968,12 @@ function builderOpen(mode, seq) {
                  rawExtras = rawExtras.replace(tierMatch[0], '').trim();
              }
 
+             // Defensive: Clean legacy side tags from note during load
+             const sideMatch = (rawExtras || p[4] || '').match(/\bside:(L|R)\b/i);
+             if (sideMatch) {
+                 rawExtras = rawExtras.replace(sideMatch[0], '').trim();
+             }
+
              Object.keys(PROP_REGISTRY).forEach(propName => {
                  const tag = `:${propName}`;
                  if (rawExtras.toLowerCase().includes(tag)) {
@@ -1094,10 +1102,7 @@ function builderCompileSequenceJSON() {
         }
 
         // 🌟 JSON-Native Fix: Use the props array from the builder state (which contains toggle selections)
-        const props = Array.isArray(p.props) ? [...p.props] : [];
-        
-        // Sync explicit side selector into the metadata props
-        if (p.side && !props.includes(`side:${p.side}`)) props.push(`side:${p.side}`);
+        const props = (Array.isArray(p.props) ? [...p.props] : []).filter(pr => !pr.startsWith('side:'));
         
         // Also check if the user manually typed a marker in the note field during this session
         Object.keys(PROP_REGISTRY).forEach(prop => {
@@ -1118,9 +1123,11 @@ function builderCompileSequenceJSON() {
             stage_id: stageId,
             duration: Number(p.duration) || 0,
             tier: p.holdTier === 'short' ? 'S' : (p.holdTier === 'long' ? 'L' : null),
+            side: p.side || null,
             props: props,
             note: p.note ? (() => {
                 let n = p.note.replace(/\btier:[SL]\b/gi, '');
+                n = n.replace(/\bside:[LR]\b/gi, '');
                 Object.keys(PROP_REGISTRY).forEach(pk => { n = n.replace(new RegExp(`:${pk}`, 'gi'), ''); });
                 return n.trim();
             })() : ""

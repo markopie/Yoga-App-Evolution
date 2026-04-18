@@ -9,19 +9,16 @@ function parseSequenceJSON(json) {
     if (!Array.isArray(json)) return [];
     
     return json.map((item, idx) => {
+        if (!item) return null;
         // Schema: [id, duration, name_override, variation_key, note, original_idx, label, meta_obj]
         if (item.type === 'pose') {
             const meta = { 
                 originalJson: item,
-                props: item.props || [],
+                props: (item.props || []).filter(p => !p.startsWith('side:')),
                 stageId: item.stage_id || null,
                 tier: item.tier || null, // JSON-Native Tier property
-                explicitSide: null
+                explicitSide: item.side || null
             };
-            
-            // Restore side info from props
-            if (meta.props.includes('side:L')) meta.explicitSide = 'L';
-            if (meta.props.includes('side:R')) meta.explicitSide = 'R';
 
             return [
                 item.pose_id || "",
@@ -252,6 +249,17 @@ function normalizeAsana(row, existingData = {}) {
         asanaCategory = row.asana_categories.name || asanaCategory;
     }
 
+    // Resolve hold_json and compute holdTimes for the asana object
+    const hold_json = row.hold_json || existingData.hold_json || null;
+    const holdTimes = (hold_json && typeof hold_json === 'object')
+        ? { 
+            standard: Number(hold_json.standard) || 30, 
+            short: Number(hold_json.short) || 15, 
+            long: Number(hold_json.long) || 60, 
+            flow: Number(hold_json.flow) || 5 
+          }
+        : parseHoldTimes(rawHoldText);
+
     const asana = {
         ...existingData,
         id: key,
@@ -269,14 +277,15 @@ function normalizeAsana(row, existingData = {}) {
         is_variation,
         plates: typeof parsePlates === 'function' ? parsePlates(row.plate_numbers ?? '') : (row.plate_numbers ?? ''),
         hold: rawHoldText,
-        holdTimes: parseHoldTimes(rawHoldText),
+        holdTimes: holdTimes,
+        hold_json: hold_json,
         page_primary,
         yoga_the_iyengar_way_id: row.yoga_the_iyengar_way_id ?? existingData.yoga_the_iyengar_way_id ?? '',
         recovery_pose_id: row.recovery_pose_id ?? row.recover_pose_id ?? existingData.recovery_pose_id ?? null,
         preparatory_pose_id: row.preparatory_pose_id ?? existingData.preparatory_pose_id ?? null,
         variations: existingData.variations || {},
         isCustom: !!(row.is_custom ?? row.isCustom ?? row.user_id ?? existingData.isCustom ?? false),
-        standard_seconds: parseHoldTimes(rawHoldText).standard || 30
+        standard_seconds: holdTimes.standard || 30
     };
 
     asana['Yogasana Name'] = asana.english;
@@ -293,6 +302,17 @@ function normalizeStageRow(stage, index = 0) {
     if (!stageKey) return null;
 
     const holdStr = stage.Hold ?? stage.hold ?? '';
+
+    // Resolve hold_json and compute holdTimes for the variation object
+    const hold_json = stage.hold_json || null;
+    const holdTimes = (hold_json && typeof hold_json === 'object')
+        ? { 
+            standard: Number(hold_json.standard) || 30, 
+            short: Number(hold_json.short) || 15, 
+            long: Number(hold_json.long) || 60, 
+            flow: Number(hold_json.flow) || 5 
+          }
+        : parseHoldTimes(holdStr);
     
     let page_primary = stage.page_primary ?? null;
     if (page_primary != null && page_primary !== "") {
@@ -314,7 +334,8 @@ function normalizeStageRow(stage, index = 0) {
             shorthand: stage.Shorthand ?? stage.shorthand ?? '',
             title: stage.Title ?? stage.title ?? `Stage ${stageKey}`,
             hold: holdStr,
-            holdTimes: parseHoldTimes(holdStr),
+            holdTimes: holdTimes,
+            hold_json: hold_json,
             image_url: stage.image_url ?? '',
             audio: stage.audio_url ?? stage.Audio_URL ?? '',
             recovery_pose_id: stage.recovery_pose_id ?? stage.recover_pose_id ?? null,
