@@ -17,7 +17,7 @@ import { getOrCreateAsanaCategoryId } from "../services/persistence.js";
  * Bold English -> Italic IAST -> Accented Badge
  */
 function renderAsanaLabel(asana, prefix = "") {
-    const english = asana.english_name || "Unknown";
+    const english = asana.english || asana.english_name || "Unknown";
     const iast = asana.iast ? ` <em>${asana.iast}</em>` : "";
     const badge = asana.requires_sides 
         ? ' <span class="badge" style="background:#ffeb3b; color:#333; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">Bilateral</span>' 
@@ -225,7 +225,7 @@ window.openAsanaEditor = async function (id) {
         $("editAsanaId").value = a.id;
         $("editAsanaName").value = a.devanagari || "";
         $("editAsanaIAST").value = a.iast || "";
-        $("editAsanaEnglish").value = a.english_name || "";
+        $("editAsanaEnglish").value = a.english || a.english_name || "";
         
         if (catSel && a.category) {
             catSel.value = a.category;
@@ -391,6 +391,7 @@ function wireEditorSave() {
                 window.asanaLibrary[id] = {
                     ...window.asanaLibrary[id],
                     ...asanaPayload,
+                    english: asanaPayload.english_name, // Sync with runtime property name
                     category: finalCategoryText,
                     variations: localVariations
                 };

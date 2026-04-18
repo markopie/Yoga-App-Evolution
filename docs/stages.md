@@ -1,6 +1,6 @@
 # Asana Stages & Variations Mapping
 
-> Last Sync: 2026-04-18 11:06:38 | Total Records: 204
+> Last Sync: 2026-04-18 17:40:56 | Total Records: 207
 
 | id | asana_id | stage_name | title |
 | --- | --- | --- | --- |
@@ -208,3 +208,6 @@
 | 249 | 231 | III | With Sideways Bend |
 | 250 | 004 | II | With a chair |
 | 251 | 051 | II | On a bolster |
+| 252 | 066 | V | Sitting up |
+| 253 | 036 | I | Using a belt or support for the feet |
+| 254 | 034 | I | Using a belt or support for the feet |

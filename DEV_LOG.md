@@ -83,6 +83,26 @@
 - **UI Consistency Pass:** Migrate the "Selected Poses" list in the Builder and the Practice History modal to the new Bold English / Italic IAST hierarchy.
 ---
 
+## [2026-04-18] - Session [01]
+**Goal:** Resolve "Unknown" label in Asana Editor and synchronize naming conventions across the UI.
+
+**Architectural Decisions:**
+- **Naming Normalization:** Confirmed `english` as the runtime standard for English pose names. Updated `asanaEditor.js` to prioritize `english` over the database-native `english_name`.
+- **State Syncing:** Updated the editor's save callback to explicitly map `english_name` back to `english` in the local cache immediately after a successful Supabase upsert. This prevents UI "flicker" where a saved pose would revert to "Unknown" until a page refresh.
+- **Resilient Rendering:** Replaced manual fallback strings in `builder.js` with calls to the central `displayName()` utility to ensure consistent naming logic across different app modules.
+
+**Code Changed:**
+- `src/ui/asanaEditor.js`: Standardized label rendering and hardened the cache-sync logic on save.
+- `src/ui/builder.js`: Replaced inconsistent property lookups with standardized `displayName()` helper.
+
+**Lessons Learned:**
+- Normalization drift occurs when the `dataAdapter.js` maps database snake_case to app-friendly keys, but UI components are built targeting the raw database names. Standardizing on the normalized key (e.g., `english`) across the entire UI layer is critical.
+
+**Next Steps for Next Session:**
+- Audit `src/ui/historyModal.js` and `src/ui/posePlayer.js` for any lingering references to `english_name`.
+- Investigate if `stages` variations require similar normalization (e.g., `full_technique` vs `technique`).
+---
+
 ## [2026-04-16] - Session [01]
 **Goal:** Implement support for the new `hold_json` columns to harden timing logic.
 **Architectural Decisions:**

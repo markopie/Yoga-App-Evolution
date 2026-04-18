@@ -488,7 +488,7 @@ function openPropPicker(idx) {
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
         if (asanaMatch) {
             // Use English or Devanagari for the display name in the builder state
-            builderState.poses[i].name = asanaMatch.english || asanaMatch.devanagari || asanaMatch.name;
+            builderState.poses[i].name = displayName(asanaMatch);
 
             const isFlowNow = getEffectiveFlowStatus();
             if (window.getHoldTimes) {
@@ -830,7 +830,7 @@ function builderOpen(mode, seq) {
             
             addPoseToBuilder({
                 id: asma.id,
-                name: asma.name || asma.english,
+                name: displayName(asma),
                 duration: (() => { 
                     const holdTimes = window.getHoldTimes ? window.getHoldTimes(asma) : { standard: 30, flow: 5 }; 
                     return isFlowNow ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30); 
@@ -1426,7 +1426,7 @@ window.selectRowSearch = (id) => {
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
         
         if (asanaMatch) {
-            targetPose.name = asanaMatch.english || asanaMatch.devanagari || asanaMatch.name;
+            targetPose.name = displayName(asanaMatch);
             if (window.getHoldTimes) {
                 const holdTimes = window.getHoldTimes(asanaMatch);
                 const nextDuration = isFlowSequence() ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30);
