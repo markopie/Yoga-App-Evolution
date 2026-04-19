@@ -29,11 +29,14 @@ function resolveVariationKey(varKey, note) {
     return match ? match[1].toUpperCase() + (match[2] ? match[2].toLowerCase() : "") : '';
 }
 
-
-function isFlowPlaybackSequence(seq = null) {
+/**
+ * Returns true if the sequence is a 'flow' or 'cycle', meaning it should 
+ * bypass standard structural injections (prep/recovery) and transition padding.
+ */
+export function isProtectedSequence(seq = null) {
     const targetSeq = seq || window.currentSequence || null;
-    // Strictly 'flow' mode only. 'cycle' and 'standard' return false here to use Library timing.
-    return !!(targetSeq && (targetSeq.playbackMode === 'flow' || targetSeq.isFlow === true));
+    if (!targetSeq) return false;
+    return !!(targetSeq.playbackMode === 'flow' || targetSeq.playbackMode === 'cycle' || targetSeq.isFlow === true || targetSeq.isCycle === true);
 }
 
 function resolveTimingTarget(asana, variation) {
@@ -86,20 +89,24 @@ export function getEffectiveTime(id, dur, tier, varKey, note, returnPerSide = fa
     const targetForHold = resolveTimingTarget(asana, variation);
     const hj = getHoldTimes(targetForHold);
     const baseHj = targetForHold === asana ? hj : getHoldTimes(asana);
+    
     const libStandard = (hj && hj.standard != null) ? Number(hj.standard) :
         ((baseHj && baseHj.standard != null) ? Number(baseHj.standard) : 30);
-    const isFlow = !!(poseMeta && poseMeta.flowSegment) || isFlowPlaybackSequence(seq);
+
+    // Cycles share the 'protected' status of flows (no prep/recovery injection)
+    // but for duration resolution, they stick to 'standard' library timing resolution paths.
+    const isFlowTiming = !!(poseMeta && poseMeta.flowSegment) || (seq?.playbackMode === 'flow' || seq?.isFlow === true);
 
     // RULE 1: Resolution Source of Truth
     let baseDuration = 0;
 
-    if (isFlow) {
+    if (isFlowTiming) {
         // FLOW context: Authored seconds in sequence_json are meaningful and authoritative.
         baseDuration = Number(dur) || hj?.flow || baseHj?.flow || libStandard || 5;
     } else {
-        // STANDARD context: Authored seconds are not authoritative (often persisted defaults).
-        // Resolve duration primarily from the library standard.
-        baseDuration = libStandard;
+        // STANDARD/CYCLE context: Prioritize the passed 'dur' (which may be dial-scaled).
+        // Fallback to library standard only if dur is missing or zero.
+        baseDuration = Number(dur) || libStandard;
 
         // Exception: Pranayama respects authored duration if no tier is present.
         const idNum = parseInt(strId.replace(/\D/g, ''), 10);
@@ -196,6 +203,7 @@ export function reindexSortOrder(items) {
 
 // Global Exports
 Object.assign(window, {
+    isProtectedSequence,
     getEffectiveTime,
     calculateTotalSequenceTime,
     getPosePillTime,

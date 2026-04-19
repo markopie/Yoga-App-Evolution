@@ -414,5 +414,6 @@
 - `getEffectiveTime` (function)
 - `getExpandedPoses` (window binding)
 - `getPosePillTime` (function)
+- `isProtectedSequence` (function)
 - `reindexSortOrder` (function)
 

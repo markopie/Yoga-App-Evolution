@@ -23,9 +23,16 @@ export function getExpandedPoses(sequence, ctx = {}) {
     const maxDepth = Number(ctx.maxDepth) || 12;
     
     const seqTitle = String(sequence.title || '').trim();
-    const seqIsFlow = !!(sequence && (sequence.playbackMode === 'flow' || sequence.isFlow === true || sequence.is_flow === true));
+
+    // Structural Protection (Flow or Cycle) vs. Timing Strategy (Flow Only)
+    const isProtected = window.isProtectedSequence ? window.isProtectedSequence(sequence) : false;
+    const seqIsFlow = !!(sequence && (sequence.playbackMode === 'flow' || sequence.isFlow === true));
+
     const inheritedFlow = !!ctx.flowSegment;
     const flowSegment = inheritedFlow || seqIsFlow;
+    
+    const inheritedProtected = !!ctx.isProtected;
+    const protectedContext = inheritedProtected || isProtected;
 
     if (depth > maxDepth) {
         console.warn(`[SequenceEngine] Max macro depth (${maxDepth}) exceeded for "${seqTitle || 'Untitled Sequence'}".`);
@@ -68,7 +75,8 @@ export function getExpandedPoses(sequence, ctx = {}) {
                 stack,
                 depth: depth + 1,
                 maxDepth,
-                flowSegment
+                flowSegment,
+                isProtected: protectedContext
             });
 
             for (let i = 0; i < durOrReps; i++) {
@@ -79,7 +87,8 @@ export function getExpandedPoses(sequence, ctx = {}) {
                     const meta = { 
                         ...(cloned[7] || {}), 
                         macroTitle: sub.title || identifier,
-                        flowSegment: !!(cloned[7]?.flowSegment || flowSegment) 
+                        flowSegment: !!(cloned[7]?.flowSegment || flowSegment),
+                        isProtected: !!(cloned[7]?.isProtected || protectedContext)
                     };
                     
                     if (durOrReps > 1) {
@@ -94,7 +103,7 @@ export function getExpandedPoses(sequence, ctx = {}) {
         } else {
             let cloned = [...p];
             cloned[5] = originalIdx;
-            cloned[7] = { ...(cloned[7] || {}), flowSegment };
+            cloned[7] = { ...(cloned[7] || {}), flowSegment, isProtected: protectedContext };
             expanded.push(cloned);
         }
     });
@@ -171,15 +180,16 @@ export function getExpandedPoses(sequence, ctx = {}) {
             return;
         }
 
+        const isFlowContext = !!poseMeta.flowSegment;
         // Evaluate Flow Context (Skip injections and side-doubling in pure flow / explicit single sides)
         const isExplicitSingleSide = poseMeta.explicitSide === 'L' || poseMeta.explicitSide === 'R';
-        const isFlowContext = !!(poseMeta.flowSegment || isExplicitSingleSide);
+        const skipInjections = !!(poseMeta.isProtected || isFlowContext || isExplicitSingleSide);
 
-        if (isFlowContext) {
+        if (skipInjections) {
             let cloned = [...p];
             cloned[7] = { 
                 ...(cloned[7] || {}), 
-                flowSegment: true,
+                flowSegment: !!(poseMeta.flowSegment || isExplicitSingleSide),
                 isBilateral: false // Overrides default bilateral player logic
             };
             withInjected.push(cloned);
@@ -254,8 +264,8 @@ export function getExpandedPoses(sequence, ctx = {}) {
                 varSuffix || null, 
                 `* ${label} (Auto-Injected) *`, 
                 p[5] || null, 
-                label, 
-                { ...(poseMeta || {}), flowSegment: isFlowContext } 
+                label,
+                { ...(poseMeta || {}), flowSegment: isFlowContext }
             ];
         };
 

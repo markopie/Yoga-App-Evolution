@@ -11,6 +11,7 @@ import { builderState, setPoseSide, movePose, movePoseToIndex, removePose, addPo
 import { updateBuilderModeUI, openLinkSequenceModal } from "./builderUI.js";
 import { PROP_REGISTRY } from "../config/propRegistry.js";
 
+const isProtectedSequence = (...args) => window.isProtectedSequence ? window.isProtectedSequence(...args) : false;
 const getEffectiveTime = (...args) => window.getEffectiveTime ? window.getEffectiveTime(...args) : args[1];
 const getAsanaIndex = () => Object.values(window.asanaLibrary || {}).filter(Boolean);
 
@@ -43,11 +44,16 @@ export function clearBuilderSelection() {
     updateToolbarState(); 
 }
 
-function getEffectiveFlowStatus() {
+/**
+ * Returns true if the sequence is a 'flow' or 'cycle', meaning it should 
+ * bypass standard structural injections (prep/recovery).
+ */
+function getEffectiveProtectedStatus() {
+    if (isProtectedSequence()) return true;
+
     const catElement = document.getElementById("builderCategory");
     const currentCategory = (catElement ? (catElement.textContent || catElement.value || "") : "").toLowerCase();
-    // Checks both state and the current (unsaved) category input
-    return isFlowSequence() || (builderState.currentPlaybackMode == null && currentCategory.includes("flow"));
+    return currentCategory.includes("flow") || currentCategory.includes("cycle");
 }
 
 function builderRender() {
@@ -62,7 +68,11 @@ function builderRender() {
     const libraryArray = Object.values(window.asanaLibrary || {});
     const libMap = window.asanaLibrary || {};
     const catElement = document.getElementById("builderCategory");
-    const isFlow = getEffectiveFlowStatus();
+    
+    // Structural status (Flow or Cycle)
+    const isProtected = getEffectiveProtectedStatus();
+    // Timing status (Flow Only)
+    const isFlowTiming = isFlowSequence() || (builderState.currentPlaybackMode == null && (catElement?.value || "").toLowerCase().includes("flow"));
     const macroDurationCache = new Map();
  
     builderState.poses.forEach((pose, idx) => {
@@ -108,7 +118,7 @@ function builderRender() {
             asana = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
             
             const hj = asana ? (window.getHoldTimes ? window.getHoldTimes(asana, pose.variation) : (asana.hold_json || { standard: 30 })) : { standard: 30 };
-            const activeTime = isFlow ? (pose.flowHoldOverride || hj.flow || hj.standard || 5) : (pose.duration || hj.standard || 30);
+            const activeTime = isFlowTiming ? (pose.flowHoldOverride || hj.flow || hj.standard || 5) : (pose.duration || hj.standard || 30);
             const tier = pose.holdTier === 'short' ? 'S' : (pose.holdTier === 'long' ? 'L' : null);
             const meta = { explicitSide: pose.side || null };
             
@@ -163,7 +173,7 @@ function builderRender() {
 
         let sideBadge = '';
         if (!isMacro && (asana?.requires_sides || asana?.requiresSides)) {
-            if (isFlow) {
+            if (isProtected) {
                 const s = pose.side || '';
                 sideBadge = `
                 <div class="side-selector" style="display:inline-flex; border: 1px solid #d2d2d7; border-radius: 6px; overflow:hidden; font-size: 0.65rem; font-weight: 600; margin-left:8px; vertical-align:middle; background:#fff; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
@@ -186,7 +196,7 @@ function builderRender() {
         }
 
         let injectionBadgesHTML = '';
-        if (!isSpecial && asana) {
+        if (!isSpecial && asana && !isProtected) {
             let prepId = asana.preparatory_pose_id;
             let recovId = asana.recovery_pose_id;
             const selectedVar = pose.variation;
@@ -251,7 +261,7 @@ function builderRender() {
               ${injectionBadgesHTML}
               ${roundsHTML}
            </td>
-           ${isMacro ? buildMacroInfoHTML(macroInfo || { rounds: durOrReps, note: pose.note || "" }) : generateInfoCellHTML(asana, pose, idx, { isSpecial, isFlow })}
+           ${isMacro ? buildMacroInfoHTML(macroInfo || { rounds: durOrReps, note: pose.note || "" }) : generateInfoCellHTML(asana, pose, idx, { isSpecial, isFlow: isFlowTiming })}
            <td class="builder-order-column">
   <div class="order-controls-group">
       <button class="tiny b-move-top" data-idx="${idx}" title="Move to Top" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤒</button>
@@ -490,7 +500,8 @@ function openPropPicker(idx) {
             // Use English or Devanagari for the display name in the builder state
             builderState.poses[i].name = displayName(asanaMatch);
 
-            const isFlowNow = getEffectiveFlowStatus();
+            const catVal = (document.getElementById("builderCategory")?.value || "").toLowerCase();
+            const isFlowNow = isFlowSequence() || (builderState.currentPlaybackMode == null && catVal.includes("flow"));
             if (window.getHoldTimes) {
                 const variationKey = builderState.poses[i].variation || null;
                 const ah = window.getHoldTimes(asanaMatch, variationKey);
@@ -509,7 +520,8 @@ function openPropPicker(idx) {
         const asanaMatch = libraryArray.find(a => String(a.id || a.asanaNo) === String(normId));
 
         if (asanaMatch && window.getHoldTimes) {
-            const isFlowNow = getEffectiveFlowStatus();
+            const catVal = (document.getElementById("builderCategory")?.value || "").toLowerCase();
+            const isFlowNow = isFlowSequence() || (builderState.currentPlaybackMode == null && catVal.includes("flow"));
             const hj = window.getHoldTimes ? window.getHoldTimes(asanaMatch, el.value) : (asanaMatch.hold_json || { standard: 30 });
             const nextDuration = isFlowNow ? (hj.flow || hj.standard || 5) : (hj.standard || 30);
             builderState.poses[i].duration = nextDuration; 
@@ -707,7 +719,8 @@ async function processSemicolonCommand(commandString) {
     let insertAt = getTargetInsertionIndex(); 
 
     validItems.forEach(item => {
-        const isFlowNow = getEffectiveFlowStatus();
+        const catVal = (document.getElementById("builderCategory")?.value || "").toLowerCase();
+        const isFlowNow = isFlowSequence() || (builderState.currentPlaybackMode == null && catVal.includes("flow"));
         
         // Fix: Use asana.hold_json if window.getHoldTimes is missing/stale
         const hj = item.asana 
@@ -826,8 +839,9 @@ function builderOpen(mode, seq) {
         getAsanaIndex, 
         (asma) => { 
             const insertAt = getTargetInsertionIndex(); // 👈 Find ticked box
-            const isFlowNow = getEffectiveFlowStatus();
-            
+            const catVal = (document.getElementById("builderCategory")?.value || "").toLowerCase();
+            const isFlowNow = isFlowSequence() || (builderState.currentPlaybackMode == null && catVal.includes("flow"));
+
             addPoseToBuilder({
                 id: asma.id,
                 name: displayName(asma),
