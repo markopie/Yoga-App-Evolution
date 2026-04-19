@@ -588,6 +588,7 @@
     color: #86868b;
     font-weight: 600;
     font-size: 0.8rem;
+    opacity: 0.6; /* Minimalized for hierarchy */
 }
 
 .link-option-row:last-child {

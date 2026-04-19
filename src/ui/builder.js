@@ -905,12 +905,27 @@ function builderOpen(mode, seq) {
        builderState.currentPlaybackMode = seq.playbackMode || (seq.isFlow ? "flow" : "standard");       
        const seqIsFlow = builderState.currentPlaybackMode === "flow";
        const libraryArray = Object.values(window.asanaLibrary || {});
+       
+       // 🌟 JOBSian UI: Accentuated Cycle Badge
+       if (displayCategory) {
+           displayCategory.textContent = seq.category || "";
+           if (seq.isCycle) {
+               displayCategory.style.background = "linear-gradient(135deg, #008080 0%, #4B0082 100%)";
+               displayCategory.style.color = "#ffffff";
+               displayCategory.style.padding = "2px 10px";
+               displayCategory.style.borderRadius = "12px";
+               displayCategory.style.fontSize = "0.7rem";
+               displayCategory.style.fontWeight = "700";
+               displayCategory.style.display = "inline-block";
+           } else {
+               displayCategory.style.cssText = "";
+           }
+       }
+
        const rawPoses = (window.currentSequenceOriginalPoses && seq === window.currentSequence) ? window.currentSequenceOriginalPoses : (seq.poses || []);
 
        // 🌟 JSON Migration: Detect if source is native JSON
        const isNativeSource = seq.isNativeJson || (rawPoses.length > 0 && rawPoses[0][7]?.originalJson);
-       
-       if (displayCategory) displayCategory.textContent = seq.category || "";
        
        rawPoses.forEach(p => {
              const rawId = Array.isArray(p[0]) ? p[0][0] : p[0] || "";

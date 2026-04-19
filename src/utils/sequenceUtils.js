@@ -32,6 +32,7 @@ function resolveVariationKey(varKey, note) {
 
 function isFlowPlaybackSequence(seq = null) {
     const targetSeq = seq || window.currentSequence || null;
+    // Strictly 'flow' mode only. 'cycle' and 'standard' return false here to use Library timing.
     return !!(targetSeq && (targetSeq.playbackMode === 'flow' || targetSeq.isFlow === true));
 }
 

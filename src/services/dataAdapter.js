@@ -86,17 +86,27 @@ async function fetchCourses(currentUserId = null) {
                         }
                     });
 
-                    // 🌟 THE FLATTENING: Exclusively use joined relational data
-                    // We assume 'General' if the join somehow fails, but the structure is now the source of truth
+                    // 🌟 CATEGORY & MODE RESOLUTION
                     const subObj = row.course_sub_categories;
                     const author = subObj?.course_categories?.name || 'General';
                     const sub    = subObj?.name || '';
                     const categoryId = subObj?.course_categories?.id ?? null;
                     const subCategoryId = subObj?.id ?? row.sub_category_id ?? null;
-                    const isFlow = Number(categoryId) === 55 || String(author).trim().toLowerCase() === 'flow';
+                    
+                    const isFlow  = Number(categoryId) === 55 || String(author).trim().toLowerCase() === 'flow';
+                    const isCycle = Number(categoryId) === 56 || String(author).trim().toLowerCase() === 'cycle';
+
+                    let playbackMode = 'standard';
+                    if (isFlow) playbackMode = 'flow';
+                    else if (isCycle) playbackMode = 'cycle';
 
                     // Reconstruct the "Author > Course" string for the UI
                     const categoryString = (sub && sub !== 'General') ? `${author} > ${sub}` : author;
+
+                    // 🌟 REFACTORED CATEGORY LABEL LOGIC: Suppress redundant info
+                    let categoryLabel = categoryString;
+                    if (playbackMode === 'cycle' && sub === 'Asana Cycles') categoryLabel = "Cycle";
+                    else if (playbackMode === 'flow' && sub === 'Routines') categoryLabel = "Flow";
 
                     rawAccumulator.push({
                         title: row.title.trim(),
@@ -105,8 +115,11 @@ async function fetchCourses(currentUserId = null) {
                         subCategoryId,
                         categoryName: author,
                         subCategoryName: sub,
-                        playbackMode: isFlow ? 'flow' : 'standard',
+                        categoryLabel,
+                        playbackMode, // 'flow', 'cycle', or 'standard'
                         isFlow,
+                        isCycle,
+                        isMacroLinkable: isFlow || isCycle,
                         condition_notes: row.condition_notes || "",
                         is_alias: !!row.is_alias,
                         redirect_id: row.redirect_id,

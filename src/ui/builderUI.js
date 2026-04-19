@@ -756,6 +756,36 @@ export function openLinkSequenceModal() {
     const input = document.getElementById('linkSequenceInput');
     const results = document.getElementById('linkSequenceResults');
     const repsInput = document.getElementById('linkSequenceReps');
+    const modal = overlay.querySelector('.modal');
+
+    // Inject Filter UI if missing
+    if (modal && !document.getElementById('linkFilterGroup')) {
+        const filterHtml = `
+            <div id="linkFilterGroup" style="display:flex; gap:8px; margin-bottom:12px;">
+                <button class="tiny active" data-filter="all" style="flex:1; padding:6px; border-radius:6px; border:1px solid #ccc; background:#007aff; color:#fff; font-weight:600; cursor:pointer;">All</button>
+                <button class="tiny" data-filter="flow" style="flex:1; padding:6px; border-radius:6px; border:1px solid #ccc; background:#fff; font-weight:600; cursor:pointer;">Flows</button>
+                <button class="tiny" data-filter="cycle" style="flex:1; padding:6px; border-radius:6px; border:1px solid #ccc; background:#fff; font-weight:600; cursor:pointer;">Cycles</button>
+            </div>
+        `;
+        const searchLabel = modal.querySelector('label');
+        if (searchLabel) searchLabel.insertAdjacentHTML('afterend', filterHtml);
+
+        document.getElementById('linkFilterGroup').onclick = (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            document.querySelectorAll('#linkFilterGroup button').forEach(b => {
+                b.classList.remove('active');
+                b.style.background = '#fff';
+                b.style.color = '#000';
+                b.style.borderColor = '#ccc';
+            });
+            btn.classList.add('active');
+            btn.style.background = '#007aff';
+            btn.style.color = '#fff';
+            btn.style.borderColor = '#007aff';
+            handleLinkSearch({ target: input });
+        };
+    }
 
     if (!overlay) return;
 
@@ -790,26 +820,28 @@ function handleLinkSearch(e) {
     const resultsContainer = document.getElementById('linkSequenceResults');
     if (!resultsContainer) return;
 
+    const filterGroup = document.getElementById('linkFilterGroup');
+    const activeFilter = filterGroup?.querySelector('.active')?.dataset.filter || 'all';
+
     const allCourses = [...(window.courses || [])];
     if (allCourses.length === 0) return;
 
-    const isFlow = (c) => {
-        const catStr = String(c.category || '').toLowerCase();
-        return catStr.includes('flow') ||
-               String(c.category_id) === '55' ||
-               String(c.categoryId) === '55';
+    const matchesFilter = (c) => {
+        if (activeFilter === 'flow') return c.isFlow;
+        if (activeFilter === 'cycle') return c.isCycle;
+        return c.isMacroLinkable;
     };
 
     let filtered = [];
 
     if (term.length === 0) {
-        filtered = allCourses.filter(isFlow);
+        filtered = allCourses.filter(matchesFilter);
     } else {
         filtered = allCourses.filter((c) =>
             (c.title || '').toLowerCase().includes(term) ||
             (c.category || '').toLowerCase().includes(term)
         );
-        filtered.sort((a, b) => Number(isFlow(b)) - Number(isFlow(a)));
+        filtered.sort((a, b) => Number(matchesFilter(b)) - Number(matchesFilter(a)));
     }
 
     const displayList = filtered.slice(0, 50);
@@ -817,12 +849,15 @@ function handleLinkSearch(e) {
     if (displayList.length > 0) {
         resultsContainer.innerHTML = displayList.map((c) => {
             const safeTitle = String(c.title || '').replace(/'/g, "\\'");
-            const displayCat = c.category || (isFlow(c) ? 'Flow' : 'General');
+            const displayCat = c.categoryLabel || c.category || (c.isFlow ? 'Flow' : (c.isCycle ? 'Cycle' : 'General'));
+
+            // Rule: Contextual Suppression (Hide meta if Cycles or Flow tab is active)
+            const hideMeta = (activeFilter === 'cycle' || activeFilter === 'flow');
 
             return `
                 <div class="link-option-row" onclick="window.selectLinkSequence('${safeTitle}')">
-                    <span class="link-option-title">${escapeHtml(c.title || '')}</span>
-                    <span class="link-option-meta">${escapeHtml(displayCat)}</span>
+                    <span class="link-option-title">${escapeHtml(c.title || '')}${c.iast ? ` <em style="font-size:0.85rem; color:#666; margin-left:4px;">${escapeHtml(c.iast)}</em>` : ''}</span>
+                    ${!hideMeta ? `<span class="link-option-meta">${escapeHtml(displayCat)}</span>` : ''}
                 </div>
             `;
         }).join('');
