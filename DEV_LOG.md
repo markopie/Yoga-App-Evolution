@@ -115,3 +115,50 @@
 **Next Steps for Next Session:**
 - Audit the database for any asanas or stages where `hold_json` might be missing or inconsistent with the legacy text field.
 ---
+
+## [2026-04-19] - Session [01]
+**Goal:** Integrate "Cycle" category (ID 56) and optimize the "Link a Sequence" modal with contextual suppression.
+
+**Architectural Decisions:**
+- **Playback Mode Differentiation:** Defined `playbackMode: 'cycle'` for Category 56. Unlike "Flow" (ID 55), "Cycle" sequences use library-standard timing and are affected by the Duration Dial. This was achieved by keeping `isFlow: false` for Cycles, allowing them to fall through to standard timing logic in `getEffectiveTime`.
+- **Unified Linking Logic:** Introduced the `isMacroLinkable` flag in the data layer. This centralizes the logic for which sequences can be linked as macros, simplifying UI filtering in the Builder.
+- **Redundant Label Suppression:** Implemented logic in the `dataAdapter` to simplify category strings (e.g., "Cycle > Asana Cycles" becomes simply "Cycle").
+- **Contextual UI Suppression:** Updated the Link modal to hide metadata labels when a specific category filter (Flows or Cycles) is active, as the context is already provided by the tab.
+- **Jobsian Typography:** Refined the search result hierarchy by removing title bolding and emphasizing IAST terms with italics to improve scannability.
+
+**Code Changed:**
+- `src/services/dataAdapter.js`: Added Cycle/Flow resolution, `isMacroLinkable` flag, and `categoryLabel` cleanup.
+- `src/utils/sequenceUtils.js`: Updated `isFlowPlaybackSequence` to strictly isolate Flow-mode timing.
+- `src/ui/builderUI.js`: Injected Segmented Filter UI (All/Flows/Cycles) into the Link modal; implemented contextual metadata suppression and updated typographic rendering.
+- `styles/editor.css`: Reduced opacity for `.link-option-meta` to establish a clearer visual hierarchy.
+
+**Next Steps for Next Session:**
+- Verify that bilateral poses in "Cycle" sequences correctly double their duration in the Pose Player.
+- Audit the "All" tab in the Link modal to ensure mixed category labels maintain consistent spacing.
+---
+
+## [2026-04-20] - Session [01]
+**Goal:** Unify Flow/Cycle architectural rules, implement dismissible mobile safety notes, and enhance the Progress Summary with Jobsian Asana IDs.
+
+**Architectural Decisions:**
+- **"Protected" Sequence Status:** Unified 'Flow' (ID 55) and 'Cycle' (ID 56) types under a `isProtectedSequence` helper. This suppresses auto-injection of preparatory/recovery poses and transition padding for both, while allowing Cycles to remain scalable via the Duration Dial.
+- **Mobile Vertical Optimization:** Implemented a dismissible/restorable UI for Safety Notes (`condition_notes`). This allows mobile users to regain vertical space while keeping vital safety info accessible via a high-contrast, discrete restoration icon.
+- **PDF Snapshot Hardening:** Refactored the export engine to force-expand safety notes and strip out UI-only elements (buttons, icons, tooltips) during the cloning process, ensuring professional, print-ready results.
+- **Jobsian Progress Summary:** Extended the typographic hierarchy to the completion summary, introducing ID badges that normalize IDs (stripping leading zeros) for a clean, technical look.
+
+**Code Changed:**
+- `src/utils/sequenceUtils.js`: Created `isProtectedSequence` and updated `getEffectiveTime` to differentiate between structural protection and timing resolution.
+- `src/services/sequenceEngine.js`: Refactored the expansion loop to track "Protected" context and fixed a scoping regression for `isFlowContext`.
+- `src/ui/builderUI.js`: Implemented the `toggleWarning` state, added the PDF force-expand logic, and resolved the "Infinite Print Button" duplication bug.
+- `src/ui/builder.js`: Synchronized builder rendering with the new protection rules and fixed ID/Variation state clearing during row searches.
+- `src/ui/progressSummaryUI.js`: Integrated `summary-id-badge` rendering into the completion table.
+- `styles/editor.css`: Added styles for the dismissible warning system (22px peach restore icon) and the Jobsian ID badges.
+- `index.html`: Restructured `#modalNotesRow` to accommodate the restorable warning button.
+
+**Lessons Learned:**
+- DOM ID collisions (e.g., sharing an ID between a container and a button) can "deaden" UI listeners silently. Renaming containers with a `Container` suffix is a mandatory hygiene step when wrapping buttons with initialization logic.
+
+**Next Steps for Next Session:**
+- Audit the "All" tab in the Link modal to ensure mixed category labels maintain consistent spacing.
+- Verify that the 22px restoration icon is easily tappable on smaller mobile devices (iPhone SE width).
+---

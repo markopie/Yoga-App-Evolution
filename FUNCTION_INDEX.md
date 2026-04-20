@@ -228,6 +228,7 @@
 - `openLinkSequenceModal` (function)
 - `printSequence` (function)
 - `selectLinkSequence` (window binding)
+- `toggleWarning` (window binding)
 - `updateBuilderModeUI` (function)
 
 ### 📄 `ui/courseUI.js`

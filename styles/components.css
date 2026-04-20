@@ -113,12 +113,15 @@ button.tiny {
 /* --- Modal Header Layout Fixes --- */
 
 .modal-notes-row {
+    position: relative; /* Added for positioning dismiss/restore buttons */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Added for smooth collapse transition */
     width: 100%;
     padding: 0 20px 16px 20px;
     display: block;
     box-sizing: border-box;
-    background: var(--color-bg-surface);
-    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-surface); /* Using CSS variable */
+    border-bottom: 1px solid var(--color-border); /* Using CSS variable */
+    z-index: 10; /* Added to ensure buttons are above other content */
 }
 
 #modalNotesRow.hidden { display: none !important; }

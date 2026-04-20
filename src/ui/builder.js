@@ -879,6 +879,11 @@ function builderOpen(mode, seq) {
        if (modeLabel) modeLabel.textContent = "New Sequence";
        if (titleEl) titleEl.value = "";
        if (notesEl) notesEl.value = "";
+       if (displayNotes) displayNotes.textContent = "";
+       
+       const notesRow = document.getElementById("modalNotesRow");
+       if (notesRow) notesRow.classList.add("hidden");
+
        if (catSelect) catSelect.value = "";
        if (catCustom) catCustom.value = "";
        builderState.currentSubCategoryId = null;
@@ -889,6 +894,12 @@ function builderOpen(mode, seq) {
        if (modeLabel) modeLabel.textContent = "Sequence Review";
        if (titleEl) titleEl.value = seq.title || "";
        if (notesEl) notesEl.value = seq.condition_notes || "";
+       if (displayNotes) {
+           displayNotes.textContent = seq.condition_notes || "";
+           // Ensure the notes container is visible if there is content to show
+           const notesRow = document.getElementById("modalNotesRow");
+           if (notesRow) notesRow.classList.toggle("hidden", !seq.condition_notes);
+       }
 
        if (catSelect) {
            const isSelect = catSelect.tagName === "SELECT";
@@ -1340,10 +1351,6 @@ function wireBuilderGlobals() {
 
     const modeBtn = document.getElementById("builderModeToggleBtn");
     if (modeBtn) modeBtn.onclick = () => { builderState.isViewMode = !builderState.isViewMode; updateBuilderModeUI(); };
-
-    const printBtn = document.getElementById("builderPrintBtn");
-    if (printBtn) {
-    }
 
     const catEdit = document.getElementById("builderCategory");
     if (catEdit) {

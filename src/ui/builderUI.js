@@ -242,6 +242,17 @@ function ensureExportStyles() {
             display: table-cell !important;
             min-width: 120px !important;
         }
+
+        .export-snapshot-host #modalNotesRow {
+            display: block !important;
+            padding: 10px 20px !important;
+            background: #ffffff !important;
+            border-bottom: 1px solid #eee !important;
+            word-wrap: break-word !important;
+        }
+        .export-snapshot-host #modalNotesRow.hidden {
+            display: none !important;
+        }
         
         .export-date-tag {
             margin: 0 0 14px;
@@ -318,6 +329,26 @@ function createExportSnapshot(sourceElement) {
         }).join('');
     }
 
+    // 2.1 Sync notes manually to the clone
+    const displayNotes = clone.querySelector('#displayNotes');
+    const notesRow = clone.querySelector('#modalNotesRow');
+    if (notesRow && notesVal) {
+        notesRow.classList.remove('hidden');
+        notesRow.classList.remove('collapsed'); // Force notes to show in PDF
+        if (displayNotes) {
+            displayNotes.classList.remove('hidden');
+            // Apply typographic emphasis for IAST terms (Jobsian Hierarchy)
+            const emphasizedVal = escapeHtml(notesVal)
+                .replace(/\b([A-Z][a-zāīūṛḷṅñṭḍṇśṣḥ]+( [IVX]+)?)\b/g, '<em>$1</em>');
+
+            displayNotes.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px; color:#e65100; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">
+                    <strong>Safety Note</strong>
+                </div>
+                <div style="line-height:1.5;">${emphasizedVal}</div>`;
+        }
+    }
+
     // 3. Selectively remove UI elements
     const selectorsToRemove = [
         '.modal-footer',
@@ -330,7 +361,9 @@ function createExportSnapshot(sourceElement) {
         '.modal-header button',
         '.builder-export-root',
         '#exportOptionsPanel',
-        '.builder-toolbar-primary'
+        '#builderNotes',
+        '#warningRestoreBtn',
+        '.warning-dismiss-btn'
     ];
 
     selectorsToRemove.forEach(sel => {
@@ -504,12 +537,12 @@ async function manualExportPdf(snapshot) {
     };
 
     const headerEl = snapshot.querySelector('.modal-header');
+    const notesRowEl = snapshot.querySelector('#modalNotesRow');
     const dateEl = snapshot.querySelector('.export-date-tag');
     let currentY = margin;
 
-    // 1. Render Header (Title + Category) and Practice Date
-    // We capture the headerEl which contains both #displayTitle and #displayCategory
-    const headerComponents = [headerEl, dateEl].filter(Boolean);
+    // 1. Render Header (Title + Category), Notes Row, and Practice Date
+    const headerComponents = [headerEl, notesRowEl, dateEl].filter(el => el && !el.classList.contains('hidden'));
     for (let el of headerComponents) {
         const canvas = await capture(el);
         if (!canvas) continue;
@@ -571,7 +604,7 @@ export function initExportUI(container) {
 
     if (container.tagName === 'BUTTON') {
         const replacement = document.createElement('div');
-        replacement.id = container.id;
+        replacement.id = container.id + 'Container'; // Fix: Avoid ID collision
         replacement.className = container.className;
         replacement.setAttribute('role', 'group');
         replacement.setAttribute('aria-label', 'Export controls');
@@ -615,12 +648,25 @@ export function initExportUI(container) {
     return root;
 }
 
+/**
+ * State toggle for the sequence warning visibility.
+ */
+window.toggleWarning = (dismiss) => {
+    const row = document.getElementById('modalNotesRow');
+    if (row) {
+        row.classList.toggle('collapsed', dismiss);
+        builderState.isWarningDismissed = dismiss;
+        updateBuilderModeUI(); // Force sync of buttons and tooltips
+    }
+    return false; // Prevent any default action
+};
+
 export function updateBuilderModeUI() {
     const backdrop = document.getElementById('editCourseBackdrop');
     const toggleBtn = document.getElementById('builderModeToggleBtn');
     const saveBtn = document.getElementById('editCourseSaveBtn');
     const cancelBtn = document.getElementById('editCourseCancelBtn');
-    const printBtn = document.getElementById('builderPrintBtn');
+    const printBtn = document.getElementById('btnDownloadPdf');
     const notesRow = document.getElementById('modalNotesRow');
     const topCloseBtn = document.getElementById('editCourseCloseBtn');
 
@@ -633,6 +679,7 @@ export function updateBuilderModeUI() {
     const inputCategory = document.getElementById('builderCategory');
     const inputTitle = document.getElementById('builderTitle');
     const inputNotes = document.getElementById('builderNotes');
+    const restoreBtn = document.getElementById('warningRestoreBtn');
 
     if (!backdrop) return;
 
@@ -654,7 +701,25 @@ export function updateBuilderModeUI() {
             const hasNotes = !!val;
             
             displayNotes.classList.toggle('hidden', !hasNotes);
-            if (notesRow) notesRow.classList.toggle('hidden', !hasNotes);
+            if (notesRow) {
+                notesRow.classList.toggle('hidden', !hasNotes);
+                
+                // Sync persistent UI state
+                if (hasNotes && builderState.isWarningDismissed) {
+                    notesRow.classList.add('collapsed');
+                } else {
+                    notesRow.classList.remove('collapsed');
+                }
+
+                if (restoreBtn) {
+                    // Explicitly sync visibility to prevent "dead" icons or Edit-mode leaks
+                    restoreBtn.style.display = (hasNotes && builderState.isWarningDismissed) ? 'flex' : 'none';
+                    restoreBtn.onclick = (e) => {
+                        e.preventDefault();
+                        window.toggleWarning(false);
+                    };
+                }
+            }
 
             if (val) {
                 // Jobsian Hierarchy: Emphasize IAST terms (e.g., Trikonasana, Sirsasana II) 
@@ -664,6 +729,7 @@ export function updateBuilderModeUI() {
 
                 // Jobbsian Review Style: Uses the same card layout as the player preamble
                 displayNotes.innerHTML = `
+                    <button type="button" class="warning-dismiss-btn" title="Dismiss warning" onclick="window.toggleWarning(true)">✕</button>
                     <div style="display:flex; align-items:center; gap:8px; color:#e65100; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">
                         <span style="font-size:1.1rem;">⚕️</span> <strong>Safety Note</strong>
                     </div>
@@ -705,7 +771,11 @@ export function updateBuilderModeUI() {
             toggleBtn.className = 'btn-builder-mode-edit';
         }
 
-        if (printBtn) {
+        // Prevent recursive button generation by checking for the container first
+        const existingExport = document.getElementById('btnDownloadPdfContainer');
+        if (existingExport) {
+            existingExport.style.display = 'flex';
+        } else if (printBtn) {
             const exportRoot = initExportUI(printBtn);
             if (exportRoot) exportRoot.style.display = 'flex';
         }
@@ -725,6 +795,10 @@ export function updateBuilderModeUI() {
         if (inputTitle) inputTitle.readOnly = false;
         if (inputNotes) inputNotes.classList.remove('hidden');
         if (notesRow) notesRow.classList.remove('hidden');
+        // Ensure row is expanded for editing
+        if (notesRow) notesRow.classList.remove('collapsed');
+        // Explicitly hide restore icon in Edit mode
+        if (restoreBtn) restoreBtn.style.display = 'none';
 
         if (viewHeader) viewHeader.style.display = 'none';
         if (editHeader) editHeader.style.display = 'flex';
@@ -735,9 +809,10 @@ export function updateBuilderModeUI() {
             toggleBtn.className = 'btn-builder-mode-view';
         }
 
-        const exportRoot = document.getElementById('builderPrintBtn');
-        if (exportRoot) {
-            exportRoot.style.display = 'none';
+        // Hide export cluster in Edit mode
+        const exportContainer = document.getElementById('btnDownloadPdfContainer');
+        if (exportContainer) {
+            exportContainer.style.display = 'none';
         }
 
         if (saveBtn) saveBtn.style.display = 'block';

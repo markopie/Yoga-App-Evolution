@@ -146,6 +146,10 @@ function renderProgressSummaryModal() {
         // Data Resolution
         const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(window.normalizePlate(g.rawId)) : null;
         
+        // Jobsian: strip leading zeros from ID (e.g. 001 -> 1)
+        const idStr = String(g.rawId || '').replace(/^0+/, '');
+        const idBadge = (idStr && !g.macroTitle) ? `<span class="summary-id-badge">ID ${idStr}</span>` : '';
+
         const primaryDisplay = g.macroTitle 
             ? `📦 ${g.macroTitle}` 
             : (asana?.english || g.label || asana?.name || `Pose ${g.rawId}`);
@@ -173,8 +177,11 @@ function renderProgressSummaryModal() {
 
         const nameDisplayHtml = `
             <div class="progress-asana-stack">
-                <span class="progress-asana-name">${primaryDisplay}</span>
-                ${secondaryIast ? `<span class="progress-asana-iast">${secondaryIast}</span>` : ''}
+                <div style="display: flex; align-items: center;">
+                    ${idBadge}
+                    <span class="progress-asana-name"><strong>${primaryDisplay}</strong></span>
+                </div>
+                ${secondaryIast ? `<span class="progress-asana-iast"><em>${secondaryIast}</em></span>` : ''}
                 ${subLabel ? `<div class="progress-skip-tag" style="background:rgba(0,122,255,0.1); border-color:rgba(0,122,255,0.2); color:#007aff;">${subLabel}</div>` : ''}
                 ${loopHtml}
             </div>

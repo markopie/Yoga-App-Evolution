@@ -17,11 +17,13 @@
     text-align: center; 
 } 
 
-/* Col 2: The Sponge (Absorbs all remaining space) */
-#builderTable th:nth-child(2), #builderTable td:nth-child(2) { 
-    width: 100% !important; 
-    vertical-align: middle; /* Keeps text and dropdown aligned */
-} 
+/* Col 2: Flexible but not greedy */
+#builderTable td:nth-child(2) {
+    width: auto; 
+    vertical-align: middle;
+    word-wrap: break-word;
+    padding-right: 15px;
+}
 
 #builderTable td:nth-child(2) {
     word-wrap: break-word !important;
@@ -90,7 +92,7 @@
 
 
 /* --- TIER BUTTONS (Inside Col 3) --- */
-.b-tier-group { display: flex; gap: 3px; margin-bottom: 4px; }
+.b-tier-group { display: flex: 1; gap: 3px; margin-bottom: 4px; }
 
 .b-tier {
     border: 1px solid #d2d2d7; 
@@ -197,9 +199,14 @@
 }
 
 /* FREEZE TABLE INTERACTIONS IN VIEW MODE */
-.builder-view-mode #builderTableBody {
+.builder-view-mode input, 
+.builder-view-mode select,
+.builder-view-mode .b-tier:not([data-active="true"]) { 
     pointer-events: none !important; 
-    user-select: none !important;    
+}
+/* Keep Prop Pills and scroll active */
+.builder-view-mode .b-prop-pill { 
+    pointer-events: auto !important; 
 }
 
 .builder-view-mode .b-tier {
@@ -617,4 +624,104 @@
 .b-prop-pill.active {
     opacity: 1;
     filter: grayscale(0);
+}
+
+/* --- Dismissible Warning UI Styles --- */
+.modal-notes-row.collapsed {
+    padding: 0 !important;
+    margin: 0 !important;
+    border-bottom: none !important;
+    min-height: 0 !important;
+    overflow: visible !important; /* Ensure absolute children remain clickable */
+}
+
+.modal-notes-row.collapsed #displayNotes {
+    display: none !important;
+}
+
+.warning-dismiss-btn {
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    background: rgba(0,0,0,0.04);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #86868b;
+    font-size: 14px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.warning-dismiss-btn:hover {
+    background: rgba(0,0,0,0.08);
+    color: #1d1d1f;
+}
+
+.warning-restore-btn {
+    display: none;
+    position: absolute;
+    right: 15px;
+    top: 12px;
+    background: #f5f5f7; /* Neutral light grey */
+    color: #86868b; /* Muted grey text */
+    border: 1px solid #d2d2d7;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    font-size: 0.8rem;
+    z-index: 100;
+    pointer-events: auto !important;
+}
+
+.modal-notes-row.collapsed .warning-restore-btn {
+    display: flex;
+}
+
+/* Mobile adjustments for warning buttons */
+@media (max-width: 700px) {
+    .warning-dismiss-btn,
+    .warning-restore-btn {
+        top: 8px; /* Adjust vertical position for smaller headers */
+        right: 10px;
+    }
+}
+
+/* --- Jobsian Summary ID Badge --- */
+.summary-id-badge {
+    font-size: 0.65rem;
+    color: #86868b; /* Apple muted gray */
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: #f5f5f7; /* Subtle light gray wash */
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 8px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* --- Jobsian Summary ID Badge --- */
+.summary-id-badge {
+    font-size: 0.65rem;
+    color: #86868b; /* Apple muted gray */
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: #f5f5f7; /* Subtle light gray wash */
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 8px;
+    display: inline-block;
+    vertical-align: middle;
 }
