@@ -1,6 +1,6 @@
 # Asana Stages & Variations Mapping
 
-> Last Sync: 2026-04-20 11:28:14 | Total Records: 207
+> Last Sync: 2026-04-21 11:04:38 | Total Records: 207
 
 | id | asana_id | stage_name | title |
 | --- | --- | --- | --- |

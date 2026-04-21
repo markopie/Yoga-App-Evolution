@@ -223,6 +223,7 @@
 - `resolvePoseInfo` (const)
 
 ### 📄 `ui/builderUI.js`
+- `createExportSnapshot` (function)
 - `downloadSequencePdf` (function)
 - `initExportUI` (function)
 - `openLinkSequenceModal` (function)

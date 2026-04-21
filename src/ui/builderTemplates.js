@@ -51,7 +51,7 @@ export function buildMacroInfoHTML({ oneRoundSecs = 0, rounds = 1, note = '' } =
     const total = perRound * safeRounds;
     const noteHtml = note ? `<div class="builder-macro-note">${note}</div>` : '';
 
-    return `<td class="builder-info-cell builder-info-macro">
+    return `<td class="builder-info-cell b-col-info builder-info-macro" style="text-align: center;">
         <div class="builder-macro-info-line"><strong>${formatCompactDuration(perRound)}</strong> per round</div>
         <div class="builder-macro-info-line">× ${safeRounds} round${safeRounds !== 1 ? 's' : ''}</div>
         <div class="builder-macro-info-line"><strong>${formatCompactDuration(total)}</strong> total</div>
@@ -92,25 +92,25 @@ export function generateInfoCellHTML(asana, pose, idx, options = {}) {
         <button class="tiny b-side ${pose.side === 'R' ? 'active' : ''}" data-idx="${idx}" data-side="R" style="${pose.side === 'R' ? 'background:#007aff; color:#fff; border-color:#007aff;' : ''}">R</button>
     </div>` : '';
     if (isFlow) {
-        return `<td class="builder-info-cell builder-info-flow">
-            <div class="builder-flow-info-block">
+        return `<td class="builder-info-cell b-col-info builder-info-flow" style="text-align: center;">
+            <div class="builder-flow-info-block" style="justify-content: center;">
                 <label class="builder-flow-label" for="flowHold-${idx}">Flow hold</label>
                 <input id="flowHold-${idx}" type="number" min="1" step="1" class="b-flow-hold" data-idx="${idx}" value="${currentFlow}">
                 <span class="builder-flow-unit">secs</span>
             </div>
-            <div>${catChipHTML}</div>
+            <div style="display: flex; justify-content: center;">${catChipHTML}</div>
             ${(asana?.requires_sides || asana?.requiresSides) ? `<div class="binfo-sides">↔ Both sides</div>` : ''}
         </td>`;
     }
 
     const stdSec = holdSrc.standard ?? 30;
-    return `<td class="builder-info-cell">
-        <div style="display:flex; gap:3px; margin-bottom:4px;">
+    return `<td class="builder-info-cell b-col-info" style="text-align: center;">
+        <div style="display:flex; gap:1px; margin-bottom:4px; justify-content: center;">
             ${tierBtn('short', 'S', holdSrc.short)}
             ${tierBtn('standard', 'STD', stdSec)}
             ${tierBtn('long', 'L', holdSrc.long)}
         </div>
-        <div>${catChipHTML}</div>
+        <div style="display: flex; justify-content: center;">${catChipHTML}</div>
         ${(asana?.requires_sides || asana?.requiresSides) ? `<div class="binfo-sides">↔ Both sides</div>` : ''}
     </td>`;
 }

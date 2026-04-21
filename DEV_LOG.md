@@ -158,7 +158,24 @@
 **Lessons Learned:**
 - DOM ID collisions (e.g., sharing an ID between a container and a button) can "deaden" UI listeners silently. Renaming containers with a `Container` suffix is a mandatory hygiene step when wrapping buttons with initialization logic.
 
+---
+
+## [2026-04-21] - Session [01]
+**Goal:** Refine Sequence Builder table layout for structural hierarchy and alignment consistency.
+
+**Architectural Decisions:**
+- **Persistent Gridlines:** Switched from `border-top` to `box-shadow: inset 0 1px 0` for table headers. This ensures the structural "gridline" remains visible during scrolling and doesn't get swallowed by the container edges.
+- **Centered UI Alignment:** Standardized `vertical-align: middle` for the Order and Info columns. This ensures that movement buttons and duration pills remain vertically centered within their rows regardless of text wrapping in the Title column.
+- **Desktop Row Integrity:** Enforced `flex-wrap: nowrap` and a fixed `200px` width for the Order column to prevent movement buttons from splitting into two rows on standard displays.
+
+**Code Changed:**
+- `styles/editor.css`: Implemented inset shadows for headers, balanced vertical padding, and locked the Order column width.
+- `src/ui/builder.js`: Refined cell templates to use `vertical-align: middle` and enforced nowrap flex behavior for control groups.
+
+**Lessons Learned:**
+- Table borders can be temperamental when combined with sticky headers or custom scroll containers; inset box-shadows provide a much more resilient "Jobsian" gridline effect.
+
 **Next Steps for Next Session:**
 - Audit the "All" tab in the Link modal to ensure mixed category labels maintain consistent spacing.
-- Verify that the 22px restoration icon is easily tappable on smaller mobile devices (iPhone SE width).
+- Check the mobile card view to ensure the wider Order column doesn't cause horizontal overflow issues.
 ---

@@ -1,5 +1,7 @@
-import { builderState } from '../store/builderState.js';
+import { builderState, isFlowSequence } from '../store/builderState.js';
 import { $ } from '../utils/dom.js';
+import { builderPoseName, generateInfoCellHTML, buildMacroInfoHTML } from './builderTemplates.js';
+import { formatCategory } from '../utils/format.js';
 
 function escapeHtml(str) {
     return String(str ?? '')
@@ -58,238 +60,79 @@ function ensureExportStyles() {
     const style = document.createElement('style');
     style.id = 'builderExportStyles';
     style.textContent = `
-        .builder-export-root {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            position: relative;
-            flex-wrap: wrap;
-        }
+        /* Root Export Containers */
+        .builder-export-root { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .export-cluster { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-        .export-cluster {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            position: relative;
-            flex-wrap: wrap;
+        /* Buttons */
+        .btn-export-primary, .btn-export-secondary {
+            appearance: none; border: 1px solid transparent; border-radius: 999px;
+            padding: 10px 16px; font-size: 0.92rem; font-weight: 600; cursor: pointer;
         }
+        .btn-export-primary { background: #111111; color: #ffffff; }
+        .btn-export-secondary { background: #f5f5f7; color: #1d1d1f; border-color: #d2d2d7; }
 
-        .btn-export-primary,
-        .btn-export-secondary {
-            appearance: none;
-            border: 1px solid transparent;
-            border-radius: 999px;
-            padding: 10px 16px;
-            font-size: 0.92rem;
-            font-weight: 600;
-            letter-spacing: 0.01em;
-            line-height: 1.2;
-            cursor: pointer;
-            transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
-            white-space: nowrap;
-        }
-
-        .btn-export-primary {
-            background: #111111;
-            color: #ffffff;
-            border-color: #111111;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-        }
-
-        .btn-export-primary:hover,
-        .btn-export-primary:focus-visible {
-            background: #1f1f1f;
-            border-color: #1f1f1f;
-            outline: none;
-        }
-
-        .btn-export-secondary {
-            background: #f5f5f7;
-            color: #1d1d1f;
-            border-color: #d2d2d7;
-        }
-
-        .btn-export-secondary:hover,
-        .btn-export-secondary:focus-visible {
-            background: #ececf0;
-            outline: none;
-        }
-        
+        /* PDF Snapshot Engine Styles */
         .export-snapshot-host {
-            position: absolute !important;
-            left: -10000px !important;
-            top: 0 !important;
-            width: 800px !important; /* Stable width for capture */
-            opacity: 1 !important;
-            visibility: visible !important;
-            display: block !important;
-            pointer-events: none !important;
-            z-index: 10000 !important;
-            background: #ffffff !important;
-            height: auto !important;
-            min-height: auto !important;
-            overflow: visible !important;
-            transform: none !important;
+            position: absolute !important; left: -10000px !important; top: 0 !important;
+            width: 800px !important; background: #ffffff !important; display: block !important;
         }
 
-        .export-snapshot-host .modal {
-            position: relative !important;
-            display: block !important; /* Destroy flexbox for capture */
-            width: 100% !important;
-            height: auto !important; /* Remove 90vh/100vh constraints */
-            max-height: none !important;
-            border: none !important;
-            box-shadow: none !important;
-            transform: none !important;
-            background: #ffffff !important;
+        .pdf-export-table {
+            display: table !important; width: 100% !important; table-layout: fixed !important;
+            border-collapse: collapse !important; margin: 0 !important;
+        }
+
+        .pdf-export-table th, .pdf-export-table td { 
+            display: table-cell !important; border: 1px solid #d2d2d7 !important;
+            padding: 12px 10px !important; vertical-align: top !important;
+            word-wrap: break-word !important; box-sizing: border-box !important;
+        }
+
+        /* SYNCED ALIGNMENT: Centers Col 1 and 3 Headers + Cells */
+        .pdf-export-table th:nth-child(1), .pdf-export-table td:nth-child(1) { 
+            width: 85px !important; text-align: center !important; 
+        }
+        .pdf-export-table th:nth-child(2), .pdf-export-table td:nth-child(2) { 
+            width: 495px !important; text-align: left !important; 
+        }
+        .pdf-export-table th:nth-child(3), .pdf-export-table td:nth-child(3) { 
+            width: 220px !important; text-align: center !important; 
+        }
+
+        .pdf-export-table th {
+            background: #f5f5f7 !important; font-weight: 700 !important;
+            font-size: 9pt !important; color: #86868b !important; text-transform: uppercase !important;
+        }
+
+        /* Typography & Hierarchy */
+        .export-snapshot-host #displayTitle { 
+            font-size: 28pt !important; font-weight: 700 !important; margin: 0 0 5px 0 !important; 
         }
         
-        /* Force container visibility for export components */
-        .export-snapshot-host #viewModeHeader {
+        /* THE FIX: Rigidly sized Date Tag to prevent canvas scaling artifacts */
+        .export-snapshot-host .export-date-tag {
+            width: 100% !important; /* Force full capture width */
             display: block !important;
-        }
-
-        .export-snapshot-host .modal-header {
-            position: static !important;
-            display: block !important;
-            padding: 20px !important;
-            background: #ffffff !important;
-            border-bottom: 1px solid #eee !important;
-            height: auto !important;
-        }
-
-        .export-snapshot-host .modal-body {
-            display: block !important;
-            overflow: visible !important;
-            max-height: none !important;
-            height: auto !important; 
-            padding: 0 20px 60px !important;
-            flex: none !important; /* Remove flex-grow */
-            word-wrap: break-word !important;
-            white-space: normal !important;
-        }
-        
-        /* Pleasant Header Styling for PDF */
-        .export-snapshot-host #displayTitle {
-            font-size: 28pt !important;
-            font-weight: 700 !important;
-            color: #1d1d1f !important;
-            margin: 0 0 10px 0 !important;
-            line-height: 1.1 !important;
-            display: block !important;
-        }
-
-        .export-snapshot-host #displayCategory {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 6px !important;
-            align-items: center !important;
-            margin-bottom: 20px !important;
-        }
-
-        .export-snapshot-host #displayCategory .cat-pill {
-            padding: 4px 10px !important;
-            border-radius: 8px !important;
-            font-size: 9pt !important;
-            text-transform: uppercase !important;
-            font-weight: 700 !important;
-        }
-
-        .export-snapshot-host #displayCategory .cat-main {
-            background: #007aff !important;
-            color: #ffffff !important;
-        }
-
-        .export-snapshot-host #displayCategory .cat-sub {
-            background: #f5f5f7 !important;
+            background: #ffffff !important; /* Prevent transparent trim in canvas */
+            box-sizing: border-box !important;
+            font-size: 11pt !important; 
+            font-weight: 600 !important;
             color: #6e6e73 !important;
-            border: 1px solid #d2d2d7 !important;
-        }
-
-        .export-snapshot-host #builderTable {
-            width: 99% !important;
-            table-layout: auto !important;
-            border-collapse: collapse !important;
-            margin: 0 auto !important;
-        }
-
-        .export-snapshot-host #builderTable th,
-        .export-snapshot-host #builderTable td {
-            border: 1px solid #eee !important;
-            padding: 12px 8px !important;
-            vertical-align: top !important;
-            word-wrap: break-word !important;
-        }
-
-        /* Hide Order column and edit chrome */
-        .export-snapshot-host .b-row-select,
-        .export-snapshot-host .order-controls-group,
-        .export-snapshot-host .b-move-top,
-        .export-snapshot-host .b-move-bot,
-        .export-snapshot-host .b-move-up,
-        .export-snapshot-host .b-move-dn,
-        .export-snapshot-host .b-remove,
-        .export-snapshot-host .b-row-search-btn,
-        .export-snapshot-host .b-macro-swap,
-        .export-snapshot-host th:last-child,
-        .export-snapshot-host td:last-child {
-            display: none !important;
-        }
-
-        /* Ensure Info column visibility */
-        .export-snapshot-host th:nth-child(3),
-        .export-snapshot-host td:nth-child(3) {
-            display: table-cell !important;
-            min-width: 120px !important;
+            margin-bottom: 20px !important;
+            text-transform: none !important;
+            text-align: left !important;
         }
 
         .export-snapshot-host #modalNotesRow {
-            display: block !important;
-            padding: 10px 20px !important;
-            background: #ffffff !important;
-            border-bottom: 1px solid #eee !important;
-            word-wrap: break-word !important;
-        }
-        .export-snapshot-host #modalNotesRow.hidden {
-            display: none !important;
-        }
-        
-        .export-date-tag {
-            margin: 0 0 14px;
-            font-size: 0.85rem;
-            color: #6e6e73;
-            font-weight: 500;
-        }
-        
-        .export-safety-note {
-            word-wrap: break-word !important;
-            white-space: normal !important;
+            display: block !important; padding: 15px 20px !important;
+            background: #fffcf0 !important; border: 1px solid #ffe082 !important;
+            margin-bottom: 20px !important; border-radius: 8px !important;
         }
 
-        @media print {
-            .briefing-stage { padding: 20px !important; box-sizing: border-box !important; display: block !important; }
-        }
-
-        @media (max-width: 640px) {
-            .builder-export-root,
-            .export-cluster {
-                width: 100%;
-            }
-
-            .btn-export-primary,
-            .btn-export-secondary {
-                flex: 1 1 auto;
-                justify-content: center;
-            }
-        }
-
-        @media print {
-            .builder-export-root,
-            .export-panel,
-            #exportOptionsPanel {
-                display: none !important;
-            }
-        }
+        .b-devanagari { font-size: 1.1rem !important; margin-top: 4px; }
+        .b-var-view { color: #007aff; font-weight: 600; font-size: 0.9rem; }
+        .hidden { display: none !important; }
     `;
     document.head.appendChild(style);
 }
@@ -297,16 +140,112 @@ function ensureExportStyles() {
 /**
  * Creates a clean, expanded clone of the sequence for PDF rendering.
  */
-function createExportSnapshot(sourceElement) {
+/**
+ * Creates a clean, expanded clone of the sequence for PDF rendering.
+ * Architecture: Uses a rigid table structure to prevent column misalignment.
+ */
+export function createExportSnapshot(sourceElement) {
     const clone = sourceElement.cloneNode(true);
+    const libMap = window.asanaLibrary || {};
 
     // 1. Apply classes to trigger presentation styles
     clone.classList.add('export-snapshot-host');
     clone.classList.add('builder-view-mode');
 
-    // 2. Sync data manually to the clone to ensure title/category "comes through"
+    // 2. Render a dedicated export table to avoid mobile DOM/CSS artifacts
+    const oldTable = clone.querySelector('#builderTable');
+    
+    if (oldTable) {
+        const libArray = Object.values(libMap);
+        const exportTable = document.createElement('table');
+        exportTable.className = 'pdf-export-table';
+        
+        // Header structure matches the strict CSS widths defined in ensureExportStyles
+        exportTable.innerHTML = `
+            <thead>
+                <tr>
+                    <th style="text-align: center;"># / ID</th>
+                    <th>Pose Details</th>
+                    <th>Info</th>
+                </tr>
+            </thead>
+            <tbody id="builderTableBody"></tbody>
+        `;
+        
+        const tbody = exportTable.querySelector('tbody');
+
+        builderState.poses.forEach((pose, idx) => {
+            const idStr = String(pose.id);
+            const isMacro = idStr.startsWith("MACRO:");
+            const isLoop = idStr.startsWith("LOOP_");
+            const isSpecial = isMacro || isLoop;
+            
+            // Robust ID lookup matching builder.js logic
+            const normId = idStr.match(/^\d+/)?.[0]?.padStart(3, '0') || idStr;
+            const asana = libMap[normId] || libArray.find(a => String(a.id || a.asanaNo) === String(normId));
+            
+            const tr = document.createElement('tr');
+            if (isMacro) tr.className = "builder-macro-row";
+            if (isLoop) tr.className = "builder-loop-row";
+            
+            // Col 1: Index + ID + Devanagari
+            const devanagari = asana?.devanagari ? `<div class="b-devanagari">${asana.devanagari}</div>` : '';
+            const idLabel = isMacro ? 'LINK' : (isLoop ? 'BLOCK' : `ID ${idStr}`);
+            const col1 = `
+                <td>
+                    <div style="font-weight:800; color:#007aff; font-size:1.1rem; text-align:center;">${idx + 1}</div>
+                    <div style="font-size:0.65rem; font-weight:700; color:#86868b; text-transform:uppercase; text-align:center;">${idLabel}</div>
+                    ${devanagari}
+                </td>
+            `;
+            
+            // Col 2: Name + Variations
+            const name = isSpecial ? pose.name : builderPoseName(asana, pose.name, builderState.showSanskrit);
+            const varText = (pose.variation && asana?.variations?.[pose.variation]) 
+                ? `<span class="b-var-view">(${asana.variations[pose.variation].title || `Stage ${pose.variation}`})</span>` 
+                : '';
+            const iast = (!isSpecial && asana?.iast) ? `<div style="font-size:0.85rem; color:#6e6e73; font-style:italic;">${asana.iast}</div>` : '';
+            
+            const col2 = `
+                <td>
+                    <div style="font-weight:700; font-size:1.1rem;">${name} ${varText}</div>
+                    ${iast}
+                </td>
+            `;
+
+            // Col 3: Info
+            let col3 = '';
+            const safeAsana = asana || { id: idStr, english: pose.name, variations: {} };
+            if (isMacro) {
+                col3 = buildMacroInfoHTML({ rounds: pose.duration, note: pose.note });
+            } else {
+                const isFlow = isFlowSequence() || (builderState.currentPlaybackMode === 'flow');
+                col3 = generateInfoCellHTML(safeAsana, pose, idx, { isSpecial, isFlow });
+            }
+
+            // Architecture Note: Ensure internal logic is preserved while fixing UI injection
+            tr.innerHTML = col1 + col2 + col3;
+            tbody.appendChild(tr);
+
+            // Ambiguity Row (Secondary Row Injection)
+            if (pose._ambiguous) {
+                const ambRow = document.createElement('tr');
+                ambRow.innerHTML = `
+                    <td colspan="3" style="background:#fff3e0; border-left:4px solid #ff6d00; padding:10px 12px; font-size:0.8rem;">
+                        ⚠️ <strong>Note:</strong> Multiple matches found for page ${pose._pageNum}. Using <em>${pose.name}</em>.
+                    </td>
+                `;
+                tbody.appendChild(ambRow);
+            }
+        });
+
+        oldTable.replaceWith(exportTable);
+    }
+
+    // 3. Sync metadata
     const titleVal = getSequenceTitle() || 'Untitled Sequence';
-    const catVal = (document.getElementById('builderCategory')?.value || '').trim();
+    const catEl = document.getElementById('builderCategory');
+    const catVal = (catEl?.value === "__NEW__" ? document.getElementById('builderCategoryCustom')?.value : catEl?.value || '').trim();
     const notesVal = (document.getElementById('builderNotes')?.value || '').trim();
 
     const displayTitle = clone.querySelector('#displayTitle');
@@ -323,86 +262,55 @@ function createExportSnapshot(sourceElement) {
         displayCategory.innerHTML = parts.map((p, i) => {
             const isFirst = i === 0;
             const cls = isFirst ? 'cat-main' : 'cat-sub';
-            const pill = `<span class="cat-pill ${cls}">${escapeHtml(p)}</span>`;
-            const sep = i < parts.length - 1 ? `<span style="color:#86868b; margin: 0 4px; font-weight:bold;">›</span>` : '';
-            return pill + sep;
+            return `<span class="cat-pill ${cls}">${escapeHtml(p)}</span>` + (i < parts.length - 1 ? `<span style="color:#86868b; margin: 0 4px; font-weight:bold;">›</span>` : '');
         }).join('');
     }
 
-    // 2.1 Sync notes manually to the clone
+    // 4. Sync Safety Notes
     const displayNotes = clone.querySelector('#displayNotes');
     const notesRow = clone.querySelector('#modalNotesRow');
     if (notesRow && notesVal) {
-        notesRow.classList.remove('hidden');
-        notesRow.classList.remove('collapsed'); // Force notes to show in PDF
+        notesRow.classList.remove('hidden', 'collapsed');
         if (displayNotes) {
             displayNotes.classList.remove('hidden');
-            // Apply typographic emphasis for IAST terms (Jobsian Hierarchy)
-            const emphasizedVal = escapeHtml(notesVal)
-                .replace(/\b([A-Z][a-zāīūṛḷṅñṭḍṇśṣḥ]+( [IVX]+)?)\b/g, '<em>$1</em>');
-
+            const emphasizedVal = escapeHtml(notesVal).replace(/\b([A-Z][a-zāīūṛḷṅñṭḍṇśṣḥ]+( [IVX]+)?)\b/g, '<em>$1</em>');
             displayNotes.innerHTML = `
                 <div style="display:flex; align-items:center; gap:8px; color:#e65100; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">
                     <strong>Safety Note</strong>
-                </div>
+                </div> 
                 <div style="line-height:1.5;">${emphasizedVal}</div>`;
         }
     }
 
-    // 3. Selectively remove UI elements
+    // 5. Code Pruning: Explicitly remove interactive elements
     const selectorsToRemove = [
-        '.modal-footer',
-        '.builder-toolbar-primary',
-        '.builder-tools-panel',
-        '#builderModeToggleBtn',
-        '#editCourseCloseBtn',
-        '.edit-only-inline',
-        '#editModeHeader',
-        '.modal-header button',
-        '.builder-export-root',
-        '#exportOptionsPanel',
-        '#builderNotes',
-        '#warningRestoreBtn',
-        '.warning-dismiss-btn'
+        '.modal-footer', '.builder-toolbar-primary', '.builder-tools-panel',
+        '#builderModeToggleBtn', '#editCourseCloseBtn', '.edit-only-inline',
+        '#editModeHeader', '.modal-header button', '.builder-export-root',
+        '#exportOptionsPanel', '#builderNotes', '#warningRestoreBtn', '.warning-dismiss-btn'
     ];
+    selectorsToRemove.forEach(sel => clone.querySelectorAll(sel).forEach(el => el.remove()));
 
-    selectorsToRemove.forEach(sel => {
-        clone.querySelectorAll(sel).forEach(el => el.remove());
-    });
-
-    // Ensure the view mode header is explicitly shown in the clone
+    // Force View Mode Visibility
     const vh = clone.querySelector('#viewModeHeader');
-    if (vh) {
-        vh.style.setProperty('display', 'block', 'important');
-    }
+    if (vh) vh.style.setProperty('display', 'block', 'important');
 
-    // 4. Clean table rows
-    clone.querySelectorAll('#builderTable tr').forEach(tr => {
-        const cells = tr.querySelectorAll('th, td');
-        if (cells[0]) cells[0].querySelectorAll('input').forEach(i => i.remove());
-
-        // Fix: Ensure selects (like variations) show their text value instead of an empty box in the PDF
-        tr.querySelectorAll('select').forEach(sel => {
-            const span = document.createElement('span');
-            span.textContent = sel.options[sel.selectedIndex]?.text || '';
-            sel.replaceWith(span);
-        });
-
-        // Column 4 is "Order" - we remove it to match print layout
-        if (cells.length >= 4) cells[3].remove();
-    });
-
-    // Add Date Tag
+    // 6. Practice Date Integration
     const modalBody = clone.querySelector('.modal-body') || clone;
+    
+    // Create a dedicated wrapper to guarantee 800px width during individual capture
+    const dateWrapper = document.createElement('div');
+    dateWrapper.className = 'pdf-capture-wrapper'; 
+    dateWrapper.style.cssText = 'width: 800px !important; background: #ffffff !important; padding: 0 !important; margin: 0 !important;';
+
     const dateTag = document.createElement('div');
     dateTag.className = 'export-date-tag';
-    dateTag.textContent = `Practice Date: ${new Date().toLocaleDateString('en-AU', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+    dateTag.textContent = `Practice Date: ${new Date().toLocaleDateString('en-AU', { 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
     })}`;
-    modalBody.prepend(dateTag);
+    
+    dateWrapper.appendChild(dateTag);
+    modalBody.prepend(dateWrapper);
 
     return clone;
 }
@@ -522,16 +430,22 @@ async function manualExportPdf(snapshot) {
     // Helper for high-quality structural capture
     const capture = async (el) => {
         try {
+            // Force the element to behave as a block of 800px before snapping
+            const originalWidth = el.style.width;
+            el.style.setProperty('width', '800px', 'important');
+            
             const canvas = await html2canvas(el, {
-                scale: 2,
+                scale: 2, // High DPI
+                width: 800, // Explicitly crop the canvas to 800px
                 useCORS: true,
                 backgroundColor: '#ffffff',
                 logging: false
             });
-            if (!canvas || canvas.width === 0 || canvas.height === 0) return null;
+            
+            el.style.width = originalWidth; // Reset after snap
             return canvas;
         } catch (e) {
-            console.warn('[PDF] Capture failed for element:', el, e);
+            console.warn('[PDF] Capture failed:', e);
             return null;
         }
     };
@@ -554,7 +468,7 @@ async function manualExportPdf(snapshot) {
     }
 
     // 2. Prepare Table Header (for repetition)
-    const thead = snapshot.querySelector('#builderTable thead');
+    const thead = snapshot.querySelector('.pdf-export-table thead');
     const headCanvas = thead ? await capture(thead) : null;
     const headH = headCanvas ? headCanvas.height * (contentWidth / headCanvas.width) : 0;
     const headImg = headCanvas ? headCanvas.toDataURL('image/jpeg', 0.98) : null;
@@ -569,7 +483,7 @@ async function manualExportPdf(snapshot) {
     drawHeader();
 
     // 3. Render Table Rows structurally
-    const rows = Array.from(snapshot.querySelectorAll('#builderTable tbody tr'));
+    const rows = Array.from(snapshot.querySelectorAll('.pdf-export-table tbody tr'));
     const totalRows = rows.length;
 
     for (let i = 0; i < totalRows; i++) {

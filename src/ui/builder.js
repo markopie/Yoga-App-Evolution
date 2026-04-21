@@ -221,18 +221,18 @@ function builderRender() {
         }
 
         tr.innerHTML = `
-        <td style="padding: 12px 4px 12px 12px; text-align: center; width: 85px; min-width: 85px; vertical-align: top; border-bottom: 1px solid #eee;">
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%;">
+        <td class="b-col-id" style="padding: 12px 4px; text-align: center; vertical-align: top; border: none;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; box-sizing: border-box;">
                 <div style="display: flex; align-items: center; gap: 6px;">
                 <input type="checkbox" class="b-row-select" data-idx="${idx}" ${disableRowSelect ? 'disabled' : ''} style="margin: 0; width: 14px; height: 14px;">                    <span style="font-weight: 800; color: #007aff; font-size: 0.9rem;">${idx + 1}</span>
                 </div>
                 <div class="builder-row-meta">${isMacro ? "LINKED SEQUENCE" : `ID ${idStrNumeric}`}</div>
-                <div style="font-size: 1.5rem; line-height: 1.2; color: #1a1a1a; font-family: 'Noto Sans Devanagari', sans-serif; margin-top: 6px; white-space: normal; word-wrap: break-word; text-align: center; width: 100%;">
+                <div class="b-devanagari" style="font-size: 1.2rem; line-height: 1.2; color: #1a1a1a; font-family: 'Noto Sans Devanagari', sans-serif; margin-top: 6px; white-space: normal; word-break: break-all; overflow-wrap: anywhere; text-align: center; width: 100%; box-sizing: border-box;">
                     ${devanagari}
                 </div>
             </div>
         </td>
-           <td style="padding:12px 8px; vertical-align: top; border-bottom: 1px solid #eee;">
+           <td class="b-col-details" style="padding:12px 8px; vertical-align: top; border: none;">
               <div style="font-weight:700; font-size:1.1rem; line-height: 1.2; display:flex; align-items:center; flex-wrap:wrap;">
                  <span>${isSpecial ? (pose.name || 'Unknown') : builderPoseName(asana, pose.name, builderState.showSanskrit)}</span>
                  <span style="margin-left: 6px;">${generateVariationSelectHTML(asana, pose, idx)}</span>
@@ -262,8 +262,8 @@ function builderRender() {
               ${roundsHTML}
            </td>
            ${isMacro ? buildMacroInfoHTML(macroInfo || { rounds: durOrReps, note: pose.note || "" }) : generateInfoCellHTML(asana, pose, idx, { isSpecial, isFlow: isFlowTiming })}
-           <td class="builder-order-column">
-  <div class="order-controls-group">
+           <td class="b-col-controls builder-order-column" style="vertical-align: middle; border: none;">
+  <div class="order-controls-group" style="display: flex; flex-wrap: nowrap; gap: 4px; justify-content: center; width: 100%;">
       <button class="tiny b-move-top" data-idx="${idx}" title="Move to Top" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⤒</button>
       <button class="tiny b-move-up" data-idx="${idx}">▲</button>
       <button class="tiny b-move-dn" data-idx="${idx}">▼</button>
@@ -283,7 +283,7 @@ function builderRender() {
                 </button>`
             ).join('');
             warnRow.innerHTML = `
-                <td colspan="4" style="background:#fff3e0; border-left:4px solid #ff6d00; padding:6px 12px; font-size:0.78rem; color:#bf360c;">
+                <td class="b-col-ambiguous" colspan="4" style="background:#fff3e0; border-left:4px solid #ff6d00; padding:6px 12px; font-size:0.78rem; color:#bf360c;">
                     ⚠️ <strong>Page ${pose._pageNum} has multiple asanas.</strong> Currently using: <em>${pose.name}</em>.
                     <span style="margin-left:4px;">${altButtons}</span>
                     <button class="b-amb-keep tiny" data-idx="${idx}" style="background:#2e7d32; color:#fff; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.72rem; margin-left:8px;">
@@ -299,12 +299,6 @@ function builderRender() {
         }
     }); 
 
-    if (builderState.poses.length > 0) {
-        const spacer = document.createElement("tr");
-        spacer.innerHTML = `<td colspan="4" style="height: 80px; border: none; background: transparent; padding: 0;"></td>`;
-        tbody.appendChild(spacer);
-    }
- 
     const qS = (sel) => tbody.querySelectorAll(sel);
     
     qS('.b-row-select').forEach(cb => cb.onchange = (e) => {

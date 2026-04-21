@@ -10,10 +10,23 @@
     border-collapse: collapse;
 }
 
+#builderTable thead {
+    border-bottom: 2px solid #d2d2d7; /* Ensures labels get a clear gridline separator */
+    background: #fbfbfd;
+}
+
+#builderTable th {
+    box-shadow: inset 0 1px 0 #d2d2d7; /* Persistent gridline above labels that survives scrolling */
+    vertical-align: middle;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+    background: #fbfbfd;
+}
+
 /* Col 1: Fixed Width for Checkbox & ID */
 #builderTable th:nth-child(1), #builderTable td:nth-child(1) { 
-    width: 85px !important; 
-    min-width: 85px !important;
+    width: 100px !important; 
+    min-width: 100px !important;
     text-align: center; 
 } 
 
@@ -71,17 +84,18 @@
 }
 .builder-info-th, 
 #builderTable td:nth-child(3) {
-    width: 145px !important;
-    min-width: 145px !important;
-    padding: 8px 4px !important;
+    width: 170px !important;
+    min-width: 170px !important;
+    padding: 10px 4px !important;
+    text-align: center !important;
 }
 
 /* Col 4 (Order) & Col 5 (Action) */
 #builderTable th:nth-child(4), #builderTable td:nth-child(4) { 
-    width: 110px !important; 
-    min-width: 110px !important;
-    text-align: right !important;
-    padding-right: 10px !important;
+    width: 200px !important; /* Increased to ensure 4 buttons stay on one row */
+    min-width: 200px !important;
+    text-align: center !important;
+    padding-right: 0 !important;
 }
 
 #builderTable td:nth-child(5) { 
@@ -92,7 +106,7 @@
 
 
 /* --- TIER BUTTONS (Inside Col 3) --- */
-.b-tier-group { display: flex: 1; gap: 3px; margin-bottom: 4px; }
+.b-tier-group { display: flex; gap: 1px; margin-bottom: 4px; }
 
 .b-tier {
     border: 1px solid #d2d2d7; 
@@ -161,25 +175,36 @@
 
 .builder-view-mode th:nth-child(1), 
 .builder-view-mode td:nth-child(1) {
-    width: 85px !important; 
+    width: 22% !important; 
+    min-width: 85px !important;
     text-align: center;
+    border-left: 1px solid var(--color-border) !important;
+    border-right: 1px solid var(--color-border) !important;
 }
 
 .builder-view-mode th:nth-child(2),
 .builder-view-mode td:nth-child(2) {
-    width: 100% !important; 
+    width: 48% !important; 
 }
 
 .builder-view-mode th:nth-child(3),
 .builder-view-mode td:nth-child(3) {
-    width: 1% !important; 
-    white-space: nowrap !important;
+    width: 20% !important;
+    min-width: 160px !important;
+    text-align: left !important;
+    padding-left: 15px !important;
+    border-right: 1px solid var(--color-border) !important;
 }
 
 /* Hide action columns in view mode */
 .builder-view-mode th:nth-child(n+4), 
 .builder-view-mode td:nth-child(n+4) {
     display: none !important;
+}
+
+/* Ensure the bottom of the table grid is closed */
+.builder-view-mode #builderTable {
+    border-bottom: 1px solid var(--color-border);
 }
 
 .builder-view-mode .modal {
@@ -194,7 +219,7 @@
     flex: 1 1 auto !important; 
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 20px !important; 
+    padding-bottom: 80px !important; /* Provides scroll-past space without introducing grid artifacts */
     max-height: none !important; 
 }
 
@@ -215,7 +240,12 @@
 }
 
 .b-var-view { display: none; } 
-.builder-view-mode .b-var-view { display: inline-block !important; }
+.builder-view-mode .b-var-view { 
+    display: inline-block !important; 
+    color: #007aff; 
+    font-weight: 600; 
+    font-size: 0.9rem; 
+}
 .builder-view-mode .edit-only-inline { display: none !important; }
 .builder-view-mode .b-var-edit { display: none !important; }
 
@@ -369,17 +399,17 @@
 
 /* Lock the Order Column to a safe minimum */
 .builder-order-column {
-    padding: 12px 8px !important;
-    vertical-align: top !important;
+    padding: 8px !important; /* Balanced padding */
+    vertical-align: middle !important; /* Centered buttons */
     border-bottom: 1px solid #eee !important;
     width: 1% !important;        
-    min-width: 145px !important;  
 }
 
 .order-controls-group {
     display: flex !important;
-    gap: 2px !important;
-    justify-content: flex-end !important;
+    gap: 4px !important;
+    justify-content: center !important;
+    flex-wrap: nowrap !important; /* Prevents splitting into two rows on desktop */
 }
 
 .order-controls-group button {
@@ -471,7 +501,7 @@
     #builderTable, 
     #builderTable tbody, 
     #builderTable tr, 
-    #builderTable td {
+    #builderTable td:not(.b-col-id):not(.b-col-details):not(.builder-info-cell) {
         display: block !important;
         width: 100% !important;
         box-sizing: border-box;
@@ -482,33 +512,108 @@
     }
 
     #builderTable tr {
-        margin-bottom: 16px;
+        margin-bottom: 12px;
         border: 1px solid var(--color-border);
         border-radius: 12px;
         background: #fff;
-        padding: 10px;
+        padding: 0; /* Let cells handle the margin/padding */
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        display: grid !important;
+        grid-template-areas: 
+            "id details"
+            "controls controls";
+        grid-template-columns: 80px 1fr;
+        gap: 0;
+        width: 100% !important;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .b-col-id { 
+        grid-area: id; 
+        width: 80px !important;
+        max-width: 80px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center;
+        justify-content: flex-start;
+        background: #f8f9fa;
+        padding: 12px 2px !important;
+        border-right: 1px solid #eee;
+        box-sizing: border-box;
+        overflow: hidden;
+        height: 100%;
+    }
+
+    .b-col-details { 
+        grid-area: details; 
+        width: 100% !important;
+        display: block !important;
+        padding: 12px 12px 12px 5mm !important; /* Indented 5mm from divider */
+        min-width: 0; /* CRITICAL: Allows grid item to shrink below content size */
+        box-sizing: border-box;
+        word-break: break-word; /* Ensure Sanskrit doesn't push width */
+        max-width: none !important;
+    }
+
+    /* Show Devanagari on mobile but keep it tiny and contained */
+    .b-devanagari {
+        display: block !important;
+        font-size: 1rem !important;
+        word-break: break-all !important;
+    }
+
+    /* Fix: Structural "Ghost" Column for full-width rows */
+    .b-col-ambiguous, 
+    .b-col-spacer {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        display: block !important;
+        box-sizing: border-box;
+    }
+
+    /* Hide Info column entirely on mobile view, but EXCLUDE the PDF export snapshot */
+    /* Scoping to .modal:not(.export-snapshot-host) ensures export remains intact */
+    .modal:not(.export-snapshot-host) .b-col-info,
+    .modal:not(.export-snapshot-host) .builder-info-cell,
+    .modal:not(.export-snapshot-host) #builderTable td:nth-child(3) { 
+        display: none !important;
+    }
+    
+    .b-col-controls { 
+        grid-area: controls; 
+        min-width: 0 !important; /* Reset desktop minimum width */
+        width: 100% !important;
+        display: block;
+        padding: 8px 12px !important;
+        border-top: 1px dashed #eee;
+    }
+
+    /* Force hide controls column AND group in View Mode */
+    .builder-view-mode .b-col-controls, 
+    .builder-view-mode .order-controls-group {
+        display: none !important;
     }
 
     /* Col 1: Controls & Move Buttons (Now Visible & Grouped) */
-    #builderTable td:nth-child(1) {
+    .b-col-id {
         display: flex !important;
-        flex-direction: row !important; 
+        flex-direction: column !important; 
         justify-content: flex-start;
         align-items: center;
-        gap: 8px;
+        gap: 4px;
         background: #f8f9fa;
         border-radius: 8px;
         padding: 8px !important;
-        width: 100% !important;
         margin-bottom: 10px;
     }
 
     /* Col 2: Title & Variations (Filling the White Space) */
     #builderTable td:nth-child(2) {
-        padding: 4px 8px !important;
+        padding: 8px 12px 8px 8mm !important;
         font-size: 1.1rem;
-        max-width: 100% !important; /* Override desktop strict width */
+        max-width: none !important; /* Allow spanning across */
+        width: 100% !important;
     }
 
     #builderTable td:nth-child(2) > div:first-child { 
@@ -523,6 +628,18 @@
         max-width: none !important;
         margin: 8px 0 0 0 !important;
         height: 32px !important; 
+    }
+
+    /* Ensure dropdown is hidden in View Mode on mobile to prevent double variation display */
+    .builder-view-mode .b-var-edit {
+        display: none !important;
+    }
+    .builder-view-mode .b-var-view {
+        display: block !important;
+        margin-top: 4px;
+        color: #005580;
+        font-size: 0.95rem;
+        font-weight: 600;
     }
 
     /* Col 3: Time Dials & Info */
@@ -545,11 +662,17 @@
     }
 
     /* Syncing your existing logic for mobile specific visibility */
-    #builderTableBody .b-move-up, 
-    #builderTableBody .b-move-dn { 
+    #builderTableBody:not(.builder-view-mode) .b-move-up, 
+    #builderTableBody:not(.builder-view-mode) .b-move-dn { 
         display: inline-flex !important; 
-        visibility: visible !important; 
-        opacity: 1 !important; 
+    }
+    
+    /* Ensure arrows are strictly hidden in View Mode regardless of specificity */
+    .builder-view-mode .b-move-top,
+    .builder-view-mode .b-move-bot,
+    .builder-view-mode .b-move-up,
+    .builder-view-mode .b-move-dn {
+        display: none !important;
     }
     
     #builderTableBody span[title] { 
