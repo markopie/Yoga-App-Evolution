@@ -57,6 +57,7 @@
 - `playFaintGong` (window binding)
 - `playSystemAudio` (window binding)
 - `speakRound` (window binding)
+- `speakText` (window binding)
 - `startTimer` (window binding)
 - `stopTimer` (window binding)
 - `triggerSequenceEnd` (window binding)
@@ -273,6 +274,7 @@
 - `switchHistoryTab` (module export)
 
 ### 📄 `ui/posePlayer.js`
+- `currentActualNote` (window binding)
 - `currentIndex` (window binding)
 - `currentPropModifier` (window binding)
 - `currentVariationKey` (window binding)

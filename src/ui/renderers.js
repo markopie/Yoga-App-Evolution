@@ -18,9 +18,11 @@ export function updatePoseNote(note) {
 
    details.style.display = "block";
    details.open = true;
-   // RESTORED: Speak button HTML with 🔊 emoji
-   const speakBtn = `<button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${text.replace(/"/g, "'")}\`, this)">🔊 Speak Note</button>`;
-   body.innerHTML = speakBtn + renderMarkdownMinimal(text);
+   details.className = "asana-info-accordion asana-info-accordion--note";
+   
+   const speakBtn = `<button class="tiny asana-info-accordion__speak-btn" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${text.replace(/"/g, "'")}\`, this)">🔊 Speak Note</button>`;
+   body.innerHTML = speakBtn + `<div class="asana-info-accordion__content">${renderMarkdownMinimal(text)}</div>`;
+   body.className = "asana-info-accordion__body";
 }
 
 export function updatePoseAsanaDescription(asana, matchedTechnique = "") {
@@ -32,16 +34,19 @@ export function updatePoseAsanaDescription(asana, matchedTechnique = "") {
 
     if (!descDetails || !techDetails) return;
 
-    let hasContent = false;
+    // ARCHITECT FIX: Check if the note accordion is already visible
+    const hasNote = document.getElementById("poseNoteDetails")?.style.display !== "none";
+    let hasContent = hasNote;
 
     const descText = (asana?.description || asana?.Description || "").toString().trim();
     if (descText) {
         descDetails.style.display = "block";
         descDetails.open = false;
+        descDetails.className = "asana-info-accordion asana-info-accordion--description";
         descBody.style.display = "block";
-        // RESTORED: Speak button for Description
-        const speakBtn = `<button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${descText.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak Description</button>`;
-        descBody.innerHTML = speakBtn + renderMarkdownMinimal(descText.replace(/\\n/g, '\n'));
+        const speakBtn = `<button class="tiny asana-info-accordion__speak-btn" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${descText.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak Description</button>`;
+        descBody.innerHTML = speakBtn + `<div class="asana-info-accordion__content">${renderMarkdownMinimal(descText.replace(/\\n/g, '\n'))}</div>`;
+        descBody.className = "asana-info-accordion__body";
         hasContent = true;
     } else {
         descDetails.style.display = "none";
@@ -51,9 +56,10 @@ export function updatePoseAsanaDescription(asana, matchedTechnique = "") {
     if (finalTech && finalTech.trim()) {
         techDetails.style.display = "block";
         techDetails.open = false;
-        // RESTORED: Speak button for Technique
-        const speakBtn = `<button class="tiny" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${finalTech.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak Technique</button>`;
-        techBody.innerHTML = speakBtn + renderMarkdownMinimal(finalTech.toString().replace(/\\n/g, '\n'));
+        techDetails.className = "asana-info-accordion asana-info-accordion--technique";
+        const speakBtn = `<button class="tiny asana-info-accordion__speak-btn" style="margin-bottom:8px; opacity:0.6;" onclick="window.toggleSpeak(\`${finalTech.replace(/"/g, "'").replace(/\\n/g, ' ')}\`, this)">🔊 Speak Technique</button>`;
+        techBody.innerHTML = speakBtn + `<div class="asana-info-accordion__content">${renderMarkdownMinimal(finalTech.toString().replace(/\\n/g, '\n'))}</div>`;
+        techBody.className = "asana-info-accordion__body";
         hasContent = true;
     } else {
         techDetails.style.display = "none";

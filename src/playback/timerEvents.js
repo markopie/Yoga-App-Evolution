@@ -84,7 +84,9 @@ window.playbackEngine.onStart = () => {
                         const isSecondSide = side === "left" && !!(asana.requiresSides || asana.requires_sides);
                         
                         window.playbackEngine.suspend(); 
-                        window.playAsanaAudio(asana, currentPose[4] || "", false, side, window.currentVariationKey || null, isSecondSide, meta.props || [])
+                        // ARCHITECT FIX: Only speak the note if NOT inside a macro (to avoid repetition)
+                        const spokenNote = meta.macroTitle ? "" : (window.currentActualNote || "");
+                        window.playAsanaAudio(asana, currentPose[4] || "", false, side, window.currentVariationKey || null, isSecondSide, meta.props || [], spokenNote)
                             .then(() => {
                                 if (window.currentIndex === idx && window.playbackEngine.running) {
                                     window.playbackEngine.resume(); 
@@ -97,23 +99,25 @@ window.playbackEngine.onStart = () => {
 
                         const prevPose = idx > 0 ? poses[idx - 1] : null;
                         const prevMeta = prevPose ? (prevPose[7] || {}) : {};
-                        const currMeta = currentPose[7] || {};
 
                         let boundaryPromise = Promise.resolve();
                         let hasBoundary = false;
 
-                        if (currMeta.macroTitle && currMeta.macroTitle !== prevMeta.macroTitle) {
+                        if (meta.macroTitle && meta.macroTitle !== prevMeta.macroTitle) {
                             hasBoundary = true;
-                            const cleanTitle = currMeta.macroTitle.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-                            boundaryPromise = boundaryPromise.then(() => typeof window.playSystemAudio === 'function' ? window.playSystemAudio(`macro_start_${cleanTitle}`) : Promise.resolve());
-                        } else if (prevMeta.macroTitle && !currMeta.macroTitle) {
+                            // Capture note immediately from state to ensure it doesn't drift
+                            const boundaryNote = window.currentActualNote || currentPose[4] || "";
+                            const cleanTitle = meta.macroTitle.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+                            boundaryPromise = boundaryPromise.then(() => typeof window.playSystemAudio === 'function' ? window.playSystemAudio(`macro_start_${cleanTitle}`) : Promise.resolve())
+                                                             .then(() => (boundaryNote && typeof window.speakText === 'function') ? window.speakText(boundaryNote) : Promise.resolve());
+                        } else if (prevMeta.macroTitle && !meta.macroTitle) {
                             hasBoundary = true;
                             boundaryPromise = boundaryPromise.then(() => typeof window.playSystemAudio === 'function' ? window.playSystemAudio("macro_end") : Promise.resolve());
                         } 
 
-                        if (currMeta.loopCurrent) {
-                            const isNewRound = prevMeta.loopCurrent && currMeta.loopCurrent !== prevMeta.loopCurrent;
-                            const isFirstRoundStart = !prevMeta.loopCurrent && currMeta.loopCurrent === 1;
+                        if (meta.loopCurrent) {
+                            const isNewRound = prevMeta.loopCurrent && meta.loopCurrent !== prevMeta.loopCurrent;
+                            const isFirstRoundStart = !prevMeta.loopCurrent && meta.loopCurrent === 1;
 
                             if (isFirstRoundStart) {
                                 hasBoundary = true;
@@ -121,9 +125,9 @@ window.playbackEngine.onStart = () => {
                                                                  .then(() => typeof window.speakRound === 'function' ? window.speakRound(1) : Promise.resolve());
                             } else if (isNewRound) {
                                 hasBoundary = true;
-                                boundaryPromise = boundaryPromise.then(() => typeof window.speakRound === 'function' ? window.speakRound(currMeta.loopCurrent) : Promise.resolve());
+                                boundaryPromise = boundaryPromise.then(() => typeof window.speakRound === 'function' ? window.speakRound(meta.loopCurrent) : Promise.resolve());
                             }
-                        } else if (prevMeta.loopCurrent && !currMeta.loopCurrent) {
+                        } else if (prevMeta.loopCurrent && !meta.loopCurrent) {
                             hasBoundary = true;
                             boundaryPromise = boundaryPromise.then(() => typeof window.playSystemAudio === 'function' ? window.playSystemAudio("loop_end") : Promise.resolve());
                         }

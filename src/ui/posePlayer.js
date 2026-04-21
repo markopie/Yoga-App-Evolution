@@ -45,6 +45,7 @@ window.handleStart = () => {
     const proceed = () => {
         window.isBriefingActive = false;
         if (typeof window.updateAliasUIFeedback === 'function') window.updateAliasUIFeedback();
+        if (typeof window.setPose === 'function') window.setPose(window.currentIndex, true);
         if (typeof window.startTimer === 'function') window.startTimer();
     };
 
@@ -71,6 +72,7 @@ window.handleNext = () => {
     const proceed = () => {
         window.isBriefingActive = false;
         if (typeof window.updateAliasUIFeedback === 'function') window.updateAliasUIFeedback();
+        if (typeof window.setPose === 'function') window.setPose(window.currentIndex, true);
     };
 
     const isSessionActive = (window.playbackEngine && window.playbackEngine.activePracticeSeconds > 5) || window.currentIndex > 0 || (typeof window.getCompletionTracker === 'function' && Object.values(window.getCompletionTracker()).some(v => v > 0));
@@ -276,19 +278,16 @@ function setPose(idx, keepSamePose = false) {
     let actualNote = noteField;
     let baseOverrideName = currentPose[2] || "";
 
-    const isJsonNative = !!poseMeta.originalJson;
-
-    if (isJsonNative) {
-        actualNote = poseMeta.originalJson.note || "";
+    if (poseMeta.originalJson) {
+        actualNote = noteField || poseMeta.originalJson.note || "";
     } else {
-    // 1. ORIGINAL BRACKET LOGIC (Exactly as it was when variations worked perfectly)
-    const bracketMatch = noteField.match(/\[(.*?)\]/);
-    if (bracketMatch) {
-        if (!variationTitle) variationTitle = bracketMatch[1].trim();
-        actualNote = noteField.replace(bracketMatch[0], "").replace(/^[\s\-\|]+/, "").trim();
-    } else if (!variationTitle) {
-        actualNote = [currentPose[3], currentPose[4]].filter(Boolean).join(" ").trim();
-    }
+        const bracketMatch = noteField.match(/\[(.*?)\]/);
+        if (bracketMatch) {
+            if (!variationTitle) variationTitle = bracketMatch[1].trim();
+            actualNote = noteField.replace(bracketMatch[0], "").replace(/^[\s\-\|]+/, "").trim();
+        } else if (!variationTitle) {
+            actualNote = [currentPose[3], currentPose[4]].filter(Boolean).join(" ").trim();
+        }
     }
 
     // 2. THE PROP SANITIZER (Multi-Prop Logic)
@@ -444,40 +443,34 @@ function setPose(idx, keepSamePose = false) {
         }
     }
 
-    // 🌟 UNIFIED TITLE CONSTRUCTION: Works for both Navigator and Focus Mode
+    // 🌟 BEM TITLE CONSTRUCTION: Unified Navigator and Focus Mode
     const baseName = currentPose[2] || (asana ? (asana.english_name || asana.english || asana.name) : "Pose");
-    let finalTitle = baseName;
+    const titleParts = [`<span class="pose-player__base-name">${baseName}</span>`];
 
     if (variationTitle) {
-        finalTitle += ` <span style="font-weight:300; opacity:0.7; font-size:0.85em;">— ${variationTitle}</span>`;
+        titleParts.push(`<span class="pose-player__variation" style="font-weight:300; opacity:0.7; font-size:0.85em;">— ${variationTitle}</span>`);
     }
 
     activeProps.forEach(pid => {
         const p = registry[pid];
-        if (p) finalTitle += ` <span style="color:${p.color}; margin-left:6px;" title="${p.label}">${p.icon || '🩹'}</span>`;
+        if (p) titleParts.push(`<span class="pose-player__prop" style="color:${p.color}; margin-left:6px;" title="${p.label}">${p.icon || '🩹'}</span>`);
     });
 
-    // 🌟 RESTORE: Use the resilient isBilateral flag instead of strict property check
     if (isBilateral) {
-        let sideMarker = "";
-        if (explicitSide === "L" || explicitSide === "R") {
-            sideMarker = explicitSide; 
-        } else {
-            sideMarker = window.getCurrentSide() === "right" ? "R" : "L";
-        }
-        finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.8em; vertical-align: middle;">• ${sideMarker}</span>`;
+        const sideMarker = (explicitSide === "L" || explicitSide === "R") ? explicitSide : (window.getCurrentSide() === "right" ? "R" : "L");
+        titleParts.push(`<span class="pose-player__side" style="font-weight:300; opacity:0.5; font-size:0.8em; vertical-align: middle;">• ${sideMarker}</span>`);
     }
     
-    const showMacro = poseMeta.macroTitle;
-    const showLoop = poseMeta.loopCurrent && poseMeta.loopTotal > 1;
-    if (showMacro || showLoop) {
+    if (poseMeta.macroTitle || (poseMeta.loopCurrent && poseMeta.loopTotal > 1)) {
         const contextLabel = poseMeta.macroTitle || poseMeta.loopLabel || "";
         const labelDisplay = contextLabel ? ` (${contextLabel})` : "";
-        const roundInfo = showLoop ? ` ${poseMeta.loopCurrent}/${poseMeta.loopTotal}` : "";
-        const icon = showLoop ? '↻' : '🔗';
-        finalTitle += ` <span style="font-weight:300; opacity:0.5; font-size:0.72em; vertical-align: middle; margin-left: 8px;">${icon}${roundInfo}${labelDisplay}</span>`;
+        const isLoop = !!(poseMeta.loopCurrent && poseMeta.loopTotal > 1);
+        const roundInfo = isLoop ? ` ${poseMeta.loopCurrent}/${poseMeta.loopTotal}` : "";
+        const icon = isLoop ? '↻' : '🔗';
+        titleParts.push(`<span class="pose-player__context" style="font-weight:300; opacity:0.5; font-size:0.72em; vertical-align: middle; margin-left: 8px;">${icon}${roundInfo}${labelDisplay}</span>`);
     }
 
+    const finalTitle = titleParts.join('');
     if (nameEl) nameEl.innerHTML = finalTitle;
     if (focusNameEl) focusNameEl.innerHTML = finalTitle;
 
@@ -553,7 +546,7 @@ function setPose(idx, keepSamePose = false) {
             btn.className = "tiny"; btn.innerHTML = "🔊"; btn.style.marginLeft = "12px"; btn.style.opacity = "0.7";
             btn.onclick = (e) => { 
                 e.stopPropagation(); 
-                window.playAsanaAudio(asana, null, true, null, matchedVariationKey, false, activeProps);
+                window.playAsanaAudio(asana, null, false, null, matchedVariationKey, false, activeProps, actualNote);
             };
             metaContainer.appendChild(btn);
         }
@@ -569,8 +562,13 @@ function setPose(idx, keepSamePose = false) {
             const p = registry[pid];
             if (!p) return; // 🛡️ Safety check: Skip if prop is missing from registry
             const hexToRgba = (hex, a) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})`; };
-            bannerStack.insertAdjacentHTML('beforeend', `<div class="therapeutic-banner" style="background:${hexToRgba(p.color, 0.08)}; border-left:4px solid ${p.color}; padding:12px; border-radius:6px; font-size:0.9em; color:#1d1d1f; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                <strong style="color:${p.color};">${p.icon || '🩹'} ${p.bannerTitle}</strong><br>${p.bannerHtml}</div>`);
+            bannerStack.insertAdjacentHTML('beforeend', `
+                <div class="practice-banner practice-banner--therapeutic" style="background:${hexToRgba(p.color, 0.08)}; border-left:4px solid ${p.color}; padding:12px; border-radius:6px; font-size:0.9em; color:#1d1d1f; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <div class="practice-banner__header">
+                        <strong class="practice-banner__title" style="color:${p.color};">${p.icon || '🩹'} ${p.bannerTitle}</strong>
+                    </div>
+                    <div class="practice-banner__content">${p.bannerHtml}</div>
+                </div>`);
         });
 
         const urls = window.smartUrlsForPoseId(lookupId, matchedVariationKey);
@@ -615,10 +613,11 @@ function setPose(idx, keepSamePose = false) {
     // 11. AUDIO TRIGGER
     window.currentVariationKey = matchedVariationKey;
     window.currentPropModifier = activeProps; // 🌟 SYNC: Ensure audio engine sees the props
+    window.currentActualNote = actualNote;    // 🌟 SYNC: For timerEvents playback
     if (window.playbackEngine && window.playbackEngine.running && asana) {
         // 🌟 RESTORE: Use resilient check for audio logic too
         const isSecondSide = window.getCurrentSide() === "left" && !!isBilateral;
-        window.playAsanaAudio(asana, baseOverrideName, false, window.getCurrentSide(), matchedVariationKey, isSecondSide, activeProps);
+        window.playAsanaAudio(asana, baseOverrideName, false, window.getCurrentSide(), matchedVariationKey, isSecondSide, activeProps, actualNote);
     }
 
     // SKIP BUTTON VISIBILITY (Recovery / Preparatory)

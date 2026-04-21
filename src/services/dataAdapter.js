@@ -32,7 +32,7 @@ function parseSequenceJSON(json) {
             ];
         }
         if (item.type === 'macro') {
-            return [`MACRO:${item.sequence_id}`, item.rounds || 1, "", "", "", idx, "", { originalJson: item }];
+            return [`MACRO:${item.sequence_id}`, item.rounds || 1, "", "", item.note || "", idx, "", { originalJson: item }];
         }
         if (item.type === 'loop_start') {
             return ["LOOP_START", item.rounds || 2, "", "", "", idx, "", { originalJson: item }];

@@ -235,3 +235,49 @@
 **Next Steps for Next Session:**
 - **Phase 3:** Proceed with rendering pose-level notes in the Pose Player practice screen.
 ---
+
+## [2026-04-21] - Session [05]
+**Goal:** Implement Phase 3: Player Rendering for pose-level notes in Navigator and Focus modes.
+
+**Architectural Decisions:**
+- **Navigator Hierarchy:** Integrated pose-level notes into the technical stack below Description and Technique. Enforced "Default Open" state for the notes accordion to ensure remedial cues are prominent.
+- **Sequential Audio Cues:** Appended pose notes to the `speakText` queue. Logic ensures notes are announced last, following variations and props, to maintain a logical instructional flow in Focus Mode.
+
+**Code Changed:**
+- `src/ui/wiring.js`: Added `poseNoteBody` and `poseNoteDetails` to the global reset manifest and enforced default open state.
+
+## [2026-04-21] - Session [06]
+**Goal:** Implement specialized note handling for Linked Sequences (Macros).
+
+**Architectural Decisions:**
+- **Introductory Cue Priority:** Macros now play their associated note exactly once at the boundary ("Starting linked flow..."). This converts the note field for Macros into an instructional preamble for the entire sequence block.
+- **Intra-Macro Suppression:** Suppressed pose-level note speech for all poses contained within a Macro. This prevents auditory clutter during repetitive flows while preserving the Navigator's ability to show the current context.
+- **Contextual Note Expansion:** Updated the expansion engine to propagate Macro notes into every constituent pose. This ensures that the instructional context remains visible in the Navigator throughout the linked sequence while the audio engine handles the one-time delivery logic.
+- **Data Integrity:** Hardened `builder.js` to ensure Macro notes are persisted in `sequence_json` and protected from auto-generated text collisions when rounds are adjusted.
+
+**Code Changed:**
+- `src/services/sequenceEngine.js`: Implemented note propagation during Macro expansion.
+- `src/ui/builder.js`: Updated compilation and event listeners for Macro notes.
+- `src/playback/timerEvents.js`: Integrated boundary audio queuing and intra-macro speech suppression.
+
+**Lessons Learned:**
+- **Communication works well when:** Breaking implementations into distinct architectural phases (UI Skeleton -> Logic -> Viewer) allows for easier pinpointing of regressions. Providing a "Single Brain" context (centralized logic) reduces the risk of "Shadow Logic" creeping into UI files.
+- **What doesn't work:** Over-relying on live DOM state for background logic (like PDF exports or Resume prompts). Hidden overlays (like the Safety Briefing) act as gatekeepers; logic must explicitly account for these UI states to avoid "locked" content.
+---
+
+## [2026-04-21] - Session [07]
+**Goal:** Architectural polish, BEM refactoring, and resolution of Navigator visibility race conditions.
+
+**Architectural Decisions:**
+- **BEM Transition:** Refactored Pose Player title construction and instructional stack into BEM-compliant structures. Switched from inline string-soup to a structured array-join pattern for titles, simplifying modifiers like `__side`, `__variation`, and `__prop`.
+- **Navigator Gatekeeper Fix:** Standardized `handleNext` and `handleStart` callbacks to re-trigger `setPose` after briefing dismissal. This resolves the bug where meta-panels (Technique/Note) remained hidden upon resuming a session.
+- **Clean Code Cleanup:** Trimmed redundant logic in `posePlayer.js` variation matching and synchronized state caching for `window.currentActualNote` to ensure timer-event audio reliability.
+
+**Code Changed:**
+- `src/ui/posePlayer.js`: Refactored `setPose` title construction and briefing dismissal logic.
+- `src/ui/renderers.js`: Finalized BEM accordion classes for the instructional stack.
+- `src/playback/timerEvents.js`: Hardened macro note suppression logic.
+
+**Next Steps for Next Session:**
+- Session Complete. The pose-level note system is fully integrated across Builder, PDF Export, and Practice Player.
+---

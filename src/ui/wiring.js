@@ -326,6 +326,7 @@ function setupPlaybackControls() {
         if (window.isBriefingActive) {
             window.isBriefingActive = false;
             updateAliasUIFeedback();
+            if (typeof window.setPose === 'function') window.setPose(window.currentIndex, true);
             return; // Dismiss briefing to reveal first pose
         }
         window.stopTimer(); window.nextPose(); window.updateNextBtnText(); 
@@ -385,6 +386,7 @@ function setupPlaybackControls() {
             "poseLabel":            ["", "text"], 
             "poseShorthand":        ["", "html"],
             "glossaryArea":         ["", "html"],
+            "poseNoteBody":         ["", "html"],
             "poseMeta":             ["", "html"],
             "debugSmall":           ["", "html"],
             "poseInstructions":     ["", "html"],
@@ -411,6 +413,7 @@ function setupPlaybackControls() {
         const infoStack = document.getElementById("poseInfoStack");
         const descDetails = document.getElementById("poseAsanaDescDetails");
         const techDetails = document.getElementById("poseTechniqueDetails");
+        const noteDetails = document.getElementById("poseNoteDetails");
         
         if (infoStack) infoStack.style.display = "none";
         
@@ -421,6 +424,10 @@ function setupPlaybackControls() {
         if (techDetails) {
             techDetails.style.display = "none";
             techDetails.open = false; 
+        }
+        if (noteDetails) {
+            noteDetails.style.display = "none";
+            noteDetails.open = true; // Default to open for new poses as per Phase 3 requirement
         }
 
         // 5. Clean up Images and Progress

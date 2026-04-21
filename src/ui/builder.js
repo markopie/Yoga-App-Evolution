@@ -545,7 +545,7 @@ function openPropPicker(idx) {
         if (isNaN(val) || val < 1) val = 1;
         builderState.poses[idx].duration = val;
          if (String(builderState.poses[idx].id || "").startsWith("MACRO:")) {
-            builderState.poses[idx].note = `Linked Sequence: ${val} Round${val !== 1 ? 's' : ''}`;
+            if (!builderState.poses[idx].note) builderState.poses[idx].note = `Linked Sequence: ${val} Round${val !== 1 ? 's' : ''}`;
         } else if (builderState.poses[idx].id === "LOOP_START") {
             builderState.poses[idx].name = `🔁 Repeat Block (${val} Rounds)`;
         }
@@ -1128,7 +1128,8 @@ function builderCompileSequenceJSON() {
             return {
                 type: "macro",
                 sequence_id: idStr.replace("MACRO:", ""),
-                rounds: Math.max(1, Number(p.duration) || 1)
+                rounds: Math.max(1, Number(p.duration) || 1),
+                note: p.note || ""
             };
         }
         if (idStr === "LOOP_START") {

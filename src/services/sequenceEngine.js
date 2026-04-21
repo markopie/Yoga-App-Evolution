@@ -79,10 +79,19 @@ export function getExpandedPoses(sequence, ctx = {}) {
                 isProtected: protectedContext
             });
 
+            const macroNote = (p[4] || "").trim();
+
             for (let i = 0; i < durOrReps; i++) {
                 subExpanded.forEach(sp => {
                     let cloned = [...sp];
                     cloned[5] = originalIdx;
+
+                    // Requirement: Add the macro note to EVERY asana in the linked sequence for the navigator
+                    // Prepend the macro context to any existing pose-level notes.
+                    if (macroNote) {
+                        const existingNote = (cloned[4] || "").trim();
+                        cloned[4] = existingNote ? `${macroNote} | ${existingNote}` : macroNote;
+                    }
                     
                     const meta = { 
                         ...(cloned[7] || {}), 

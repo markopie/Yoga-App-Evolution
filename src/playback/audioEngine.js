@@ -168,19 +168,21 @@ export function toggleSpeak(text, btn) {
         return;
     }
 
-    document.querySelectorAll('.speak-toggle-btn').forEach(b => {
+    document.querySelectorAll('.audio-control__btn--speaking').forEach(b => {
         if (b.dataset.originalLabel) b.innerHTML = b.dataset.originalLabel;
         b.dataset.speaking = "false";
+        b.classList.remove('audio-control__btn--speaking');
     });
 
     btn.dataset.originalLabel = btn.innerHTML;
     btn.innerHTML = "⏹ Stop";
     btn.dataset.speaking = "true";
-    btn.classList.add('speak-toggle-btn');
+    btn.classList.add('audio-control__btn--speaking');
 
     speakText(text).then(() => {
         btn.innerHTML = btn.dataset.originalLabel;
         btn.dataset.speaking = "false";
+        btn.classList.remove('audio-control__btn--speaking');
     });
 }
 
@@ -197,7 +199,8 @@ export async function playAsanaAudio(
     currentSide = null,
     variationKey = null,
     isSecondSide = false,
-    props = []
+    props = [],
+    note = ""
 ) {
     if (!asana) return;
 
@@ -229,6 +232,12 @@ export async function playAsanaAudio(
     
     if (!isBrowseContext && requiresSides && currentSide) {
         await playSideCueFile(currentSide);
+    }
+
+    // 4. Speak Pose Note (Last)
+    if (note && note.trim()) {
+        await new Promise(resolve => setTimeout(resolve, 400)); // Slightly longer pause for clarity
+        await speakText(note.trim());
     }
 }
 
