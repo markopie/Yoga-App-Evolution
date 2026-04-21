@@ -210,7 +210,9 @@ async function showAsanaDetail(asana, highlightStageKey = null) {
     d.appendChild(editBtn);
 
    // 🛑 2. DYNAMIC HOLD TIME LOGIC
-    const hj = typeof window.getHoldTimes === "function" ? window.getHoldTimes(asana, highlightStageKey) : null; 
+    const hj = typeof window.getHoldTimes === "function" 
+        ? window.getHoldTimes(asana, highlightStageKey) 
+        : (asana.hold_json || asana.holdTimes || { standard: 30, short: 15, long: 60 }); 
 
     let rangeDisplay = "";
     if (hj && hj.standard) {
@@ -292,7 +294,10 @@ ${typeof formatTechniqueText === 'function' ? formatTechniqueText(baseDesc).trim
             const val = asana.variations[key];
             let techText = '', shortText = '', titleText = `Stage ${key}`, isCustom = !!val.isCustom;
             
-            let varHold = (val && typeof val === 'object') ? (val.standard || val.Standard || val.hold) : '';
+            // Prioritize long duration from hold_json for the detail view display
+            let varHold = (val && val.hold_json) 
+                ? val.hold_json.long 
+                : ((val && typeof val === 'object') ? (val.standard || val.Standard || val.hold) : '');
 
             if (typeof val === 'string') {
                 techText = val;

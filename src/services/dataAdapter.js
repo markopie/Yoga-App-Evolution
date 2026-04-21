@@ -263,7 +263,7 @@ function normalizeAsana(row, existingData = {}) {
     }
 
     // Resolve hold_json and compute holdTimes for the asana object
-    const hold_json = row.hold_json || existingData.hold_json || null;
+    const hold_json = (row.hold_json && typeof row.hold_json === 'object') ? row.hold_json : null;
     const holdTimes = (hold_json && typeof hold_json === 'object')
         ? { 
             standard: Number(hold_json.standard) || 30, 
@@ -317,7 +317,7 @@ function normalizeStageRow(stage, index = 0) {
     const holdStr = stage.Hold ?? stage.hold ?? '';
 
     // Resolve hold_json and compute holdTimes for the variation object
-    const hold_json = stage.hold_json || null;
+    const hold_json = (stage.hold_json && typeof stage.hold_json === 'object') ? stage.hold_json : null;
     const holdTimes = (hold_json && typeof hold_json === 'object')
         ? { 
             standard: Number(hold_json.standard) || 30, 

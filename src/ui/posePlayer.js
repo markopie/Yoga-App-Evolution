@@ -231,7 +231,7 @@ function setPose(idx, keepSamePose = false) {
     // Fallback: If list value is 0/missing (corrupt or legacy sequence), resolve from library
     if (!seconds && asana) {
         const tier = poseMeta.tier;
-        const hj = window.getHoldTimes ? window.getHoldTimes(asana, currentPose[3]) : (asana.hold_json || { standard: 30 });
+        const hj = window.getHoldTimes ? window.getHoldTimes(asana, currentPose[3]) : (asana.hold_json || { standard: 30, short: 15, long: 60 });
         if (tier === 'S') seconds = hj.short || hj.standard || 30;
         else if (tier === 'L') seconds = hj.long || hj.standard || 30;
         else seconds = hj.standard || 30;
@@ -532,7 +532,7 @@ function setPose(idx, keepSamePose = false) {
         infoSpan.className = "meta-text-only"; 
 
         // ✅ Pass matchedVariationKey so Stage-specific times appear in the UI
-        const hj = asana ? (window.getHoldTimes ? window.getHoldTimes(asana, matchedVariationKey) : (asana.hold_json || asana.hold_data)) : null;
+        const hj = asana ? (window.getHoldTimes ? window.getHoldTimes(asana, matchedVariationKey) : asana.hold_json) : null;
         
         let rangeText = "";
         if (hj && hj.short && hj.long) {

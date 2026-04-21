@@ -167,6 +167,7 @@
 - `addStageToEditor` (window binding)
 - `openAsanaEditor` (window binding)
 - `refreshStageIndices` (window binding)
+- `showAsanaDetail` (window binding)
 
 ### 📄 `ui/browse.js`
 - `applyBrowseFilters` (module export)

@@ -178,4 +178,23 @@
 **Next Steps for Next Session:**
 - Audit the "All" tab in the Link modal to ensure mixed category labels maintain consistent spacing.
 - Check the mobile card view to ensure the wider Order column doesn't cause horizontal overflow issues.
+
+---
+
+## [2026-04-21] - Session [02]
+**Goal:** Enforce `hold_json` timing synchronization and implement hot-reloading for the active Pose Player.
+
+**Architectural Decisions:**
+- **Unified Timing Schema:** Standardized on `hold_json` (standard, short, long, flow) as the absolute source of truth across the Data Adapter, Asana Editor, and Browse UI.
+- **Hot-Reloading UI:** Enabled reactive updates. Saving an asana now automatically refreshes the Browse Detail view and, if a sequence is active, re-scales the playback list and refreshes the current pose's timing and metadata.
+- **Cache Integrity:** Hardened the editor save path to synchronize the local `window.asanaLibrary` cache immediately, preventing "split-brain" states where the DB was updated but the UI reflected stale memory.
+
+**Code Changed:**
+- `src/services/dataAdapter.js`: Hardened `normalizeAsana` and `normalizeStageRow` to prioritize JSON objects.
+- `src/ui/asanaEditor.js`: Refactored save logic to write to `hold_json` and added UI/Player refresh triggers.
+- `src/ui/browse.js`: Updated `showAsanaDetail` to prioritize `hold_json` for range labels and stage displays.
+- `src/ui/posePlayer.js`: Standardized duration resolution to use `hold_json`.
+
+**Next Steps for Next Session:**
+- Audit `src/playback/timer.js` to ensure no legacy text-parsing logic remains in the core loop.
 ---

@@ -118,7 +118,15 @@ window.addStageToEditor = async function (stageKey = "", stageData = {}) {
     const existingTech = stageData.technique || "";
     const existingDbId = stageData.id || "";
 
-    const holdData = parseHoldTimes(stageData.hold || "");
+    // Prioritize JSON if available
+    const holdData = (stageData.hold_json && typeof stageData.hold_json === 'object')
+        ? {
+            standard: stageData.hold_json.standard || 30,
+            short: stageData.hold_json.short || 15,
+            long: stageData.hold_json.long || 60,
+            flow: stageData.hold_json.flow || 5
+          }
+        : parseHoldTimes(stageData.hold || "");
     
     const div = document.createElement("div");
     div.className = "stage-row";
@@ -236,7 +244,15 @@ window.openAsanaEditor = async function (id) {
             }
         }
 
-        const holdData = parseHoldTimes(a.hold || "");
+        // Prioritize JSON when loading the editor fields
+        const holdData = (a.hold_json && typeof a.hold_json === 'object')
+            ? {
+                standard: a.hold_json.standard || 30,
+                short: a.hold_json.short || 15,
+                long: a.hold_json.long || 60
+              }
+            : parseHoldTimes(a.hold || "");
+            
         if ($("editAsanaHoldStandard")) $("editAsanaHoldStandard").value = holdData.standard;
         if ($("editAsanaHoldShort")) $("editAsanaHoldShort").value = holdData.short;
         if ($("editAsanaHoldLong")) $("editAsanaHoldLong").value = holdData.long;
@@ -315,6 +331,10 @@ function wireEditorSave() {
             const finalCategoryText = formatCategoryName(catText);
             const categoryId = await getOrCreateAsanaCategoryId(finalCategoryText);
 
+            const stdVal = parseInt($("editAsanaHoldStandard").value) || 30;
+            const shortVal = parseInt($("editAsanaHoldShort").value) || 15;
+            const longVal = parseInt($("editAsanaHoldLong").value) || 60;
+
             // 🌟 ARCHITECT PAYLOAD: Strictly following Database Contract (Snake Case)
             const asanaPayload = {
                 id,
@@ -325,12 +345,8 @@ function wireEditorSave() {
                 technique: $("editAsanaTechnique").value.trim(),
                 note: $("editAsanaNote").value.trim(),
                 intensity: $("editAsanaIntensity").value.trim(),
-                hold: buildHoldString(
-                    parseInt($("editAsanaHoldStandard").value), 
-                    parseInt($("editAsanaHoldShort").value), 
-                    parseInt($("editAsanaHoldLong").value), 
-                    5
-                ),
+                hold_json: { standard: stdVal, short: shortVal, long: longVal, flow: 5 },
+                hold: buildHoldString(stdVal, shortVal, longVal, 5),
                 plate_numbers: $("editAsanaPlates").value.trim(),
                 requires_sides: $("editAsanaRequiresSides").checked,
                 page_2001: parseInt($("editAsanaPage2001").value) || null,
@@ -354,12 +370,11 @@ function wireEditorSave() {
                 const div = stageDivs[i];
                 const key = div.querySelector(".stage-key").value;
                 const dbId = div.dataset.dbId;
-                const sHold = buildHoldString(
-                    parseInt(div.querySelector(".stage-hold-standard").value),
-                    parseInt(div.querySelector(".stage-hold-short").value),
-                    parseInt(div.querySelector(".stage-hold-long").value),
-                    parseInt(div.dataset.flowHold || "5")
-                );
+                
+                const std = parseInt(div.querySelector(".stage-hold-standard").value) || 30;
+                const sho = parseInt(div.querySelector(".stage-hold-short").value) || 15;
+                const lon = parseInt(div.querySelector(".stage-hold-long").value) || 60;
+                const flo = parseInt(div.dataset.flowHold || "5");
 
                 const stagePayload = {
                     asana_id: id,
@@ -367,7 +382,8 @@ function wireEditorSave() {
                     title: div.querySelector(".stage-suffix").value || key,
                     full_technique: div.querySelector(".stage-tech").value.trim() || null,
                     shorthand: div.querySelector(".stage-short").value.trim() || null,
-                    hold: sHold,
+                    hold_json: { standard: std, short: sho, long: lon, flow: flo },
+                    hold: buildHoldString(std, sho, lon, flo),
                     sort_order: i
                 };
 
@@ -382,7 +398,9 @@ function wireEditorSave() {
                     title: stagePayload.title,
                     shorthand: stagePayload.shorthand,
                     technique: stagePayload.full_technique,
-                    hold: sHold
+                    hold_json: stagePayload.hold_json,
+                    holdTimes: stagePayload.hold_json, // Standardize local cache
+                    hold: stagePayload.hold
                 };
             }
 
@@ -392,6 +410,7 @@ function wireEditorSave() {
                     ...window.asanaLibrary[id],
                     ...asanaPayload,
                     english: asanaPayload.english_name, // Sync with runtime property name
+                    holdTimes: asanaPayload.hold_json,   // Ensure UI timing logic is synced
                     category: finalCategoryText,
                     variations: localVariations
                 };
@@ -405,6 +424,11 @@ function wireEditorSave() {
                 saveBtn.disabled = false;
                 saveBtn.textContent = "Save Asana";
                 if (window.applyBrowseFilters) window.applyBrowseFilters();
+                
+                // 🚀 UI SYNC: Refresh the Browse Detail view immediately if it's showing this asana
+                if (typeof window.showAsanaDetail === "function" && window.asanaLibrary[id]) {
+                    window.showAsanaDetail(window.asanaLibrary[id]);
+                }
             }, 1000);
 
         } catch (e) {
