@@ -7,6 +7,20 @@ export function builderPoseName(asana, poseName, showSanskrit) {
     return asana.english || asana.devanagari || poseName || 'Unknown';
 }
 
+export function generatePoseNoteInputHTML(pose, idx, maxLength = 100) {
+    const raw = pose.note || '';
+    const val = (raw === 'null' || raw === 'NULL') ? '' : String(raw).trim();
+    const hasNote = val.length > 0;
+
+    return `
+        <div class="pose-note-wrapper" style="margin-top: 4px; margin-bottom: 6px; display: flex; align-items: baseline; gap: 6px; min-width: 0;">
+            <span class="b-pose-note-label ${!hasNote ? 'edit-only-inline' : ''}" style="font-size: 0.7rem; color: #86868b; font-weight: 700; text-transform: uppercase; flex-shrink: 0;">Note:</span>
+            <input type="text" class="b-pose-note edit-only-inline" data-idx="${idx}" value="${val.replace(/"/g, '&quot;')}" 
+                   placeholder="Add pose note..." maxlength="${maxLength}" 
+                   style="flex: 1; font-size: 0.8rem; padding: 4px 8px; border: 1px solid #d2d2d7; border-radius: 6px; box-sizing: border-box; background: transparent; min-width: 0;">
+            <span class="b-pose-note-view view-only-inline" style="font-size: 0.8rem; color: var(--color-text-primary); flex: 1; overflow-wrap: break-word; word-break: break-word;">${val}</span>
+        </div>`;
+}
 
 export function generateVariationSelectHTML(asana, pose, idx) {
     const variations = asana ? (asana.variations || {}) : {};

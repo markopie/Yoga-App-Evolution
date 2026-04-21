@@ -6,7 +6,7 @@ import { saveSequence } from "../services/persistence.js";
 import { parseSemicolonCommand } from "../utils/builderParser.js";
 import { setupBuilderSearch } from "./builderSearch.js";
 import { formatHMS, displayName, formatCategory } from "../utils/format.js";
-import { builderPoseName, generateVariationSelectHTML, generateInfoCellHTML, resolvePoseInfo, buildMacroInfoHTML } from "./builderTemplates.js";
+import { builderPoseName, generateVariationSelectHTML, generateInfoCellHTML, resolvePoseInfo, buildMacroInfoHTML, generatePoseNoteInputHTML } from "./builderTemplates.js";
 import { builderState, setPoseSide, movePose, movePoseToIndex, removePose, addPoseToBuilder, isFlowSequence } from '../store/builderState.js';
 import { updateBuilderModeUI, openLinkSequenceModal } from "./builderUI.js";
 import { PROP_REGISTRY } from "../config/propRegistry.js";
@@ -242,6 +242,7 @@ function builderRender() {
                  ${iast}
               </div>
               ${viewModePropsHTML}
+              ${(isLoopStart || isLoopEnd) ? '' : generatePoseNoteInputHTML(pose, idx)}
               <div class="edit-only-inline" style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; font-size:0.75rem; color:#666;">
                  ${isLoopStart || isLoopEnd ? `<span style="color:#999; font-size:0.65rem; text-transform:uppercase; font-weight:bold; letter-spacing:0.02em;">System Block</span>` : 
                    (isMacro ? `ID: <span style="font-family:monospace; background:#f0f0f0; padding:2px 6px; border-radius:4px; border:1px solid #ddd; font-size:0.7rem; color:#333;">${pose.id.replace("MACRO:", "")}</span>
@@ -475,6 +476,11 @@ function openPropPicker(idx) {
     };
 });
 
+    qS('.b-pose-note').forEach(el => el.onchange = (e) => {
+        const i = el.dataset.idx;
+        builderState.poses[i].note = el.value.trim();
+        builderRender(); // Trigger re-render to update Label visibility logic
+    });
 
     qS('.b-id').forEach(el => el.onchange = (e) => {
         const i = el.dataset.idx;

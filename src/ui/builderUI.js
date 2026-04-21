@@ -206,10 +206,19 @@ export function createExportSnapshot(sourceElement) {
                 : '';
             const iast = (!isSpecial && asana?.iast) ? `<div style="font-size:0.85rem; color:#6e6e73; font-style:italic;">${asana.iast}</div>` : '';
             
+            const rawNote = pose.note || '';
+            const cleanNote = (rawNote === 'null' || rawNote === 'NULL') ? '' : String(rawNote).trim();
+            const noteHTML = cleanNote ? `
+                <div style="margin-top: 4px; display: flex; align-items: baseline; gap: 6px;">
+                    <span style="font-size: 0.7rem; color: #86868b; font-weight: 700; text-transform: uppercase; flex-shrink: 0;">Note:</span>
+                    <span style="font-size: 0.8rem; color: #1d1d1f; flex: 1; overflow-wrap: break-word;">${escapeHtml(cleanNote)}</span>
+                </div>` : '';
+
             const col2 = `
                 <td>
                     <div style="font-weight:700; font-size:1.1rem;">${name} ${varText}</div>
                     ${iast}
+                    ${noteHTML}
                 </td>
             `;
 

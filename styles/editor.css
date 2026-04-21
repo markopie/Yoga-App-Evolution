@@ -161,6 +161,26 @@
     box-shadow: none !important;
 }
 
+/* Note Toggling Logic */
+.view-only-inline { display: none !important; }
+
+.builder-view-mode .view-only-inline { 
+    display: inline-block !important; 
+}
+
+.builder-view-mode .b-pose-note {
+    display: none !important;
+}
+
+/* Hide entire note area in View/PDF if the text content is empty */
+.builder-view-mode .pose-note-wrapper:has(.b-pose-note-view:empty) {
+    display: none !important;
+}
+
+.builder-view-mode .b-pose-note::placeholder {
+    color: transparent;
+}
+
 /* Hide checkbox in view mode */
 .builder-view-mode td:first-child input[type="checkbox"] {
     display: none !important;

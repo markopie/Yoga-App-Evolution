@@ -220,6 +220,7 @@
 - `buildMacroInfoHTML` (function)
 - `builderPoseName` (function)
 - `generateInfoCellHTML` (function)
+- `generatePoseNoteInputHTML` (function)
 - `generateVariationSelectHTML` (function)
 - `resolvePoseInfo` (const)
 

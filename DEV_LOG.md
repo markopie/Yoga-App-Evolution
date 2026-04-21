@@ -198,3 +198,25 @@
 **Next Steps for Next Session:**
 - Audit `src/playback/timer.js` to ensure no legacy text-parsing logic remains in the core loop.
 ---
+
+## [2026-04-21] - Session [03]
+**Goal:** Implement pose-level notes with high-fidelity PDF export and Jobsian visibility logic.
+
+**Architectural Decisions:**
+- **Dual-Element Rendering:** Implemented a pattern using an `input` for Edit Mode and a `span` for View/PDF Mode. This ensures that PDF capture engines (which often miss dynamic input values) reliably grab the text content from the DOM.
+- **Reactive Label Logic:** Used a conditional re-render path in `builder.js` to ensure the "Note:" prefix is surgically hidden when a note is `NULL` or cleared, maintaining a clean practice sheet.
+- **PDF Reconstruction Hardening:** Updated the `createExportSnapshot` in `builderUI.js` to manually reconstruct note blocks during the snapshot process, bypassing the fragility of the live modal layout.
+- **Spatial Constraints:** Enforced a 100-character limit and `overflow-wrap: break-word` to protect the 200px Order column and prevent horizontal layout drift on mobile.
+
+**Code Changed:**
+- `src/ui/builderTemplates.js`: Created `generatePoseNoteInputHTML` with baseline alignment and Jobsian labels.
+- `src/ui/builder.js`: Integrated the note field and wired reactive re-renders to the `onchange` event.
+- `src/ui/builderUI.js`: Hardened the PDF export loop to explicitly render pose notes.
+- `styles/editor.css`: Added toggling logic for `view-only-inline` and `edit-only-inline` classes.
+
+**Lessons Learned:**
+- `html2canvas` and similar capture tools are significantly more reliable when reading from static text nodes (`span`/`div`) than from `input` values. Always mirror form data to the DOM before snapshotting for export.
+
+**Next Steps for Next Session:**
+- **Phase 3:** Integrate these notes into the Pose Player (Navigator and Focus modes) so cues are visible during active practice.
+---
