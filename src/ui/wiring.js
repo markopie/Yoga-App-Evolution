@@ -8,6 +8,7 @@ import { normalizePlate } from '../services/dataAdapter.js';
 import { playbackEngine } from '../playback/timer.js';
 import { openHistoryModal, switchHistoryTab, renderGlobalHistory } from './historyModal.js';
 import { builderRender, openEditCourse, builderOpen, addPoseToBuilder, createRepeatGroup, openLinkSequenceModal } from './builder.js';
+import { openBuilderV2 } from './builderViewV2.js';
 // ── Application State Aliases ────────────────────────────────────────────────
 // ── UI Constants ─────────────────────────────────────────────────────────────
 const EMPTY_STATE_HTML = `
@@ -317,6 +318,21 @@ function setupSequenceSelector() {
         newBtn.style.cssText = "margin-left: 4px; padding: 4px 10px; font-weight: 600;";
         editBtn.parentNode.insertBefore(newBtn, editBtn.nextSibling);
         newBtn.onclick = () => builderOpen("new", null); // Opens directly into Edit Mode
+
+        // Review V2 button — parallel entry point for the new architecture
+        if (!document.getElementById("quickEditBtnV2")) {
+            const v2Btn = document.createElement("button");
+            v2Btn.id = "quickEditBtnV2";
+            v2Btn.textContent = "Review V2";
+            v2Btn.title = "Review / Edit Sequence (V2)";
+            v2Btn.className = "tiny";
+            v2Btn.style.cssText = "margin-left: 8px; padding: 4px 12px; font-size: 0.9rem; font-weight: 600; border-radius: 8px; background: #e3f2fd; color: #0d47a1; border: 1px solid #90caf9;";
+            newBtn.parentNode.insertBefore(v2Btn, newBtn.nextSibling);
+            v2Btn.onclick = () => {
+                if (!getCurrentSequence()) return showError("Please select a sequence first.");
+                openBuilderV2("edit", getCurrentSequence());
+            };
+        }
     }
 }
 

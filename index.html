@@ -7,6 +7,7 @@
   <title>Yoga Sequences</title>
   <link rel="stylesheet" href="styles/main.css?v=30">
   <link rel="stylesheet" href="styles/theme.css?v=30">
+  <link rel="stylesheet" href="styles/builder-v2.css?v=1">
 </head>
 <body>
 
@@ -537,6 +538,162 @@
 
     </div>
   </div>
+
+<!-- =========================================================
+     Builder V2 Modal
+     ========================================================= -->
+<div id="builderV2Backdrop" role="dialog" aria-modal="true" aria-labelledby="bv2ModeLabel">
+  <div class="bv2-modal-shell">
+
+    <!-- Header -->
+    <div class="bv2-header">
+      <div class="bv2-header__top">
+        <div class="bv2-header__meta">
+          <div class="bv2-mode-label" id="bv2ModeLabel">Sequence Review</div>
+
+          <!-- View mode display -->
+          <div id="bv2ViewHeader">
+            <div class="bv2-cat-breadcrumb" id="bv2CategoryView"></div>
+            <div class="bv2-display-title" id="bv2TitleView"></div>
+          </div>
+
+          <!-- Edit mode inputs -->
+          <div id="bv2EditHeader" class="bv2-hidden">
+            <input id="bv2Category" type="text" list="bv2CategoryList"
+                   placeholder="Category (e.g. Course > Subcourse)"
+                   class="bv2-input-category">
+            <datalist id="bv2CategoryList"></datalist>
+            <input id="bv2Title" type="text" placeholder="Untitled Sequence"
+                   class="bv2-input-title">
+          </div>
+        </div>
+
+        <div class="bv2-header__actions">
+          <button id="bv2NameToggle" type="button" class="bv2-btn bv2-btn--sm bv2-btn--secondary" title="Toggle Sanskrit names">Sa</button>
+          <div class="bv2-export-wrap bv2-hidden" id="bv2ExportWrap">
+            <button id="bv2BtnPdf"   type="button" class="bv2-btn bv2-btn--sm bv2-btn--ghost">PDF</button>
+            <button id="bv2BtnPrint" type="button" class="bv2-btn bv2-btn--sm bv2-btn--secondary">Print</button>
+          </div>
+          <button id="bv2ModeBtn"  type="button" class="bv2-btn bv2-btn--sm bv2-btn--edit-mode">Edit</button>
+          <button id="bv2CloseBtn" type="button" class="bv2-btn bv2-btn--close" title="Close">&#x2715;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Safety notes row -->
+    <div id="bv2NotesRow" class="bv2-notes-row bv2-hidden">
+      <div id="bv2NotesView" class="bv2-view-only"></div>
+      <textarea id="bv2Notes" class="bv2-input-notes bv2-edit-only"
+                placeholder="Safety notes, prop requirements, or sequence context..."></textarea>
+      <button id="bv2WarningRestore" type="button" class="bv2-warning-restore bv2-hidden" title="Show safety notes">&#x2695;&#xFE0F;</button>
+    </div>
+
+    <!-- Search area -->
+    <div class="bv2-search-area bv2-edit-only" id="bv2SearchArea">
+      <textarea id="bv2Search"
+                placeholder="Search by name or ID — or batch: Title; Category; IDs…"
+                class="bv2-search-textarea"
+                autocomplete="off"></textarea>
+      <div id="bv2SearchResults" class="bv2-search-results"></div>
+    </div>
+
+    <!-- Tools panel -->
+    <div id="bv2ToolsPanel" class="bv2-tools-panel bv2-edit-only">
+      <button id="bv2BtnAddBlank" type="button" class="bv2-btn bv2-btn--sm bv2-btn--secondary">+ Blank</button>
+      <button id="bv2BtnLink"     type="button" class="bv2-btn bv2-btn--sm bv2-btn--secondary">&#x1F517; Link</button>
+      <button id="bv2BtnRepeat"   type="button" class="bv2-btn bv2-btn--sm bv2-btn--secondary bv2-btn--hidden">&#x1F501; Repeat</button>
+      <button id="bv2BtnDelete"   type="button" class="bv2-btn bv2-btn--sm bv2-btn--warn bv2-btn--hidden">&#x1F5D1; Delete</button>
+    </div>
+
+    <!-- Table -->
+    <div class="bv2-body">
+      <table class="bv2-table" id="bv2Table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Pose</th>
+            <th class="bv2-info-th">Info</th>
+            <th class="bv2-edit-only">Order</th>
+          </tr>
+        </thead>
+        <tbody id="bv2TableBody"></tbody>
+      </table>
+      <div id="bv2EmptyMsg" class="bv2-empty bv2-hidden">
+        No poses yet — search above or add a blank row.
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="bv2-footer">
+      <div class="bv2-stats" id="bv2Stats"></div>
+      <div class="bv2-footer-actions">
+        <button id="bv2CancelBtn" type="button" class="bv2-btn bv2-btn--secondary">Cancel</button>
+        <button id="bv2SaveBtn"   type="button" class="bv2-btn bv2-btn--primary bv2-hidden">Save Sequence</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- V2: Link Sequence overlay -->
+<div id="bv2LinkOverlay" class="bv2-overlay">
+  <div class="bv2-modal bv2-modal--md">
+    <header class="bv2-modal__header">
+      Link a Sequence
+      <button class="bv2-modal__close" id="bv2LinkClose">&#x2715;</button>
+    </header>
+    <div class="bv2-modal__body">
+      <p style="font-size:0.88rem; color:#6e6e73; margin:0 0 10px;">Insert an entire sequence as a single repeating block.</p>
+      <div id="bv2LinkFilterGroup" class="bv2-filter-group">
+        <button class="bv2-filter-btn bv2-filter-btn--active" data-filter="all">All</button>
+        <button class="bv2-filter-btn" data-filter="flow">Flows</button>
+        <button class="bv2-filter-btn" data-filter="cycle">Cycles</button>
+      </div>
+      <input type="text" id="bv2LinkInput" placeholder="Search sequences…" class="bv2-input" style="margin-bottom:10px;">
+      <div id="bv2LinkResults" class="bv2-link-results"></div>
+      <label style="display:block; font-size:0.85rem; font-weight:600; margin-top:14px; margin-bottom:4px;">Rounds:</label>
+      <input type="number" id="bv2LinkReps" value="1" min="1" class="bv2-input" style="width:80px;">
+    </div>
+    <div class="bv2-modal__footer">
+      <button type="button" class="bv2-btn bv2-btn--secondary" id="bv2LinkCancel2"
+              onclick="document.getElementById('bv2LinkOverlay').style.display='none'">Cancel</button>
+      <button type="button" class="bv2-btn bv2-btn--primary" id="bv2LinkConfirm">Add Link</button>
+    </div>
+  </div>
+</div>
+
+<!-- V2: Repeat modal -->
+<div id="bv2RepeatOverlay" class="bv2-overlay">
+  <div class="bv2-modal bv2-modal--sm">
+    <header class="bv2-modal__header">
+      Set Repetitions
+      <button class="bv2-modal__close" id="bv2RepeatClose">&#x2715;</button>
+    </header>
+    <div class="bv2-repeat-form">
+      <p class="bv2-repeat-label">How many times should this section repeat?</p>
+      <input type="number" id="bv2RepeatInput" value="2" min="2" max="99" class="bv2-repeat-input">
+    </div>
+    <div class="bv2-modal__footer">
+      <button type="button" class="bv2-btn bv2-btn--secondary"
+              onclick="document.getElementById('bv2RepeatOverlay').style.display='none'">Cancel</button>
+      <button type="button" class="bv2-btn bv2-btn--primary" id="bv2RepeatConfirm">Create Loop</button>
+    </div>
+  </div>
+</div>
+
+<!-- V2: Row search overlay -->
+<div id="bv2RowSearchOverlay" class="bv2-overlay">
+  <div class="bv2-modal bv2-modal--md">
+    <header class="bv2-modal__header">
+      Search Pose
+      <button class="bv2-modal__close" id="bv2RowSearchClose">&#x2715;</button>
+    </header>
+    <div class="bv2-modal__body" style="gap:12px;">
+      <input type="text" id="bv2RowSearchInput" placeholder="Type name or ID…" class="bv2-input" style="font-size:1rem;">
+      <div id="bv2RowSearchResults" style="flex:1; overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
 
 <script type="module" src="src/services/supabaseClient.js"></script>
 <script type="module" src="src/services/dataAdapter.js"></script>
