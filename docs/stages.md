@@ -1,6 +1,6 @@
 # Asana Stages & Variations Mapping
 
-> Last Sync: 2026-04-21 14:36:58 | Total Records: 207
+> Last Sync: 2026-04-21 15:46:39 | Total Records: 208
 
 | id | asana_id | stage_name | title |
 | --- | --- | --- | --- |
@@ -211,3 +211,4 @@
 | 252 | 066 | V | Sitting up |
 | 253 | 036 | I | Using a belt or support for the feet |
 | 254 | 034 | I | Using a belt or support for the feet |
+| 264 | 093 | I | On two stools |

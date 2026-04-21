@@ -6,6 +6,7 @@ import { $ } from "../utils/dom.js";
 import { normalizePlate } from "../services/dataAdapter.js";
 import { supabase } from "../services/supabaseClient.js";
 import { parseHoldTimes, buildHoldString } from "../utils/parsing.js";
+import { formatCategory } from "../utils/format.js";
 import { getOrCreateAsanaCategoryId } from "../services/persistence.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,30 +36,7 @@ function getUniqueCategories() {
 }
 
 function getDisplayCategory(cat) {
-    if (!cat) return "";
-    return cat.replace(/^\d+_/, "").replace(/_/g, " ");
-}
-
-function formatCategoryName(inputCat) {
-    if (!inputCat) return "";
-    const cleanInput = inputCat.trim().replace(/\s+/g, "_");
-    const existingCats = getUniqueCategories();
-
-    if (existingCats.includes(inputCat)) return inputCat;
-
-    const match = existingCats.find(
-        c => c.replace(/^\d+_/, "").toLowerCase() === cleanInput.toLowerCase()
-    );
-    if (match) return match;
-
-    let maxPrefix = 0;
-    existingCats.forEach(c => {
-        const m = c.match(/^(\d+)_/);
-        if (m && parseInt(m[1], 10) > maxPrefix) maxPrefix = parseInt(m[1], 10);
-    });
-
-    const nextPrefix = String(maxPrefix + 1).padStart(2, "0");
-    return `${nextPrefix}_${cleanInput}`;
+    return formatCategory(cat);
 }
 
 function getNextAsanaId() {
@@ -328,7 +306,7 @@ function wireEditorSave() {
             // Resolve Category
             const catSel = $("editAsanaCategory");
             const catText = (catSel.value === "__NEW__") ? $("editAsanaCategoryCustom").value : catSel.value;
-            const finalCategoryText = formatCategoryName(catText);
+            const finalCategoryText = formatCategory(catText.trim());
             const categoryId = await getOrCreateAsanaCategoryId(finalCategoryText);
 
             const stdVal = parseInt($("editAsanaHoldStandard").value) || 30;

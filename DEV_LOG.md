@@ -220,3 +220,18 @@
 **Next Steps for Next Session:**
 - **Phase 3:** Integrate these notes into the Pose Player (Navigator and Focus modes) so cues are visible during active practice.
 ---
+
+## [2026-04-21] - Session [04]
+**Goal:** Finalize Category Schema Standardization and clean up Editor legacy logic.
+
+**Architectural Decisions:**
+- **Schema Alignment:** Synchronized the UI with the new `asana_categories` standardization. Purged all logic that manually stripped numeric prefixes (e.g., `01_`) or underscores, as these are now handled at the source.
+- **Helper Consolidation:** Pointed `asanaEditor.js` to the unified `formatCategory` utility in `format.js`, ensuring a single point of failure for category display logic.
+- **Database Integrity:** Confirmed `category_id` mapping to the 1-12 range via `getOrCreateAsanaCategoryId` call-site.
+
+**Code Changed:**
+- `src/ui/asanaEditor.js`: Removed redundant regex logic in `getDisplayCategory` and fixed missing helper reference in the save path.
+
+**Next Steps for Next Session:**
+- **Phase 3:** Proceed with rendering pose-level notes in the Pose Player practice screen.
+---
