@@ -251,13 +251,13 @@
     display: block;
     width: 100%;
     box-sizing: border-box;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border: 1px solid var(--bv2-border);
     border-radius: var(--bv2-radius);
     font-family: inherit;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     resize: vertical;
-    min-height: 72px;
+    min-height: 52px;
     outline: none;
     transition: border-color var(--bv2-transition);
 }
@@ -415,7 +415,8 @@
 .bv2-table th:first-child { text-align: center; }
 .bv2-table th:last-child  { text-align: center; }
 
-.bv2-table td { border: none; vertical-align: top; }
+.bv2-table td { border: none; vertical-align: top; border-bottom: 1px solid var(--bv2-border); }
+.bv2-row:last-child td { border-bottom: none; }
 
 /* --------------------------------------------------------------------------
    8. Table rows
@@ -431,9 +432,9 @@
 
 /* Col ID */
 .bv2-col-id {
-    padding: 12px 4px;
+    padding: 8px 4px;
     text-align: center;
-    width: 72px;
+    width: 76px;
 }
 .bv2-col-id__inner {
     display: flex;
@@ -473,17 +474,17 @@
 
 .bv2-devanagari {
     font-family: var(--bv2-font-dev);
-    font-size: 1.1rem;
-    line-height: 1.2;
+    font-size: 0.78rem;
+    line-height: 1.35;
     color: var(--bv2-text-primary);
     white-space: normal;
-    word-break: break-all;
+    word-break: break-word;
     text-align: center;
-    max-width: 72px;
+    max-width: 68px;
 }
 
 /* Col Details */
-.bv2-col-details { padding: 12px 8px; }
+.bv2-col-details { padding: 8px 8px; }
 
 .bv2-pose-name-row {
     display: flex;
@@ -570,19 +571,31 @@
     color: var(--bv2-text-secondary);
     background: var(--bv2-surface-alt);
 }
+/* Coloured prop chips by prop type */
+.bv2-prop-chip[data-prop="bolster"]  { background: #fff8e1; border-color: #ffe082; color: #795548; }
+.bv2-prop-chip[data-prop="blanket"]  { background: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; }
+.bv2-prop-chip[data-prop="block"]    { background: #e3f2fd; border-color: #90caf9; color: #1565c0; }
+.bv2-prop-chip[data-prop="strap"]    { background: #fce4ec; border-color: #f48fb1; color: #880e4f; }
+.bv2-prop-chip[data-prop="chair"]    { background: #f3e5f5; border-color: #ce93d8; color: #6a1b9a; }
+.bv2-prop-chip[data-prop="wall"]     { background: #e0f2f1; border-color: #80cbc4; color: #004d40; }
+.bv2-prop-chip[data-prop="sandbag"]  { background: #efebe9; border-color: #bcaaa4; color: #4e342e; }
+.bv2-prop-chip[data-prop="eye_bag"]  { background: #ede7f6; border-color: #b39ddb; color: #311b92; }
 
 /* Prop picker button */
 .bv2-prop-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 2px 4px;
+    padding: 2px 8px;
+    border: 1px solid var(--bv2-border);
     border-radius: var(--bv2-radius-sm);
-    transition: opacity var(--bv2-transition);
+    background: var(--bv2-surface);
+    color: var(--bv2-text-muted);
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 600;
+    transition: background var(--bv2-transition), color var(--bv2-transition);
 }
-.bv2-prop-btn__icon { font-size: 1.1rem; opacity: 0.3; filter: grayscale(1); transition: opacity var(--bv2-transition), filter var(--bv2-transition); }
-.bv2-prop-btn__icon--active { opacity: 1; filter: none; }
-.bv2-prop-btn:hover .bv2-prop-btn__icon { opacity: 0.7; }
+.bv2-prop-btn:hover { background: var(--bv2-surface-alt); color: var(--bv2-text-primary); }
+.bv2-prop-btn__icon { font-size: 0.72rem; }
+.bv2-prop-btn__icon--active { color: var(--bv2-blue); }
 
 /* Edit row (meta controls: ID input, prop btn, search btn) */
 .bv2-edit-row {
@@ -663,7 +676,7 @@
 
 /* Col Info */
 .bv2-col-info {
-    padding: 12px 8px;
+    padding: 8px 8px;
     text-align: center;
     width: 160px;
     vertical-align: top;
@@ -727,12 +740,17 @@
     display: inline-block;
     padding: 2px 8px;
     border-radius: 8px;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 700;
     background: var(--bv2-surface-alt);
     color: var(--bv2-text-secondary);
     border: 1px solid var(--bv2-border);
     text-transform: capitalize;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
 }
 [data-cat="standing"]     .bv2-cat-chip,
 .bv2-cat-chip[data-cat="standing"]     { background: #e3f2fd; color: #0d47a1; border-color: #90caf9; }
@@ -769,7 +787,7 @@
 
 /* Col Controls */
 .bv2-col-controls {
-    padding: 12px 4px;
+    padding: 8px 4px;
     text-align: center;
     vertical-align: middle;
     width: 80px;
@@ -783,19 +801,22 @@
 }
 
 .bv2-move {
-    padding: 2px 6px;
+    padding: 2px 5px;
     border: 1px solid var(--bv2-border);
     border-radius: var(--bv2-radius-sm);
     background: var(--bv2-surface);
     color: var(--bv2-text-muted);
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
     transition: background var(--bv2-transition), color var(--bv2-transition);
-    min-width: 30px;
+    min-width: 32px;
     text-align: center;
+    line-height: 1.6;
 }
 .bv2-move:hover:not(:disabled) { background: var(--bv2-surface-alt); color: var(--bv2-text-primary); }
-.bv2-move:disabled { opacity: 0.3; cursor: default; }
+.bv2-move:disabled { opacity: 0.25; cursor: default; }
 
 /* Ambiguity row */
 .bv2-ambiguity-cell {
@@ -828,6 +849,7 @@
 .bv2-view-mode .bv2-edit-only { display: none !important; }
 .bv2-view-mode .bv2-view-only { display: inline !important; }
 .bv2-view-only { display: none; }
+.bv2-view-mode .bv2-row-select { display: none !important; }
 
 /* In edit mode, var-view is inline so it appears alongside the dropdown */
 .bv2-var-view { display: inline; }
@@ -1154,7 +1176,7 @@
     word-wrap: break-word;
     box-sizing: border-box;
 }
-.bv2-pdf-col-id      { width: 80px;  text-align: center; }
+.bv2-pdf-col-id      { width: 95px;  text-align: center; }
 .bv2-pdf-col-details { width: auto; }
 .bv2-pdf-col-info    { width: 180px; text-align: center; }
 
@@ -1165,6 +1187,7 @@
     color: #86868b;
     text-transform: uppercase;
 }
+.bv2-pdf-col-id .bv2-devanagari { font-size: 0.72rem; max-width: 85px; }
 .bv2-pdf-row.bv2-row--macro     { background: #e8f0ff; }
 .bv2-pdf-row.bv2-row--loop-start,
 .bv2-pdf-row.bv2-row--loop-end  { background: #fffde7; }

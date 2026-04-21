@@ -467,7 +467,7 @@ function renderRow(pose, idx) {
         ? `<button class="bv2-prop-btn bv2-edit-only" data-idx="${idx}"
                 title="${(pose.props || []).length ? 'Props: ' + pose.props.map(p => PROP_REGISTRY[p]?.label).join(', ') : 'Add Props'}"
                 aria-label="Manage props">
-                <span class="bv2-prop-btn__icon${(pose.props || []).length ? ' bv2-prop-btn__icon--active' : ''}">&#x1F9F0;</span>
+                <span class="bv2-prop-btn__icon${(pose.props || []).length ? ' bv2-prop-btn__icon--active' : ''}">Props${(pose.props || []).length ? ` (${pose.props.length})` : ''}</span>
            </button>`
         : '';
 
@@ -510,7 +510,7 @@ function renderRow(pose, idx) {
             <div class="bv2-edit-row bv2-edit-only">
                 ${idInputHTML}
                 ${propsBtnHTML}
-                ${!isSpecial ? `<button class="bv2-row-search-btn bv2-edit-only" data-idx="${idx}" title="Search pose">&#x1F50D;</button>` : ''}
+                ${!isSpecial ? `<button class="bv2-row-search-btn bv2-edit-only" data-idx="${idx}" title="Search and replace pose">Search</button>` : ''}
             </div>
             ${injectBadges}
             ${roundsHTML}
@@ -520,10 +520,10 @@ function renderRow(pose, idx) {
 
         <td class="bv2-col-controls bv2-edit-only">
             <div class="bv2-order-controls">
-                <button class="bv2-move bv2-move--top"  data-idx="${idx}" title="Top"    ${isFirst ? 'disabled' : ''}>&uarr;&uarr;</button>
-                <button class="bv2-move bv2-move--up"   data-idx="${idx}" title="Up"     ${isFirst ? 'disabled' : ''}>&uarr;</button>
-                <button class="bv2-move bv2-move--down" data-idx="${idx}" title="Down"   ${isLast  ? 'disabled' : ''}>&darr;</button>
-                <button class="bv2-move bv2-move--bot"  data-idx="${idx}" title="Bottom" ${isLast  ? 'disabled' : ''}>&darr;&darr;</button>
+                <button class="bv2-move bv2-move--top"  data-idx="${idx}" title="Move to top"    ${isFirst ? 'disabled' : ''}>Top</button>
+                <button class="bv2-move bv2-move--up"   data-idx="${idx}" title="Move up"        ${isFirst ? 'disabled' : ''}>Up</button>
+                <button class="bv2-move bv2-move--down" data-idx="${idx}" title="Move down"      ${isLast  ? 'disabled' : ''}>Down</button>
+                <button class="bv2-move bv2-move--bot"  data-idx="${idx}" title="Move to bottom" ${isLast  ? 'disabled' : ''}>Bot</button>
             </div>
         </td>
     </tr>${renderAmbiguityRow(pose, idx)}`;
@@ -857,7 +857,7 @@ function openPropPicker(idx) {
         overlay.innerHTML = `
             <div class="bv2-modal bv2-modal--sm">
                 <header class="bv2-modal__header">
-                    <strong>Prop Toolbox</strong>
+                    <strong>Props</strong>
                     <button class="bv2-modal__close" id="bv2PropClose">&#x2715;</button>
                 </header>
                 <div class="bv2-modal__body" id="bv2PropList"></div>
@@ -885,7 +885,6 @@ function openPropPicker(idx) {
         const active = pose.props?.includes(p.id);
         return `<label class="bv2-prop-item${active ? ' bv2-prop-item--active' : ''}">
             <input type="checkbox" class="bv2-prop-cb" data-pid="${p.id}" ${active ? 'checked' : ''}>
-            <span class="bv2-prop-item__icon">${p.icon}</span>
             <span class="bv2-prop-item__label">${p.label}</span>
         </label>`;
     }).join('');
