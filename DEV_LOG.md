@@ -302,3 +302,21 @@
 - **Resource Refactor:** Create a `PDF_CAPTURE_MAP.md` that lists every selector the export engine targets.
 - **Code Refactor:** Move the 8-index array mapping into a central utility (e.g., `prepareSequenceForTiming`) to avoid duplicating this logic in the Builder and the PDF Snapshot.
 ---
+
+## [2026-04-22] - Session [02]
+**Goal:** Refine Progress Summary UI for Linked Sequences (Macros).
+
+**Architectural Decisions:**
+- Implemented specific handling for `MACRO:` identifiers in Progress Summary to differentiate from standard asanas.
+- Replaced generic numeric IDs for linked sequences with a specialized "Sequence link ID" badge.
+- Modified subtitle logic for linked sequences to display "Starting with [First Asana] ([Variation])" instead of the last pose from the cycle.
+- Ensured correct resolution of the first asana and its variation within a linked sequence by looking up the sub-sequence in `window.courses`.
+- Added fallbacks for linked sequences to display "Linked Sequence" if the first pose cannot be resolved.
+
+**Code Changed:**
+- `src/ui/progressSummaryUI.js`: Modified `renderProgressSummaryModal` to correctly display linked sequence information, including specialized ID badges and contextual subtitles.
+
+**Next Steps for Next Session:**
+- Audit `styles/editor.css` for `summary-id-badge` to ensure it handles longer "Sequence link ID" text gracefully.
+- Verify if the sequence unrolling engine in `sequenceEngine.js` needs to be updated to explicitly include `macroId` in the metadata.
+---

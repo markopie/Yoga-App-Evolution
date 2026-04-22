@@ -64,6 +64,8 @@ function renderProgressSummaryModal() {
             groupMap[origIdx] = {
                 firstPlaybackIndex: playbackIdx,
                 macroTitle: node[7]?.macroTitle || null,
+                macroId: node[7]?.macroId || null,
+                firstAsanaInfo: null,
                 label: node[6] || null, 
                 variation: node[3] || null, // Capture parsed variation [code]
                 rawId: Array.isArray(node[0]) ? node[0][0] : node[0],
@@ -76,6 +78,32 @@ function renderProgressSummaryModal() {
         const g = groupMap[origIdx];
 
         if (!isTransition) {
+            // Capture first pose name and variation for linked sequence subtitle
+            if (g.macroTitle && !g.firstAsanaInfo) {
+                const asanaId = Array.isArray(node[0]) ? node[0][0] : node[0];
+                const asanaMatch = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(window.normalizePlate(asanaId)) : null;
+                if (asanaMatch) {
+                    const name = asanaMatch.english || asanaMatch.name;
+                    let vTitle = node[3] || "";
+                    // Look up human-friendly variation title if available
+                    if (vTitle && asanaMatch.variations?.[vTitle]) {
+                        vTitle = asanaMatch.variations[vTitle].title || vTitle;
+                    }
+                    g.firstAsanaInfo = vTitle ? `${name} (${vTitle})` : name;
+                }
+            }
+
+            // Fallback for Macro ID if missing on the first node
+            if (!g.macroId && node[7]?.macroId) {
+                g.macroId = node[7].macroId;
+            } else if (!g.macroId && g.macroTitle && typeof origIdx === 'number') {
+                const sourceRow = window.currentSequence?.poses?.[origIdx];
+                const rawSourceId = Array.isArray(sourceRow?.[0]) ? sourceRow[0][0] : sourceRow?.[0];
+                if (String(rawSourceId || "").startsWith("MACRO:")) {
+                    g.macroId = String(rawSourceId).replace("MACRO:", "").trim();
+                }
+            }
+
             g.rawId = Array.isArray(node[0]) ? node[0][0] : node[0];
             if (!g.macroTitle) g.macroTitle = node[7]?.macroTitle || null;
             g.label = node[6] || null;
@@ -144,26 +172,34 @@ function renderProgressSummaryModal() {
         const statusClass = isEffectivelyDone ? 'status-complete' : 'status-incomplete';
 
         // Data Resolution
-        const asana = window.findAsanaByIdOrPlate ? window.findAsanaByIdOrPlate(window.normalizePlate(g.rawId)) : null;
+        // For Macros, we ignore the 'asana' metadata of the last constituent pose to prevent leaks
+        const asana = (!g.macroTitle && window.findAsanaByIdOrPlate) ? window.findAsanaByIdOrPlate(window.normalizePlate(g.rawId)) : null;
         
         // Jobsian: strip leading zeros from ID (e.g. 001 -> 1)
-        const idStr = String(g.rawId || '').replace(/^0+/, '');
-        const idBadge = (idStr && !g.macroTitle) ? `<span class="summary-id-badge">ID ${idStr}</span>` : '';
+        const displayId = String(g.rawId || '').replace(/^0+/, '');
+        
+        let idBadge = "";
+        if (g.macroTitle) {
+            const mId = g.macroId || "";
+            idBadge = mId ? `<span class="summary-id-badge">Sequence link ID ${mId}</span>` : "";
+        } else if (displayId) {
+            idBadge = `<span class="summary-id-badge">ID ${displayId}</span>`;
+        }
 
         const primaryDisplay = g.macroTitle 
             ? `📦 ${g.macroTitle}` 
             : (asana?.english || g.label || asana?.name || `Pose ${g.rawId}`);
 
-        const secondaryIast = asana?.iast || "";
+        let secondaryIast = asana?.iast || "";
+        if (g.macroTitle) {
+            secondaryIast = g.firstAsanaInfo ? `Starting with ${g.firstAsanaInfo}` : "Linked Sequence";
+        }
 
         let subLabel = "";
-
-        if (g.variation) {
+        
+        if (!g.macroTitle && g.variation) {
             const stageKey = String(g.variation).trim();
-            // Look up using the exact key structure defined in your service layer
             const varObj = asana?.variations?.[stageKey];
-            
-            // If found, use the 'title' property we saw in the service code
             subLabel = varObj?.title || stageKey; 
         } else if (g.label && g.label !== primaryDisplay) {
             subLabel = g.label;
