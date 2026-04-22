@@ -1,6 +1,6 @@
 import { builderState, isFlowSequence } from '../store/builderState.js';
 import { $ } from '../utils/dom.js';
-import { builderPoseName, generateInfoCellHTML, buildMacroInfoHTML } from './builderTemplates.js';
+import { builderPoseName, generateInfoCellHTML, buildMacroInfoHTML, generateExportHeaderHTML } from './builderTemplates.js';
 import { formatCategory } from '../utils/format.js';
 
 function escapeHtml(str) {
@@ -110,19 +110,37 @@ function ensureExportStyles() {
             font-size: 28pt !important; font-weight: 700 !important; margin: 0 0 5px 0 !important; 
         }
         
-        /* THE FIX: Rigidly sized Date Tag to prevent canvas scaling artifacts */
-        .export-snapshot-host .export-date-tag {
-            width: 100% !important; /* Force full capture width */
-            display: block !important;
-            background: #ffffff !important; /* Prevent transparent trim in canvas */
-            box-sizing: border-box !important;
-            font-size: 11pt !important; 
-            font-weight: 600 !important;
-            color: #6e6e73 !important;
-            margin-bottom: 20px !important;
-            text-transform: none !important;
-            text-align: left !important;
+        .export-snapshot-host .export-header-meta {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: baseline !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        margin-bottom: 15px !important;
+        padding-bottom: 5px !important;
+        padding-right: 10px !important; /* ⬅️ ARCHITECT FIX: Added canvas edge buffer */
+        width: 100% !important;
+        background: #ffffff !important;
+        box-sizing: border-box !important;
+    }
+
+        .export-snapshot-host .export-meta-date, 
+        .export-snapshot-host .export-meta-duration {
+            font-family: -apple-system, system-ui, sans-serif !important;
+            font-size: 10pt !important;
+            color: #6b7280 !important;
         }
+
+        .export-snapshot-host .duration-pill {
+        background: #1d4ed8 !important; /* Professional Blue */
+        color: #ffffff !important;
+        padding: 2px 10px !important;
+        border-radius: 9999px !important;
+        font-weight: 700 !important;
+        font-size: 9pt !important;
+        margin-left: 5px !important;
+        margin-right: 4px !important; /* ⬅️ ARCHITECT FIX: Pulls the pill inward */
+        display: inline-block !important;
+    }
 
         .export-snapshot-host #modalNotesRow {
             display: block !important; padding: 15px 20px !important;
@@ -226,7 +244,23 @@ export function createExportSnapshot(sourceElement) {
             let col3 = '';
             const safeAsana = asana || { id: idStr, english: pose.name, variations: {} };
             if (isMacro) {
-                col3 = buildMacroInfoHTML({ rounds: pose.duration, note: pose.note });
+                const identifier = idStr.replace("MACRO:", "").trim();
+                const subCourse = (window.courses || []).find(c => 
+                    String(c.title || "").trim().toLowerCase() === identifier.toLowerCase() || 
+                    String(c.id || "").trim() === identifier
+                );
+                
+                let oneRoundSecs = 0;
+                if (subCourse) {
+                    if (typeof window.getExpandedPoses === "function" && typeof window.getPosePillTime === "function") {
+                        const syntheticSeq = { poses: [[`MACRO:${subCourse.id || identifier}`, 1, "", "", "Linked Sequence: 1 Round"]] };
+                        const expanded = window.getExpandedPoses(syntheticSeq);
+                        oneRoundSecs = expanded.reduce((acc, p) => acc + window.getPosePillTime(p), 0);
+                    } else if (typeof window.calculateTotalSequenceTime === "function") {
+                        oneRoundSecs = window.calculateTotalSequenceTime(subCourse);
+                    }
+                }
+                col3 = buildMacroInfoHTML({ oneRoundSecs, rounds: pose.duration, note: subCourse?.category || pose.note });
             } else {
                 const isFlow = isFlowSequence() || (builderState.currentPlaybackMode === 'flow');
                 col3 = generateInfoCellHTML(safeAsana, pose, idx, { isSpecial, isFlow });
@@ -304,26 +338,60 @@ export function createExportSnapshot(sourceElement) {
     const vh = clone.querySelector('#viewModeHeader');
     if (vh) vh.style.setProperty('display', 'block', 'important');
 
-    // 6. Practice Date Integration
-    const modalBody = clone.querySelector('.modal-body') || clone;
+   // ==========================================
+    // 6. Practice Metadata (Targeted Slot-Filling)
+    // ==========================================
     
-    // Create a dedicated wrapper to guarantee 800px width during individual capture
-    const dateWrapper = document.createElement('div');
-    dateWrapper.className = 'pdf-capture-wrapper'; 
-    dateWrapper.style.cssText = 'width: 800px !important; background: #ffffff !important; padding: 0 !important; margin: 0 !important;';
+    // Logic Preservation: Calculate accurate time based on 8-index schema
+    const tempPoses = builderState.poses.map(p => {
+        const tierTag = (!p.holdTier || p.holdTier === 'standard') ? '' : ` tier:${p.holdTier === 'short' ? 'S' : 'L'}`;
+        const cleanNote = (p.note || '').replace(/\btier:[SL]\b/gi, '').trim();
+        const meta = { explicitSide: p.side || null };
+        return [p.id, p.duration, p.variation || "", p.variation || "", (cleanNote + tierTag).trim(), null, null, meta];
+    });
 
-    const dateTag = document.createElement('div');
-    dateTag.className = 'export-date-tag';
-    dateTag.textContent = `Practice Date: ${new Date().toLocaleDateString('en-AU', { 
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-    })}`;
+    const totalSec = (typeof window.calculateTotalSequenceTime === "function") 
+        ? window.calculateTotalSequenceTime({ poses: tempPoses }) 
+        : 0;
     
-    dateWrapper.appendChild(dateTag);
-    modalBody.prepend(dateWrapper);
+    // 1. ROUND-UP PROTOCOL: Always round up to the next minute
+    const totalMinutes = Math.ceil(totalSec / 60);
+
+    // 2. SMART FORMATTING: Convert to h/m only if 60+ minutes
+    let formattedTime = "";
+    if (totalMinutes >= 60) {
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        formattedTime = m > 0 ? `${h}h ${m}m` : `${h}h`;
+    } else {
+        formattedTime = `${totalMinutes}m`;
+    }
+
+    // CRITICAL FIX: Inject into `#viewModeHeader` for PDF capture
+    const headerTarget = vh || (displayTitle ? displayTitle.parentNode : clone);
+    
+    if (headerTarget && typeof generateExportHeaderHTML === 'function') {
+        const existingMeta = clone.querySelector('.export-header-meta');
+        if (existingMeta) existingMeta.remove();
+
+        headerTarget.insertAdjacentHTML('afterbegin', generateExportHeaderHTML());
+
+        const dateSlot = clone.querySelector('#exportDateSlot');
+        const durationSlot = clone.querySelector('#exportDurationSlot');
+
+        if (dateSlot) {
+            dateSlot.innerHTML = `<strong>Date:</strong> ${new Date().toLocaleDateString('en-AU', { 
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+            })}`;
+        }
+
+        if (durationSlot) {
+            durationSlot.innerHTML = `Total Duration: <span class="duration-pill">~${formattedTime}</span>`;
+        }
+    }
 
     return clone;
 }
-
 /**
  * Waits for the browser to complete layout for the temporary export node.
  */

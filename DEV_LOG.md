@@ -281,3 +281,24 @@
 **Next Steps for Next Session:**
 - Session Complete. The pose-level note system is fully integrated across Builder, PDF Export, and Practice Player.
 ---
+
+## [2026-04-22] - Session [01]
+**Goal:** Finalize High-Fidelity PDF Metadata Headers and stabilize capture layout.
+
+**Architectural Decisions:**
+- **Targeted Slot-Filling:** Abandoned "Blind Prepending" in favor of a slot-based injection. This ensures metadata is part of the first-class DOM before the capture engine initializes.
+- **Header Targeting Fix:** Explicitly injected the meta-header into `#viewModeHeader`. This ensures the metadata is contained within a selector that the `manualExportPdf` engine is programmed to capture.
+- **Rounding Protocol:** Implemented `Math.ceil` for total practice duration. This ensures the PDF aligns with the "Jobsian" principle of providing a realistic time commitment (rounding up to the next minute).
+
+**Code Changed:**
+- `src/ui/builderTemplates.js`: Added `generateExportHeaderHTML` to provide standardized slots for Date and Duration.
+- `src/ui/builderUI.js`: Refactored `createExportSnapshot` to fill slots and calculate duration using the strict 8-index schema.
+
+**Lessons Learned & Efficiency Audit:**
+- **The "Ghost Element" Bug:** Dynamic manipulation of a cloned DOM often fails if the capture engine (html2canvas) triggers before layout stabilization. 
+- **AI Visibility Gap:** Coding assistants lack visibility into the *execution order* of external libraries. Providing a "Capture Manifest" (a list of what the PDF engine actually captures) would have reduced a 45-minute task to 5 minutes.
+
+**Next Steps / Improvement Proposals:**
+- **Resource Refactor:** Create a `PDF_CAPTURE_MAP.md` that lists every selector the export engine targets.
+- **Code Refactor:** Move the 8-index array mapping into a central utility (e.g., `prepareSequenceForTiming`) to avoid duplicating this logic in the Builder and the PDF Snapshot.
+---

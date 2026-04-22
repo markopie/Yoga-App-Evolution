@@ -152,3 +152,15 @@ export const resolvePoseInfo = (rawId, lib) => {
     if (target.requires_sides) dur *= 2;
     return { name, dur };
 };
+
+/**
+ * ARCHITECTURAL FIX: Adding dedicated Meta-Header slots for PDF export.
+ */
+export function generateExportHeaderHTML() {
+    return `
+        <div class="export-header-meta">
+            <div class="export-meta-date" id="exportDateSlot"></div>
+            <div class="export-meta-duration" id="exportDurationSlot"></div>
+        </div>
+    `;
+}
