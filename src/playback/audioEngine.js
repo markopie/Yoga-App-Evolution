@@ -282,19 +282,34 @@ export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, va
 
         // Resolve variation audio: prioritize mapped 'audio' (from audio_url)
         let varAudio = null;
+        let varSpeakText = null;
         if (variationKey && asana.variations && asana.variations[variationKey]) {
             const v = asana.variations[variationKey];
             const rawVarAudio = v.audio || v.audio_url || null;
-            if (rawVarAudio) varAudio = joinPath(AUDIO_BASE, rawVarAudio);
+            if (rawVarAudio) {
+                varAudio = joinPath(AUDIO_BASE, rawVarAudio);
+            } else {
+                // Fallback: speak the variation's title if no audio_url exists
+                varSpeakText = v.title || variationKey;
+            }
         }
 
         const step3_Variation = () => {
-            if (varAudio) playSrcInQueue(varAudio, handleComplete);
-            else handleComplete();
+            if (varAudio) {
+                playSrcInQueue(varAudio, handleComplete);
+            } else if (varSpeakText) {
+                speakText(varSpeakText).then(handleComplete);
+            } else {
+                handleComplete();
+            }
         };
 
         const step2_Bridge = () => {
-            if (!varAudio) { handleComplete(); return; }
+            if (!varAudio) {
+                // No variation audio file — skip bridge, go straight to speak fallback
+                step3_Variation();
+                return;
+            }
             if (Math.random() < BRIDGE_SKIP_PROBABILITY) {
                 step3_Variation();
                 return;
@@ -308,6 +323,7 @@ export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, va
 
         const step1_Main = () => {
             let src = asana.audio;
+            let fallbackText = null;
             if (!src) {
                 // ARCHITECT CONTRACT: Strict schema mapping
                 const idStr   = normalizePlate(asana.id);
@@ -320,9 +336,19 @@ export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, va
                     const cleanName = (asana.english_name || asana.name || "").replace(/[^a-zA-Z0-9]/g, "");
                     src = joinPath(AUDIO_BASE, `${idStr}_${cleanName}.mp3`);
                 }
+                
+                // If still no src, prepare fallback text from asana name
+                if (!src) {
+                    fallbackText = asana.english_name || asana.name || "";
+                }
             }
-            if (src) playSrcInQueue(src, step2_Bridge);
-            else     step2_Bridge();
+            if (src) {
+                playSrcInQueue(src, step2_Bridge);
+            } else if (fallbackText) {
+                speakText(fallbackText).then(step2_Bridge);
+            } else {
+                step2_Bridge();
+            }
         };
 
         step1_Main();

@@ -32,7 +32,7 @@
 | Table | Purpose | RLS |
 |---|---|---|
 | `asanas` | Base pose library | Public SELECT; admin writes via SQL editor |
-| `stages` | Pose variations (Back against wall, Bent legs, etc.) | Public SELECT; admin writes via SQL editor |
+| `stages` | Pose variations (On a bolster, Forward Bend, etc.) | Public SELECT; admin writes via SQL editor |
 | `courses` | All sequences (system + user) | SELECT: anon=system only, auth=system+own; INSERT/UPDATE/DELETE: own rows |
 | `sequence_completions` | Practice history | Private (uid = user_id) |
 
@@ -81,7 +81,7 @@ UPDATE courses SET is_system = true WHERE id = <id>;
 | `window.courses` | Array of all loaded sequences |
 | `isAdmin()` | Util in `builder.js` — checks email against `ADMIN_EMAIL` const |
 | `page_primary` | `numeric(6,2)` — use `44.1` for disambiguated pages |
-| Stage `stage_name` | Free-form string ('I','II','WALL','BENT') — roman numerals for variations |
+| Stage `stage_name` | Roman numeral string ('I','II','KI','KII') — with optional prefix for special categories |
 
 ## Stage/Variation Merge in Builder
 When a user types a page number like `56.1`, the bulk importer:

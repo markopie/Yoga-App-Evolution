@@ -171,6 +171,7 @@
 - `addStageToEditor` (window binding)
 - `applyBrowseFilters` (window binding)
 - `asanaLibrary` (window binding)
+- `createStageFromAsana` (window binding)
 - `normalizePlate` (window binding)
 - `openAsanaEditor` (window binding)
 - `selectAsanaInjectionSearch` (window binding)

@@ -363,4 +363,39 @@
 - The "saved successfully" alert was misleading because the Supabase update query matched 0 rows (due to `user_id` mismatch) but did not throw an error. Always verify row-level effects when debugging silent save failures.
 - System courses in the database have `user_id = null` or a different UUID than the admin's `currentUserId`, causing the ownership filter to silently skip the update.
 
+---
 
+## [2026-04-25] - Session [01]
+**Goal:** Merge "Add Stage" and "Clone from Base" buttons into a single smart button; implement audio fallback via speakText when audio_url is empty.
+
+**Architectural Decisions:**
+- **Single Button Pattern:** Removed the separate `#cloneFromBaseBtn` and consolidated its logic into `#addStageBtn`. The single button now calls `window.createStageFromAsana()` which auto-fills the new stage row with:
+  - **stage_name**: Auto-increments Roman numeral (I, II, III...) based on existing stages. Handles prefixes like "KI", "KII" by preserving the prefix and incrementing the RN. If no stages exist, starts at "I".
+  - **full_technique**: Copies from the asana's technique field in the editor
+  - **image_url**: Copies from the asana library object
+  - **hold_json**: Copies from the asana editor's hold time inputs (Standard/Short/Long)
+  - **sort_order**: Set to the count of existing stages (maintains display order)
+  - **title**: Left empty for the user to fill in
+- **Stage Hold Inputs:** Added Standard/Short/Long number inputs to each stage row in `addStageToEditor()`, matching the pattern from the asana editor's hold time section. The save logic now persists `hold_json` for each stage.
+- **Audio Fallback Protocol:** Modified `playPoseMainAudio()` in `audioEngine.js` to use `speakText()` when no audio file is available:
+  - For asanas: speaks `asana.english_name || asana.name`
+  - For stages/variations: speaks `v.title || variationKey`
+  - Bridge audio is skipped when there's no variation audio file (since we're speaking instead)
+- **Documentation Cleanup:** Updated `docs/AGENT.md` and `docs/ARCHITECTURE.md` to remove outdated examples referencing "WALL", "BENT", "Back against the wall" etc., replacing them with current data patterns like "I", "II", "KI", "KII", "On a bolster", "Forward Bend".
+
+**Code Changed:**
+- `index.html`: Removed `#cloneFromBaseBtn` wrapper div; kept only `#addStageBtn`
+- `src/ui/asanaEditor.js`: Added `toRoman()`, `fromRoman()`, `getNextStageName()`, `createStageFromAsana()`, `buildStageHoldJson()`; enhanced `addStageToEditor()` with hold time inputs; updated `setupAsanaEditorSave()` to persist `hold_json`, `sort_order`; wired `#addStageBtn` to `createStageFromAsana`
+- `src/playback/audioEngine.js`: Added `speakText()` fallback in `playPoseMainAudio()` for both asana main audio and variation audio when `audio_url` is empty
+- `docs/AGENT.md`: Updated stage_name/title examples to reflect current data
+- `docs/ARCHITECTURE.md`: Updated stage_name/title column descriptions
+
+**Lessons Learned:**
+- Roman numeral parsing/incrementing needs to handle edge cases like suffixes ("Ia", "IIb") and prefixes ("KI", "KII"). The regex `^([A-Za-z]*)([IVXLCDM]+)([a-z]?)$` handles this by capturing prefix, RN, and suffix separately.
+- When adding audio fallback, the bridge step should be skipped when there's no variation audio file — otherwise the bridge plays but then nothing follows it, creating an awkward silence.
+- Documentation drift happens quickly when schema examples are hardcoded in docs. The "WALL" and "BENT" examples were from an older schema design and no longer reflect actual data.
+
+**Next Steps for Next Session:**
+- Verify that the new stage creation flow works end-to-end in the live app (create stage → edit fields → save → reload)
+- Audit any remaining references to `stage_name` examples like "WALL" or "BENT" in other docs or code comments
+- Consider adding a "Delete Stage" confirmation dialog to prevent accidental removal

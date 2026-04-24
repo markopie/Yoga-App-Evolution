@@ -39,8 +39,8 @@ Public SELECT. Admin writes via scripts or the Add Stage UI.
 |---|---|---|
 | `id` | bigint | Auto-increment |
 | `asana_id` | text | Parent asana ID (e.g. `"003"`) |
-| `stage_name` | text | `"I"`, `"II"`, `"WALL"`, `"BENT"` etc. |
-| `title` | text | Display name e.g. `"Back against the wall"` |
+| `stage_name` | text | `"I"`, `"II"`, `"KI"`, `"KII"` etc. — Roman numeral with optional prefix |
+| `title` | text | Display name e.g. `"On a bolster"`, `"Forward Bend"` |
 | `full_technique` | text | Variation-specific instructions |
 | `shorthand` | text | Brief cue |
 | `hold` | text | Override hold string |

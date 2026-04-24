@@ -8,6 +8,128 @@ import { supabase } from '../services/supabaseClient.js';
 import { loadAsanaLibrary } from '../services/dataAdapter.js';
 
 /**
+ * Converts an integer to a Roman numeral string.
+ */
+function toRoman(num) {
+    const map = [
+        ['M', 1000], ['CM', 900], ['D', 500], ['CD', 400],
+        ['C', 100], ['XC', 90], ['L', 50], ['XL', 40],
+        ['X', 10], ['IX', 9], ['V', 5], ['IV', 4], ['I', 1]
+    ];
+    let result = '';
+    for (const [letter, value] of map) {
+        while (num >= value) {
+            result += letter;
+            num -= value;
+        }
+    }
+    return result;
+}
+
+/**
+ * Parses a Roman numeral string to an integer.
+ */
+function fromRoman(roman) {
+    const map = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+    let total = 0;
+    let prev = 0;
+    for (let i = roman.length - 1; i >= 0; i--) {
+        const curr = map[roman[i]] || 0;
+        if (curr < prev) total -= curr;
+        else total += curr;
+        prev = curr;
+    }
+    return total;
+}
+
+/**
+ * Determines the next stage_name for a new stage.
+ * Looks at existing stage-name inputs in the container and finds the highest
+ * Roman numeral. If a prefix exists (e.g. "KI", "KII"), it preserves the prefix
+ * and increments the Roman numeral. If no stages exist, starts at "I".
+ */
+function getNextStageName() {
+    const container = document.getElementById("stagesContainer");
+    if (!container) return "I";
+
+    const existingNames = Array.from(container.querySelectorAll(".stage-name"))
+        .map(inp => inp.value.trim())
+        .filter(Boolean);
+
+    if (existingNames.length === 0) return "I";
+
+    let maxNum = 0;
+    let prefix = "";
+
+    for (const name of existingNames) {
+        // Match optional prefix (letters before the Roman numeral) + Roman numeral + optional suffix (a/b)
+        const match = name.match(/^([A-Za-z]*)([IVXLCDM]+)([a-z]?)$/);
+        if (match) {
+            const p = match[1] || "";
+            const rn = match[2].toUpperCase();
+            const suffix = match[3] || "";
+            const num = fromRoman(rn);
+            if (num > 0) {
+                // If we haven't set a prefix yet, use the first one found
+                if (!prefix && p) prefix = p;
+                // Only compare if same prefix (or no prefix)
+                if (p === prefix || (!p && !prefix)) {
+                    if (num > maxNum) maxNum = num;
+                }
+            }
+        }
+    }
+
+    const nextNum = maxNum + 1;
+    return prefix + toRoman(nextNum);
+}
+
+/**
+ * Creates a new stage pre-filled with data from the current asana.
+ * Called when the "+ Add Stage" button is clicked.
+ */
+window.createStageFromAsana = function() {
+    const asanaId = $("editAsanaId")?.value?.trim();
+    if (!asanaId || asanaId === "000") {
+        alert("Please save the asana first before adding stages.");
+        return;
+    }
+
+    const normId = typeof window.normalizePlate === 'function' ? window.normalizePlate(asanaId) : asanaId;
+    const lib = window.asanaLibrary || {};
+    const asana = lib[normId] || {};
+
+    // Determine next stage_name (Roman numeral)
+    const stageKey = getNextStageName();
+
+    // Copy technique from the asana editor's technique field
+    const technique = $("editAsanaTechnique")?.value?.trim() || asana.technique || "";
+
+    // Copy image_url from the asana
+    const imageUrl = asana.image_url || "";
+
+    // Copy hold times from the asana editor's hold inputs
+    const holdStandard = parseInt($("editAsanaHoldStandard")?.value || "30", 10);
+    const holdShort = parseInt($("editAsanaHoldShort")?.value || "15", 10);
+    const holdLong = parseInt($("editAsanaHoldLong")?.value || "60", 10);
+    const holdJson = { standard: holdStandard, short: holdShort, long: holdLong };
+
+    // Determine sort_order: count existing stages
+    const container = document.getElementById("stagesContainer");
+    const existingCount = container ? container.querySelectorAll(".stage-row").length : 0;
+    const sortOrder = existingCount;
+
+    // Add the stage to the editor
+    window.addStageToEditor(stageKey, {
+        full_technique: technique,
+        image_url: imageUrl,
+        hold_json: holdJson,
+        sort_order: sortOrder,
+        title: "" // User fills in the title
+    });
+};
+
+/**
  * Opens the Asana Editor modal and populates it with data.
  */
 window.openAsanaEditor = async function(asanaId) {
@@ -64,6 +186,11 @@ if ($("asanaEditorCloseBtn")) {
     $("asanaEditorCloseBtn").onclick = () => $("asanaEditorBackdrop").style.display = "none";
 }
 
+// Wire the Add Stage button
+if ($("addStageBtn")) {
+    $("addStageBtn").onclick = window.createStageFromAsana;
+}
+
 /**
  * Injects a stage (variation) row into the editor modal.
  */
@@ -76,15 +203,33 @@ window.addStageToEditor = function(stageKey, stageData = {}) {
     div.style.cssText = "border:1px solid #eee; padding:12px; border-radius:8px; background:#fff; margin-bottom:10px;";
     
     const existingTech = stageData.full_technique || stageData.technique || "";
+    const hj = stageData.hold_json || {};
+    const holdStd = hj.standard || 30;
+    const holdShort = hj.short || 15;
+    const holdLong = hj.long || 60;
 
     div.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-           <input type="text" class="stage-name" value="${stageKey || ''}" placeholder="Key (e.g. WALL)" style="width:80px; font-weight:bold; padding:4px;">
+           <input type="text" class="stage-name" value="${stageKey || ''}" placeholder="Key (e.g. I)" style="width:80px; font-weight:bold; padding:4px;">
            <input type="text" class="stage-title" value="${stageData.title || ''}" placeholder="Display Title" style="flex:1; margin:0 10px; padding:4px;">
            <button type="button" class="tiny warn" onclick="this.closest('.stage-row').remove()">✕</button>
         </div>
         <div style="margin-bottom:8px;">
            <textarea class="stage-tech" style="height:60px; padding:6px; width:100%; font-family:inherit; border:1px solid #ccc; border-radius:4px;">${existingTech}</textarea>
+        </div>
+        <div style="display:flex; gap:10px; margin-bottom:8px;">
+           <div style="flex:1;">
+               <label class="muted" style="font-size:0.75rem;">Hold Standard (s)</label>
+               <input type="number" class="stage-hold-standard" value="${holdStd}" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+           </div>
+           <div style="flex:1;">
+               <label class="muted" style="font-size:0.75rem;">Hold Short (s)</label>
+               <input type="number" class="stage-hold-short" value="${holdShort}" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+           </div>
+           <div style="flex:1;">
+               <label class="muted" style="font-size:0.75rem;">Hold Long (s)</label>
+               <input type="number" class="stage-hold-long" value="${holdLong}" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+           </div>
         </div>
         <div style="display:flex; gap:10px;">
            <div style="flex:1;">
@@ -317,7 +462,7 @@ window._closeInjectionSearch = function() {
 
 /**
  * Prepares the save payload, converting ID:StageKey strings into structured JSON.
- * Stage keys (e.g. "WALL", "I") are resolved to their database UUID via asanaLibrary.
+ * Stage keys (e.g. "I", "II") are resolved to their database UUID via asanaLibrary.
  */
 const buildInjectionPayload = (val) => {
     if (!val || val.trim() === "" || val.toLowerCase() === "null") return null;
@@ -340,6 +485,16 @@ const buildInjectionPayload = (val) => {
 
     return { asana_id, stage_id };
 };
+
+/**
+ * Builds a hold_json object from the stage row's hold inputs.
+ */
+function buildStageHoldJson(div) {
+    const std = parseInt(div.querySelector(".stage-hold-standard")?.value || "30", 10);
+    const sh = parseInt(div.querySelector(".stage-hold-short")?.value || "15", 10);
+    const lg = parseInt(div.querySelector(".stage-hold-long")?.value || "60", 10);
+    return { standard: std, short: sh, long: lg };
+}
 
 /**
  * Logic for the Save button.
@@ -371,12 +526,15 @@ window.setupAsanaEditorSave = function() {
 
             // Handle Stages...
             const stageRows = document.querySelectorAll(".stage-row");
-            for (let div of stageRows) {
+            for (let i = 0; i < stageRows.length; i++) {
+                const div = stageRows[i];
                 const stagePayload = {
                     asana_id: id,
                     stage_name: div.querySelector(".stage-name").value.trim(),
                     title: div.querySelector(".stage-title").value.trim(),
                     full_technique: div.querySelector(".stage-tech").value.trim(),
+                    hold_json: buildStageHoldJson(div),
+                    sort_order: i,
                     preparatory_pose_id: buildInjectionPayload(div.querySelector(".stage-prep")?.value),
                     recovery_pose_id: buildInjectionPayload(div.querySelector(".stage-recov")?.value)
                 };
