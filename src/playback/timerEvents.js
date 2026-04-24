@@ -86,7 +86,8 @@ window.playbackEngine.onStart = () => {
                         window.playbackEngine.suspend(); 
                         // ARCHITECT FIX: Only speak the note if NOT inside a macro (to avoid repetition)
                         const spokenNote = meta.macroTitle ? "" : (window.currentActualNote || "");
-                        window.playAsanaAudio(asana, currentPose[4] || "", false, side, window.currentVariationKey || null, isSecondSide, meta.props || [], spokenNote)
+                        // ARCHITECT FIX: Explicitly use index 6 (Label) as the spoken name for the pose
+                        window.playAsanaAudio(asana, currentPose[6] || "", false, side, window.currentVariationKey || null, isSecondSide, meta.props || [], spokenNote)
                             .then(() => {
                                 if (window.currentIndex === idx && window.playbackEngine.running) {
                                     window.playbackEngine.resume(); 

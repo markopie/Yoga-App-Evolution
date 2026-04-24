@@ -207,13 +207,6 @@ export function getExpandedPoses(sequence, ctx = {}) {
 
         const asana = findAsana(idStr);
         let currKey = null;
-        let keyMatch = [p[2], p[3], p[4]].filter(Boolean).join(" ").trim().match(/\[(.*?)\]/);
-        
-        if (keyMatch) {
-            currKey = keyMatch[1].trim();
-        } else if (p[3]) {
-            currKey = String(p[3]).trim();
-        }
 
         let prepIds = [];
         let recovIds = [];
@@ -222,46 +215,84 @@ export function getExpandedPoses(sequence, ctx = {}) {
             let prep  = asana.preparatory_pose_id;
             let recov = asana.recovery_pose_id;
 
+            // Relational Lookup: Prioritize stageId from JSON metadata
+            if (poseMeta.stageId && asana.variations) {
+                const stageEntry = Object.entries(asana.variations).find(([k, v]) => Number(v.id) === Number(poseMeta.stageId));
+                if (stageEntry) {
+                    prep = stageEntry[1].preparatory_pose_id || prep;
+                    // Stages use 'recover_pose_id' (no 'y') per schema
+                    recov = stageEntry[1].recovery_pose_id || stageEntry[1].recover_pose_id || recov;
+                }
+            } 
+            
+            const addInjectionTarget = (val, list) => {
+                if (!val) return;
+                if (typeof val === 'object' && val.asana_id) {
+                    list.push(val);
+                } else if (typeof val === 'string' && val.toUpperCase() !== "NULL") {
+                    // Legacy String Parsing (e.g. "020II")
+                    const clean = val.trim().replace(/\|/g, "").replace(/\s+/g, "");
+                    const m = clean.match(/^(\d+)(.*)$/);
+                    if (m) list.push({ asana_id: m[1].padStart(3, "0"), var_key: m[2].toUpperCase() });
+                }
+            };
+
+            // Heuristic Fallback for Variation Keys (Legacy)
+            let keyMatch = [p[2], p[3], p[4]].filter(Boolean).join(" ").trim().match(/\[(.*?)\]/);
+            if (keyMatch) {
+                currKey = keyMatch[1].trim();
+            } else if (p[3]) {
+                currKey = String(p[3]).trim();
+            }
+
             if (currKey && asana.variations) {
                 const cleanNk = currKey.toLowerCase();
                 for (const [vk, vd] of Object.entries(asana.variations)) {
                     const vtitle = (vd.title || "").toLowerCase().trim();
                     if (vk.toLowerCase() === cleanNk || vtitle.includes(cleanNk)) {
-                        // Stage-level IDs override Base Asana IDs
                         prep  = vd.preparatory_pose_id;
-                        recov = vd.recovery_pose_id;
+                        recov = vd.recovery_pose_id || vd.recover_pose_id;
                         break;
                     }
                 }
             }
 
-            if (prep && prep.toUpperCase() !== "NULL") prepIds.push(prep);
-            if (recov && recov.toUpperCase() !== "NULL") recovIds.push(recov);
+            addInjectionTarget(prep, prepIds);
+            addInjectionTarget(recov, recovIds);
         }
 
-        const createInjectedPose = (rawId, label) => {
-            const cleanRawId = String(rawId).trim().replace(/\|/g, "").replace(/\s+/g, "");
-            const parsed = cleanRawId.match(/^(\d+)(.*)$/);
-            if (!parsed) return null;
-
-            const numId = parsed[1].padStart(3, "0");
-            let varSuffix = parsed[2] ? parsed[2].toUpperCase() : "";
-            if (varSuffix === "NULL") varSuffix = "";
+        const createInjectedPose = (target, label) => {
+            const numId = String(target.asana_id || "").padStart(3, "0");
+            const stageId = target.stage_id;
+            const legacyVarKey = target.var_key;
 
             const targetAsana = findAsana(numId);
+            if (!targetAsana) return null;
+
             let duration = 30;
+            let variationName = "";
+            let resolvedVarKey = legacyVarKey || null;
 
-            if (targetAsana) {
-                const hj = window.getHoldTimes ? window.getHoldTimes(targetAsana) : {};
-                duration = (hj && hj.standard) ? Number(hj.standard) : 30;
+            const hj = window.getHoldTimes ? window.getHoldTimes(targetAsana) : {};
+            duration = (hj && hj.standard) ? Number(hj.standard) : 30;
 
-                if (varSuffix && targetAsana.variations) {
-                    for (const [vk, vd] of Object.entries(targetAsana.variations)) {
-                        const vdHold = window.getHoldTimes ? window.getHoldTimes(vd) : {};
-                        if (vk.toUpperCase() === varSuffix && vdHold.standard) {
-                            duration = vdHold.standard;
-                            break;
-                        }
+            if (stageId && targetAsana.variations) {
+                const vEntry = Object.entries(targetAsana.variations).find(([k, v]) => Number(v.id) === Number(stageId));
+                if (vEntry) {
+                    const [vk, vd] = vEntry;
+                    resolvedVarKey = vk;
+                    const vdHold = window.getHoldTimes ? window.getHoldTimes(vd) : {};
+                    if (vdHold.standard) duration = vdHold.standard;
+                    variationName = vd.title || vd.Title || "";
+                }
+            } else if (legacyVarKey && targetAsana.variations) {
+                for (const [vk, vd] of Object.entries(targetAsana.variations)) {
+                    const vdHold = window.getHoldTimes ? window.getHoldTimes(vd) : {};
+                    if (vk.toUpperCase() === legacyVarKey.toUpperCase() && vdHold.standard) {
+                        duration = vdHold.standard;
+                        variationName = vd.title || vd.Title || "";
+                        resolvedVarKey = vk;
+                        break;
                     }
                 }
             }
@@ -270,17 +301,17 @@ export function getExpandedPoses(sequence, ctx = {}) {
                 numId, 
                 duration, 
                 null, 
-                varSuffix || null, 
-                `* ${label} (Auto-Injected) *`, 
+                resolvedVarKey, 
+                variationName ? `[${variationName}]` : "",
                 p[5] || null, 
                 label,
-                { ...(poseMeta || {}), flowSegment: isFlowContext }
+                { ...(poseMeta || {}), flowSegment: isFlowContext, stageId: stageId || null }
             ];
         };
 
-        prepIds.forEach(id  => { const pp = createInjectedPose(id, "Preparatory Action"); if (pp) withInjected.push(pp); });
+        prepIds.forEach(target  => { const pp = createInjectedPose(target, "Preparatory Action"); if (pp) withInjected.push(pp); });
         withInjected.push(p);
-        recovIds.forEach(id => { const rp = createInjectedPose(id, "Recovery Action");    if (rp) withInjected.push(rp); });
+        recovIds.forEach(target => { const rp = createInjectedPose(target, "Recovery Action");    if (rp) withInjected.push(rp); });
     });
 
     return withInjected;

@@ -57,8 +57,11 @@ export async function getOrCreateSubCategoryId(fullCategoryString) {
 
 /**
  * Safely saves or updates a course, resolving category IDs automatically.
+ * @param {Object} payload - The course data to save
+ * @param {string|null} knownId - The known Supabase ID of an existing course (for updates)
+ * @param {boolean} isAdminOverride - If true, bypass user_id ownership check (for admin editing system courses)
  */
-export async function saveSequence(payload, knownId = null) {
+export async function saveSequence(payload, knownId = null, isAdminOverride = false) {
     const subCategoryId = await getOrCreateSubCategoryId(payload.category);
     
     // Logic Architect Note: Ensure user_id is explicitly present
@@ -84,34 +87,51 @@ export async function saveSequence(payload, knownId = null) {
 
     // 1. Direct Update via knownId
     if (knownId) {
-        const { error } = await supabase
+        let query = supabase
             .from('courses')
             .update(dbPayload)
-            .eq('id', knownId)
-            .eq('user_id', payload.user_id); // 🛡️ CRITICAL: Only update if user owns it
+            .eq('id', knownId);
+        
+        // 🛡️ CRITICAL: Only filter by user_id if NOT an admin override.
+        // Admin users (mark.opie@gmail.com) need to edit system courses that
+        // may have a different user_id or null user_id in the database.
+        if (!isAdminOverride) {
+            query = query.eq('user_id', payload.user_id);
+        }
             
+        const { error } = await query;
         if (error) throw error;
         return { id: knownId };
     } 
 
     // 2. Ownership-Aware Upsert (Check title AND user_id)
-    const { data: existing, error: selErr } = await supabase
+    let selectQuery = supabase
         .from('courses')
         .select('id')
         .eq('title', dbPayload.title)
-        .eq('sub_category_id', subCategoryId)
-        .eq('user_id', payload.user_id) // 🛡️ CRITICAL: Don't overwrite other users' titles
-        .maybeSingle();
+        .eq('sub_category_id', subCategoryId);
+    
+    // 🛡️ CRITICAL: Don't overwrite other users' titles, unless admin override
+    if (!isAdminOverride) {
+        selectQuery = selectQuery.eq('user_id', payload.user_id);
+    }
+    
+    const { data: existing, error: selErr } = await selectQuery.maybeSingle();
         
     if (selErr) throw selErr;
 
     if (existing) {
-        const { error } = await supabase
+        let updateQuery = supabase
             .from('courses')
             .update(dbPayload)
-            .eq('id', existing.id)
-            .eq('user_id', payload.user_id); // 🛡️ CRITICAL Safety redundancy
+            .eq('id', existing.id);
+        
+        // 🛡️ CRITICAL Safety redundancy, bypassed for admin override
+        if (!isAdminOverride) {
+            updateQuery = updateQuery.eq('user_id', payload.user_id);
+        }
             
+        const { error } = await updateQuery;
         if (error) throw error;
         return { id: existing.id };
     }

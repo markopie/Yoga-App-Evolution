@@ -49,7 +49,7 @@ Public SELECT. Admin writes via scripts or the Add Stage UI.
 | `audio_title` | text | Label for the audio cue |
 | `image_url` | text | Supabase storage URL |
 | `devanagari`, `translation`, `oracle_lore`, `symbol_prompt` | text | Enrichment |
-| `preparatory_pose_id`, `recover_pose_id` | text | Override injection |
+| `preparatory_pose_id`, `recover_pose_id` | jsonb | Relational override injection |
 | `is_curated` | boolean | Fully reviewed |
 | `user_id` | uuid | Owner (null for system) |
 
@@ -131,6 +131,7 @@ Data collection only — not integrated with current app code.
 - **`dataAdapter.js`**: Fetches and normalises data.
   - `loadAsanaLibrary()`: Queries `asanas` + `stages`, builds `window.asanaLibrary` map. **Self-executes at module load time** (line 150 — eager cache warm).
   - `fetchCourses()`: Queries `courses`, parses `sequence_text` into pose arrays.
+    - **Note Parsing:** The `sequence_text` format `ID | DURATION | [VARIATION] NOTE` is parsed. If the `NOTE` portion is a number identical to the `DURATION`, it is automatically stripped to prevent redundant numerical notes in the `sequence_json`.
   - Key normalisation: `english_name` → `english`, `audio_url` → `audio`, `hold` string → `hold_json` object. **All timing reads `hold_json.standard`.**
 - **`app.js`**: App orchestrator. `init()` called by `wiring.js` after Google auth.
 - **`state.js`**: Centralised state store; `window.*` proxies route bare name reads to `globalState`.
@@ -145,6 +146,22 @@ Data collection only — not integrated with current app code.
 1. Unpacks `MACRO:Title` references (sub-sequences)
 2. Unrolls `LOOP_START` / `LOOP_END` repeat blocks
 3. Injects preparatory poses (before) and recovery poses (after) from asana metadata
+
+### The Pose Injection Protocol
+To ensure practitioner safety and structural integrity, the engine follows these rules during expansion:
+- **Injection Trigger:** Occurs if the injection columns contain a JSON object with `asana_id`. Legacy strings are parsed as fallbacks.
+- **Labeling:** The descriptive label (e.g. "Recovery Action") is stored in index 6 of the pose tuple.
+- **Audio Brackets:** Variation titles are wrapped in square brackets `[Title]` in the note field (index 4). This acts as a trigger for the Audio Engine to announce the variation and for the UI to resolve the correct image/technique without displaying the brackets to the user.
+- **Audio Sync:** Variation titles are resolved and bracketed in the note field (e.g., `[On a chair] Preparatory Action`) to ensure correct audio announcement.
+- **Timing:** Injected poses always use the `hold_json.standard` duration.
+- **Suppression (Protected Mode):** Injection is disabled for "Flow" (ID 55) and "Cycle" (ID 56) sequences to preserve authored rhythm.
+- **Bilateral Handling:** Injected poses respect their own `requires_sides` flag independently of the pose that triggered the injection.
+
+### Transition & Padding Logic
+- **Standard Buffer:** A 10-second "Prepare for next pose" state exists between all items in the expanded list.
+- **End of Sequence:** Transitions are suppressed after the final pose (e.g., Savasana) to allow for immediate completion.
+- **Visuals:** During this state, the UI displays the upcoming pose image with a "Preparation" overlay.
+- **Audio:** The system announces the upcoming pose name and any required props during this window.
 
 ## Timing (`src/utils/sequenceUtils.js`)
 - `getEffectiveTime(id, dur)` — canonical duration; reads `hold_json.standard`, doubles for bilateral poses

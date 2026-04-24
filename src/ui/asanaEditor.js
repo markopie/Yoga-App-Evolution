@@ -1,297 +1,350 @@
 // src/ui/asanaEditor.js
-// Full Asana Editor — handles add/edit of asana records via Supabase
-// Refactored by Yoga App Logic Architect - Phase 3 (Integrity & Scannability)
+// ────────────────────────────────────────────────────────────────────────────
+// Logic for adding/editing asanas and variations (Stages).
+// ────────────────────────────────────────────────────────────────────────────
 
-import { $ } from "../utils/dom.js";
-import { normalizePlate } from "../services/dataAdapter.js";
-import { supabase } from "../services/supabaseClient.js";
-import { parseHoldTimes, buildHoldString } from "../utils/parsing.js";
-import { formatCategory } from "../utils/format.js";
-import { getOrCreateAsanaCategoryId } from "../services/persistence.js";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS & UI BUILDERS
-// ─────────────────────────────────────────────────────────────────────────────
+import { $, normaliseText } from '../utils/dom.js';
+import { supabase } from '../services/supabaseClient.js';
+import { loadAsanaLibrary } from '../services/dataAdapter.js';
 
 /**
- * ARCHITECT UI HELPER: Enforces Jobsian Typographic Hierarchy
- * Bold English -> Italic IAST -> Accented Badge
+ * Opens the Asana Editor modal and populates it with data.
  */
-function renderAsanaLabel(asana, prefix = "") {
-    const english = asana.english || asana.english_name || "Unknown";
-    const iast = asana.iast ? ` <em>${asana.iast}</em>` : "";
-    const badge = asana.requires_sides 
-        ? ' <span class="badge" style="background:#ffeb3b; color:#333; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">Bilateral</span>' 
-        : '';
-    return `${prefix}<strong>${english}</strong>${iast}${badge}`;
-}
+window.openAsanaEditor = async function(asanaId) {
+    const backdrop = $("asanaEditorBackdrop");
+    if (!backdrop) return;
 
-function getUniqueCategories() {
-    const cats = new Set();
     const lib = window.asanaLibrary || {};
-    Object.values(lib).forEach(a => {
-        if (a.category) cats.add(a.category.trim());
-    });
-    return Array.from(cats).sort();
-}
+    const normId = asanaId ? (typeof window.normalizePlate === 'function' ? window.normalizePlate(asanaId) : asanaId) : null;
+    const asana = normId ? lib[normId] : null;
 
-function getDisplayCategory(cat) {
-    return formatCategory(cat);
-}
+    // Populate Main Fields
+    $("editAsanaId").value = asanaId || "000";
+    $("editAsanaEnglish").value = asana?.english || asana?.english_name || "";
+    $("editAsanaName").value = asana?.name || "";
+    $("editAsanaIAST").value = asana?.iast || "";
+    $("editAsanaDescription").value = asana?.description || "";
+    $("editAsanaTechnique").value = asana?.technique || "";
+    $("editAsanaRequiresSides").checked = !!(asana?.requires_sides);
+    
+    // Relational Injections
+    const formatInjection = (val) => {
+        if (!val) return "";
+        if (typeof val === 'object' && val.asana_id) {
+            const stageId = val.stage_id;
+            const targetAsana = lib[val.asana_id];
+            if (stageId && targetAsana && targetAsana.variations) {
+                // Resolve stage_id (database ID) back to stage key
+                const found = Object.entries(targetAsana.variations).find(([k, v]) => String(v.id) === String(stageId));
+                if (found) {
+                    return `${val.asana_id}:${found[0]}`;
+                }
+            }
+            return val.asana_id;
+        }
+        return String(val);
+    };
+    if ($("editAsanaPrep")) $("editAsanaPrep").value = formatInjection(asana?.preparatory_pose_id);
+    if ($("editAsanaRecov")) $("editAsanaRecov").value = formatInjection(asana?.recovery_pose_id);
 
-function getNextAsanaId() {
-    const lib = window.asanaLibrary || {};
-    let next = 1;
-    while (lib[String(next).padStart(3, "0")]) {
-        next++;
-    }
-    return String(next).padStart(3, "0");
-}
-
-async function getNextRomanNumeral() {
-    const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X"];
-    const asanaId = $("editAsanaId").value.trim().padStart(3, "0");
-    const taken = new Set(
-        Array.from($("stagesContainer").querySelectorAll(".stage-key")).map(el => el.value.trim().toUpperCase())
-    );
-
-    if (supabase && asanaId) {
-        try {
-            const { data: stages } = await supabase.from("stages").select('stage_name').eq("asana_id", asanaId);
-            (stages || []).forEach(r => {
-                if (r.stage_name) taken.add(String(r.stage_name).toUpperCase());
-            });
-        } catch (e) {}
-    }
-
-    for (const r of ROMAN) {
-        if (!taken.has(r)) return r;
-    }
-    return String(taken.size + 1);
-}
-
-window.refreshStageIndices = function() {
+    // Hydrate Variations
     const container = $("stagesContainer");
-    if (!container) return;
-    Array.from(container.querySelectorAll(".stage-row")).forEach((row, index) => {
-        const display = row.querySelector(".stage-index-display");
-        if (display) display.textContent = index + 1;
-    });
+    if (container) container.innerHTML = "";
+
+    if (asana?.variations) {
+        Object.entries(asana.variations).forEach(([sKey, sData]) => {
+            window.addStageToEditor(sKey, sData);
+        });
+    }
+
+    backdrop.style.display = "flex";
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADD STAGE ROW
-// ─────────────────────────────────────────────────────────────────────────────
+if ($("asanaEditorCloseBtn")) {
+    $("asanaEditorCloseBtn").onclick = () => $("asanaEditorBackdrop").style.display = "none";
+}
 
-window.addStageToEditor = async function (stageKey = "", stageData = {}) {
-    const container = $("stagesContainer");
-    const autoKey = stageKey || (await getNextRomanNumeral());
-    
-    // Logic Cleaned: Relying on normalized 'title' and 'technique'
-    const existingTitle = stageData.title || "";
-    let suffix = existingTitle.replace(/^(Modified|Stage)\s+[IVXLCDM]+\b\s*/i, "").trim();
-    if (suffix === "" && existingTitle !== "" && !existingTitle.match(/^(Modified|Stage)/i)) suffix = existingTitle;
+/**
+ * Injects a stage (variation) row into the editor modal.
+ */
+window.addStageToEditor = function(stageKey, stageData = {}) {
+    const container = document.getElementById("stagesContainer");
+    if (!container) return;
 
-    const existingShorthand = stageData.shorthand || "";
-    const existingTech = stageData.technique || "";
-    const existingDbId = stageData.id || "";
-
-    // Prioritize JSON if available
-    const holdData = (stageData.hold_json && typeof stageData.hold_json === 'object')
-        ? {
-            standard: stageData.hold_json.standard || 30,
-            short: stageData.hold_json.short || 15,
-            long: stageData.hold_json.long || 60,
-            flow: stageData.hold_json.flow || 5
-          }
-        : parseHoldTimes(stageData.hold || "");
-    
     const div = document.createElement("div");
     div.className = "stage-row";
-    div.dataset.dbId = existingDbId;
-    div.dataset.flowHold = String(holdData.flow || 5);
-    div.style.cssText = "border:1px solid #ddd; padding:10px; border-radius:6px; background:#fff; display:grid; gap:8px;";
+    div.style.cssText = "border:1px solid #eee; padding:12px; border-radius:8px; background:#fff; margin-bottom:10px;";
+    
+    const existingTech = stageData.full_technique || stageData.technique || "";
 
     div.innerHTML = `
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-           <div style="min-width:30px; text-align:center;">
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Pos</label>
-               <div class="stage-index-display" style="padding:6px; font-weight:bold; color:#007aff; font-size:0.9rem;"></div>
-           </div>
-           <div style="min-width:60px;">
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Key</label>
-               <input type="text" class="stage-key" value="${autoKey}" readonly style="width:60px; padding:6px; font-weight:bold; background:#f5f5f5; text-align:center; border:1px solid #ccc; border-radius:4px;">
-           </div>
-           <div style="flex:2; min-width:140px;">
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;"><strong>Stage Display Title</strong></label>
-               <input type="text" class="stage-suffix" value="${suffix}" placeholder="e.g. I (on a bolster)" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
-           </div>
-           <div style="min-width:100px;">
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Shorthand</label>
-               <input type="text" class="stage-short" value="${existingShorthand}" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
-           </div>
-           <div style="display:flex; align-items:flex-end; padding-bottom:2px;">
-               <button type="button" class="tiny warn remove-stage-btn">✕ Remove</button>
-           </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+           <input type="text" class="stage-name" value="${stageKey || ''}" placeholder="Key (e.g. WALL)" style="width:80px; font-weight:bold; padding:4px;">
+           <input type="text" class="stage-title" value="${stageData.title || ''}" placeholder="Display Title" style="flex:1; margin:0 10px; padding:4px;">
+           <button type="button" class="tiny warn" onclick="this.closest('.stage-row').remove()">✕</button>
         </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-           <div>
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Short (s)</label>
-               <input type="number" class="stage-hold-short" min="0" value="${holdData.short || 15}" style="width:70px; padding:6px; border:1px solid #ccc; border-radius:4px;">
-           </div>
-           <div>
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Standard (s)</label>
-               <input type="number" class="stage-hold-standard" min="0" value="${holdData.standard || 30}" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">
-           </div>
-           <div>
-               <label class="muted" style="font-size:0.75rem; display:block; margin-bottom:3px;">Long (s)</label>
-               <input type="number" class="stage-hold-long" min="0" value="${holdData.long || 60}" style="width:70px; padding:6px; border:1px solid #ccc; border-radius:4px;">
-           </div>
-        </div>
-        <div>
-           <label class="muted" style="font-size:0.75rem;">Technique</label>
+        <div style="margin-bottom:8px;">
            <textarea class="stage-tech" style="height:60px; padding:6px; width:100%; font-family:inherit; border:1px solid #ccc; border-radius:4px;">${existingTech}</textarea>
         </div>
+        <div style="display:flex; gap:10px;">
+           <div style="flex:1;">
+               <label class="muted" style="font-size:0.75rem;">Prep (ID:Stage)</label>
+               <div style="display:flex; gap:4px; align-items:center;">
+                 <input type="text" class="stage-prep" value="${stageData.preparatory_pose_id ? (typeof stageData.preparatory_pose_id === 'object' ? stageData.preparatory_pose_id.asana_id + (stageData.preparatory_pose_id.stage_id ? ':'+stageData.preparatory_pose_id.stage_id : '') : stageData.preparatory_pose_id) : ''}" style="flex:1; padding:6px; border:1px solid #ccc; border-radius:4px;">
+                 <button type="button" class="tiny b-row-search-btn" onclick="window.triggerAsanaInjectionSearch(this.closest('.stage-row').querySelector('.stage-prep'))" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer; flex-shrink:0;" title="Search Asana">🔍</button>
+               </div>
+           </div>
+           <div style="flex:1;">
+               <label class="muted" style="font-size:0.75rem;">Recov (ID:Stage)</label>
+               <div style="display:flex; gap:4px; align-items:center;">
+                 <input type="text" class="stage-recov" value="${(stageData.recovery_pose_id || stageData.recover_pose_id) ? (typeof (stageData.recovery_pose_id || stageData.recover_pose_id) === 'object' ? (stageData.recovery_pose_id || stageData.recover_pose_id).asana_id + ((stageData.recovery_pose_id || stageData.recover_pose_id).stage_id ? ':'+(stageData.recovery_pose_id || stageData.recover_pose_id).stage_id : '') : (stageData.recovery_pose_id || stageData.recover_pose_id)) : ''}" style="flex:1; padding:6px; border:1px solid #ccc; border-radius:4px;">
+                 <button type="button" class="tiny b-row-search-btn" onclick="window.triggerAsanaInjectionSearch(this.closest('.stage-row').querySelector('.stage-recov'))" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer; flex-shrink:0;" title="Search Asana">🔍</button>
+               </div>
+           </div>
+        </div>
     `;
-
-    div.querySelector(".remove-stage-btn").onclick = () => {
-        const dbId = div.dataset.dbId;
-        if (dbId) window._asanaEditorDeletedStageIds.push(parseInt(dbId));
-        div.remove();
-        window.refreshStageIndices?.();
-    };
-
     container.appendChild(div);
-    window.refreshStageIndices?.();
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OPEN EDITOR
-// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Opens the row search overlay for selecting an asana to inject into a prep/recovery field.
+ * @param {string|HTMLElement} targetInput - The ID of the input element, or the input element itself.
+ */
+window.triggerAsanaInjectionSearch = function(targetInput) {
+    // Resolve the target input element
+    let inputEl;
+    if (typeof targetInput === 'string') {
+        inputEl = document.getElementById(targetInput);
+    } else if (targetInput && targetInput.tagName === 'INPUT') {
+        inputEl = targetInput;
+    }
+    if (!inputEl) {
+        console.error("AsanaEditor: target input not found", targetInput);
+        return;
+    }
 
-window.openAsanaEditor = async function (id) {
-    const bd = $("asanaEditorBackdrop");
-    if (!bd) return;
-    bd.style.display = "flex";
-    window._asanaEditorDeletedStageIds = [];
+    // Store the target input reference for the callback
+    window._asanaInjectionTarget = inputEl;
 
-    // Reset UI Status
-    $("asanaEditorStatus").textContent = "";
-    $("stagesContainer").innerHTML = "";
+    const overlay = document.getElementById('rowSearchOverlay');
+    const searchInput = document.getElementById('rowSearchInput');
+    const results = document.getElementById('rowSearchResults');
 
-    // Populate Categories
-    const catSel = $("editAsanaCategory");
-    const catCustom = $("editAsanaCategoryCustom");
-    if (catSel) {
-        catSel.innerHTML = '<option value="">-- Select category --</option>';
-        getUniqueCategories().forEach(c => {
-            const opt = document.createElement("option");
-            opt.value = c;
-            opt.textContent = getDisplayCategory(c);
-            catSel.appendChild(opt);
-        });
-        const newOpt = document.createElement("option");
-        newOpt.value = "__NEW__";
-        newOpt.textContent = "(+ Add new category)";
-        catSel.appendChild(newOpt);
-        catSel.onchange = () => {
-            catCustom.style.display = catSel.value === "__NEW__" ? "block" : "none";
+    if (!overlay) {
+        console.error("Architect Error: rowSearchOverlay missing from DOM.");
+        return;
+    }
+
+    // DOM Reparenting Failsafe
+    if (overlay.parentNode !== document.body) {
+        document.body.appendChild(overlay);
+    }
+
+    // Show overlay
+    overlay.style.display = 'flex';
+
+    // Clear previous state
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.placeholder = 'Search pose by name or ID...';
+    }
+    if (results) results.innerHTML = '';
+
+    // Override the row search input handler to use our callback mode
+    // Store original handler so we can restore it
+    if (!window._origRowSearchHandler) {
+        window._origRowSearchHandler = searchInput ? searchInput.oninput : null;
+    }
+
+    if (searchInput) {
+        searchInput.oninput = function() {
+            const rawQ = searchInput.value.trim().toLowerCase();
+            if (rawQ.length < 1) { results.innerHTML = ''; return; }
+
+            const lib = Object.values(window.asanaLibrary || {}).filter(Boolean);
+            const q = normaliseText(rawQ);
+
+            const scoredMatches = lib.map(a => {
+                let score = 0;
+                const id = String(a.id || '').toLowerCase();
+                const eng = normaliseText(a.english || a.name || '').toLowerCase();
+                const iast = normaliseText(a.iast || '').toLowerCase();
+
+                if (id === q || id.replace(/^0+/, '') === q) score += 200;
+                else if (id.startsWith(q)) score += 100;
+
+                const engWords = eng.split(/[\s-]/);
+                const iastWords = iast.split(/[\s-]/);
+                if (eng.startsWith(q) || iast.startsWith(q)) score += 100;
+                else if (engWords.some(w => w.startsWith(q)) || iastWords.some(w => w.startsWith(q))) score += 80;
+                else if (eng.includes(q) || iast.includes(q)) score += 30;
+
+                if (eng.endsWith(' i') || iast.endsWith(' i')) score += 25;
+                const modifierRegex = /\b(parivrtta|parsva|eka|dwi|baddha|mukta|urdhva|pinda|janu|supta|ardha|variation|ii|iii|iv|v|vi)\b/g;
+                const engMods = eng.match(modifierRegex) || [];
+                const iastMods = iast.match(modifierRegex) || [];
+                score -= ((engMods.length + iastMods.length) * 12);
+                if (score > 0) score -= (eng.length * 0.1);
+
+                return { asana: a, score };
+            });
+
+            const sortedMatches = scoredMatches
+                .filter(m => m.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 15);
+
+            if (sortedMatches.length === 0) {
+                results.innerHTML = '<div style="padding:20px; color:#999; text-align:center;">No poses found matching "' + rawQ + '"</div>';
+                return;
+            }
+
+            results.innerHTML = sortedMatches.map(({ asana: a }) => {
+                const hasVariations = a.variations && Object.keys(a.variations).length > 0;
+                return '<div style="padding:12px; border-bottom:1px solid #eee; cursor:pointer; display:flex; gap:10px; align-items:center;" '
+                    + 'onclick="window.selectAsanaInjectionSearch(\'' + a.id + '\')">'
+                    + '<div style="background:#007aff; color:#fff; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:0.8rem; min-width:28px; text-align:center;">' + a.id + '</div>'
+                    + '<div style="flex:1; min-width:0;">'
+                    + '<div style="font-weight:600; color:#1d1d1f; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + (a.english || a.name) + '</div>'
+                    + '<div style="font-size:0.75rem; color:#86868b; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + (a.iast || '') + '</div>'
+                    + '</div>'
+                    + (hasVariations ? '<div style="color:#ff9800; font-size:0.7rem; font-weight:bold; padding:2px 6px; border:1px solid #ff9800; border-radius:4px;">Stages</div>' : '')
+                    + '<div style="color:#007aff; font-size:0.8rem; font-weight:bold; padding-left:5px;">→</div>'
+                    + '</div>';
+            }).join('');
         };
-        catCustom.style.display = "none";
+
+        // Trigger initial search if there's already text
+        if (searchInput.value.trim()) {
+            searchInput.oninput();
+        }
+    }
+
+    setTimeout(() => {
+        if (searchInput) {
+            searchInput.focus();
+            searchInput.click();
+        }
+    }, 100);
+};
+
+/**
+ * Callback for when an asana is selected from the injection search overlay.
+ * If the asana has variations, shows a variation picker before populating the field.
+ */
+window.selectAsanaInjectionSearch = function(asanaId) {
+    const targetInput = window._asanaInjectionTarget;
+    if (!targetInput) {
+        document.getElementById('rowSearchOverlay').style.display = 'none';
+        return;
     }
 
     const lib = window.asanaLibrary || {};
+    const normId = typeof window.normalizePlate === 'function' ? window.normalizePlate(asanaId) : asanaId;
+    const asana = lib[normId];
 
-    if (id && lib[id]) {
-        const a = lib[id];
+    // Check if the asana has variations
+    if (asana && asana.variations && Object.keys(asana.variations).length > 0) {
+        // Show variation picker within the search results
+        const results = document.getElementById('rowSearchResults');
+        const searchInput = document.getElementById('rowSearchInput');
 
-        // 🌟 ARCHITECT FIX: Standardized Label Rendering
-        $("asanaEditorTitle").innerHTML = renderAsanaLabel(a, "Edit: ");
+        // Build variation picker UI
+        const variations = asana.variations;
+        const varEntries = Object.entries(variations);
 
-        $("editAsanaId").value = a.id;
-        $("editAsanaName").value = a.devanagari || "";
-        $("editAsanaIAST").value = a.iast || "";
-        $("editAsanaEnglish").value = a.english || a.english_name || "";
-        
-        if (catSel && a.category) {
-            catSel.value = a.category;
-            if (catSel.value !== a.category) {
-                catSel.value = "__NEW__";
-                catCustom.style.display = "block";
-                catCustom.value = getDisplayCategory(a.category);
-            }
-        }
+        let varHTML = '<div style="padding:8px 12px; background:#f5f5f7; border-bottom:1px solid #eee; font-weight:600; font-size:0.85rem; color:#1d1d1f;">'
+            + 'Select variation for <strong>' + (asana.english || asana.name) + '</strong>:</div>';
 
-        // Prioritize JSON when loading the editor fields
-        const holdData = (a.hold_json && typeof a.hold_json === 'object')
-            ? {
-                standard: a.hold_json.standard || 30,
-                short: a.hold_json.short || 15,
-                long: a.hold_json.long || 60
-              }
-            : parseHoldTimes(a.hold || "");
-            
-        if ($("editAsanaHoldStandard")) $("editAsanaHoldStandard").value = holdData.standard;
-        if ($("editAsanaHoldShort")) $("editAsanaHoldShort").value = holdData.short;
-        if ($("editAsanaHoldLong")) $("editAsanaHoldLong").value = holdData.long;
+        // "Base Pose" option (no stage)
+        varHTML += '<div style="padding:10px 12px; border-bottom:1px solid #eee; cursor:pointer; display:flex; gap:10px; align-items:center; background:#f0f7ff;" '
+            + 'onclick="window._applyInjectionSearch(\'' + asanaId + '\', null)">'
+            + '<div style="background:#34a853; color:#fff; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:0.75rem;">Base</div>'
+            + '<div style="flex:1; font-weight:600; color:#1d1d1f;">Base Pose (no stage)</div>'
+            + '<div style="color:#007aff; font-size:0.8rem;">✓</div>'
+            + '</div>';
 
-        let pStr = "";
-        if (a.plates?.final) pStr = `Final: ${a.plates.final.join(", ")}`;
-        if (a.plates?.intermediate) pStr += ` Intermediate: ${a.plates.intermediate.join(", ")}`;
-        $("editAsanaPlates").value = pStr.trim() || a.plate_numbers || "";
-
-        $("editAsanaPage2001").value = a.page_2001 || "";
-        $("editAsanaPage2015").value = a.page_2015 || "";
-        $("editAsanaIntensity").value = a.intensity || "";
-        $("editAsanaNote").value = a.note || "";
-        $("editAsanaDescription").value = a.description || "";
-        $("editAsanaTechnique").value = a.technique || "";
-        $("editAsanaRequiresSides").checked = !!a.requires_sides;
-
-        if (a.variations) {
-            Object.entries(a.variations).forEach(([sKey, sData]) => {
-                window.addStageToEditor(sKey, sData);
-            });
-        }
-    } else {
-        $("asanaEditorTitle").innerHTML = "<strong>Add New Asana</strong>";
-        $("editAsanaId").value = getNextAsanaId();
-        // Reset all fields
-        ["Name", "IAST", "English", "Plates", "Page2001", "Page2015", "Intensity", "Note", "Description", "Technique"].forEach(f => {
-            if ($(`editAsana${f}`)) $(`editAsana${f}`).value = "";
+        varEntries.forEach(([stageKey, stageData]) => {
+            varHTML += '<div style="padding:10px 12px; border-bottom:1px solid #eee; cursor:pointer; display:flex; gap:10px; align-items:center;" '
+                + 'onclick="window._applyInjectionSearch(\'' + asanaId + '\', \'' + stageKey + '\')">'
+                + '<div style="background:#ff9800; color:#fff; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:0.75rem;">' + stageKey + '</div>'
+                + '<div style="flex:1; min-width:0;">'
+                + '<div style="font-weight:600; color:#1d1d1f; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + (stageData.title || stageKey) + '</div>'
+                + '</div>'
+                + '<div style="color:#007aff; font-size:0.8rem;">→</div>'
+                + '</div>';
         });
-        $("editAsanaRequiresSides").checked = false;
+
+        if (searchInput) searchInput.value = '';
+        results.innerHTML = varHTML;
+    } else {
+        // No variations - apply directly
+        window._applyInjectionSearch(asanaId, null);
     }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SAVE LOGIC
-// ─────────────────────────────────────────────────────────────────────────────
-
-function wireEditorSave() {
-    if ($("asanaEditorCloseBtn")) {
-        $("asanaEditorCloseBtn").onclick = () => {
-            document.activeElement?.blur(); 
-            $("asanaEditorBackdrop").style.display = "none";
-        };
-    }
-    
-    if ($("addStageBtn")) $("addStageBtn").onclick = () => window.addStageToEditor();
-
-    if ($("cloneFromBaseBtn")) {
-        $("cloneFromBaseBtn").onclick = () => {
-            const h = {
-                std: parseInt($("editAsanaHoldStandard")?.value || "30", 10),
-                short: parseInt($("editAsanaHoldShort")?.value || "15", 10),
-                long: parseInt($("editAsanaHoldLong")?.value || "60", 10)
-            };
-            window.addStageToEditor("", {
-                technique: $("editAsanaTechnique")?.value || "",
-                hold: buildHoldString(h.std, h.short, h.long, 5)
-            });
-        };
+/**
+ * Applies the selected asana (and optional stage) to the target input field.
+ */
+window._applyInjectionSearch = function(asanaId, stageKey) {
+    const targetInput = window._asanaInjectionTarget;
+    if (!targetInput) {
+        document.getElementById('rowSearchOverlay').style.display = 'none';
+        return;
     }
 
+    const paddedId = String(asanaId).padStart(3, '0');
+    const value = stageKey ? paddedId + ':' + stageKey : paddedId;
+    targetInput.value = value;
+
+    // Clean up
+    window._closeInjectionSearch();
+    document.getElementById('rowSearchOverlay').style.display = 'none';
+};
+
+/**
+ * Cleans up the injection search state (restores original handler, clears target).
+ */
+window._closeInjectionSearch = function() {
+    window._asanaInjectionTarget = null;
+
+    // Restore original row search handler if it exists
+    const searchInput = document.getElementById('rowSearchInput');
+    if (searchInput && window._origRowSearchHandler) {
+        searchInput.oninput = window._origRowSearchHandler;
+    }
+};
+
+/**
+ * Prepares the save payload, converting ID:StageKey strings into structured JSON.
+ * Stage keys (e.g. "WALL", "I") are resolved to their database UUID via asanaLibrary.
+ */
+const buildInjectionPayload = (val) => {
+    if (!val || val.trim() === "" || val.toLowerCase() === "null") return null;
+    const parts = val.trim().split(/[:\-]/);
+    const asana_id = parts[0].padStart(3, "0");
+    const stageKey = parts[1] || null;
+
+    let stage_id = null;
+    if (stageKey) {
+        // Resolve the stage key to its database UUID
+        const lib = window.asanaLibrary || {};
+        const asana = lib[asana_id];
+        if (asana && asana.variations && asana.variations[stageKey]) {
+            stage_id = asana.variations[stageKey].id || stageKey;
+        } else {
+            // Fallback: store the key as-is if we can't resolve it
+            stage_id = stageKey;
+        }
+    }
+
+    return { asana_id, stage_id };
+};
+
+/**
+ * Logic for the Save button.
+ */
+window.setupAsanaEditorSave = function() {
     const saveBtn = $("asanaEditorSaveBtn");
     if (!saveBtn) return;
 
@@ -299,127 +352,55 @@ function wireEditorSave() {
         const id = $("editAsanaId").value.trim().padStart(3, "0");
         if (!id || id === "000") return;
 
-        saveBtn.disabled = true;
-        saveBtn.textContent = "Saving...";
-
         try {
-            // Resolve Category
-            const catSel = $("editAsanaCategory");
-            const catText = (catSel.value === "__NEW__") ? $("editAsanaCategoryCustom").value : catSel.value;
-            const finalCategoryText = formatCategory(catText.trim());
-            const categoryId = await getOrCreateAsanaCategoryId(finalCategoryText);
-
-            const stdVal = parseInt($("editAsanaHoldStandard").value) || 30;
-            const shortVal = parseInt($("editAsanaHoldShort").value) || 15;
-            const longVal = parseInt($("editAsanaHoldLong").value) || 60;
-
-            // 🌟 ARCHITECT PAYLOAD: Strictly following Database Contract (Snake Case)
             const asanaPayload = {
                 id,
-                devanagari: $("editAsanaName").value.trim(),
-                iast: $("editAsanaIAST").value.trim(),
                 english_name: $("editAsanaEnglish").value.trim(),
-                description: $("editAsanaDescription").value.trim(),
+                name: $("editAsanaName").value.trim(),
+                iast: $("editAsanaIAST").value.trim(),
                 technique: $("editAsanaTechnique").value.trim(),
-                note: $("editAsanaNote").value.trim(),
-                intensity: $("editAsanaIntensity").value.trim(),
-                hold_json: { standard: stdVal, short: shortVal, long: longVal, flow: 5 },
-                hold: buildHoldString(stdVal, shortVal, longVal, 5),
-                plate_numbers: $("editAsanaPlates").value.trim(),
+                description: $("editAsanaDescription").value.trim(),
                 requires_sides: $("editAsanaRequiresSides").checked,
-                page_2001: parseInt($("editAsanaPage2001").value) || null,
-                page_2015: parseInt($("editAsanaPage2015").value) || null,
-                category_id: categoryId
+                // ARCHITECT FIX: Target the correct ID from index.html for main asana injections
+                preparatory_pose_id: buildInjectionPayload($("editAsanaPrep")?.value),
+                recovery_pose_id: buildInjectionPayload($("editAsanaRecov")?.value)
             };
 
             const { error: asanaErr } = await supabase.from("asanas").upsert(asanaPayload);
             if (asanaErr) throw asanaErr;
 
-            // Handle Deletions
-            if (window._asanaEditorDeletedStageIds?.length > 0) {
-                await supabase.from("stages").delete().in("id", window._asanaEditorDeletedStageIds);
-            }
-
-            // Save Stages
-            const stageDivs = Array.from($("stagesContainer").querySelectorAll(".stage-row"));
-            const localVariations = {};
-
-            for (let i = 0; i < stageDivs.length; i++) {
-                const div = stageDivs[i];
-                const key = div.querySelector(".stage-key").value;
-                const dbId = div.dataset.dbId;
-                
-                const std = parseInt(div.querySelector(".stage-hold-standard").value) || 30;
-                const sho = parseInt(div.querySelector(".stage-hold-short").value) || 15;
-                const lon = parseInt(div.querySelector(".stage-hold-long").value) || 60;
-                const flo = parseInt(div.dataset.flowHold || "5");
-
+            // Handle Stages...
+            const stageRows = document.querySelectorAll(".stage-row");
+            for (let div of stageRows) {
                 const stagePayload = {
                     asana_id: id,
-                    stage_name: key,
-                    title: div.querySelector(".stage-suffix").value || key,
-                    full_technique: div.querySelector(".stage-tech").value.trim() || null,
-                    shorthand: div.querySelector(".stage-short").value.trim() || null,
-                    hold_json: { standard: std, short: sho, long: lon, flow: flo },
-                    hold: buildHoldString(std, sho, lon, flo),
-                    sort_order: i
+                    stage_name: div.querySelector(".stage-name").value.trim(),
+                    title: div.querySelector(".stage-title").value.trim(),
+                    full_technique: div.querySelector(".stage-tech").value.trim(),
+                    preparatory_pose_id: buildInjectionPayload(div.querySelector(".stage-prep")?.value),
+                    recovery_pose_id: buildInjectionPayload(div.querySelector(".stage-recov")?.value)
                 };
-
-                if (dbId) {
-                    await supabase.from("stages").update(stagePayload).eq("id", dbId);
-                } else {
-                    const { data: newS } = await supabase.from("stages").insert(stagePayload).select('id').single();
-                    if (newS) div.dataset.dbId = newS.id;
-                }
-
-                localVariations[key] = {
-                    title: stagePayload.title,
-                    shorthand: stagePayload.shorthand,
-                    technique: stagePayload.full_technique,
-                    hold_json: stagePayload.hold_json,
-                    holdTimes: stagePayload.hold_json, // Standardize local cache
-                    hold: stagePayload.hold
-                };
+                await supabase.from("stages").upsert(stagePayload);
             }
 
-            // Sync Local Cache
-            if (window.asanaLibrary) {
-                window.asanaLibrary[id] = {
-                    ...window.asanaLibrary[id],
-                    ...asanaPayload,
-                    english: asanaPayload.english_name, // Sync with runtime property name
-                    holdTimes: asanaPayload.hold_json,   // Ensure UI timing logic is synced
-                    category: finalCategoryText,
-                    variations: localVariations
-                };
-            }
+            // Reload the asana library so the editor shows fresh data on re-open
+            window.asanaLibrary = await loadAsanaLibrary();
 
+            // Close the editor modal and refresh the browse view
+            $("asanaEditorBackdrop").style.display = "none";
             $("asanaEditorStatus").textContent = "✓ Saved Successfully!";
-            $("asanaEditorStatus").style.color = "#4CAF50";
-
-            setTimeout(() => {
-                $("asanaEditorBackdrop").style.display = "none";
-                saveBtn.disabled = false;
-                saveBtn.textContent = "Save Asana";
-                if (window.applyBrowseFilters) window.applyBrowseFilters();
-                
-                // 🚀 UI SYNC: Refresh the Browse Detail view immediately if it's showing this asana
-                if (typeof window.showAsanaDetail === "function" && window.asanaLibrary[id]) {
-                    window.showAsanaDetail(window.asanaLibrary[id]);
-                }
-            }, 1000);
-
-        } catch (e) {
-            $("asanaEditorStatus").textContent = e.message;
-            $("asanaEditorStatus").style.color = "#ff3b30";
-            saveBtn.disabled = false;
-            saveBtn.textContent = "Save Asana";
+            if (typeof window.applyBrowseFilters === "function") {
+                window.applyBrowseFilters();
+            }
+        } catch (err) {
+            console.error("Save failed:", err);
+            alert("Error saving: " + err.message);
         }
     };
-}
+};
 
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", wireEditorSave);
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.setupAsanaEditorSave);
 } else {
-    wireEditorSave();
+    window.setupAsanaEditorSave();
 }

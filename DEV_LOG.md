@@ -320,3 +320,47 @@
 - Audit `styles/editor.css` for `summary-id-badge` to ensure it handles longer "Sequence link ID" text gracefully.
 - Verify if the sequence unrolling engine in `sequenceEngine.js` needs to be updated to explicitly include `macroId` in the metadata.
 ---
+
+## [2026-04-24] - Session [01]
+**Goal:** Refactor Asana Editor write-path, harden Pose Injection Protocol with relational JSON support, and fix audio path resolution.
+
+**Architectural Decisions:**
+- **Asana Editor Rewrite:** Replaced the legacy `wireEditorSave` closure with a globally-exposed `window.setupAsanaEditorSave` pattern. This decouples the save button wiring from the DOMContentLoaded race condition, ensuring the editor works reliably regardless of module load order.
+- **Relational Injection Schema:** Migrated `preparatory_pose_id` and `recovery_pose_id` from legacy string format (e.g., `"020II"`) to a JSON object format `{ asana_id, stage_id }`. This enables precise stage-level injection targeting without heuristic string parsing.
+- **Injection Engine Overhaul:** Refactored `getExpandedPoses` in `sequenceEngine.js` to accept the new relational JSON objects. The engine now resolves stage-level injections via `stageId` lookup in the variations map, falling back to legacy string parsing for backward compatibility.
+- **Audio Path Hardening:** Introduced `joinPath()` utility in `audioEngine.js` to prevent double-slash path concatenation. Updated all audio URL construction points (side cues, main audio, variation audio, bridge files) to use this safe joiner.
+- **Pose Player Bracket Fix:** Moved bracket stripping logic in `posePlayer.js` to a unified post-processing step after all note resolution paths, ensuring variation titles are consistently extracted and brackets removed regardless of note source (JSON or legacy).
+- **Global Engine Exposure:** Added `window.playbackEngine = playbackEngine` early in `app.js` to resolve static import ordering issues where `asanaEditor.js` needed access to the playback engine at module load time.
+
+**Code Changed:**
+- `src/ui/asanaEditor.js`: Complete rewrite of save logic; switched to `window.setupAsanaEditorSave` pattern; added `buildInjectionPayload` for relational JSON; added search buttons for Prep/Recovery fields in `index.html`.
+- `src/services/sequenceEngine.js`: Refactored `getExpandedPoses` to accept relational injection objects; added `addInjectionTarget` helper; updated `createInjectedPose` to resolve stage-level variations via `stageId`.
+- `src/playback/audioEngine.js`: Added `joinPath()` utility; updated all audio URL constructions to prevent double-slash bugs.
+- `src/playback/timerEvents.js`: Updated `onStart` to use `currentPose[6]` (Label) as the spoken name for injected poses.
+- `src/ui/posePlayer.js`: Unified bracket stripping logic into a single post-processing step after all note resolution paths.
+- `app.js`: Added early `window.playbackEngine` assignment to resolve import ordering.
+- `index.html`: Added search buttons for Prep/Recovery pose fields in Asana Editor; updated row search close handler.
+- `docs/ARCHITECTURE.md`: Documented the Pose Injection Protocol and Transition/Padding Logic.
+
+**Next Steps for Next Session:**
+- Verify that the new relational injection JSON format is correctly persisted and read back from the database.
+- Audit the Asana Editor to ensure stage-level Prep/Recovery fields also use the search button pattern.
+
+---
+
+## [2026-04-24] - Session [02]
+**Goal:** Fix admin user (mark.opie@gmail.com) unable to save edits to system courses in Supabase.
+
+**Architectural Decisions:**
+- **Admin Override Flag:** Added an `isAdminOverride` parameter (3rd argument) to `saveSequence()` in `persistence.js`. When `true`, the `user_id` ownership filter is bypassed on update queries, allowing admin users to edit system courses regardless of the database owner.
+- **Minimal Surface Area:** The fix required only two lines of code — one in `persistence.js` to accept and apply the override, and one in `builder.js` to pass `isAdmin()` as the override flag. This preserves the existing RLS security model for non-admin users.
+
+**Code Changed:**
+- `src/services/persistence.js`: Added `isAdminOverride` parameter to `saveSequence()`; conditionally skips `.eq('user_id', payload.user_id)` filter on update queries when override is active.
+- `src/ui/builder.js`: Updated `saveSequence()` call in `builderSave()` to pass `isAdmin()` as the 3rd argument.
+
+**Lessons Learned:**
+- The "saved successfully" alert was misleading because the Supabase update query matched 0 rows (due to `user_id` mismatch) but did not throw an error. Always verify row-level effects when debugging silent save failures.
+- System courses in the database have `user_id = null` or a different UUID than the admin's `currentUserId`, causing the ownership filter to silently skip the update.
+
+

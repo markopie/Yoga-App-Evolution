@@ -1223,7 +1223,8 @@ async function builderSave() {
         
         if (isAdmin()) payload.is_system = true;
 
-        const { id: savedId } = await saveSequence(payload, builderState.editingSupabaseId);
+        const { id: savedId } = await saveSequence(payload, builderState.editingSupabaseId, isAdmin());
+
         
         if (savedId) builderState.editingSupabaseId = savedId;
 

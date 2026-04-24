@@ -1,6 +1,6 @@
 # Asana Stages & Variations Mapping
 
-> Last Sync: 2026-04-23 09:36:44 | Total Records: 208
+> Last Sync: 2026-04-24 14:05:47 | Total Records: 215
 
 | id | asana_id | stage_name | title |
 | --- | --- | --- | --- |
@@ -212,3 +212,10 @@
 | 253 | 036 | I | Using a belt or support for the feet |
 | 254 | 034 | I | Using a belt or support for the feet |
 | 264 | 093 | I | On two stools |
+| 265 | 031 | KI | Kurunta I (Wall Rope) |
+| 266 | 031 | KII | Kurunta II (Wall Rope) |
+| 267 | 072 | KI | Kurunta (Wall Rope) |
+| 268 | 016 | KI | Kurunta (Wall Rope) |
+| 269 | 087 | KI | Kurunta (Wall Rope) |
+| 270 | 091 | KI | Kurunta (Wall Rope) |
+| 271 | 069 | KI | Kurunta (Wall Rope) |

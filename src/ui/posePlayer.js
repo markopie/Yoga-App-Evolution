@@ -280,14 +280,16 @@ function setPose(idx, keepSamePose = false) {
 
     if (poseMeta.originalJson) {
         actualNote = noteField || poseMeta.originalJson.note || "";
-    } else {
-        const bracketMatch = noteField.match(/\[(.*?)\]/);
-        if (bracketMatch) {
-            if (!variationTitle) variationTitle = bracketMatch[1].trim();
-            actualNote = noteField.replace(bracketMatch[0], "").replace(/^[\s\-\|]+/, "").trim();
-        } else if (!variationTitle) {
-            actualNote = [currentPose[3], currentPose[4]].filter(Boolean).join(" ").trim();
-        }
+    } else if (!variationTitle) {
+        actualNote = [currentPose[3], currentPose[4]].filter(Boolean).join(" ").trim();
+    }
+
+    // 🛡️ ARCHITECT FIX: Aggressively strip audio control brackets from visible notes.
+    // Use [^] to match across newlines in case the note is wrapped in HTML tags.
+    const bracketMatch = actualNote.match(/\[([^]*?)\]/);
+    if (bracketMatch) {
+        if (!variationTitle) variationTitle = bracketMatch[1].trim();
+        actualNote = actualNote.replace(/\[[^]*?\]/g, "").replace(/^[\s\-\|]+/, "").trim();
     }
 
     // 2. THE PROP SANITIZER (Multi-Prop Logic)

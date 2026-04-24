@@ -7,6 +7,10 @@ import { $, safeListen } from "./src/utils/dom.js";
 import { parseHoldTimes } from "./src/utils/parsing.js"; 
 import { displayName, formatHMS } from "./src/utils/format.js";
 import { playbackEngine } from "./src/playback/timer.js";
+
+// 🛡️ ARCHITECT FIX: Define the global engine early so static imports (like asanaEditor) can access it
+window.playbackEngine = playbackEngine;
+
 import { smartUrlsForPoseId } from "./src/utils/helpers.js";
 import { getExpandedPoses } from "./src/services/sequenceEngine.js";
 import { getEffectiveTime, getPosePillTime, calculateTotalSequenceTime } from "./src/utils/sequenceUtils.js";

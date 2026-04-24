@@ -164,11 +164,18 @@
 - `updateNodeCompletion` (function)
 
 ### 📄 `ui/asanaEditor.js`
-- `_asanaEditorDeletedStageIds` (window binding)
+- `_applyInjectionSearch` (window binding)
+- `_asanaInjectionTarget` (window binding)
+- `_closeInjectionSearch` (window binding)
+- `_origRowSearchHandler` (window binding)
 - `addStageToEditor` (window binding)
+- `applyBrowseFilters` (window binding)
+- `asanaLibrary` (window binding)
+- `normalizePlate` (window binding)
 - `openAsanaEditor` (window binding)
-- `refreshStageIndices` (window binding)
-- `showAsanaDetail` (window binding)
+- `selectAsanaInjectionSearch` (window binding)
+- `setupAsanaEditorSave` (window binding)
+- `triggerAsanaInjectionSearch` (window binding)
 
 ### 📄 `ui/browse.js`
 - `applyBrowseFilters` (module export)

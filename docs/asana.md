@@ -1,6 +1,6 @@
 # Primary Asana Database
 
-> Last Sync: 2026-04-23 09:36:44 | Total Records: 237
+> Last Sync: 2026-04-24 14:05:46 | Total Records: 237
 
 | id | name | iast | requires_sides |
 | --- | --- | --- | --- |

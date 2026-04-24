@@ -312,6 +312,22 @@
             <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Intensity</label>
             <input type="text" id="editAsanaIntensity" style="width:100%; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
           </div>
+
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Prep Pose (ID:Stage)</label>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <input type="text" id="editAsanaPrep" placeholder="e.g. 020:5" style="flex:1; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
+              <button type="button" class="tiny b-row-search-btn" onclick="window.triggerAsanaInjectionSearch('editAsanaPrep')" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer; flex-shrink:0;" title="Search Asana">🔍</button>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Recovery Pose (ID:Stage)</label>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <input type="text" id="editAsanaRecov" placeholder="e.g. 033" style="flex:1; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
+              <button type="button" class="tiny b-row-search-btn" onclick="window.triggerAsanaInjectionSearch('editAsanaRecov')" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer; flex-shrink:0;" title="Search Asana">🔍</button>
+            </div>
+          </div>
           
           <div style="display:flex; align-items:center; padding-bottom: 6px;">
             <label style="display:flex; gap:8px; align-items:center; cursor:pointer;">
@@ -500,7 +516,7 @@
    <div class="modal" style="width:95vw; max-width:400px; padding:20px; border-radius:12px; background:#fff; display:flex; flex-direction:column; max-height:85vh; box-sizing:border-box; height: auto;">
       <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
           <strong style="font-size:1.1rem; color:#1d1d1f;">Search Pose</strong>
-          <button onclick="document.getElementById('rowSearchOverlay').style.display='none'" style="border:none; background:#f2f2f2; color:#333; border-radius:50%; width:28px; height:28px; cursor:pointer;">✕</button>
+          <button onclick="window._closeInjectionSearch && window._closeInjectionSearch(); document.getElementById('rowSearchOverlay').style.display='none'" style="border:none; background:#f2f2f2; color:#333; border-radius:50%; width:28px; height:28px; cursor:pointer;">✕</button>
       </div>
       <input type="text" id="rowSearchInput" placeholder="Type name or ID..." style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
       <div id="rowSearchResults" style="flex:1; overflow-y:auto; margin-top:15px; min-height:0;"></div>

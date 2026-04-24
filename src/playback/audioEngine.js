@@ -7,11 +7,22 @@ import { normalizePlate } from "../services/dataAdapter.js";
 let currentAudio = null;
 let audioCtx     = null;
 
+/**
+ * Safely joins a base URL and a filename, preventing double slashes.
+ */
+function joinPath(base, file) {
+    if (!file) return null;
+    if (String(file).startsWith("http")) return file;
+    const b = base.endsWith("/") ? base : base + "/";
+    const f = String(file).startsWith("/") ? String(file).substring(1) : file;
+    return b + f;
+}
+
 // ── Preloaded side-cue files ─────────────────────────────────────────────────
 const _sideCues = {};
 ["left", "right"].forEach(side => {
     try {
-        const a = new Audio(AUDIO_BASE + `${side}_side.mp3`);
+        const a = new Audio(joinPath(AUDIO_BASE, `${side}_side.mp3`));
         a.preload = "auto";
         _sideCues[side] = a;
     } catch (e) {}
@@ -269,8 +280,13 @@ export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, va
                 });
         };
 
-        const varAudio = (variationKey && asana.variations && asana.variations[variationKey]?.audio)
-            ? asana.variations[variationKey].audio : null;
+        // Resolve variation audio: prioritize mapped 'audio' (from audio_url)
+        let varAudio = null;
+        if (variationKey && asana.variations && asana.variations[variationKey]) {
+            const v = asana.variations[variationKey];
+            const rawVarAudio = v.audio || v.audio_url || null;
+            if (rawVarAudio) varAudio = joinPath(AUDIO_BASE, rawVarAudio);
+        }
 
         const step3_Variation = () => {
             if (varAudio) playSrcInQueue(varAudio, handleComplete);
@@ -287,7 +303,7 @@ export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, va
             const bridges    = ["bridge_stage.mp3", "bridge_stage_2.mp3", "bridge_stage_3.mp3"]
                                 .filter(f => allFiles.includes(f) || f === "bridge_stage.mp3");
             const bridgeFile = bridges[Math.floor(Math.random() * bridges.length)];
-            playSrcInQueue(AUDIO_BASE + bridgeFile, step3_Variation);
+            playSrcInQueue(joinPath(AUDIO_BASE, bridgeFile), step3_Variation);
         };
 
         const step1_Main = () => {
@@ -299,10 +315,10 @@ export function playPoseMainAudio(asana, poseLabel = null, onComplete = null, va
                 const match   = fileList.find(f => f.startsWith(`${idStr}_`) || f === `${idStr}.mp3`);
                 
                 if (match) {
-                    src = AUDIO_BASE + match;
+                    src = joinPath(AUDIO_BASE, match);
                 } else if (idStr) {
                     const cleanName = (asana.english_name || asana.name || "").replace(/[^a-zA-Z0-9]/g, "");
-                    src = `${AUDIO_BASE}${idStr}_${cleanName}.mp3`;
+                    src = joinPath(AUDIO_BASE, `${idStr}_${cleanName}.mp3`);
                 }
             }
             if (src) playSrcInQueue(src, step2_Bridge);
