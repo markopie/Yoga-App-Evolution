@@ -443,4 +443,30 @@
 - The `asanas` table migrated from a `category` text column to a `category_id` FK referencing `asana_categories(id)` at some point, but the Asana Editor was never updated to match. Always verify the actual database schema (via migrations or Supabase dashboard) rather than assuming the UI's mental model is correct.
 - `getOrCreateAsanaCategoryId` already existed in `persistence.js` for the course builder's category handling, but the Asana Editor was writing directly to a non-existent `category` column. Reusing existing helpers prevents duplicate logic.
 
+---
+
+## [2026-04-25] - Session [04]
+**Goal:** Audit and inject missing intensity values into the `asanas` table from backup data.
+
+**Architectural Decisions:**
+- **Name-Based Matching:** Used normalized name matching (lowercase, trimmed) to cross-reference backup data with DB rows, since IDs may not align between the backup and live database.
+- **Fuzzy Match Correction:** Detected and corrected a false positive where "Setu Bandhasana Sarvangasana" (098) was incorrectly matched to "Setu Bandhasana" (intensity 14) instead of "Setu Bandha Sarvangasana" (intensity 10). The fuzzy match was too aggressive — corrected with an explicit override.
+- **Non-Asana Handling:** Pranayama, meditation, bandha, and mudra poses not in the backup data were assigned `-` (not applicable), consistent with existing pranayama entries. Simple seated poses (Sukhasana, Paschima Namaskarasana, Pavanamuktasana) were assigned intensity `1`, and Viparita Karani was assigned `2`.
+
+**Code Changed:**
+- `scripts/update_intensity.js`: Script to match backup data by name and inject intensity values (20 rows updated)
+- `scripts/fix_remaining_intensity.js`: Script to correct fuzzy match error and handle remaining 9 rows not in backup data
+
+**Results:**
+- 237 total asanas in database
+- 29 rows had NULL/empty intensity before the audit
+- 20 rows injected from backup data (matched by name)
+- 9 rows handled manually (pranayama/bandha/meditation → `-`, seated poses → `1`, Viparita Karani → `2`)
+- 1 fuzzy match corrected (Setu Bandhasana Sarvangasana: 14 → 10)
+- **Final: 0 NULL/empty intensity rows remaining**
+
+**Lessons Learned:**
+- Fuzzy name matching is dangerous when names share common substrings (e.g., "Setu Bandhasana" vs "Setu Bandhasana Sarvangasana"). Always verify fuzzy matches or use exact matching with explicit overrides for edge cases.
+- The `intensity` column is stored as TEXT, not numeric, so values like `-` and `Low`/`Medium` are valid alongside numeric values. This means the column serves dual purpose — numeric difficulty ratings for asanas and categorical labels for non-asanas.
+
 
