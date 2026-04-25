@@ -130,6 +130,37 @@ window.createStageFromAsana = function() {
 };
 
 /**
+ * Populates the category select dropdown from the asana_categories table.
+ */
+async function populateCategorySelect() {
+    const select = $("editAsanaCategory");
+    if (!select) return;
+    
+    // Only populate if not already done
+    if (select.options.length > 1) return;
+    
+    try {
+        const { data: categories, error } = await supabase
+            .from('asana_categories')
+            .select('id, name')
+            .order('name');
+        
+        if (error) throw error;
+        
+        if (categories) {
+            categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.name;
+                opt.textContent = cat.name;
+                select.appendChild(opt);
+            });
+        }
+    } catch (e) {
+        console.error("Failed to load categories:", e);
+    }
+}
+
+/**
  * Opens the Asana Editor modal and populates it with data.
  */
 window.openAsanaEditor = async function(asanaId) {
@@ -140,6 +171,9 @@ window.openAsanaEditor = async function(asanaId) {
     const normId = asanaId ? (typeof window.normalizePlate === 'function' ? window.normalizePlate(asanaId) : asanaId) : null;
     const asana = normId ? lib[normId] : null;
 
+    // Populate category select on first open
+    await populateCategorySelect();
+
     // Populate Main Fields
     $("editAsanaId").value = asanaId || "000";
     $("editAsanaEnglish").value = asana?.english || asana?.english_name || "";
@@ -149,6 +183,32 @@ window.openAsanaEditor = async function(asanaId) {
     $("editAsanaTechnique").value = asana?.technique || "";
     $("editAsanaRequiresSides").checked = !!(asana?.requires_sides);
     
+    // Category — select the matching option or show custom input
+    const catSelect = $("editAsanaCategory");
+    const catCustom = $("editAsanaCategoryCustom");
+    const categoryName = asana?.category || "";
+    if (categoryName) {
+        const optionExists = Array.from(catSelect.options).some(o => o.value === categoryName);
+        if (optionExists) {
+            catSelect.value = categoryName;
+            catSelect.style.display = "";
+            if (catCustom) catCustom.style.display = "none";
+        } else {
+            // Custom category not in the list — show the custom input
+            catSelect.value = "";
+            if (catCustom) {
+                catCustom.value = categoryName;
+                catCustom.style.display = "";
+            }
+        }
+    } else {
+        catSelect.value = "";
+        if (catCustom) catCustom.style.display = "none";
+    }
+
+    // Intensity
+    if ($("editAsanaIntensity")) $("editAsanaIntensity").value = asana?.intensity || asana?.intensity || "";
+
     // Relational Injections
     const formatInjection = (val) => {
         if (!val) return "";
@@ -242,7 +302,7 @@ window.addStageToEditor = function(stageKey, stageData = {}) {
            <div style="flex:1;">
                <label class="muted" style="font-size:0.75rem;">Recov (ID:Stage)</label>
                <div style="display:flex; gap:4px; align-items:center;">
-                 <input type="text" class="stage-recov" value="${(stageData.recovery_pose_id || stageData.recover_pose_id) ? (typeof (stageData.recovery_pose_id || stageData.recover_pose_id) === 'object' ? (stageData.recovery_pose_id || stageData.recover_pose_id).asana_id + ((stageData.recovery_pose_id || stageData.recover_pose_id).stage_id ? ':'+(stageData.recovery_pose_id || stageData.recover_pose_id).stage_id : '') : (stageData.recovery_pose_id || stageData.recover_pose_id)) : ''}" style="flex:1; padding:6px; border:1px solid #ccc; border-radius:4px;">
+                  <input type="text" class="stage-recov" value="${stageData.recovery_pose_id ? (typeof stageData.recovery_pose_id === 'object' ? stageData.recovery_pose_id.asana_id + (stageData.recovery_pose_id.stage_id ? ':'+stageData.recovery_pose_id.stage_id : '') : stageData.recovery_pose_id) : ''}" style="flex:1; padding:6px; border:1px solid #ccc; border-radius:4px;">
                  <button type="button" class="tiny b-row-search-btn" onclick="window.triggerAsanaInjectionSearch(this.closest('.stage-row').querySelector('.stage-recov'))" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer; flex-shrink:0;" title="Search Asana">🔍</button>
                </div>
            </div>
@@ -508,6 +568,13 @@ window.setupAsanaEditorSave = function() {
         if (!id || id === "000") return;
 
         try {
+            // Resolve category: use select value, or custom input if visible
+            const catSelect = $("editAsanaCategory");
+            const catCustom = $("editAsanaCategoryCustom");
+            const category = (catCustom && catCustom.style.display !== "none" && catCustom.value.trim())
+                ? catCustom.value.trim()
+                : (catSelect ? catSelect.value : "");
+
             const asanaPayload = {
                 id,
                 english_name: $("editAsanaEnglish").value.trim(),
@@ -516,7 +583,8 @@ window.setupAsanaEditorSave = function() {
                 technique: $("editAsanaTechnique").value.trim(),
                 description: $("editAsanaDescription").value.trim(),
                 requires_sides: $("editAsanaRequiresSides").checked,
-                // ARCHITECT FIX: Target the correct ID from index.html for main asana injections
+                category,
+                intensity: $("editAsanaIntensity")?.value?.trim() || "",
                 preparatory_pose_id: buildInjectionPayload($("editAsanaPrep")?.value),
                 recovery_pose_id: buildInjectionPayload($("editAsanaRecov")?.value)
             };

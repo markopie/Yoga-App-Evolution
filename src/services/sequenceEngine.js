@@ -220,8 +220,7 @@ export function getExpandedPoses(sequence, ctx = {}) {
                 const stageEntry = Object.entries(asana.variations).find(([k, v]) => Number(v.id) === Number(poseMeta.stageId));
                 if (stageEntry) {
                     prep = stageEntry[1].preparatory_pose_id || prep;
-                    // Stages use 'recover_pose_id' (no 'y') per schema
-                    recov = stageEntry[1].recovery_pose_id || stageEntry[1].recover_pose_id || recov;
+                    recov = stageEntry[1].recovery_pose_id || recov;
                 }
             } 
             
@@ -251,7 +250,7 @@ export function getExpandedPoses(sequence, ctx = {}) {
                     const vtitle = (vd.title || "").toLowerCase().trim();
                     if (vk.toLowerCase() === cleanNk || vtitle.includes(cleanNk)) {
                         prep  = vd.preparatory_pose_id;
-                        recov = vd.recovery_pose_id || vd.recover_pose_id;
+                        recov = vd.recovery_pose_id;
                         break;
                     }
                 }

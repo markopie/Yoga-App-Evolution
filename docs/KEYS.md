@@ -13,13 +13,13 @@
 `['name', 'id', 'iast', 'plate_numbers', 'intensity', 'requires_sides', 'page_2001', 'page_2015', 'technique', 'category', 'note', 'stages', 'hold', 'english_name', 'last_edited', 'description', 'user_id', 'hold_json']`
 
 ## stages
-`['stage_name', 'asana_id', 'title', 'shorthand', 'full_technique', 'plate_number', 'id', 'hold', 'hold_json', 'preparatory_pose_id', 'recover_pose_id']`
+`['stage_name', 'asana_id', 'title', 'shorthand', 'full_technique', 'plate_number', 'id', 'hold_legacy', 'hold_json', 'preparatory_pose_id', 'recovery_pose_id', 'image_url', 'audio_url', 'sort_order', 'page_primary']`
 
 ## user_stages *(DEPRECATED - Migrated to stages)*
-`['id', 'asana_id', 'stage_name', 'shorthand', 'full_technique', 'created_at', 'title', 'hold', 'parent_id', 'user_id', 'hold_json']`
+`['id', 'asana_id', 'stage_name', 'shorthand', 'full_technique', 'created_at', 'title', 'hold', 'user_id', 'hold_json']`
 
 ## courses
-`['id', 'title', 'category', 'sequence_text', 'last_edited']`
+`['id', 'title', 'sequence_text_ARCHIVED', 'last_edited', 'user_id', 'is_system', 'sub_category_id', 'sequence_json', 'redirect_id', 'is_alias', 'condition_notes']`
 
 ## user_sequences *(DEPRECATED - Migrated to courses)*
 `['id', 'title', 'category', 'sequence_text', 'pose_count', 'total_seconds', 'created_at', 'updated_at', 'user_id']`

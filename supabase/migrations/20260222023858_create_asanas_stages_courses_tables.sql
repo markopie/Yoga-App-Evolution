@@ -27,11 +27,16 @@
   ### `stages` Table
   Stores variations/stages of asanas:
   - `id` (uuid, primary key) - Unique identifier
-  - `parent_id` (text array) - Links to parent asana(s) in asanas table
+  - `asana_id` (text) - Links to parent asana in asanas table
   - `stage_name` (text) - Stage identifier (e.g., "I", "IIa", "IVb")
   - `title` (text) - Display title for the stage
   - `full_technique` (text) - Complete technique description
   - `shorthand` (text) - Abbreviated technique
+  - `hold_json` (jsonb) - Timing durations (standard, short, long, flow)
+  - `sort_order` (integer) - Display ordering index
+  - `image_url` (text) - Image reference
+  - `preparatory_pose_id` (jsonb) - Prep pose relation {asana_id, stage_id}
+  - `recovery_pose_id` (jsonb) - Recovery pose relation {asana_id, stage_id}
   - `created_at` (timestamptz) - Record creation timestamp
 
   ### `courses` Table
@@ -56,7 +61,8 @@
   - The app expects specific data formats; transformation logic is in app.js
   - plate_numbers is stored as text and parsed by the client
   - sequence_text follows format: "ID | Time | [Note with Variation]"
-  - parent_id in stages is an array to support multiple parent links
+  - asana_id in stages links to the parent asana's id (text, 3-digit padded)
+  - Additional columns (hold_json, sort_order, image_url, preparatory_pose_id, recovery_pose_id, page_primary, etc.) were added in later migrations
 */
 
 -- Create asanas table

@@ -399,3 +399,30 @@
 - Verify that the new stage creation flow works end-to-end in the live app (create stage → edit fields → save → reload)
 - Audit any remaining references to `stage_name` examples like "WALL" or "BENT" in other docs or code comments
 - Consider adding a "Delete Stage" confirmation dialog to prevent accidental removal
+
+---
+
+## [2026-04-25] - Session [02]
+**Goal:** Fix 400 error when saving stages (column name mismatch), resolve Chrome aria-hidden warning, populate Category/Intensity fields in Asana Editor, and remove unused Plate/Page fields.
+
+**Architectural Decisions:**
+- **Column Rename Migration:** Created a migration to rename `recover_pose_id` → `recovery_pose_id` in the `stages` table, matching the payload sent by the save handler. Removed all `recover_pose_id` fallback logic from the data adapter and sequence engine since the column will now match.
+- **aria-hidden Removal:** Removed `aria-hidden="true"` from all three modal backdrops (`asanaEditorBackdrop`, `browseBackdrop`, `historyBackdrop`). The `role="dialog"` + `aria-modal="true"` pattern on the inner modal divs is the correct ARIA pattern — it tells assistive tech to ignore content outside the dialog without needing `aria-hidden` on the backdrop, which conflicts with focused elements inside the modal.
+- **Category Select Hydration:** Added `populateCategorySelect()` which fetches categories from the `asana_categories` table on first editor open. The editor now selects the matching option, or shows a custom text input for categories not yet in the database.
+- **Intensity Field Wiring:** The Intensity field now reads from `asana.intensity` on open and persists to the database on save. Added a ⓘ tooltip explaining "Light on Yoga pose number — lower numbers are less difficult".
+- **Field Cleanup:** Removed `plate_numbers`, `page_2001`, and `page_2015` fields from the editor UI as they are not used anywhere in the app.
+
+**Code Changed:**
+- `supabase/migrations/20260425000002_rename_recover_pose_id_to_recovery_pose_id.sql`: New migration to rename column
+- `src/services/sequenceEngine.js`: Removed `recover_pose_id` fallback lookups
+- `src/services/dataAdapter.js`: Removed `recover_pose_id` fallback in `normalizeAsana` and `normalizeStageRow`
+- `src/ui/asanaEditor.js`: Removed `recover_pose_id` fallback in stage template; added `populateCategorySelect()`; wired category and intensity in `openAsanaEditor()` and save handler
+- `index.html`: Removed `aria-hidden` from all three backdrops; removed Plate Numbers, Page 2001, Page 2015 fields; added ⓘ tooltip to Intensity label
+- `docs/KEYS.md`: Updated to reflect actual live schema for `stages` and `courses` tables
+
+**Lessons Learned:**
+- PostgREST returns a 400 when a column in the upsert payload doesn't exist in the table. The `recover_pose_id` vs `recovery_pose_id` mismatch was silently failing because the column name in the migration had a typo.
+- `aria-hidden="true"` on a backdrop that wraps a modal with focusable elements triggers Chrome's accessibility warning. The fix is to remove `aria-hidden` entirely — `aria-modal="true"` on the dialog element is sufficient.
+- The category select in the Asana Editor was defined in HTML but never populated from the database. Any module that renders a `<select>` backed by a DB table needs an explicit fetch-and-populate step.
+
+
