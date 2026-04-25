@@ -17,10 +17,10 @@ export async function parseSemicolonCommand(commandString, libraryArray, asanaLi
     if (parts.length >= 3) {
         [title, category, idsStr] = parts;
     } 
-    // CASE B: Shorthand Command (LOY: or MEHTA:)
+    // CASE B: Shorthand Command (GEM:)
     else if (parts.length === 1) {
         const upper = parts[0].toUpperCase();
-        if (upper.startsWith('LOY:') || upper.startsWith('MEHTA:')) {
+        if (upper.startsWith('GEM:')) {
             idsStr = parts[0];
         } else {
             return null;
@@ -31,12 +31,10 @@ export async function parseSemicolonCommand(commandString, libraryArray, asanaLi
     }
 
     const upperIds = idsStr.toUpperCase();
-    const isLOYBatch = upperIds.startsWith('LOY:');
-    const isMehtaBatch = upperIds.startsWith('MEHTA:');
+    const isGEMBatch = upperIds.startsWith('GEM:');
     
-    // Strip prefix if present (LOY: is 4 chars, MEHTA: is 6 chars)
-    const cleanIdsStr = isLOYBatch ? idsStr.substring(4).trim() : 
-                       (isMehtaBatch ? idsStr.substring(6).trim() : idsStr);
+    // Strip prefix if present (GEM: is 4 chars)
+    const cleanIdsStr = isGEMBatch ? idsStr.substring(4).trim() : idsStr;
 
     const expandedTokens = cleanIdsStr.replace(/(\d+)\s*-\s*(\d+)/g, (m, start, end) => {
         const r = [];
@@ -47,21 +45,19 @@ export async function parseSemicolonCommand(commandString, libraryArray, asanaLi
     const tokens = expandedTokens.split(',').map(s => s.trim()).filter(s => s.length > 0 && s !== '0');
 
     const resolveToken = async (token) => {
-        if (isLOYBatch) {
-            const cleanId = token.padStart(3, '0');
-            const asana = asanaLibraryMap?.[cleanId];
-            if (asana) return { id: cleanId, asana, variation: '', stageKey: '', name: asana.english || asana.name || cleanId };
-            return null;
-        }
-
-        // Mehta / Page Number Lookup (page_primary)
-        const pageNum = parseFloat(token);
-        if (!isNaN(pageNum)) {
-            const baseMatches = libraryArray.filter(a => parseFloat(a.page_primary) === pageNum);
-            if (baseMatches.length >= 1) {
-                const m = baseMatches[0];
-                return { id: m.id, asana: m, variation: '', stageKey: '', name: m.english || m.name || m.id, _pageNum: pageNum };
-            }
+        // GEM Plate Lookup: find asanas where gem_plate contains the token
+        // gem_plate is a comma-separated list of numbers, e.g. "113,114"
+        const matches = libraryArray.filter(a => {
+            const gemPlate = a.gem_plate || '';
+            if (!gemPlate) return false;
+            const gemIds = gemPlate.split(',').map(s => s.trim()).filter(Boolean);
+            return gemIds.some(g => g === token);
+        });
+        
+        if (matches.length >= 1) {
+            // Return the first match (deduplication: if multiple GEM IDs map to same asana, only add once)
+            const m = matches[0];
+            return { id: m.id, asana: m, variation: '', stageKey: '', name: m.english || m.name || m.id };
         }
         return null;
     };

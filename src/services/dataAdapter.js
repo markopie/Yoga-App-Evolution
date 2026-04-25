@@ -293,7 +293,7 @@ function normalizeAsana(row, existingData = {}) {
         holdTimes: holdTimes,
         hold_json: hold_json,
         page_primary,
-        yoga_the_iyengar_way_id: row.yoga_the_iyengar_way_id ?? existingData.yoga_the_iyengar_way_id ?? '',
+        gem_plate: row.gem_plate ?? existingData.gem_plate ?? '',
         intensity: row.intensity ?? existingData.intensity ?? '',
         recovery_pose_id: row.recovery_pose_id ?? existingData.recovery_pose_id ?? null,
         preparatory_pose_id: row.preparatory_pose_id ?? existingData.preparatory_pose_id ?? null,

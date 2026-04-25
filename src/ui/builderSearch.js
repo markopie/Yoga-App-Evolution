@@ -13,18 +13,20 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
         if (!q) return 0;
 
         const idStrLoy = String(asma.id || '');
-        const idStrMehta = String(asma.yoga_the_iyengar_way_id || '');
-        const idStrPage = String(asma.page_primary || '');
         const idNormLoy = idStrLoy.toLowerCase();
         
-        // Exact Numeric Match (Prioritize LOY, then Mehta/Page)
+        // Exact Numeric Match (Prioritize our ID, then GEM plate)
         if (/^\d+$/.test(q)) {
             if (idStrLoy.padStart(3, '0') === q.padStart(3, '0')) return 100;
-            if (idStrMehta && idStrMehta.padStart(3, '0') === q.padStart(3, '0')) return 90;
-            if (idStrPage && idStrPage.padStart(3, '0') === q.padStart(3, '0')) return 85;
+            // Check if the query number appears in the gem_plate comma-separated list
+            const gemPlate = asma.gem_plate || '';
+            if (gemPlate) {
+                const gemIds = gemPlate.split(',').map(s => s.trim()).filter(Boolean);
+                if (gemIds.some(g => g.padStart(3, '0') === q.padStart(3, '0'))) return 90;
+            }
         }
         
-        if (idNormLoy === q || idStrMehta.toLowerCase() === q || idStrPage.toLowerCase() === q) return 100;
+        if (idNormLoy === q) return 100;
 
         const eng  = normaliseText(asma.english || '');
         const iast = normaliseText(asma.iast || '');
@@ -34,7 +36,7 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
         if (eng.startsWith(q) || iast.startsWith(q) || sans.startsWith(q)) return 50;
         if (eng.includes(q) || iast.includes(q) || sans.includes(q)) return 20;
         if (plate.includes(q)) return 10;
-        if (idNormLoy.includes(q) || (idStrMehta && idStrMehta.includes(q)) || (idStrPage && idStrPage.includes(q))) return 5;
+        if (idNormLoy.includes(q)) return 5;
 
         return 0;
     }
@@ -55,7 +57,7 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
         const val = searchInput.value.trim();
         const isSemicolon = val.includes(';');
         const upperVal = val.toUpperCase();
-        const isBatch = isSemicolon || upperVal.startsWith('LOY:') || upperVal.startsWith('MEHTA:');
+        const isBatch = isSemicolon || upperVal.startsWith('GEM:');
 
         if (isBatch) {
             e.preventDefault();
@@ -90,8 +92,8 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
         searchInput.oninput = () => {
         const query = searchInput.value.trim();
         const upperQuery = query.toUpperCase();
-        // Logic Guard: Hide results if it's a batch command (Semicolon, LOY:, or MEHTA:)
-        if (query.length < 1 || query.includes(';') || upperQuery.startsWith('LOY:') || upperQuery.startsWith('MEHTA:')) {
+        // Logic Guard: Hide results if it's a batch command (Semicolon or GEM:)
+        if (query.length < 1 || query.includes(';') || upperQuery.startsWith('GEM:')) {
             resultsBox.style.display = "none";
             return;
         }

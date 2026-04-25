@@ -485,3 +485,24 @@
 **Lessons Learned:**
 - When a DB column is added or populated after the data adapter was written, the adapter's normalization function must be updated to include the new field. The `window.asanaLibrary` cache is only as complete as the `normalizeAsana()` output object.
 - Redundant fallback expressions (`a || a || ""`) are a code smell — they indicate a copy-paste error where the second term was meant to be a different fallback source but never got updated.
+
+---
+
+## [2026-04-25] - Session [06]
+**Goal:** Replace LOY/MEHTA batch entry logic with GEM plate support in the Sequence Builder.
+
+**Architectural Decisions:**
+- **GEM Plate Field:** The new `gem_plate` column in the `asanas` table stores comma-separated GEM index numbers (e.g., "113,114") that map to our internal asana IDs. This allows multiple GEM IDs to reference the same asana.
+- **Scoring Replacement:** Removed `yoga_the_iyengar_way_id` and `page_primary` from the builder search scoring. Replaced with `gem_plate` lookup — when a user types a number, it checks if that number appears in the comma-separated `gem_plate` list (score 90, just below exact ID match at 100).
+- **Batch Command Migration:** Replaced `LOY:` and `MEHTA:` shorthand prefixes with `GEM:`. The parser now looks up tokens against the `gem_plate` field across all asanas. If multiple GEM IDs map to the same asana (e.g., "113,114" both map to our id 105), entering either one adds our asana once.
+- **Data Adapter Hygiene:** Added `gem_plate` to the normalized asana object in `dataAdapter.js`. Removed `yoga_the_iyengar_way_id` from the normalized output since it's no longer needed.
+
+**Code Changed:**
+- `src/ui/builderSearch.js`: Replaced `yoga_the_iyengar_way_id`/`page_primary` scoring with `gem_plate` scoring; replaced `LOY:`/`MEHTA:` batch detection with `GEM:`
+- `src/utils/builderParser.js`: Replaced LOY/MEHTA batch parsing with GEM plate lookup logic; tokens now filter `libraryArray` by `gem_plate` field
+- `src/services/dataAdapter.js`: Added `gem_plate` to normalized asana object; removed `yoga_the_iyengar_way_id`
+
+**Next Steps for Next Session:**
+- Verify GEM batch commands work end-to-end in the live builder (e.g., `GEM:113` adds our id 105)
+- Populate `gem_plate` values in the database for asanas that have GEM index numbers
+- Consider adding `gem_plate` to the Asana Editor UI for easy data entry
