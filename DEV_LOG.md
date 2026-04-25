@@ -425,4 +425,22 @@
 - `aria-hidden="true"` on a backdrop that wraps a modal with focusable elements triggers Chrome's accessibility warning. The fix is to remove `aria-hidden` entirely — `aria-modal="true"` on the dialog element is sufficient.
 - The category select in the Asana Editor was defined in HTML but never populated from the database. Any module that renders a `<select>` backed by a DB table needs an explicit fetch-and-populate step.
 
+---
+
+## [2026-04-25] - Session [03]
+**Goal:** Fix 400 error when saving category — the `asanas` table uses `category_id` (FK to `asana_categories`), not a `category` text column.
+
+**Architectural Decisions:**
+- **category_id Resolution:** The save handler now calls `getOrCreateAsanaCategoryId(categoryName)` to resolve the selected category name to its numeric ID before upserting. This function (already in `persistence.js`) looks up or creates the row in `asana_categories` and returns the ID.
+- **Payload Correction:** Changed the upsert payload from `category: "string"` to `category_id: <number>`, matching the actual database schema.
+- **Documentation Sync:** Updated `docs/KEYS.md` to reflect that `asanas` uses `category_id` (FK) rather than a `category` text column, and removed references to the defunct `plate_numbers`, `page_2001`, `page_2015` columns.
+
+**Code Changed:**
+- `src/ui/asanaEditor.js`: Added import of `getOrCreateAsanaCategoryId` from `persistence.js`; save handler now resolves category name to ID and sends `category_id`
+- `docs/KEYS.md`: Updated `asanas` column list to match live schema (removed `plate_numbers`, `page_2001`, `page_2015`, `category`; added `category_id` with FK note)
+
+**Lessons Learned:**
+- The `asanas` table migrated from a `category` text column to a `category_id` FK referencing `asana_categories(id)` at some point, but the Asana Editor was never updated to match. Always verify the actual database schema (via migrations or Supabase dashboard) rather than assuming the UI's mental model is correct.
+- `getOrCreateAsanaCategoryId` already existed in `persistence.js` for the course builder's category handling, but the Asana Editor was writing directly to a non-existent `category` column. Reusing existing helpers prevents duplicate logic.
+
 

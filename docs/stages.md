@@ -1,6 +1,6 @@
 # Asana Stages & Variations Mapping
 
-> Last Sync: 2026-04-25 10:53:50 | Total Records: 216
+> Last Sync: 2026-04-25 13:48:38 | Total Records: 217
 
 | id | asana_id | stage_name | title |
 | --- | --- | --- | --- |
@@ -220,3 +220,4 @@
 | 270 | 091 | KI | Kurunta (Wall Rope) |
 | 271 | 069 | KI | Kurunta (Wall Rope) |
 | 278 | 045 | I | Half Padmasana |
+| 283 | 040 | IVI | Sitting on feet |

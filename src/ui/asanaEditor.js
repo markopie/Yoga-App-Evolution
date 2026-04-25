@@ -6,6 +6,7 @@
 import { $, normaliseText } from '../utils/dom.js';
 import { supabase } from '../services/supabaseClient.js';
 import { loadAsanaLibrary } from '../services/dataAdapter.js';
+import { getOrCreateAsanaCategoryId } from '../services/persistence.js';
 
 /**
  * Converts an integer to a Roman numeral string.
@@ -568,12 +569,13 @@ window.setupAsanaEditorSave = function() {
         if (!id || id === "000") return;
 
         try {
-            // Resolve category: use select value, or custom input if visible
+            // Resolve category name to category_id (FK to asana_categories table)
             const catSelect = $("editAsanaCategory");
             const catCustom = $("editAsanaCategoryCustom");
-            const category = (catCustom && catCustom.style.display !== "none" && catCustom.value.trim())
+            const categoryName = (catCustom && catCustom.style.display !== "none" && catCustom.value.trim())
                 ? catCustom.value.trim()
                 : (catSelect ? catSelect.value : "");
+            const category_id = categoryName ? await getOrCreateAsanaCategoryId(categoryName) : null;
 
             const asanaPayload = {
                 id,
@@ -583,7 +585,7 @@ window.setupAsanaEditorSave = function() {
                 technique: $("editAsanaTechnique").value.trim(),
                 description: $("editAsanaDescription").value.trim(),
                 requires_sides: $("editAsanaRequiresSides").checked,
-                category,
+                category_id,
                 intensity: $("editAsanaIntensity")?.value?.trim() || "",
                 preparatory_pose_id: buildInjectionPayload($("editAsanaPrep")?.value),
                 recovery_pose_id: buildInjectionPayload($("editAsanaRecov")?.value)

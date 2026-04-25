@@ -7,7 +7,8 @@
   - `sequence_completions`: Private; access restricted to `auth.uid() = user_id`.
 
 ## asanas
-`['name', 'id', 'iast', 'plate_numbers', 'intensity', 'requires_sides', 'page_2001', 'page_2015', 'technique', 'category', 'note', 'stages', 'hold', 'english_name', 'last_edited', 'description', 'is_system', 'recovery_pose_id', 'hold_json', 'preparatory_pose_id', 'how_to_use_yoga_id', 'yoga_the_iyengar_way_id']`
+`['name', 'id', 'iast', 'intensity', 'requires_sides', 'technique', 'category_id', 'note', 'english_name', 'last_edited', 'description', 'is_system', 'recovery_pose_id', 'hold_json', 'preparatory_pose_id', 'how_to_use_yoga_id', 'yoga_the_iyengar_way_id']`
+
 
 ## user_asanas *(DEPRECATED - Migrated to asanas)*
 `['name', 'id', 'iast', 'plate_numbers', 'intensity', 'requires_sides', 'page_2001', 'page_2015', 'technique', 'category', 'note', 'stages', 'hold', 'english_name', 'last_edited', 'description', 'user_id', 'hold_json']`
