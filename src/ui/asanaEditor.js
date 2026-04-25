@@ -208,7 +208,7 @@ window.openAsanaEditor = async function(asanaId) {
     }
 
     // Intensity
-    if ($("editAsanaIntensity")) $("editAsanaIntensity").value = asana?.intensity || asana?.intensity || "";
+    if ($("editAsanaIntensity")) $("editAsanaIntensity").value = asana?.intensity || "";
 
     // Relational Injections
     const formatInjection = (val) => {

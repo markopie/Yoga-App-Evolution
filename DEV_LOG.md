@@ -469,4 +469,19 @@
 - Fuzzy name matching is dangerous when names share common substrings (e.g., "Setu Bandhasana" vs "Setu Bandhasana Sarvangasana"). Always verify fuzzy matches or use exact matching with explicit overrides for edge cases.
 - The `intensity` column is stored as TEXT, not numeric, so values like `-` and `Low`/`Medium` are valid alongside numeric values. This means the column serves dual purpose — numeric difficulty ratings for asanas and categorical labels for non-asanas.
 
+---
 
+## [2026-04-25] - Session [05]
+**Goal:** Fix blank Intensity field in Asana Editor — intensity values exist in DB but don't appear in the editor UI.
+
+**Architectural Decisions:**
+- **Data Adapter Gap:** The `normalizeAsana()` function in `dataAdapter.js` was not mapping the `intensity` column from the database row into the normalized asana object. This meant `window.asanaLibrary` (the in-memory cache) never contained intensity data, even though the DB had it.
+- **Redundant Expression Bug:** The editor's intensity population line had `asana?.intensity || asana?.intensity || ""` — the same fallback repeated twice, so if the first `asana?.intensity` was `undefined`, the second identical expression also returned `undefined`, falling through to `""`.
+
+**Code Changed:**
+- `src/services/dataAdapter.js`: Added `intensity: row.intensity ?? existingData.intensity ?? ''` to the `normalizeAsana()` output object
+- `src/ui/asanaEditor.js`: Fixed redundant expression `asana?.intensity || asana?.intensity || ""` → `asana?.intensity || ""`
+
+**Lessons Learned:**
+- When a DB column is added or populated after the data adapter was written, the adapter's normalization function must be updated to include the new field. The `window.asanaLibrary` cache is only as complete as the `normalizeAsana()` output object.
+- Redundant fallback expressions (`a || a || ""`) are a code smell — they indicate a copy-paste error where the second term was meant to be a different fallback source but never got updated.
