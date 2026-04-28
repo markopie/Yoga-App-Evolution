@@ -90,7 +90,6 @@ async function loadFont(pdf, fontPath, fontName) {
 }
 
 
-
 /**
  * Table-based PDF Generator
  * Reconstructs the visual table layout using jsPDF's native drawing/text APIs.
@@ -109,7 +108,6 @@ async function generateTablePdf() {
     // ── Load custom fonts ────────────────────────────────────────────────────
     const devanagariFont = await loadFont(pdf, 'fonts/NotoSansDevanagari-Regular.ttf', 'NotoSansDevanagari');
     const iastFont = await loadFont(pdf, 'fonts/NotoSerif-Regular.ttf', 'NotoSerif');
-
 
     // ── Gather Data ──────────────────────────────────────────────────────────
     const titleText = getSequenceTitle() || 'Untitled Sequence';
@@ -130,7 +128,6 @@ async function generateTablePdf() {
         pdf.setFont(devanagariFont, 'normal');
         pdf.setFontSize(8);
         builderState.poses.forEach(pose => {
-
             const idStr = String(pose.id);
             const normId = idStr.match(/^\d+/)?.[0]?.padStart(3, '0') || idStr;
             const asana = libMap[normId] || libArray.find(a => String(a.id || a.asanaNo) === String(normId));
@@ -146,9 +143,6 @@ async function generateTablePdf() {
 
     const col2W = 95;   // Pose Details (English, IAST, variation, note)
     const col3W = contentWidth - col1W - col2W; // Info (remaining, shrinks to accommodate Sanskrit)
-
-
-
 
     const col1X = margin;
     const col2X = col1X + col1W;
@@ -227,12 +221,19 @@ async function generateTablePdf() {
         y += 8;
     }
 
-    // 3. Date + Duration (header meta bar)
+   // 3. Date + Duration + Course ID (header meta bar)
     addPageIfNeeded(9);
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(107, 114, 128);
-    pdf.text(`Date: ${dateStr}`, margin, y + 4);
+    
+    // Extract ID based on the validated builderState schema
+    // Fallback to URL parameters if the builder initializes via query string
+    const urlParams = new URLSearchParams(window.location.search);
+    const mainCourseId = builderState.editingSupabaseId || urlParams.get('id') || '';
+    const idDisplay = mainCourseId ? `   |   Course ID: ${mainCourseId}` : '';
+    
+    pdf.text(`Date: ${dateStr}${idDisplay}`, margin, y + 4);
 
     // Duration pill (simple filled rectangle)
     const durText = `${formattedTime}`;
@@ -279,9 +280,6 @@ async function generateTablePdf() {
         y += noteCardH + 4;
     }
 
-
-
-
     // 5. Table Header
     addPageIfNeeded(11);
     drawCellBg(col1X, y, col1W, 8, headerBg);
@@ -298,7 +296,6 @@ async function generateTablePdf() {
     pdf.text('Info', col3X + (col3W / 2), y + 5.5, { align: 'center' });
     y += 8;
 
-
     // 6. Table Rows
     let poseCounter = 0;
 
@@ -314,7 +311,6 @@ async function generateTablePdf() {
         let col3Lines = [];
         let rowBg = null;
         let col1Devanagari = ''; // Sanskrit text for col1, rendered with custom font
-
 
         if (isLoopStart) {
             const rounds = Number(pose.duration) || 2;
@@ -382,11 +378,21 @@ async function generateTablePdf() {
                 col2Lines.push(`Note: ${cleanNote}`);
             }
 
-            // Build info text (duration + tier)
+            // Build info text (duration + tier + bilateral logic)
             const tier = pose.holdTier || 'standard';
-            const tierLabel = tier === 'short' ? 'S' : tier === 'long' ? 'L' : '';
-            col3Lines = [`${formatPoseDuration(dur)}`, tierLabel].filter(Boolean);
+            const tierLabel = tier === 'short' ? 'Short hold' : tier === 'long' ? 'Long hold' : '';
 
+            // Schema Strict: Account for both native boolean and potential string casts from the database adapter
+            const isBilateral = asana?.requires_sides === true || 
+                                String(asana?.requires_sides).toLowerCase() === 'true' || 
+                                asana?.requiresSides === true || 
+                                String(asana?.requiresSides).toLowerCase() === 'true';
+
+            const formattedDuration = formatPoseDuration(dur);
+            const durationDisplay = isBilateral ? `${formattedDuration} / side` : formattedDuration;
+
+            // Automatically strips out empty tierLabels, handling the 'hide standard' request seamlessly
+            col3Lines = [durationDisplay, tierLabel].filter(Boolean);
         }
 
         // Calculate row height
@@ -395,7 +401,6 @@ async function generateTablePdf() {
         const maxLines = Math.max(col1Lines.length + (col1Devanagari ? 1 : 0), col2Lines.length, col3Lines.length);
 
         const rowH = Math.max(9, (maxLines * lineH) + (padding * 2));
-
 
         // Check if row fits on current page
         addPageIfNeeded(rowH + 2);
@@ -416,7 +421,6 @@ async function generateTablePdf() {
             pdf.text('Info', col3X + (col3W / 2), y + 5.5, { align: 'center' });
             y += 8;
         }
-
 
         // Draw row background
         if (rowBg) {
@@ -456,8 +460,6 @@ async function generateTablePdf() {
             pdf.setTextColor(noteColor[0], noteColor[1], noteColor[2]);
             pdf.text(col1Devanagari, col1X + (col1W / 2), y + padding + (lineH * (devanagariLineIdx + 1)), { align: 'center' });
         }
-
-
 
         // Col 2: left-aligned
         col2Lines.forEach((line, i) => {
@@ -508,7 +510,6 @@ async function generateTablePdf() {
             }
         });
 
-
         y += rowH;
     });
 
@@ -528,7 +529,6 @@ async function generateTablePdf() {
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(160, 160, 160);
     pdf.text(`Generated on ${dateStr}`, margin, y);
-
 
     // 8. Save
     pdf.save(sanitizeFilename(titleText));
