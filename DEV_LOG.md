@@ -506,3 +506,30 @@
 - Verify GEM batch commands work end-to-end in the live builder (e.g., `GEM:113` adds our id 105)
 - Populate `gem_plate` values in the database for asanas that have GEM index numbers
 - Consider adding `gem_plate` to the Asana Editor UI for easy data entry
+
+---
+
+## [2026-04-28] - Session [01]
+**Goal:** Replace image-based PDF export with native text-based PDF using jsPDF text API for selectable/copyable text.
+
+**Architectural Decisions:**
+- **Text-Based PDF:** Replaced the `html2canvas` + jsPDF image approach with a pure jsPDF text API implementation. The new `generateTablePdf()` function draws the table layout (borders, backgrounds, headers) using jsPDF's native drawing commands and renders all text with `pdf.text()`, producing a PDF with real selectable, copyable text.
+- **Custom Font Support:** Added `loadFont()` helper to load TTF fonts (NotoSansDevanagari for Sanskrit, NotoSerif for IAST diacriticals) via `fetch()` + `addFileToVFS()` + `addFont()`, enabling proper rendering of Devanagari and accented characters.
+- **Dynamic Column Sizing:** Column 1 width is calculated based on the widest Devanagari text in the sequence (min 18mm, max 45mm), with the info column (col 3) shrinking to accommodate. This prevents Sanskrit text from wrapping or overlapping.
+- **Safety Note Card:** Dynamically sized based on the number of wrapped text lines, with proper spacing between the "SAFETY NOTE" header and body text.
+- **Dead Code Removal:** Removed ~400 lines of dead code: `getExportElement()`, `buildPdfConfig()`, `ensureExportStyles()`, `createExportSnapshot()`, `waitForExportLayout()`, `printSequence()`, `ensureLibrariesLoaded()`, `showPdfProgress()`, `hidePdfProgress()`. Also cleaned up unused imports (`$`, `isFlowSequence`, `formatCategory`, `generateInfoCellHTML`, `buildMacroInfoHTML`, `generateExportHeaderHTML`).
+- **BEM Cleanup:** Removed the Print button from `initExportUI()` since the text-based PDF replaces the need for browser print fallback.
+
+**Code Changed:**
+- `src/ui/builderUI.js`: Added `generateTablePdf()` (~300 lines) with full table layout, custom font loading, dynamic column sizing, safety note card, and total duration footer. Removed all dead image-based PDF code (~400 lines). Cleaned up unused imports. Simplified `downloadSequencePdf()` to just call `generateTablePdf()` with error handling.
+
+**Lessons Learned:**
+- jsPDF's `splitTextToSize()` is essential for wrapping long text (like safety notes) within a fixed width. For Devanagari text, increasing the column width (up to 45mm) is preferable to wrapping, since wrapped Sanskrit looks awkward in a narrow column.
+- When switching from image-based to text-based PDF, all the DOM snapshot/clone/restore infrastructure becomes dead code. The text-based approach is simpler, faster, and produces better results (selectable text, smaller file size).
+- Font loading in jsPDF requires fetching the TTF file as ArrayBuffer, converting to base64 in chunks (to avoid call stack limits), then registering with `addFileToVFS()` + `addFont()`.
+
+**Next Steps for Next Session:**
+- Verify the text-based PDF works end-to-end with various sequence types (macros, loops, regular poses)
+- Consider adding `gem_plate` to the Asana Editor UI for easy data entry
+
+

@@ -1,0 +1,7 @@
+# Windows Command Line Execution Rules
+
+When executing shell commands in this workspace, you are operating in a Windows environment. Follow these rules strictly:
+
+1. **Path Separators for CMD:** If you must use legacy CMD utilities (like `findstr`, `dir`, `copy`, `type`), always use backslashes (`\`) for file paths. Forward slashes (`/`) will be misinterpreted as command-line switches and cause errors.
+2. **Prefer PowerShell:** Always prefer modern PowerShell cmdlets over legacy CMD tools. For example, use `Select-String` instead of `findstr`, and `Get-ChildItem` instead of `dir`. PowerShell natively handles forward slashes in paths perfectly.
+3. **Command Chaining:** If you are executing commands via PowerShell, chain multiple commands together using a semicolon (`;`) instead of `&&`.

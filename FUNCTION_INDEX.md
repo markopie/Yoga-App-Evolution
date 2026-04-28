@@ -236,13 +236,11 @@
 
 ### 📄 `ui/builderUI.js`
 - `calculateTotalSequenceTime` (window binding)
-- `createExportSnapshot` (function)
 - `downloadSequencePdf` (function)
 - `getExpandedPoses` (window binding)
 - `getPosePillTime` (window binding)
 - `initExportUI` (function)
 - `openLinkSequenceModal` (function)
-- `printSequence` (function)
 - `selectLinkSequence` (window binding)
 - `toggleWarning` (window binding)
 - `updateBuilderModeUI` (function)

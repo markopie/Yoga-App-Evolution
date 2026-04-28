@@ -1,6 +1,6 @@
 # Primary Asana Database
 
-> Last Sync: 2026-04-25 17:24:58 | Total Records: 237
+> Last Sync: 2026-04-28 14:51:08 | Total Records: 237
 
 | id | name | iast | requires_sides |
 | --- | --- | --- | --- |
@@ -129,7 +129,7 @@
 | 123 | Astavakrasana | Ạṣtāvakrāsana | True |
 | 124 | Eka Hasta Bhujasana | Eka Hasta Bjujāsana | True |
 | 125 | Dwi Hasta Bhujasana | Dwi Hasta Bhujāsana | False |
-| 126 | Bhujapidasana | Bjujapidāsana | False |
+| 126 | Bujapidasana | Bhujapīḍāsana | False |
 | 127 | Mayurasana | Mayūrāsana | False |
 | 128 | Padma Mayurasana | Padma Mayūrāsana | False |
 | 129 | Hamsasana | Hạmsāsana | False |

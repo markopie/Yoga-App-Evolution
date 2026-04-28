@@ -1,7 +1,6 @@
-import { builderState, isFlowSequence } from '../store/builderState.js';
-import { $ } from '../utils/dom.js';
-import { builderPoseName, generateInfoCellHTML, buildMacroInfoHTML, generateExportHeaderHTML } from './builderTemplates.js';
-import { formatCategory } from '../utils/format.js';
+import { builderState } from '../store/builderState.js';
+import { builderPoseName } from './builderTemplates.js';
+
 
 function escapeHtml(str) {
     return String(str ?? '')
@@ -10,10 +9,6 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
-}
-
-function getExportElement() {
-    return document.querySelector('#editCourseBackdrop .modal');
 }
 
 function getSequenceTitle() {
@@ -32,332 +27,174 @@ function sanitizeFilename(title) {
     return `${base || 'Yoga-Sequence'}.pdf`;
 }
 
-function buildPdfConfig() {
-    return {
-        margin: [12, 12],
-        filename: sanitizeFilename(getSequenceTitle()),
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: true, // Enabled logging to catch internal capture errors
-            backgroundColor: '#ffffff'
-        },
-        jsPDF: {
-            unit: 'mm',
-            format: 'a4',
-            orientation: 'portrait'
-        },
-        pagebreak: {
-            mode: ['avoid-all', 'css', 'legacy']
-        }
-    };
+async function ensureJsPdfLoaded() {
+    if (typeof window.jspdf !== 'undefined') return;
+    await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
 }
 
-function ensureExportStyles() {
-    if (document.getElementById('builderExportStyles')) return;
-
-    const style = document.createElement('style');
-    style.id = 'builderExportStyles';
-    style.textContent = `
-        /* Root Export Containers */
-        .builder-export-root { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .export-cluster { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-
-        /* Buttons */
-        .btn-export-primary, .btn-export-secondary {
-            appearance: none; border: 1px solid transparent; border-radius: 999px;
-            padding: 10px 16px; font-size: 0.92rem; font-weight: 600; cursor: pointer;
-        }
-        .btn-export-primary { background: #111111; color: #ffffff; }
-        .btn-export-secondary { background: #f5f5f7; color: #1d1d1f; border-color: #d2d2d7; }
-
-        /* PDF Snapshot Engine Styles */
-        .export-snapshot-host {
-            position: absolute !important; left: -10000px !important; top: 0 !important;
-            width: 800px !important; background: #ffffff !important; display: block !important;
-        }
-
-        .pdf-export-table {
-            display: table !important; width: 100% !important; table-layout: fixed !important;
-            border-collapse: collapse !important; margin: 0 !important;
-        }
-
-        .pdf-export-table th, .pdf-export-table td { 
-            display: table-cell !important; border: 1px solid #d2d2d7 !important;
-            padding: 12px 10px !important; vertical-align: top !important;
-            word-wrap: break-word !important; box-sizing: border-box !important;
-        }
-
-        /* SYNCED ALIGNMENT: Centers Col 1 and 3 Headers + Cells */
-        .pdf-export-table th:nth-child(1), .pdf-export-table td:nth-child(1) { 
-            width: 85px !important; text-align: center !important; 
-        }
-        .pdf-export-table th:nth-child(2), .pdf-export-table td:nth-child(2) { 
-            width: 495px !important; text-align: left !important; 
-        }
-        .pdf-export-table th:nth-child(3), .pdf-export-table td:nth-child(3) { 
-            width: 220px !important; text-align: center !important; 
-        }
-
-        .pdf-export-table th {
-            background: #f5f5f7 !important; font-weight: 700 !important;
-            font-size: 9pt !important; color: #86868b !important; text-transform: uppercase !important;
-        }
-
-        /* Typography & Hierarchy */
-        .export-snapshot-host #displayTitle { 
-            font-size: 28pt !important; font-weight: 700 !important; margin: 0 0 5px 0 !important; 
-        }
-        
-        .export-snapshot-host .export-header-meta {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: baseline !important;
-        border-bottom: 1px solid #e5e7eb !important;
-        margin-bottom: 15px !important;
-        padding-bottom: 5px !important;
-        padding-right: 10px !important; /* ⬅️ ARCHITECT FIX: Added canvas edge buffer */
-        width: 100% !important;
-        background: #ffffff !important;
-        box-sizing: border-box !important;
+export async function downloadSequencePdf() {
+    try {
+        await ensureJsPdfLoaded();
+        await generateTablePdf();
+    } catch (err) {
+        console.error('[PDF] Text export failed:', err);
+        alert('PDF generation encountered an error.');
     }
-
-        .export-snapshot-host .export-meta-date, 
-        .export-snapshot-host .export-meta-duration {
-            font-family: -apple-system, system-ui, sans-serif !important;
-            font-size: 10pt !important;
-            color: #6b7280 !important;
-        }
-
-        .export-snapshot-host .duration-pill {
-        background: #1d4ed8 !important; /* Professional Blue */
-        color: #ffffff !important;
-        padding: 2px 10px !important;
-        border-radius: 9999px !important;
-        font-weight: 700 !important;
-        font-size: 9pt !important;
-        margin-left: 5px !important;
-        margin-right: 4px !important; /* ⬅️ ARCHITECT FIX: Pulls the pill inward */
-        display: inline-block !important;
-    }
-
-        .export-snapshot-host #modalNotesRow {
-            display: block !important; padding: 15px 20px !important;
-            background: #fffcf0 !important; border: 1px solid #ffe082 !important;
-            margin-bottom: 20px !important; border-radius: 8px !important;
-        }
-
-        .b-devanagari { font-size: 1.1rem !important; margin-top: 4px; }
-        .b-var-view { color: #007aff; font-weight: 600; font-size: 0.9rem; }
-        .hidden { display: none !important; }
-    `;
-    document.head.appendChild(style);
 }
 
+
+
 /**
- * Creates a clean, expanded clone of the sequence for PDF rendering.
+ * Format seconds into a human-readable duration string.
+ * e.g. 55 → "55s", 120 → "2m", 300 → "5m", 600 → "10m"
  */
+function formatPoseDuration(seconds) {
+    const total = Math.max(0, Math.round(Number(seconds) || 0));
+    const mins = Math.floor(total / 60);
+    const secs = total % 60;
+    if (mins && secs) return `${mins}m ${secs}s`;
+    if (mins) return `${mins}m`;
+    return `${secs}s`;
+}
+
+
 /**
- * Creates a clean, expanded clone of the sequence for PDF rendering.
- * Architecture: Uses a rigid table structure to prevent column misalignment.
+ * Load a TTF font file and register it with jsPDF for use in PDF generation.
+ * Returns the font name to use with pdf.setFont().
  */
-export function createExportSnapshot(sourceElement) {
-    const clone = sourceElement.cloneNode(true);
-    const libMap = window.asanaLibrary || {};
-
-    // 1. Apply classes to trigger presentation styles
-    clone.classList.add('export-snapshot-host');
-    clone.classList.add('builder-view-mode');
-
-    // 2. Render a dedicated export table to avoid mobile DOM/CSS artifacts
-    const oldTable = clone.querySelector('#builderTable');
-    
-    if (oldTable) {
-        const libArray = Object.values(libMap);
-        const exportTable = document.createElement('table');
-        exportTable.className = 'pdf-export-table';
-        
-        // Header structure matches the strict CSS widths defined in ensureExportStyles
-        exportTable.innerHTML = `
-            <thead>
-                <tr>
-                    <th style="text-align: center;"># / ID</th>
-                    <th>Pose Details</th>
-                    <th>Info</th>
-                </tr>
-            </thead>
-            <tbody id="builderTableBody"></tbody>
-        `;
-        
-        const tbody = exportTable.querySelector('tbody');
-
-        builderState.poses.forEach((pose, idx) => {
-            const idStr = String(pose.id);
-            const isMacro = idStr.startsWith("MACRO:");
-            const isLoop = idStr.startsWith("LOOP_");
-            const isSpecial = isMacro || isLoop;
-            
-            // Robust ID lookup matching builder.js logic
-            const normId = idStr.match(/^\d+/)?.[0]?.padStart(3, '0') || idStr;
-            const asana = libMap[normId] || libArray.find(a => String(a.id || a.asanaNo) === String(normId));
-            
-            const tr = document.createElement('tr');
-            if (isMacro) tr.className = "builder-macro-row";
-            if (isLoop) tr.className = "builder-loop-row";
-            
-            // Col 1: Index + ID + Devanagari
-            const devanagari = asana?.devanagari ? `<div class="b-devanagari">${asana.devanagari}</div>` : '';
-            const idLabel = isMacro ? 'LINK' : (isLoop ? 'BLOCK' : `ID ${idStr}`);
-            const col1 = `
-                <td>
-                    <div style="font-weight:800; color:#007aff; font-size:1.1rem; text-align:center;">${idx + 1}</div>
-                    <div style="font-size:0.65rem; font-weight:700; color:#86868b; text-transform:uppercase; text-align:center;">${idLabel}</div>
-                    ${devanagari}
-                </td>
-            `;
-            
-            // Col 2: Name + Variations
-            const name = isSpecial ? pose.name : builderPoseName(asana, pose.name, builderState.showSanskrit);
-            const varText = (pose.variation && asana?.variations?.[pose.variation]) 
-                ? `<span class="b-var-view">(${asana.variations[pose.variation].title || `Stage ${pose.variation}`})</span>` 
-                : '';
-            const iast = (!isSpecial && asana?.iast) ? `<div style="font-size:0.85rem; color:#6e6e73; font-style:italic;">${asana.iast}</div>` : '';
-            
-            const rawNote = pose.note || '';
-            const cleanNote = (rawNote === 'null' || rawNote === 'NULL') ? '' : String(rawNote).trim();
-            const noteHTML = cleanNote ? `
-                <div style="margin-top: 4px; display: flex; align-items: baseline; gap: 6px;">
-                    <span style="font-size: 0.7rem; color: #86868b; font-weight: 700; text-transform: uppercase; flex-shrink: 0;">Note:</span>
-                    <span style="font-size: 0.8rem; color: #1d1d1f; flex: 1; overflow-wrap: break-word;">${escapeHtml(cleanNote)}</span>
-                </div>` : '';
-
-            const col2 = `
-                <td>
-                    <div style="font-weight:700; font-size:1.1rem;">${name} ${varText}</div>
-                    ${iast}
-                    ${noteHTML}
-                </td>
-            `;
-
-            // Col 3: Info
-            let col3 = '';
-            const safeAsana = asana || { id: idStr, english: pose.name, variations: {} };
-            if (isMacro) {
-                const identifier = idStr.replace("MACRO:", "").trim();
-                const subCourse = (window.courses || []).find(c => 
-                    String(c.title || "").trim().toLowerCase() === identifier.toLowerCase() || 
-                    String(c.id || "").trim() === identifier
-                );
-                
-                let oneRoundSecs = 0;
-                if (subCourse) {
-                    if (typeof window.getExpandedPoses === "function" && typeof window.getPosePillTime === "function") {
-                        const syntheticSeq = { poses: [[`MACRO:${subCourse.id || identifier}`, 1, "", "", "Linked Sequence: 1 Round"]] };
-                        const expanded = window.getExpandedPoses(syntheticSeq);
-                        oneRoundSecs = expanded.reduce((acc, p) => acc + window.getPosePillTime(p), 0);
-                    } else if (typeof window.calculateTotalSequenceTime === "function") {
-                        oneRoundSecs = window.calculateTotalSequenceTime(subCourse);
-                    }
-                }
-                col3 = buildMacroInfoHTML({ oneRoundSecs, rounds: pose.duration, note: subCourse?.category || pose.note });
-            } else {
-                const isFlow = isFlowSequence() || (builderState.currentPlaybackMode === 'flow');
-                col3 = generateInfoCellHTML(safeAsana, pose, idx, { isSpecial, isFlow });
-            }
-
-            // Architecture Note: Ensure internal logic is preserved while fixing UI injection
-            tr.innerHTML = col1 + col2 + col3;
-            tbody.appendChild(tr);
-
-            // Ambiguity Row (Secondary Row Injection)
-            if (pose._ambiguous) {
-                const ambRow = document.createElement('tr');
-                ambRow.innerHTML = `
-                    <td colspan="3" style="background:#fff3e0; border-left:4px solid #ff6d00; padding:10px 12px; font-size:0.8rem;">
-                        ⚠️ <strong>Note:</strong> Multiple matches found for page ${pose._pageNum}. Using <em>${pose.name}</em>.
-                    </td>
-                `;
-                tbody.appendChild(ambRow);
-            }
-        });
-
-        oldTable.replaceWith(exportTable);
+async function loadFont(pdf, fontPath, fontName) {
+    try {
+        const response = await fetch(fontPath);
+        const arrayBuffer = await response.arrayBuffer();
+        // Convert ArrayBuffer to base64 safely (chunked to avoid call stack limits)
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        const chunkSize = 8192;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+        }
+        const base64 = btoa(binary);
+        pdf.addFileToVFS(`${fontName}.ttf`, base64);
+        pdf.addFont(`${fontName}.ttf`, fontName, 'normal');
+        return fontName;
+    } catch (e) {
+        console.warn(`[PDF] Could not load font ${fontPath}:`, e);
+        return null;
     }
+}
 
-    // 3. Sync metadata
-    const titleVal = getSequenceTitle() || 'Untitled Sequence';
+
+
+/**
+ * Table-based PDF Generator
+ * Reconstructs the visual table layout using jsPDF's native drawing/text APIs.
+ * Produces a PDF that looks like the original (table with columns, borders, headers)
+ * but with real selectable, copyable text instead of rasterized images.
+ */
+async function generateTablePdf() {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 12;
+    const contentWidth = pageWidth - (2 * margin);
+    let y = margin;
+
+    // ── Load custom fonts ────────────────────────────────────────────────────
+    const devanagariFont = await loadFont(pdf, 'fonts/NotoSansDevanagari-Regular.ttf', 'NotoSansDevanagari');
+    const iastFont = await loadFont(pdf, 'fonts/NotoSerif-Regular.ttf', 'NotoSerif');
+
+
+    // ── Gather Data ──────────────────────────────────────────────────────────
+    const titleText = getSequenceTitle() || 'Untitled Sequence';
     const catEl = document.getElementById('builderCategory');
     const catVal = (catEl?.value === "__NEW__" ? document.getElementById('builderCategoryCustom')?.value : catEl?.value || '').trim();
     const notesVal = (document.getElementById('builderNotes')?.value || '').trim();
+    const libMap = window.asanaLibrary || {};
+    const libArray = Object.values(libMap);
 
-    const displayTitle = clone.querySelector('#displayTitle');
-    const displayCategory = clone.querySelector('#displayCategory');
+    // ── Column Layout ────────────────────────────────────────────────────────
+    // Col 1: #, ID, Devanagari (stacked vertically)
+    // Col 2: English name, IAST, variation, note
+    // Col 3: Duration, tier info
 
-    if (displayTitle) {
-        displayTitle.textContent = titleVal;
-        displayTitle.style.display = 'block';
+    // Calculate the widest Devanagari text to size col1 dynamically
+    let maxDevanagariWidth = 0;
+    if (devanagariFont) {
+        pdf.setFont(devanagariFont, 'normal');
+        pdf.setFontSize(8);
+        builderState.poses.forEach(pose => {
+
+            const idStr = String(pose.id);
+            const normId = idStr.match(/^\d+/)?.[0]?.padStart(3, '0') || idStr;
+            const asana = libMap[normId] || libArray.find(a => String(a.id || a.asanaNo) === String(normId));
+            const devText = asana?.devanagari || '';
+            if (devText) {
+                const w = pdf.getTextWidth(devText);
+                if (w > maxDevanagariWidth) maxDevanagariWidth = w;
+            }
+        });
     }
+    // Base col1W on the widest Devanagari text, with a minimum of 18mm and max of 45mm
+    const col1W = Math.min(45, Math.max(18, maxDevanagariWidth + 5));
 
-    if (displayCategory && catVal) {
-        displayCategory.style.display = 'flex';
-        const parts = catVal.split('>').map(p => p.trim()).filter(Boolean);
-        displayCategory.innerHTML = parts.map((p, i) => {
-            const isFirst = i === 0;
-            const cls = isFirst ? 'cat-main' : 'cat-sub';
-            return `<span class="cat-pill ${cls}">${escapeHtml(p)}</span>` + (i < parts.length - 1 ? `<span style="color:#86868b; margin: 0 4px; font-weight:bold;">›</span>` : '');
-        }).join('');
-    }
+    const col2W = 95;   // Pose Details (English, IAST, variation, note)
+    const col3W = contentWidth - col1W - col2W; // Info (remaining, shrinks to accommodate Sanskrit)
 
-    // 4. Sync Safety Notes
-    const displayNotes = clone.querySelector('#displayNotes');
-    const notesRow = clone.querySelector('#modalNotesRow');
-    if (notesRow && notesVal) {
-        notesRow.classList.remove('hidden', 'collapsed');
-        if (displayNotes) {
-            displayNotes.classList.remove('hidden');
-            const emphasizedVal = escapeHtml(notesVal).replace(/\b([A-Z][a-zāīūṛḷṅñṭḍṇśṣḥ]+( [IVX]+)?)\b/g, '<em>$1</em>');
-            displayNotes.innerHTML = `
-                <div style="display:flex; align-items:center; gap:8px; color:#e65100; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">
-                    <strong>Safety Note</strong>
-                </div> 
-                <div style="line-height:1.5;">${emphasizedVal}</div>`;
+
+
+
+    const col1X = margin;
+    const col2X = col1X + col1W;
+    const col3X = col2X + col2W;
+    const tableRight = margin + contentWidth;
+
+    // ── Styling Constants ────────────────────────────────────────────────────
+    const headerBg = [245, 245, 247];
+    const headerTextColor = [134, 134, 139];
+    const borderColor = [210, 210, 215];
+    const bodyTextColor = [30, 30, 30];
+    const linkColor = [0, 122, 255];
+    const noteColor = [100, 100, 100];
+    const safetyBg = [255, 252, 240];
+    const safetyTextColor = [80, 80, 80];
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function addPageIfNeeded(needed) {
+        if (y + needed > pageHeight - margin) {
+            pdf.addPage();
+            y = margin;
         }
     }
 
-    // 5. Code Pruning: Explicitly remove interactive elements
-    const selectorsToRemove = [
-        '.modal-footer', '.builder-toolbar-primary', '.builder-tools-panel',
-        '#builderModeToggleBtn', '#editCourseCloseBtn', '.edit-only-inline',
-        '#editModeHeader', '.modal-header button', '.builder-export-root',
-        '#exportOptionsPanel', '#builderNotes', '#warningRestoreBtn', '.warning-dismiss-btn'
-    ];
-    selectorsToRemove.forEach(sel => clone.querySelectorAll(sel).forEach(el => el.remove()));
+    function drawCellBg(x, y, w, h, color) {
+        pdf.setFillColor(color[0], color[1], color[2]);
+        pdf.rect(x, y, w, h, 'F');
+    }
 
-    // Force View Mode Visibility
-    const vh = clone.querySelector('#viewModeHeader');
-    if (vh) vh.style.setProperty('display', 'block', 'important');
+    function drawCellBorder(x, y, w, h) {
+        pdf.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+        pdf.setLineWidth(0.2);
+        pdf.rect(x, y, w, h, 'S');
+    }
 
-   // ==========================================
-    // 6. Practice Metadata (Targeted Slot-Filling)
-    // ==========================================
-    
-    // Logic Preservation: Calculate accurate time based on 8-index schema
+    // Calculate total duration
     const tempPoses = builderState.poses.map(p => {
         const tierTag = (!p.holdTier || p.holdTier === 'standard') ? '' : ` tier:${p.holdTier === 'short' ? 'S' : 'L'}`;
         const cleanNote = (p.note || '').replace(/\btier:[SL]\b/gi, '').trim();
         const meta = { explicitSide: p.side || null };
         return [p.id, p.duration, p.variation || "", p.variation || "", (cleanNote + tierTag).trim(), null, null, meta];
     });
-
-    const totalSec = (typeof window.calculateTotalSequenceTime === "function") 
-        ? window.calculateTotalSequenceTime({ poses: tempPoses }) 
+    const totalSec = (typeof window.calculateTotalSequenceTime === "function")
+        ? window.calculateTotalSequenceTime({ poses: tempPoses })
         : 0;
-    
-    // 1. ROUND-UP PROTOCOL: Always round up to the next minute
     const totalMinutes = Math.ceil(totalSec / 60);
-
-    // 2. SMART FORMATTING: Convert to h/m only if 60+ minutes
     let formattedTime = "";
     if (totalMinutes >= 60) {
         const h = Math.floor(totalMinutes / 60);
@@ -367,229 +204,338 @@ export function createExportSnapshot(sourceElement) {
         formattedTime = `${totalMinutes}m`;
     }
 
-    // CRITICAL FIX: Inject into `#viewModeHeader` for PDF capture
-    const headerTarget = vh || (displayTitle ? displayTitle.parentNode : clone);
-    
-    if (headerTarget && typeof generateExportHeaderHTML === 'function') {
-        const existingMeta = clone.querySelector('.export-header-meta');
-        if (existingMeta) existingMeta.remove();
+    const dateStr = new Date().toLocaleDateString('en-AU', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
 
-        headerTarget.insertAdjacentHTML('afterbegin', generateExportHeaderHTML());
+    // ── Build Content ────────────────────────────────────────────────────────
 
-        const dateSlot = clone.querySelector('#exportDateSlot');
-        const durationSlot = clone.querySelector('#exportDurationSlot');
+    // 1. Title
+    addPageIfNeeded(14);
+    pdf.setFontSize(24);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(titleText, margin, y + 8);
+    y += 12;
 
-        if (dateSlot) {
-            dateSlot.innerHTML = `<strong>Date:</strong> ${new Date().toLocaleDateString('en-AU', { 
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-            })}`;
-        }
-
-        if (durationSlot) {
-            durationSlot.innerHTML = `Total Duration: <span class="duration-pill">~${formattedTime}</span>`;
-        }
+    // 2. Category
+    if (catVal) {
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(catVal, margin, y + 4);
+        y += 8;
     }
 
-    return clone;
-}
-/**
- * Waits for the browser to complete layout for the temporary export node.
- */
-async function waitForExportLayout() {
-    // Ensure fonts are loaded and layout has ticked twice
-    if (document.fonts && document.fonts.ready) {
-        await document.fonts.ready;
-    }
-    await new Promise(resolve => requestAnimationFrame(resolve));
-    await new Promise(resolve => requestAnimationFrame(resolve));
-}
+    // 3. Date + Duration (header meta bar)
+    addPageIfNeeded(9);
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(107, 114, 128);
+    pdf.text(`Date: ${dateStr}`, margin, y + 4);
 
-export function printSequence() {
-    window.print();
-}
+    // Duration pill (simple filled rectangle)
+    const durText = `${formattedTime}`;
+    const durW = pdf.getTextWidth(durText) + 8;
+    const durX = tableRight - durW;
+    pdf.setFillColor(29, 78, 216);
+    pdf.rect(durX, y - 1, durW, 7, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(10);
+    pdf.text(durText, durX + 4, y + 4);
 
-/**
- * Dynamic loader for standalone rendering libraries.
- * Ensures we aren't relying on broken internal html2pdf bundles.
- */
-async function ensureLibrariesLoaded() {
-    const libs = [
-        { name: 'html2canvas', url: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', check: () => typeof window.html2canvas !== 'undefined' },
-        { name: 'jspdf', url: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', check: () => typeof window.jspdf !== 'undefined' }
-    ];
+    y += 9;
 
-    for (const lib of libs) {
-        if (!lib.check()) {
-            await new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = lib.url;
-                script.onload = resolve;
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
-        }
-    }
-}
+    // Divider line
+    pdf.setDrawColor(229, 231, 235);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, y, tableRight, y);
+    y += 5;
 
-/**
- * UI Progress Feedback
- */
-function showPdfProgress(msg) {
-    let el = document.getElementById('pdfProgressOverlay');
-    if (!el) {
-        el = document.createElement('div');
-        el.id = 'pdfProgressOverlay';
-        el.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.85); z-index: 10001;
-            display: flex; align-items: center; justify-content: center;
-            flex-direction: column; font-family: system-ui, sans-serif;
-        `;
-        document.body.appendChild(el);
-    }
-    el.innerHTML = `
-        <div style="background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; border: 1px solid #eee;">
-            <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007aff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
-            <div style="font-weight: 600; color: #1d1d1f; font-size: 1.1rem;">${msg}</div>
-            <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
-        </div>
-    `;
-    document.body.style.cursor = 'progress';
-}
-
-function hidePdfProgress() {
-    const el = document.getElementById('pdfProgressOverlay');
-    if (el) el.remove();
-    document.body.style.cursor = '';
-}
-
-export async function downloadSequencePdf() {
-    const sourceElement = getExportElement();
-    if (!sourceElement) return;
-
-    // Ensure standalone libraries are ready
-    await ensureLibrariesLoaded();
-
-    showPdfProgress('Preparing document...');
-
-    const snapshot = createExportSnapshot(sourceElement);
-    document.body.appendChild(snapshot);
-
-    await waitForExportLayout();
-
-    try {
-        // Primary Path: Standalone html2canvas + jsPDF 
-        // This bypasses the broken html2pdf worker chain entirely
-        await manualExportPdf(snapshot);
-    } catch (err) {
-        console.error('[PDF] Export failed:', err);
-        alert('PDF generation encountered an error. Falling back to print.');
-        printSequence();
-    } finally {
-        snapshot.remove();
-        hidePdfProgress();
-    }
-}
-
-/**
- * Standalone Export Engine (A/B Winner)
- * Renders snapshot to high-res canvas and generates PDF manually.
- */
-async function manualExportPdf(snapshot) {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const margin = 10;
-    const contentWidth = pdfWidth - (2 * margin);
-    const pageHeightLimit = pdfHeight - margin;
-
-    // Helper for high-quality structural capture
-    const capture = async (el) => {
-        try {
-            // Force the element to behave as a block of 800px before snapping
-            const originalWidth = el.style.width;
-            el.style.setProperty('width', '800px', 'important');
-            
-            const canvas = await html2canvas(el, {
-                scale: 2, // High DPI
-                width: 800, // Explicitly crop the canvas to 800px
-                useCORS: true,
-                backgroundColor: '#ffffff',
-                logging: false
-            });
-            
-            el.style.width = originalWidth; // Reset after snap
-            return canvas;
-        } catch (e) {
-            console.warn('[PDF] Capture failed:', e);
-            return null;
-        }
-    };
-
-    const headerEl = snapshot.querySelector('.modal-header');
-    const notesRowEl = snapshot.querySelector('#modalNotesRow');
-    const dateEl = snapshot.querySelector('.export-date-tag');
-    let currentY = margin;
-
-    // 1. Render Header (Title + Category), Notes Row, and Practice Date
-    const headerComponents = [headerEl, notesRowEl, dateEl].filter(el => el && !el.classList.contains('hidden'));
-    for (let el of headerComponents) {
-        const canvas = await capture(el);
-        if (!canvas) continue;
-        const h = canvas.height * (contentWidth / canvas.width);
-        if (h > 0 && isFinite(h)) {
-            pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', margin, currentY, contentWidth, h);
-            currentY += h + 4;
-        }
+    // 4. Safety Notes
+    if (notesVal) {
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        const noteLines = pdf.splitTextToSize(notesVal, contentWidth - 8);
+        const noteLineH = 4.5;
+        const noteHeaderH = 10;
+        const notePadding = 2;
+        const noteCardH = noteHeaderH + (noteLines.length * noteLineH) + notePadding;
+        addPageIfNeeded(noteCardH + 4);
+        // Safety note card
+        drawCellBg(margin, y, contentWidth, noteCardH, safetyBg);
+        drawCellBorder(margin, y, contentWidth, noteCardH);
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(230, 81, 0);
+        pdf.text('SAFETY NOTE', margin + 4, y + 5);
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(safetyTextColor[0], safetyTextColor[1], safetyTextColor[2]);
+        noteLines.forEach((line, i) => {
+            pdf.text(line, margin + 4, y + noteHeaderH + (i * noteLineH));
+        });
+        y += noteCardH + 4;
     }
 
-    // 2. Prepare Table Header (for repetition)
-    const thead = snapshot.querySelector('.pdf-export-table thead');
-    const headCanvas = thead ? await capture(thead) : null;
-    const headH = headCanvas ? headCanvas.height * (contentWidth / headCanvas.width) : 0;
-    const headImg = headCanvas ? headCanvas.toDataURL('image/jpeg', 0.98) : null;
 
-    const drawHeader = () => {
-        if (headImg && headH > 0 && isFinite(headH)) {
-            pdf.addImage(headImg, 'JPEG', margin, currentY, contentWidth, headH);
-            currentY += headH;
-        }
-    };
 
-    drawHeader();
 
-    // 3. Render Table Rows structurally
-    const rows = Array.from(snapshot.querySelectorAll('.pdf-export-table tbody tr'));
-    const totalRows = rows.length;
+    // 5. Table Header
+    addPageIfNeeded(11);
+    drawCellBg(col1X, y, col1W, 8, headerBg);
+    drawCellBg(col2X, y, col2W, 8, headerBg);
+    drawCellBg(col3X, y, col3W, 8, headerBg);
+    drawCellBorder(col1X, y, col1W, 8);
+    drawCellBorder(col2X, y, col2W, 8);
+    drawCellBorder(col3X, y, col3W, 8);
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(headerTextColor[0], headerTextColor[1], headerTextColor[2]);
+    pdf.text('# / ID', col1X + (col1W / 2), y + 5.5, { align: 'center' });
+    pdf.text('Pose Details', col2X + 3, y + 5.5);
+    pdf.text('Info', col3X + (col3W / 2), y + 5.5, { align: 'center' });
+    y += 8;
 
-    for (let i = 0; i < totalRows; i++) {
-        const row = rows[i];
-        showPdfProgress(`Rendering row ${i + 1} of ${totalRows}...`);
 
-        const rowCanvas = await capture(row);
-        if (!rowCanvas) continue;
-        const rowH = rowCanvas.height * (contentWidth / rowCanvas.width);
-        if (!isFinite(rowH) || rowH <= 0) continue;
+    // 6. Table Rows
+    let poseCounter = 0;
 
-        // Logic: If the row doesn't fit, move it in full to the next page
-        if (currentY + rowH > pageHeightLimit) {
-            pdf.addPage();
-            currentY = margin;
-            drawHeader(); // Requirement: show headers on new page
+    builderState.poses.forEach((pose, idx) => {
+        const idStr = String(pose.id);
+        const isMacro = idStr.startsWith("MACRO:");
+        const isLoopStart = idStr === "LOOP_START";
+        const isLoopEnd = idStr === "LOOP_END";
+
+        // Build cell contents
+        let col1Lines = [];
+        let col2Lines = [];
+        let col3Lines = [];
+        let rowBg = null;
+        let col1Devanagari = ''; // Sanskrit text for col1, rendered with custom font
+
+
+        if (isLoopStart) {
+            const rounds = Number(pose.duration) || 2;
+            col1Lines = ['BLOCK'];
+            col2Lines = [`Repeat Block — ${rounds} rounds`];
+            col3Lines = [''];
+            rowBg = [232, 240, 254];
+        } else if (isLoopEnd) {
+            col1Lines = [''];
+            col2Lines = ['— End Repeat Block —'];
+            col3Lines = [''];
+            rowBg = [232, 240, 254];
+        } else if (isMacro) {
+            const identifier = idStr.replace("MACRO:", "").trim();
+            const subCourse = (window.courses || []).find(c =>
+                String(c.title || "").trim().toLowerCase() === identifier.toLowerCase() ||
+                String(c.id || "").trim() === identifier
+            );
+            const subTitle = subCourse ? subCourse.title : identifier;
+            const subId = subCourse ? (subCourse.id || subCourse.course_id || identifier) : identifier;
+            const rounds = Number(pose.duration) || 1;
+            col1Lines = [`Course ID ${subId}`];
+
+            col2Lines = [`${subTitle} (${rounds} round${rounds !== 1 ? 's' : ''})`];
+            col3Lines = [''];
+
+            // Calculate macro time info (matching buildMacroInfoHTML logic)
+            let oneRoundSecs = 0;
+            if (subCourse) {
+                if (typeof window.getExpandedPoses === "function" && typeof window.getPosePillTime === "function") {
+                    const syntheticSeq = { poses: [[`MACRO:${subCourse.id || identifier}`, 1, "", "", "Linked Sequence: 1 Round"]] };
+                    const expanded = window.getExpandedPoses(syntheticSeq);
+                    oneRoundSecs = expanded.reduce((acc, p) => acc + window.getPosePillTime(p), 0);
+                } else if (typeof window.calculateTotalSequenceTime === "function") {
+                    oneRoundSecs = window.calculateTotalSequenceTime(subCourse);
+                }
+            }
+            const totalMacroSec = oneRoundSecs * rounds;
+            col3Lines = [
+                `${formatPoseDuration(oneRoundSecs)} per round`,
+                `× ${rounds} round${rounds !== 1 ? 's' : ''}`,
+                `${formatPoseDuration(totalMacroSec)} total`
+            ];
+            rowBg = [232, 240, 254];
+        } else {
+            // Regular pose
+            poseCounter++;
+            const normId = idStr.match(/^\d+/)?.[0]?.padStart(3, '0') || idStr;
+            const asana = libMap[normId] || libArray.find(a => String(a.id || a.asanaNo) === String(normId));
+            const engName = asana?.english || asana?.name || pose.name || `ID ${normId}`;
+            const iastName = asana?.iast || '';
+            const devanagariName = asana?.devanagari || '';
+            const dur = Number(pose.duration) || 30;
+
+            col1Lines = [`${poseCounter}`, `ID ${normId}`];
+            if (devanagariName) col1Devanagari = devanagariName;
+            col2Lines = [engName];
+            if (iastName) col2Lines.push(iastName);
+
+            if (pose.variation && asana?.variations?.[pose.variation]) {
+                col2Lines.push(`(${asana.variations[pose.variation].title || `Stage ${pose.variation}`})`);
+            }
+            const cleanNote = (pose.note || '').replace(/\btier:[SL]\b/gi, '').replace(/\bside:[LR]\b/gi, '').trim();
+            if (cleanNote && cleanNote !== 'null') {
+                col2Lines.push(`Note: ${cleanNote}`);
+            }
+
+            // Build info text (duration + tier)
+            const tier = pose.holdTier || 'standard';
+            const tierLabel = tier === 'short' ? 'S' : tier === 'long' ? 'L' : '';
+            col3Lines = [`${formatPoseDuration(dur)}`, tierLabel].filter(Boolean);
+
         }
 
-        pdf.addImage(rowCanvas.toDataURL('image/jpeg', 0.98), 'JPEG', margin, currentY, contentWidth, rowH);
-        currentY += rowH;
-    }
+        // Calculate row height
+        const padding = 3;
+        const lineH = 4.2;
+        const maxLines = Math.max(col1Lines.length + (col1Devanagari ? 1 : 0), col2Lines.length, col3Lines.length);
 
-    pdf.save(sanitizeFilename(getSequenceTitle()));
+        const rowH = Math.max(9, (maxLines * lineH) + (padding * 2));
+
+
+        // Check if row fits on current page
+        addPageIfNeeded(rowH + 2);
+
+        // If we just added a page, redraw the table header
+        if (y <= margin + 2) {
+            drawCellBg(col1X, y, col1W, 8, headerBg);
+            drawCellBg(col2X, y, col2W, 8, headerBg);
+            drawCellBg(col3X, y, col3W, 8, headerBg);
+            drawCellBorder(col1X, y, col1W, 8);
+            drawCellBorder(col2X, y, col2W, 8);
+            drawCellBorder(col3X, y, col3W, 8);
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(headerTextColor[0], headerTextColor[1], headerTextColor[2]);
+            pdf.text('# / ID', col1X + (col1W / 2), y + 5.5, { align: 'center' });
+            pdf.text('Pose Details', col2X + 3, y + 5.5);
+            pdf.text('Info', col3X + (col3W / 2), y + 5.5, { align: 'center' });
+            y += 8;
+        }
+
+
+        // Draw row background
+        if (rowBg) {
+            drawCellBg(col1X, y, col1W, rowH, rowBg);
+            drawCellBg(col2X, y, col2W, rowH, rowBg);
+            drawCellBg(col3X, y, col3W, rowH, rowBg);
+        }
+
+        // Draw cell borders
+        drawCellBorder(col1X, y, col1W, rowH);
+        drawCellBorder(col2X, y, col2W, rowH);
+        drawCellBorder(col3X, y, col3W, rowH);
+
+        // Write cell text
+        // Col 1: centered
+        col1Lines.forEach((line, i) => {
+            if (i === 0) {
+                // Pose number
+                pdf.setFontSize(11);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(linkColor[0], linkColor[1], linkColor[2]);
+                pdf.text(line, col1X + (col1W / 2), y + padding + (lineH * (i + 1)), { align: 'center' });
+            } else {
+                // ID label
+                pdf.setFontSize(7);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(headerTextColor[0], headerTextColor[1], headerTextColor[2]);
+                pdf.text(line, col1X + (col1W / 2), y + padding + (lineH * (i + 1)), { align: 'center' });
+            }
+        });
+
+        // Render Devanagari in col1 if present (using custom font)
+        if (col1Devanagari && devanagariFont) {
+            const devanagariLineIdx = col1Lines.length;
+            pdf.setFontSize(8);
+            pdf.setFont(devanagariFont, 'normal');
+            pdf.setTextColor(noteColor[0], noteColor[1], noteColor[2]);
+            pdf.text(col1Devanagari, col1X + (col1W / 2), y + padding + (lineH * (devanagariLineIdx + 1)), { align: 'center' });
+        }
+
+
+
+        // Col 2: left-aligned
+        col2Lines.forEach((line, i) => {
+            if (i === 0) {
+                // Pose name
+                pdf.setFontSize(10);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(bodyTextColor[0], bodyTextColor[1], bodyTextColor[2]);
+                pdf.text(line, col2X + 3, y + padding + (lineH * (i + 1)));
+            } else if (line.startsWith('Note:')) {
+                pdf.setFontSize(8);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setTextColor(noteColor[0], noteColor[1], noteColor[2]);
+                pdf.text(line, col2X + 3, y + padding + (lineH * (i + 1)));
+            } else if (line.startsWith('(')) {
+                // Variation
+                pdf.setFontSize(8);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(linkColor[0], linkColor[1], linkColor[2]);
+                pdf.text(line, col2X + 3, y + padding + (lineH * (i + 1)));
+            } else {
+                // IAST — use NotoSerif for proper diacritical rendering
+                pdf.setFontSize(9);
+                if (iastFont) {
+                    pdf.setFont(iastFont, 'normal');
+                } else {
+                    pdf.setFont('helvetica', 'italic');
+                }
+                pdf.setTextColor(noteColor[0], noteColor[1], noteColor[2]);
+                pdf.text(line, col2X + 3, y + padding + (lineH * (i + 1)));
+            }
+        });
+
+        // Col 3: centered
+        col3Lines.forEach((line, i) => {
+            if (i === 0) {
+                // Duration
+                pdf.setFontSize(11);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(bodyTextColor[0], bodyTextColor[1], bodyTextColor[2]);
+                pdf.text(line, col3X + (col3W / 2), y + padding + (lineH * (i + 1)), { align: 'center' });
+            } else {
+                // Tier label
+                pdf.setFontSize(8);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setTextColor(noteColor[0], noteColor[1], noteColor[2]);
+                pdf.text(line, col3X + (col3W / 2), y + padding + (lineH * (i + 1)), { align: 'center' });
+            }
+        });
+
+
+        y += rowH;
+    });
+
+    // 7. Total Duration Footer
+    addPageIfNeeded(12);
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, y, tableRight, y);
+    y += 6;
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 80, 200);
+    pdf.text(`Total Duration: ${formattedTime}`, margin, y);
+
+    y += 6;
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(160, 160, 160);
+    pdf.text(`Generated on ${dateStr}`, margin, y);
+
+
+    // 8. Save
+    pdf.save(sanitizeFilename(titleText));
 }
 
 export function initExportUI(container) {
     if (!container) return null;
-
-    ensureExportStyles();
 
     let root = container;
 
@@ -613,12 +559,10 @@ export function initExportUI(container) {
     root.innerHTML = `
         <div class="export-cluster">
             <button type="button" id="btnDownloadPdf" class="btn-export-primary">Download PDF</button>
-            <button type="button" id="btnPrintSequence" class="btn-export-secondary">Print</button>
         </div>
     `;
 
     const btnDownloadPdf = root.querySelector('#btnDownloadPdf');
-    const btnPrintSequence = root.querySelector('#btnPrintSequence');
 
     if (btnDownloadPdf) {
         btnDownloadPdf.addEventListener('click', (e) => {
@@ -628,16 +572,9 @@ export function initExportUI(container) {
         });
     }
 
-    if (btnPrintSequence) {
-        btnPrintSequence.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            printSequence();
-        });
-    }
-
     return root;
 }
+
 
 /**
  * State toggle for the sequence warning visibility.
