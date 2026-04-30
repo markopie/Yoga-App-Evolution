@@ -532,4 +532,19 @@
 - Verify the text-based PDF works end-to-end with various sequence types (macros, loops, regular poses)
 - Consider adding `gem_plate` to the Asana Editor UI for easy data entry
 
+---
 
+## [2026-04-30] - Session [01]
+**Goal:** Suppress transition overlay for embedded sequences and final pose of any sequence.
+
+**Architectural Decisions:**
+- **Embedded Sequence Detection:** Used `currMeta.macroTitle` (pose metadata index 7) to detect if the current pose is part of a linked/macro sequence. When true, the transition overlay is skipped since embedded sequences flow continuously without needing a "prepare for next pose" break.
+- **Final Pose Detection:** Added `window.currentIndex >= poses.length - 1` check to detect the last pose in the playback list. When true, the transition overlay is skipped since there's no next pose to prepare for — the sequence end handler (`triggerSequenceEnd`) takes over directly.
+- **Minimal Surface Area:** Added two guard variables (`isEmbeddedPose` and `isFinalPose`) and included them in the existing condition gate in `onPoseComplete`. No other call sites needed modification since `startTransition` is only called from this single location.
+
+**Code Changed:**
+- `src/playback/timerEvents.js`: Added `isEmbeddedPose` and `isFinalPose` guards to the transition start condition in `onPoseComplete` (line 241-245).
+
+**Next Steps for Next Session:**
+- Verify the transition overlay suppression works correctly with various sequence types (macros, loops, regular sequences)
+- Consider adding visual feedback (e.g., a brief flash or subtle animation) when transitioning between poses in embedded sequences to compensate for the removed overlay

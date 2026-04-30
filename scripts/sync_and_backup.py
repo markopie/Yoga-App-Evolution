@@ -3,6 +3,7 @@ import sys
 import json
 import glob
 import time
+import urllib.request
 from datetime import datetime
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -37,11 +38,36 @@ STAGES_PATHS = [
     os.path.join(G_DRIVE_DIR, "stages.md"),
     os.path.join(LOCAL_DOCS_DIR, "stages.md")
 ]
+SCHEMA_PATH = r"G:\My Drive\Personal\02_Education_Yoga\Yoga_Project_Files"
 
 # ==========================================
 # CORE LOGIC
 # ==========================================
 
+def extract_supabase_schema():
+    """Fetches the PostgREST OpenAPI spec and saves a static contract file."""
+    print("\n🔍 Extracting Database Schema (OpenAPI Spec)...")
+    
+    req = urllib.request.Request(f"{URL}/rest/v1/")
+    req.add_header("apikey", KEY)
+    req.add_header("Authorization", f"Bearer {KEY}")
+    
+    try:
+        with urllib.request.urlopen(req) as response:
+            schema_data = json.loads(response.read().decode())
+            
+            # Static filename for easy indexing and LLM context
+            filename = "supabase_schema.json"
+            full_path = os.path.join(SCHEMA_PATH, filename)
+            
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, "w", encoding='utf-8') as f:
+                json.dump(schema_data, f, indent=4)
+            
+            print(f"  ✅ Schema contract secured: {full_path}")
+                
+    except Exception as e:
+        print(f"  ❌ Failed to extract schema: {e}")
 def get_all_tables() -> list:
     """Dynamically fetches all public tables via Supabase RPC."""
     try:
@@ -56,7 +82,7 @@ def get_all_tables() -> list:
         sys.exit(1)
 
 def fetch_all_paginated(table_name: str, select_query: str = "*", order_by: str = "id") -> list:
-    """Safely circumvents the 1,000-row limit by paginating requests."""
+    """Safely circumvents the 1000-row limit by paginating requests."""
     all_data = []
     page_size = 1000
     start = 0
@@ -84,9 +110,46 @@ def fetch_all_paginated(table_name: str, select_query: str = "*", order_by: str 
             return res.data
         raise e
 
+def generate_schema_markdown(schema_json_path, output_md_path):
+    """Parses the OpenAPI JSON to create a scannable architectural map."""
+    print(f"📊 Generating scannable Schema Map...")
+    
+    with open(schema_json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    definitions = data.get('definitions', {})
+    content = "# 🏗️ Database Architecture & Data Contract\n\n"
+    content += f"> Generated from active Supabase Schema | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+
+    for table_name, details in definitions.items():
+        content += f"## 📋 Table: `{table_name}`\n"
+        content += "| Column | Type | Format | Notes |\n"
+        content += "| :--- | :--- | :--- | :--- |\n"
+        
+        properties = details.get('properties', {})
+        required = details.get('required', [])
+        
+        for col_name, col_info in properties.items():
+            col_type = col_info.get('type', 'unknown')
+            col_format = col_info.get('format', '-')
+            
+            # Identify Keys and Requirements
+            prefix = "🔑 " if col_name == "id" else ""
+            req_suffix = " **(Required)**" if col_name in required else ""
+            
+            # Clean up descriptions (strip HTML tags PostgREST adds)
+            desc = col_info.get('description', '').replace('<pk/>', '[PK]').replace('\n', ' ')
+            
+            content += f"| {prefix}`{col_name}` | {col_type} | {col_format} | {desc}{req_suffix} |\n"
+        content += "\n"
+
+    with open(output_md_path, 'w', encoding='utf-8') as f:
+        f.write(content)
+    print(f"✅ Schema Map secured: {output_md_path}")
+
 def prune_old_backups():
     """Maintains storage hygiene by removing old backups."""
-    print(f"🧹 Pruning backups older than {BACKUP_RETENTION_DAYS} days...")
+    print(f"\n🧹 Pruning backups older than {BACKUP_RETENTION_DAYS} days...")
     now = time.time()
     cutoff_time = now - (BACKUP_RETENTION_DAYS * 86400)
     
@@ -100,7 +163,9 @@ def prune_old_backups():
             pruned_count += 1
             
     if pruned_count > 0:
-        print(f"✅ Removed {pruned_count} old backup files.")
+        print(f"  ✅ Removed {pruned_count} old backup files.")
+    else:
+        print("  ✅ Storage clean. No pruning required.")
 
 def backup_database():
     """Executes a fully dynamic JSON backup."""
@@ -115,11 +180,11 @@ def backup_database():
                 filename = os.path.join(BACKUP_DIR, f"{table}_{timestamp}.json")
                 with open(filename, "w", encoding='utf-8') as f:
                     json.dump(data, f, indent=4)
-                print(f"   ✅ Secured {len(data)} rows from {table}")
+                print(f"  ✅ Secured {len(data)} rows from {table}")
         except Exception as e:
-            print(f"   ❌ Failed to backup {table}: {e}")
+            print(f"  ❌ Failed to backup {table}: {e}")
             
-    print(f"🏆 Database Backup Complete.\n")
+    print("🏆 Database Backup Complete.\n")
 
 def sync_table_to_markdown(table_name: str, select_query: str, file_paths: list, title: str):
     """Generates Markdown documentation and saves to multiple file paths."""
@@ -144,16 +209,18 @@ def sync_table_to_markdown(table_name: str, select_query: str, file_paths: list,
                 os.makedirs(os.path.dirname(path), exist_ok=True)
                 with open(path, 'w', encoding='utf-8') as f:
                     f.write(content)
-                print(f"✅ Written to {path}")
+                print(f"  ✅ Written to {path}")
                 
     except Exception as e:
-        print(f"❌ Failed Markdown sync for {table_name}: {e}")
+        print(f"  ❌ Failed Markdown sync for {table_name}: {e}")
 
 def run_pre_push_workflow():
     """Master workflow orchestrator."""
     prune_old_backups()
+    extract_supabase_schema()
     backup_database()
     
+    print("\n📝 Updating Markdown Documentation...")
     sync_table_to_markdown(
         'asanas', 
         'id, name, iast, requires_sides', 

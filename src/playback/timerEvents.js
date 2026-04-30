@@ -238,7 +238,11 @@ window.playbackEngine.onPoseComplete = (wasLongHold) => {
     const nextMeta = nextPose?.[7] || {};
     const isLastSide = !window.needsSecondSide;
 
-    if (wasLongHold && !flowPose && isLastSide) {
+    // 🚫 Skip transition overlay for embedded sequences (macroTitle) and final pose
+    const isEmbeddedPose = !!(currMeta.macroTitle);
+    const isFinalPose = window.currentIndex >= poses.length - 1;
+
+    if (wasLongHold && !flowPose && isLastSide && !isEmbeddedPose && !isFinalPose) {
         const nextLabelEl = document.querySelector(".transition-next");
         if (nextLabelEl && nextPose) {
             let nextName = "";
