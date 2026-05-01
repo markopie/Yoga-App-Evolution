@@ -22,6 +22,9 @@ export async function parseSemicolonCommand(commandString, libraryArray, asanaLi
         const upper = parts[0].toUpperCase();
         if (upper.startsWith('GEM:')) {
             idsStr = parts[0];
+        } else if (/^\d[\d,\s\-]*$/.test(parts[0]) && parts[0].includes(',')) {
+            // CASE C: Plain comma-separated LOY IDs (e.g. "1,3,4,5,6,7,8" or "1-5,7,9-12")
+            idsStr = parts[0];
         } else {
             return null;
         }
@@ -45,7 +48,19 @@ export async function parseSemicolonCommand(commandString, libraryArray, asanaLi
     const tokens = expandedTokens.split(',').map(s => s.trim()).filter(s => s.length > 0 && s !== '0');
 
     const resolveToken = async (token) => {
-        // GEM Plate Lookup: find asanas where gem_plate contains the token
+        // LOY ID Lookup (Primary): match against the asana's own id field
+        // This is the standard Light on Yoga ID, e.g. "001", "002"
+        const loyMatch = libraryArray.find(a => {
+            const aId = String(a.id || '').padStart(3, '0');
+            const t = token.padStart(3, '0');
+            return aId === t;
+        });
+
+        if (loyMatch) {
+            return { id: loyMatch.id, asana: loyMatch, variation: '', stageKey: '', name: loyMatch.english || loyMatch.name || loyMatch.id };
+        }
+
+        // GEM Plate Lookup (Fallback): find asanas where gem_plate contains the token
         // gem_plate is a comma-separated list of numbers, e.g. "113,114"
         const matches = libraryArray.filter(a => {
             const gemPlate = a.gem_plate || '';

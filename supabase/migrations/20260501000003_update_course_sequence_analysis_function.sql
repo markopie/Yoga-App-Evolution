@@ -47,6 +47,7 @@ begin
     select
       c.id as course_id,
       c.title as course_title,
+      c.sub_category_id as course_sub_category_id,
       x.ordinality,
       x.item,
       x.item->>'type' as item_type
@@ -78,6 +79,7 @@ begin
     select
       oi.course_id,
       oi.course_title,
+      oi.course_sub_category_id,
       oi.ordinality,
       row_number() over (
         partition by oi.course_id
@@ -105,6 +107,7 @@ begin
     group by
       oi.course_id,
       oi.course_title,
+      oi.course_sub_category_id,
       oi.ordinality,
       oi.item
   ),
@@ -118,10 +121,11 @@ begin
     group by course_id
   ),
 
-  resolved as (
+  resolved_base as (
     select
       pi.course_id,
       pi.course_title,
+      pi.course_sub_category_id,
       pi.ordinality,
       pi.pose_index,
       pi.pose_id_raw,
@@ -169,31 +173,37 @@ begin
         else 1
       end as side_multiplier,
 
-      coalesce(
-        public.yoga_parse_hold_seconds(st.hold_json ->> pi.hold_tier),
-        public.yoga_parse_hold_seconds(st.hold_json ->> 'standard'),
-        public.yoga_parse_hold_seconds(a.hold_json ->> pi.hold_tier),
-        public.yoga_parse_hold_seconds(a.hold_json ->> 'standard'),
-        0
-      ) as base_duration_seconds,
+      case
+        -- Flow courses: authored duration first, then flow hold, then standard hold.
+        when pi.course_sub_category_id = 55 then
+          coalesce(
+            case
+              when nullif(pi.item->>'duration', '') is not null then
+                case
+                  when (pi.item->>'duration') ~ '^\s*\d+(\.\d+)?\s*$'
+                  then round((pi.item->>'duration')::numeric)::integer
+                  else public.yoga_parse_hold_seconds(pi.item->>'duration')
+                end
+              else null
+            end,
+            public.yoga_parse_hold_seconds(st.hold_json ->> 'flow'),
+            public.yoga_parse_hold_seconds(a.hold_json ->> 'flow'),
+            public.yoga_parse_hold_seconds(st.hold_json ->> 'standard'),
+            public.yoga_parse_hold_seconds(a.hold_json ->> 'standard'),
+            0
+          )
 
-      coalesce(
-        public.yoga_parse_hold_seconds(st.hold_json ->> pi.hold_tier),
-        public.yoga_parse_hold_seconds(st.hold_json ->> 'standard'),
-        public.yoga_parse_hold_seconds(a.hold_json ->> pi.hold_tier),
-        public.yoga_parse_hold_seconds(a.hold_json ->> 'standard'),
-        0
-      )
-      * pi.loop_multiplier
-      * case
-          when coalesce(a.requires_sides, false)
-            and (
-              pi.side_raw is null
-              or lower(pi.side_raw) in ('both', 'all', 'null')
-            )
-          then 2
-          else 1
-        end as duration_seconds,
+        -- Cycle and normal courses: ignore sequence_json.duration.
+        -- Use selected tier first, then standard.
+        else
+          coalesce(
+            public.yoga_parse_hold_seconds(st.hold_json ->> pi.hold_tier),
+            public.yoga_parse_hold_seconds(a.hold_json ->> pi.hold_tier),
+            public.yoga_parse_hold_seconds(st.hold_json ->> 'standard'),
+            public.yoga_parse_hold_seconds(a.hold_json ->> 'standard'),
+            0
+          )
+      end as base_duration_seconds,
 
       case
         -- Savasana should not decide the teaching theme.
@@ -222,6 +232,15 @@ begin
       on st.id = pi.stage_id
     left join public.asana_categories ac_stage
       on ac_stage.id = st.category_id_override
+  ),
+
+  resolved as (
+    select
+      rb.*,
+      rb.base_duration_seconds
+      * rb.loop_multiplier
+      * rb.side_multiplier as duration_seconds
+    from resolved_base rb
   ),
 
   course_totals as (

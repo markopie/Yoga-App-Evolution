@@ -576,6 +576,7 @@
 ---
 
 ## [2026-05-01] - Session [02]
+
 **Goal:** Debug and fix the cached course analysis refresh queue system — resolve type error and RLS policy violation when editing asanas.
 
 **Architectural Decisions:**
@@ -605,3 +606,20 @@
 - Verify the RLS policy allows the anon key to read `completion_rating_options` (test with the live app)
 - Consider adding a "Retry" button to the error state in the rating overlay
 - Audit any remaining hardcoded rating references in the codebase
+
+---
+
+## [2026-05-01] - Session [03]
+**Goal:** Fix builder search to support comma-separated LOY IDs (e.g. `1,3,4,5,6,7,8`) for batch-adding asanas.
+
+**Architectural Decisions:**
+- **Dual Detection:** Added `isCommaList` detection in `builderSearch.js` using regex `/^\d[\d,\s\-]*$/` combined with `includes(',')` to identify comma-separated numeric lists as batch commands. This runs alongside the existing `;` (semicolon) and `GEM:` prefix detection.
+- **LOY ID as Primary Key:** Changed `resolveToken` in `builderParser.js` to first try LOY ID lookup (matching `a.id` padded to 3 digits against the token padded to 3 digits), then fall back to GEM plate lookup. This ensures LOY IDs are the standard resolution path.
+- **Plain List Support:** Added CASE C in `builderParser.js` to handle plain comma-separated LOY IDs without requiring semicolons or `GEM:` prefix. Users can now type `1,3,4,5,6,7,8` directly into the search bar and press Enter.
+
+**Code Changed:**
+- `src/ui/builderSearch.js`: Added `isCommaList` detection in both `onkeydown` (Enter key) and `oninput` (live search) handlers to route comma-separated LOY IDs through the batch processing pipeline.
+- `src/utils/builderParser.js`: Added LOY ID lookup as primary resolution in `resolveToken`; added CASE C for plain comma-separated lists without semicolons or `GEM:` prefix; fixed trailing whitespace on line 58.
+
+**Next Steps for Next Session:**
+- Verify the batch entry works with ranges (e.g., `1-5,7,9-12`) in addition to plain comma lists

@@ -57,7 +57,9 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
         const val = searchInput.value.trim();
         const isSemicolon = val.includes(';');
         const upperVal = val.toUpperCase();
-        const isBatch = isSemicolon || upperVal.startsWith('GEM:');
+        // Detect comma-separated LOY IDs (e.g. "1,3,4,5,6,7,8") or ranges (e.g. "1-5,7,9-12")
+        const isCommaList = /^\d[\d,\s\-]*$/.test(val) && val.includes(',');
+        const isBatch = isSemicolon || upperVal.startsWith('GEM:') || isCommaList;
 
         if (isBatch) {
             e.preventDefault();
@@ -92,8 +94,9 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
         searchInput.oninput = () => {
         const query = searchInput.value.trim();
         const upperQuery = query.toUpperCase();
-        // Logic Guard: Hide results if it's a batch command (Semicolon or GEM:)
-        if (query.length < 1 || query.includes(';') || upperQuery.startsWith('GEM:')) {
+        // Logic Guard: Hide results if it's a batch command (Semicolon, GEM:, or comma-separated LOY IDs)
+        const isCommaList = /^\d[\d,\s\-]*$/.test(query) && query.includes(',');
+        if (query.length < 1 || query.includes(';') || upperQuery.startsWith('GEM:') || isCommaList) {
             resultsBox.style.display = "none";
             return;
         }
