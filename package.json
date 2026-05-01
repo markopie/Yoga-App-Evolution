@@ -19,6 +19,7 @@
   "hooks:test": "bash .githooks/pre-commit",
 
   "check": "npm run lint && npm test",
+  "save": "git status --short && git add . && git commit -m",
   "push": "git push",
   "push:backup": "node -e \"const { spawnSync } = require('child_process'); const env = { ...process.env, RUN_DB_BACKUP_ON_PUSH: '1' }; const r = spawnSync('git', ['push'], { stdio: 'inherit', env }); process.exit(r.status ?? 1);\"",
 
