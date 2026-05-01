@@ -1,11 +1,9 @@
 # Yoga App Workflow
 
-## Normal coding change
+## Standard workflow
 
-Use this for ordinary app changes.
+Use this for all changes.
 
 ```bash
-git status
-git add .
-git commit -m "Feat: describe change"
-git push
+npm run save -- "Describe the change"
+npm run push
