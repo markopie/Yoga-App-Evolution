@@ -6,7 +6,8 @@ dist/
 build/
 coverage/
 .vite/
-
+docs/asana.md
+docs/stages.md
 # Python / local env
 .venv/
 __pycache__/

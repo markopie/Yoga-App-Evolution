@@ -22,8 +22,8 @@ export async function parseSemicolonCommand(commandString, libraryArray, asanaLi
         const upper = parts[0].toUpperCase();
         if (upper.startsWith('GEM:')) {
             idsStr = parts[0];
-        } else if (/^\d[\d,\s\-]*$/.test(parts[0]) && parts[0].includes(',')) {
-            // CASE C: Plain comma-separated LOY IDs (e.g. "1,3,4,5,6,7,8" or "1-5,7,9-12")
+        } else if (/^\d[\d,\s\-]*$/.test(parts[0]) && (parts[0].includes(',') || parts[0].includes('-'))) {
+            // CASE C: Plain LOY IDs with commas (e.g. "1,3,4,5,6,7,8"), ranges (e.g. "3-36"), or mixed (e.g. "1-5,7,9-12")
             idsStr = parts[0];
         } else {
             return null;

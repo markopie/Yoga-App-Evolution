@@ -43,74 +43,124 @@ begin
     analysed_at
   )
 
-  with ordered_items as (
+  with recursive expanded_items as (
+    -- Base case: root course items
     select
-      c.id as course_id,
-      c.title as course_title,
-      c.sub_category_id as course_sub_category_id,
-      x.ordinality,
+      c.id                                 as root_course_id,
+      c.title                              as root_course_title,
+      c.id                                 as source_course_id,
+      c.sub_category_id                    as source_course_sub_category_id,
       x.item,
-      x.item->>'type' as item_type
+      x.item->>'type'                      as item_type,
+      array[x.ordinality]                  as order_path,
+      0                                    as expansion_depth,
+      array[c.id]::bigint[]                as visited_course_ids,
+      1::integer                           as macro_multiplier
     from public.courses c
     cross join lateral jsonb_array_elements(c.sequence_json)
       with ordinality as x(item, ordinality)
     where c.id = p_course_id
       and c.sequence_json is not null
       and jsonb_typeof(c.sequence_json) = 'array'
+      and x.item is not null
+      and x.item->>'type' is not null
+
+    union all
+
+    -- Recursive case: expand macro items
+    select
+      ei.root_course_id,
+      ei.root_course_title,
+      linked.id                            as source_course_id,
+      linked.sub_category_id               as source_course_sub_category_id,
+      x.item,
+      x.item->>'type'                      as item_type,
+      ei.order_path || x.ordinality        as order_path,
+      ei.expansion_depth + 1               as expansion_depth,
+      ei.visited_course_ids || linked.id   as visited_course_ids,
+      ei.macro_multiplier
+        * coalesce(nullif(ei.item->>'rounds', '')::integer, 1) as macro_multiplier
+    from expanded_items ei
+    inner join lateral (
+      select c.*
+      from public.courses c
+      where c.id = (ei.item->>'sequence_id')::bigint
+        and c.sequence_json is not null
+        and jsonb_typeof(c.sequence_json) = 'array'
+    ) linked on true
+    cross join lateral jsonb_array_elements(linked.sequence_json)
+      with ordinality as x(item, ordinality)
+    where ei.item_type = 'macro'
+      and ei.expansion_depth < 12
+      and not ((ei.item->>'sequence_id')::bigint = any(ei.visited_course_ids))
+  ),
+
+  -- Assign final ordinality based on expanded order_path
+  expanded_ordered as (
+    select
+      ei.*,
+      row_number() over (order by ei.order_path) as ordinality
+    from expanded_items ei
   ),
 
   loop_ranges as (
     select
-      ls.course_id,
-      ls.ordinality as loop_start_ord,
+      eo.root_course_id,
+      eo.ordinality as loop_start_ord,
       (
-        select min(le.ordinality)
-        from ordered_items le
-        where le.course_id = ls.course_id
-          and le.ordinality > ls.ordinality
-          and le.item_type = 'loop_end'
+        select min(eo2.ordinality)
+        from expanded_ordered eo2
+        where eo2.root_course_id = eo.root_course_id
+          and eo2.ordinality > eo.ordinality
+          and eo2.item_type = 'loop_end'
       ) as loop_end_ord,
-      coalesce(nullif(ls.item->>'rounds', '')::integer, 1) as rounds
-    from ordered_items ls
-    where ls.item_type = 'loop_start'
+      coalesce(nullif(eo.item->>'rounds', '')::integer, 1) as rounds
+    from expanded_ordered eo
+    where eo.item_type = 'loop_start'
   ),
 
   pose_items as (
     select
-      oi.course_id,
-      oi.course_title,
-      oi.course_sub_category_id,
-      oi.ordinality,
+      eo.root_course_id as course_id,
+      eo.root_course_title as course_title,
+      eo.source_course_id,
+      eo.source_course_sub_category_id,
+      eo.ordinality,
       row_number() over (
-        partition by oi.course_id
-        order by oi.ordinality
+        partition by eo.root_course_id
+        order by eo.ordinality
       ) as pose_index,
 
-      oi.item,
-      oi.item->>'pose_id' as pose_id_raw,
-      nullif(oi.item->>'stage_id', '')::bigint as stage_id,
-      lower(coalesce(nullif(oi.item->>'tier', ''), 'standard')) as hold_tier,
-      nullif(oi.item->>'side', '') as side_raw,
+      eo.item,
+      eo.item->>'pose_id' as pose_id_raw,
+      nullif(eo.item->>'stage_id', '')::bigint as stage_id,
+      lower(coalesce(nullif(eo.item->>'tier', ''), 'standard')) as hold_tier,
+      nullif(eo.item->>'side', '') as side_raw,
+
+      eo.macro_multiplier,
 
       coalesce(
         round(exp(sum(ln(lr.rounds::numeric))))::integer,
         1
       ) as loop_multiplier
 
-    from ordered_items oi
+    from expanded_ordered eo
     left join loop_ranges lr
-      on lr.course_id = oi.course_id
+      on lr.root_course_id = eo.root_course_id
      and lr.loop_end_ord is not null
-     and oi.ordinality > lr.loop_start_ord
-     and oi.ordinality < lr.loop_end_ord
-    where oi.item_type = 'pose'
+     and eo.ordinality > lr.loop_start_ord
+     and eo.ordinality < lr.loop_end_ord
+    where eo.item_type = 'pose'
     group by
-      oi.course_id,
-      oi.course_title,
-      oi.course_sub_category_id,
-      oi.ordinality,
-      oi.item
+      eo.root_course_id,
+      eo.root_course_title,
+      eo.source_course_id,
+      eo.source_course_sub_category_id,
+      eo.ordinality,
+      eo.item,
+      eo.macro_multiplier
   ),
+
 
   course_pose_positions as (
     select
@@ -125,7 +175,7 @@ begin
     select
       pi.course_id,
       pi.course_title,
-      pi.course_sub_category_id,
+      pi.source_course_sub_category_id,
       pi.ordinality,
       pi.pose_index,
       pi.pose_id_raw,
@@ -133,6 +183,8 @@ begin
       pi.hold_tier,
       pi.side_raw,
       pi.loop_multiplier,
+      pi.macro_multiplier,
+
 
       a.id as asana_id,
       a.name as asana_name,
@@ -175,7 +227,9 @@ begin
 
       case
         -- Flow courses: authored duration first, then flow hold, then standard hold.
-        when pi.course_sub_category_id = 55 then
+        -- Use source_course_sub_category_id so linked courses use their own Flow/Cycle status.
+        when pi.source_course_sub_category_id = 55 then
+
           coalesce(
             case
               when nullif(pi.item->>'duration', '') is not null then
@@ -239,9 +293,11 @@ begin
       rb.*,
       rb.base_duration_seconds
       * rb.loop_multiplier
-      * rb.side_multiplier as duration_seconds
+      * rb.side_multiplier
+      * rb.macro_multiplier as duration_seconds
     from resolved_base rb
   ),
+
 
   course_totals as (
     select
