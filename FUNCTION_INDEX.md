@@ -109,6 +109,9 @@
 - `getOrCreateSubCategoryId` (function)
 - `saveSequence` (function)
 
+### 📄 `services/ratingOptionsService.js`
+- `fetchRatingOptions` (function)
+
 ### 📄 `services/sequenceEngine.js`
 - `findAsanaByIdOrPlate` (window binding)
 - `getExpandedPoses` (function)

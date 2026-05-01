@@ -548,3 +548,60 @@
 **Next Steps for Next Session:**
 - Verify the transition overlay suppression works correctly with various sequence types (macros, loops, regular sequences)
 - Consider adding visual feedback (e.g., a brief flash or subtle animation) when transitioning between poses in embedded sequences to compensate for the removed overlay
+
+---
+
+## [2026-05-01] - Session [01]
+**Goal:** Refactor completion rating UI to load dynamically from Supabase instead of hardcoded buttons.
+
+**Architectural Decisions:**
+- **Supabase as Single Source of Truth:** Created `ratingOptionsService.js` that fetches `rating, feedback_key, label, subtitle, emoji, progression_score` from `completion_rating_options WHERE is_active = true ORDER BY sort_order`. No fallback defaults — if Supabase is unavailable or the query fails, a clear error message ("Rating options could not be loaded.") is shown in the overlay.
+- **BEM CSS Component:** Moved all rating overlay styling from inline HTML to BEM-compliant CSS classes in `playback.css` (`.rating-overlay`, `__title`, `__buttons`, `__button`, `--selected`, `--dimmed`, `__emoji`, `__label`, `__subtitle`, `__error`, `__loading`).
+- **Minimal HTML:** The `#ratingOverlay` in `index.html` now contains only the container, heading, and an empty buttons div with a loading placeholder — no hardcoded rating buttons.
+- **Dynamic Rendering:** `setupRatingButtons()` in `app.js` is now async. It calls `fetchRatingOptions()`, renders buttons using BEM classes, and attaches click handlers that use CSS class modifiers instead of inline styles. All existing behaviour is preserved (numeric rating save, overlay dismiss, reset trigger).
+- **RLS Policy:** Added a SELECT policy allowing anyone (anon + authenticated) to read active rows, with INSERT/UPDATE/DELETE restricted to authenticated users only.
+
+**Code Changed:**
+- `src/services/ratingOptionsService.js`: **NEW** — fetches active rating options from Supabase, throws on failure
+- `styles/playback.css`: **NEW** — BEM CSS classes for the rating overlay component
+- `index.html`: **MINIMAL** — overlay uses CSS classes, no hardcoded buttons, just a loading placeholder
+- `app.js`: **REWRITTEN** — `setupRatingButtons()` is async, fetches from Supabase, renders dynamically, shows error on failure
+- `supabase/migrations/20260501000002_seed_completion_rating_options.sql`: **NEW** — RLS policies + seed data for `completion_rating_options` (idempotent)
+
+**Next Steps for Next Session:**
+- Verify the RLS policy allows the anon key to read `completion_rating_options` (test with the live app)
+- Consider adding a "Retry" button to the error state in the rating overlay
+- Audit any remaining hardcoded rating references in the codebase
+
+---
+
+## [2026-05-01] - Session [02]
+**Goal:** Debug and fix the cached course analysis refresh queue system — resolve type error and RLS policy violation when editing asanas.
+
+**Architectural Decisions:**
+- **Root Cause Analysis:** The `course_analysis_refresh_queue` system was created directly in Supabase SQL editor (not in the codebase). Two bugs were identified:
+  1. **Type Error:** `queue_course_analysis_refresh()` was passing untyped `NULL` or empty string `''` into `processed_at` (TIMESTAMPTZ column) instead of `NULL::timestamptz`.
+  2. **RLS Violation:** The queue table had RLS enabled but no INSERT/UPDATE policies, so when a non-admin user's trigger fired from editing `public.asanas`, the trigger's INSERT into the queue was blocked.
+- **App Code Audit:** Confirmed the asana editor (`asanaEditor.js`) has no `isAdmin()` check before saving to `public.asanas` — it always upserts directly. The `isAdmin()` check only exists in `builder.js` for course saves. The app does NOT use `user_asanas`/`user_sequences`/`user_stages` tables.
+- **Trigger Rewrite:** Replaced `sequence_text LIKE` matching with `jsonb_array_elements(sequence_json)` and `item->>'pose_id'` exact comparisons. Removed all references to the deprecated `sequence_text_ARCHIVED` column.
+- **Explicit Type Casts:** All `NULL` values in `queue_course_analysis_refresh()` and `process_course_analysis_refresh_queue()` now use explicit casts (`NULL::timestamptz`, `NULL::text`).
+- **RLS Policy Approach:** Added three permissive policies (INSERT, UPDATE, SELECT) for authenticated users on the queue table, since it's an internal system table only written to by trigger functions and the manual `process_course_analysis_refresh_queue()` call.
+- **Schema Alignment:** Matched the existing table schema exactly (`course_id` PK, `reason`, `requested_at`, `processed_at`, `attempts`, `last_error`). No new `id` column. Function parameters prefixed with `p_` to avoid ambiguity.
+
+**Code Changed:**
+- `supabase/migrations/20260501000001_fix_course_analysis_refresh_queue_type_error.sql`: **NEW** — Comprehensive migration fixing type casts, trigger functions (jsonb_array_elements), RLS policies, and data cleanup. Does NOT modify `refresh_course_sequence_analysis_for_course` (analysis algorithm preserved).
+
+**Lessons Learned:**
+- The `course_analysis_refresh_queue` table was created directly in Supabase SQL editor and never existed in the codebase, making it invisible to code search. Always check the Supabase dashboard for tables/functions not represented in migrations.
+- Supabase triggers run in the security context of the calling user, not the function owner. If a trigger tries to INSERT into a table with RLS enabled, the calling user needs appropriate permissions — even though the trigger is "system" code.
+- The asana editor's save path has no admin guard — any authenticated user can write to `public.asanas`. This is by design (the app doesn't use user-specific tables), but it means any RLS on downstream tables (like the queue) must account for all authenticated users.
+
+**Next Steps for Next Session:**
+- Run the migration in Supabase SQL editor and test the workflow:
+  1. Edit an asana's intensity → save
+  2. Verify `SELECT * FROM course_analysis_refresh_queue WHERE processed_at IS NULL;`
+  3. Run `SELECT public.process_course_analysis_refresh_queue(50);`
+  4. Verify `processed_at` is filled and `course_sequence_analysis` updates
+- Verify the RLS policy allows the anon key to read `completion_rating_options` (test with the live app)
+- Consider adding a "Retry" button to the error state in the rating overlay
+- Audit any remaining hardcoded rating references in the codebase

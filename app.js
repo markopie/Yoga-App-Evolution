@@ -119,6 +119,7 @@ window.loadCourses = async function() {
 
 // #region 5. HISTORY & LOGGING
 import { safeGetLocalStorage, safeSetLocalStorage, fetchServerHistory, appendServerHistory, seedManualCompletionsOnce, updateCompletionRating } from "./src/services/historyService.js";
+import { fetchRatingOptions } from "./src/services/ratingOptionsService.js";
 
 const RESUME_STATE_KEY = "yoga_resume_state_v2";
 
@@ -323,51 +324,81 @@ safeListen("completeBtn", "click", async () => {
     }
 });
 
-const setupRatingButtons = () => {
-    const ratingButtons = document.querySelectorAll(".rating-btn");
+/**
+ * Dynamically render rating buttons into the ratingOverlay from Supabase.
+ * Shows a clear error message if rating options cannot be loaded.
+ */
+const setupRatingButtons = async () => {
     const overlay = document.getElementById("ratingOverlay");
+    if (!overlay) return;
 
-    ratingButtons.forEach(btn => {
-        btn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            
-            const sessionId = overlay?.dataset.sessionId;
-            const rating = parseInt(btn.dataset.rating, 10);
-            
-            if (!sessionId) {
-                if (overlay) overlay.style.display = "none";
-                return;
-            }
+    const container = document.getElementById("ratingButtonsContainer");
+    if (!container) return;
 
-            ratingButtons.forEach(b => b.style.opacity = "0.3");
-            btn.style.opacity = "1";
-            btn.style.transform = "scale(1.1)";
+    try {
+        // Fetch rating options from Supabase (throws on failure)
+        const options = await fetchRatingOptions();
 
-            try {
-                if (sessionId !== "fallback-id" && typeof window.updateCompletionRating === "function") {
-                    await window.updateCompletionRating(sessionId, rating);
-                }
-            } catch (err) {
-                console.error("Rating Phase 2 Failed:", err);
-            } finally {
-                if (overlay) {
+        // Render buttons using BEM CSS classes
+        container.innerHTML = options.map(opt => `
+          <button class="rating-overlay__button" data-rating="${opt.rating}" data-feedback-key="${opt.feedback_key}">
+            ${opt.emoji ? `<span class="rating-overlay__emoji">${opt.emoji}</span>` : ''}
+            <span class="rating-overlay__label">${opt.label}</span>
+            ${opt.subtitle ? `<span class="rating-overlay__subtitle">${opt.subtitle}</span>` : ''}
+          </button>
+        `).join('');
+
+        // Attach click handlers
+        const ratingButtons = container.querySelectorAll(".rating-overlay__button");
+        ratingButtons.forEach(btn => {
+            btn.addEventListener("click", async (e) => {
+                e.preventDefault();
+
+                const sessionId = overlay?.dataset.sessionId;
+                const rating = parseInt(btn.dataset.rating, 10);
+
+                if (!sessionId) {
                     overlay.style.display = "none";
-                    delete overlay.dataset.sessionId; 
+                    return;
                 }
-                const resetBtn = document.getElementById("resetBtn");
-                if (resetBtn) resetBtn.click();
-                
+
+                // Visual feedback: dim all, highlight selected
                 ratingButtons.forEach(b => {
-                    b.style.opacity = "";
-                    b.style.transform = "";
+                    b.classList.remove('rating-overlay__button--selected');
+                    b.classList.add('rating-overlay__button--dimmed');
                 });
-            }
+                btn.classList.remove('rating-overlay__button--dimmed');
+                btn.classList.add('rating-overlay__button--selected');
+
+                try {
+                    if (sessionId !== "fallback-id" && typeof window.updateCompletionRating === "function") {
+                        await window.updateCompletionRating(sessionId, rating);
+                    }
+                } catch (err) {
+                    console.error("Rating Phase 2 Failed:", err);
+                } finally {
+                    overlay.style.display = "none";
+                    delete overlay.dataset.sessionId;
+
+                    const resetBtn = document.getElementById("resetBtn");
+                    if (resetBtn) resetBtn.click();
+
+                    // Reset visual state for next time
+                    ratingButtons.forEach(b => {
+                        b.classList.remove('rating-overlay__button--selected', 'rating-overlay__button--dimmed');
+                    });
+                }
+            });
         });
-    });
+    } catch (err) {
+        console.error("[setupRatingButtons] Failed to load rating options:", err);
+        container.innerHTML = `<div class="rating-overlay__error">Rating options could not be loaded.</div>`;
+    }
 };
 
+// Run setup after DOM is ready
 if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", setupRatingButtons);
+    document.addEventListener("DOMContentLoaded", () => setupRatingButtons());
 } else {
     setupRatingButtons();
 }

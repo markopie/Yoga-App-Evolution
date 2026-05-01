@@ -396,3 +396,105 @@
     font-weight: 500;
     font-style: italic;
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   RATING OVERLAY (Completion Feedback)
+   ──────────────────────────────────────────────────────────────────────────── */
+.rating-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: #1d1d1f;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.rating-overlay__title {
+    font-size: 2rem;
+    margin-bottom: 2.5rem;
+    font-weight: 500;
+    text-align: center;
+    letter-spacing: -0.02em;
+}
+
+.rating-overlay__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    max-width: 800px;
+    padding: 0 20px;
+}
+
+.rating-overlay__button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 20px 24px;
+    border: 2px solid transparent;
+    border-radius: 16px;
+    background: #f5f5f7;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 120px;
+    min-height: 44px;
+    font-family: inherit;
+}
+
+.rating-overlay__button:hover {
+    background: #e8e8ed;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.rating-overlay__button:active {
+    transform: translateY(0);
+}
+
+.rating-overlay__button--selected {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.rating-overlay__button--dimmed {
+    opacity: 0.3;
+}
+
+.rating-overlay__emoji {
+    font-size: 2.5rem;
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.rating-overlay__label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.rating-overlay__subtitle {
+    font-size: 0.8rem;
+    color: #86868b;
+}
+
+.rating-overlay__error {
+    color: #d32f2f;
+    font-size: 1rem;
+    text-align: center;
+    padding: 20px;
+    max-width: 400px;
+}
+
+.rating-overlay__loading {
+    color: #86868b;
+    font-size: 1rem;
+    text-align: center;
+    padding: 20px;
+}
