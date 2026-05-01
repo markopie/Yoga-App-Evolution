@@ -1,16 +1,29 @@
 {
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "start": "npx http-server . -p 3000",
-    "build": "vite build",
-    "preview": "vite preview",
-    "lint": "npx eslint .",
-    "audit": "python scripts/audit_timing_logic.py",
-    "deploy": "bash deploy.sh",
-    "test": "node --test",
-    "legacy-build": "mkdir -p dist && cp index.html app.js dist/ && cp -r src styles fonts data dist/ && cp *.json dist/ 2>/dev/null || true"
-  },
+  "dev": "vite",
+  "start": "npx http-server . -p 3000",
+  "build": "vite build",
+  "preview": "vite preview",
+  "lint": "npx eslint .",
+  "test": "node --test",
+  "audit": "python scripts/audit_timing_logic.py",
+  "deploy": "bash deploy.sh",
+
+  "index": "python scripts/generate_index.py",
+  "backup": "python scripts/sync_and_backup.py",
+  "workflow": "node -e \"console.log(require('fs').readFileSync('docs/WORKFLOW.md','utf8'))\"",
+
+  "hooks:install": "git config core.hooksPath .githooks",
+  "hooks:check": "git config --get core.hooksPath",
+  "hooks:test": "bash .githooks/pre-commit",
+
+  "check": "npm run lint && npm test",
+  "push": "git push",
+  "push:backup": "node -e \"const { spawnSync } = require('child_process'); const env = { ...process.env, RUN_DB_BACKUP_ON_PUSH: '1' }; const r = spawnSync('git', ['push'], { stdio: 'inherit', env }); process.exit(r.status ?? 1);\"",
+
+  "legacy-build": "mkdir -p dist && cp index.html app.js dist/ && cp -r src styles fonts data dist/ && cp *.json dist/ 2>/dev/null || true"
+},
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@supabase/supabase-js": "^2.104.1",

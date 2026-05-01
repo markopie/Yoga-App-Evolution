@@ -21,3 +21,14 @@ For SQL changes:
 2. Do not overwrite existing Supabase functions unless explicitly instructed.
 3. Do not change `refresh_course_sequence_analysis_for_course` unless the task is specifically about course analysis.
 4. Do not hardcode completion rating labels in JS/HTML. Use `completion_rating_options`.
+
+## Workflow Reminder
+
+When the user asks about Git, Supabase, migrations, hooks, commits, backups, or deployment, remind them to check:
+
+- `docs/WORKFLOW.md`
+- `.githooks/pre-commit`
+- `.githooks/pre-push`
+- `supabase/migrations/`
+
+Do not assume the user remembers the workflow.
