@@ -5,3 +5,19 @@ When executing shell commands in this workspace, you are operating in a Windows 
 1. **Path Separators for CMD:** If you must use legacy CMD utilities (like `findstr`, `dir`, `copy`, `type`), always use backslashes (`\`) for file paths. Forward slashes (`/`) will be misinterpreted as command-line switches and cause errors.
 2. **Prefer PowerShell:** Always prefer modern PowerShell cmdlets over legacy CMD tools. For example, use `Select-String` instead of `findstr`, and `Get-ChildItem` instead of `dir`. PowerShell natively handles forward slashes in paths perfectly.
 3. **Command Chaining:** If you are executing commands via PowerShell, chain multiple commands together using a semicolon (`;`) instead of `&&`.
+
+## Project Context Loading
+
+Before making non-trivial changes, read:
+
+- `FUNCTION_INDEX.md`
+- `docs/AI_AGENT_CONTEXT.md`
+- relevant files in `supabase/migrations/`
+
+Do not assume database structure from memory. Check migration files or ask for current schema if needed.
+
+For SQL changes:
+1. Save final SQL in `supabase/migrations/`.
+2. Do not overwrite existing Supabase functions unless explicitly instructed.
+3. Do not change `refresh_course_sequence_analysis_for_course` unless the task is specifically about course analysis.
+4. Do not hardcode completion rating labels in JS/HTML. Use `completion_rating_options`.

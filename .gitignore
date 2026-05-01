@@ -1,23 +1,27 @@
+.env
+backups/
+*.local
 node_modules/
+dist/
+build/
+coverage/
+.vite/
 
-# Python Virtual Environment
+# Python / local env
 .venv/
 __pycache__/
-*.py[cod]
+*/__pycache__/
 
-# Secret Keys (NEVER PUSH THESE)
-.env*
-google-credentials.json
-# OS Files
-.DS_Store
-Thumbs.db
-
-# Local Backups (Your Data)
-assets/
-backups/
-archive/
-temp_history.txt
-
-# VS Code settings
+# Editor
 .vscode/
-.env
+
+# Local credentials
+google-credentials.json
+credentials.json
+token.json
+
+# Local/script cache
+scripts/**/__pycache__/
+
+# Local script archive
+scripts/archive/
