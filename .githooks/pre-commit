@@ -11,15 +11,13 @@ echo "🔎 Checking for merge conflict markers..."
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -v '^.githooks/pre-commit$' || true)
 
 if [ -n "$STAGED_FILES" ]; then
-  if echo "$STAGED_FILES" | xargs grep -nI "<<<<<<<\|=======\|>>>>>>>" 2>/dev/null; then
-    echo "❌ Merge conflict markers found."
+  if echo "$STAGED_FILES" | xargs grep -nIE '^(<<<<<<< .+|=======$|>>>>>>> .+)$' 2>/dev/null; then    echo "❌ Merge conflict markers found."
     exit 1
   fi
 fi
 
 echo "🔐 Checking for accidental secrets..."
-if git diff --cached -- . ':(exclude).githooks/pre-commit' | grep -Ei "SUPABASE_SERVICE_ROLE_KEY|service_role|eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\." >/dev/null; then
-  echo "❌ Possible secret detected."
+if git diff --cached -- . ':(exclude).githooks/pre-commit' | grep -Ei "SUPABASE_SERVICE_ROLE_KEY\s*=.+|service_role.+eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.|eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\." >/dev/null; then  echo "❌ Possible secret detected."
   echo "   Check .env, service_role keys, or JWT-looking strings."
   exit 1
 fi

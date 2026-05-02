@@ -1,4 +1,3 @@
-cat > docs/AI_AGENT_CONTEXT.md <<'EOF'
 # Yoga App AI Agent Context
 
 ## Core systems
@@ -8,6 +7,17 @@ cat > docs/AI_AGENT_CONTEXT.md <<'EOF'
 - `course_analysis_refresh_queue` stores courses needing recalculation.
 - `process_course_analysis_refresh_queue(limit)` processes queued courses.
 - `completion_rating_options` is the canonical source for completion rating UI.
+
+## Cache refresh workflow
+
+- `course_sequence_analysis` is a cache — it must be refreshed through the queue processor.
+- `npm run save` does **not** refresh the cache.
+- `npm run push` does **not** refresh the cache (Git hooks are kept fast and safe).
+- After changing asana/stage durations, intensities, or course-analysis SQL, run:
+  ```bash
+  npm run db:refresh-analysis
+  ```
+- Do not assume Git push refreshes the cache.
 
 ## Rules
 
@@ -23,4 +33,3 @@ cat > docs/AI_AGENT_CONTEXT.md <<'EOF'
 - Savasana is excluded from teaching-theme classification.
 - Standard finishing inversions are excluded from teaching-theme classification.
 - Finishing inversions remain in `all_theme_profile` and total duration.
-EOF

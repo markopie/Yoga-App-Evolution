@@ -1,4 +1,5 @@
 .env
+supabase/.temp/
 backups/
 *.local
 node_modules/
@@ -26,3 +27,7 @@ scripts/**/__pycache__/
 
 # Local script archive
 scripts/archive/
+
+data/courses_raw.json
+
+supabase/.temp/

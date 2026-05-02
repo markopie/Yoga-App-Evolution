@@ -1,10 +1,81 @@
-# Windows Command Line Execution Rules
+# Cline Workspace Rules — Yoga App Evolution
 
-When executing shell commands in this workspace, you are operating in a Windows environment. Follow these rules strictly:
+These rules are intended for `C:\Projects\Yoga-App-Evolution\.clinerules`.
 
-1. **Path Separators for CMD:** If you must use legacy CMD utilities (like `findstr`, `dir`, `copy`, `type`), always use backslashes (`\`) for file paths. Forward slashes (`/`) will be misinterpreted as command-line switches and cause errors.
-2. **Prefer PowerShell:** Always prefer modern PowerShell cmdlets over legacy CMD tools. For example, use `Select-String` instead of `findstr`, and `Get-ChildItem` instead of `dir`. PowerShell natively handles forward slashes in paths perfectly.
-3. **Command Chaining:** If you are executing commands via PowerShell, chain multiple commands together using a semicolon (`;`) instead of `&&`.
+## Operating Environment
+
+This project is developed on Windows using PowerShell.
+
+### Shell Command Rules
+
+1. Prefer PowerShell cmdlets over legacy CMD tools.
+   - Use `Get-ChildItem` instead of `dir`.
+   - Use `Get-Content` instead of `type`.
+   - Use `Select-String` instead of `findstr`.
+   - Use `Copy-Item` instead of `copy`.
+   - Use `Remove-Item` instead of `del`.
+
+2. When running commands in PowerShell, chain commands with semicolons:
+
+   ```powershell
+   command1; command2
+   ```
+
+3. Do not use `&&` for command chaining unless the shell is explicitly Bash.
+
+4. If using CMD utilities, use Windows backslashes in paths:
+
+   ```text
+   C:\Projects\Yoga-App-Evolution\supabase\migrations
+   ```
+
+5. Do not assume forward slashes are safe for legacy CMD commands.
+
+6. Do not run destructive commands such as `git reset --hard`, `Remove-Item -Recurse`, or database reset commands unless the user explicitly asks.
+
+---
+
+## Supabase and Database Rules
+
+1. Do not assume database schema from memory.
+
+2. Before writing queries against a table, verify the schema from one of:
+   - existing migration files in `supabase/migrations/`
+   - `FUNCTION_INDEX.md`
+   - `docs/AI_AGENT_CONTEXT.md`
+   - a direct schema query supplied by the user
+   - a Supabase SQL query such as `information_schema.columns`
+
+3. Never invent column names.
+
+4. For example, do not assume `courses.category` exists. The current relationship is:
+   - `courses.sub_category_id`
+   - `course_sub_categories.id`
+   - `course_sub_categories.category_id`
+   - `course_categories.id`
+
+5. When querying course taxonomy, join like this:
+
+   ```sql
+   from public.courses c
+   left join public.course_sub_categories csc
+     on csc.id = c.sub_category_id
+   left join public.course_categories cc
+     on cc.id = csc.category_id
+   ```
+
+6. For Supabase REST calls, include both headers:
+
+   ```text
+   apikey: <anon key>
+   Authorization: Bearer <anon key>
+   ```
+
+7. Do not expose, print, commit, or paste service-role keys.
+
+8. If `.env` parsing fails, fix `.env` first. Do not troubleshoot Supabase auth until `.env` can be parsed.
+
+---
 
 ## Project Context Loading
 
@@ -12,23 +83,116 @@ Before making non-trivial changes, read:
 
 - `FUNCTION_INDEX.md`
 - `docs/AI_AGENT_CONTEXT.md`
+- `docs/WORKFLOW.md`
 - relevant files in `supabase/migrations/`
 
-Do not assume database structure from memory. Check migration files or ask for current schema if needed.
+Do not rely on memory of previous chats.
 
-For SQL changes:
-1. Save final SQL in `supabase/migrations/`.
+---
+
+## Course Sequence Analysis Rules
+
+The app has a cached table:
+
+```sql
+public.course_sequence_analysis
+```
+
+It is refreshed by:
+
+```sql
+public.refresh_course_sequence_analysis_for_course(p_course_id bigint)
+```
+
+Changed courses are queued in:
+
+```sql
+public.course_analysis_refresh_queue
+```
+
+Queue processing is handled by:
+
+```sql
+public.process_course_analysis_refresh_queue(limit_count)
+```
+
+Do not modify `refresh_course_sequence_analysis_for_course` unless the task is specifically about course analysis.
+
+When working on course analysis, preserve these distinctions:
+
+1. `theme_profile` = teaching-theme classification profile.
+2. `all_theme_profile` = full sequence profile.
+3. `restorative_share` = restorative/recovery component.
+4. Inversions and Savasana may be excluded from `theme_profile` but must remain in `all_theme_profile` and total duration.
+5. Flow courses use `sub_category_id = 55`.
+6. Cycle courses use `sub_category_id = 56`.
+7. Do not use `sequence_json.duration` for non-flow courses.
+8. Keep side multiplier, loop multiplier, macro expansion, and Flow/Cycle duration logic intact unless explicitly asked.
+
+---
+
+## SQL Change Rules
+
+1. Save final SQL changes in:
+
+   ```text
+   supabase/migrations/
+   ```
+
 2. Do not overwrite existing Supabase functions unless explicitly instructed.
-3. Do not change `refresh_course_sequence_analysis_for_course` unless the task is specifically about course analysis.
-4. Do not hardcode completion rating labels in JS/HTML. Use `completion_rating_options`.
 
-## Workflow Reminder
+3. Prefer prototype/read-only `SELECT` queries before patching production functions.
 
-When the user asks about Git, Supabase, migrations, hooks, commits, backups, or deployment, remind them to check:
+4. For course-analysis logic, do not patch based on one course only. First test against a small representative set.
+
+5. For taxonomy checks, do not use loose text matching such as matching `Week 146` as `Week 1`.
+
+---
+
+## Git and Workflow Rules
+
+Normal save/push workflow:
+
+```powershell
+npm run save -- "Message"
+npm run push
+```
+
+Before advising on Git, Supabase, migrations, hooks, commits, backups, or deployment, check:
 
 - `docs/WORKFLOW.md`
 - `.githooks/pre-commit`
 - `.githooks/pre-push`
 - `supabase/migrations/`
 
-Do not assume the user remembers the workflow.
+Git hooks are versioned in:
+
+```text
+.githooks/
+```
+
+---
+
+## Coding Rules
+
+1. Do not hardcode completion rating labels in JS/HTML.
+2. Use `completion_rating_options`.
+3. Prefer small, testable patches.
+4. Show diffs before claiming a change is complete.
+5. If uncertain, say what was verified and what was not verified.
+
+---
+
+## Short Cline Prompt Snippet
+
+Use this at the beginning of a Cline task when needed:
+
+```text
+Before doing anything, read `.clinerules`, `FUNCTION_INDEX.md`, `docs/AI_AGENT_CONTEXT.md`, and `docs/WORKFLOW.md`.
+
+Do not assume database columns exist. Check schema before writing SQL. In particular, `courses.category` does not exist; use `courses.sub_category_id -> course_sub_categories -> course_categories`.
+
+Use PowerShell syntax, not Bash/CMD assumptions.
+```
+
+---

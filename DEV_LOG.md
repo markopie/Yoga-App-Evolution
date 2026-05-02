@@ -622,4 +622,30 @@
 - `src/utils/builderParser.js`: Added LOY ID lookup as primary resolution in `resolveToken`; added CASE C for plain comma-separated lists without semicolons or `GEM:` prefix; fixed trailing whitespace on line 58.
 
 **Next Steps for Next Session:**
-- Verify the batch entry works with ranges (e.g., `1-5,7,9-12`) in addition to plain comma lists
+- Verify the batch entry works with ranges (e.g., `1-5,7,9-12`) in addition to plain comma list
+---
+
+## [2026-05-02] - Session [01]
+**Goal:** Update course_sequence_analysis function — exclude Inversions from theme_profile by default, add Backbends focus-block correction, and create queue processor script.
+
+**Architectural Decisions:**
+- **Inversions Exclusion:** Inversions are excluded from `theme_profile` by default (they dominate duration due to long holds in Iyengar sequences). They remain in `all_theme_profile`, `total_duration_seconds`, `restorative_share`, and `weighted_intensity`. Inversions stay in `theme_profile` only when the course title explicitly indicates an inversion theme (contains "inverted", "inversion", "sirsasana", or "sarvangasana").
+- **Backbends Focus-Block Correction:** Added a structural override that changes `primary_theme` to "Backbends" when the sequence structure clearly indicates Backbends is the actual teaching focus, not the duration-dominant category. The override applies only when: sub_category_id is not purpose-based (5, 55, 233, 235, 236, 560), current primary is "Standing and Basic" or "Forward Bends", Backbends has ≥15% share, and there's a coherent Backbends block (≥3 poses, ≥90s, not entirely restorative). For Standing cases: initial Standing block must be 5-7 poses, ≤650s, followed by Backbends. For Forward Bends cases: Backbends block must precede Forward Bends block.
+- **Queue Processor Script:** Created `scripts/process_course_analysis_queue.py` that calls `process_course_analysis_refresh_queue(50)` repeatedly until the queue is empty, with batch progress output. Added `npm run db:refresh-analysis` command. Documented that `npm run save` and `npm run push` do NOT refresh the analysis cache.
+
+**Code Changed:**
+- `supabase/migrations/20260501000003_update_course_sequence_analysis_function.sql`: Added Inversions exclusion from theme_profile (title-based override), Backbends focus-block correction (8 new CTEs + modified primary_theme CASE + 4 new LEFT JOINs), and preserved all existing logic (Flow/Cycle duration, side_multiplier, loop_multiplier, macro expansion, restorative_share, all_theme_profile, intensity, queue logic, schema).
+- `scripts/process_course_analysis_queue.py`: **NEW** — Python script to process the course-analysis refresh queue via Supabase RPC.
+- `package.json`: Added `"db:refresh-analysis"` npm script.
+- `docs/WORKFLOW.md`: Added course analysis cache section and related commands table.
+- `docs/AI_AGENT_CONTEXT.md`: Added cache refresh workflow section.
+
+**Validation Results:**
+- v4 prototype confirmed exactly 3 courses change: 238 (3C Backbends), 250 (6C Backbends), 292 (4C Backbends) — all correctly overridden to "Backbends".
+- All other test courses (267, 298, 182, 183, 186) remain unchanged.
+- Production patch applied and validated against live data.
+
+**Next Steps for Next Session:**
+- Verify the queue processor script works end-to-end by running `npm run db:refresh-analysis` after the next Supabase migration.
+- Consider adding a "Retry" button to the error state in the rating overlay.
+- Audit any remaining hardcoded rating references in the codebase.

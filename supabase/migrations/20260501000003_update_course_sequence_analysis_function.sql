@@ -263,6 +263,12 @@ begin
         -- Savasana should not decide the teaching theme.
         when pi.pose_id_raw = '200' then true
 
+        -- Inversions should not dominate the teaching-theme classification unless
+        -- the course title explicitly indicates an inversion theme.
+        when coalesce(ac_stage.name, ac_base.name) = 'Inversions'
+        and pi.course_title !~* '(inverted|inversion|sirsasana|sarvangasana)'
+        then true
+
         -- Standard finishing inversions should remain in all_theme_profile and total duration,
         -- but should not dominate the teaching-theme classification when they appear
         -- immediately before Savasana.
@@ -458,6 +464,133 @@ begin
     where stage_id is not null
       and resolved_stage_id is null
     group by course_id
+  ),
+
+  -- ============================================================
+  -- Backbends Focus-Block Correction
+  -- ============================================================
+
+  -- Course metadata for sub_category filtering
+  course_meta as (
+    select
+      c.id as course_id,
+      c.sub_category_id
+    from public.courses c
+    where c.id = p_course_id
+  ),
+
+  -- Identify contiguous category blocks (only non-excluded poses)
+  category_blocks as (
+    select
+      r.*,
+      case
+        when r.pose_index = 1 then 1
+        when lag(r.effective_category_name) over (
+          partition by r.course_id order by r.pose_index
+        ) = r.effective_category_name then 0
+        else 1
+      end as block_start
+    from resolved r
+    where r.exclude_from_teaching_theme = false
+  ),
+
+  category_blocks_numbered as (
+    select
+      cb.*,
+      sum(cb.block_start) over (
+        partition by cb.course_id
+        order by cb.pose_index
+        rows between unbounded preceding and current row
+      ) as category_block_id
+    from category_blocks cb
+  ),
+
+  block_summary as (
+    select
+      cbn.course_id,
+      cbn.category_block_id,
+      cbn.effective_category_name,
+      min(cbn.pose_index) as block_start_index,
+      max(cbn.pose_index) as block_end_index,
+      count(*)::integer as block_pose_count,
+      sum(cbn.duration_seconds)::integer as block_seconds,
+      bool_and(cbn.effective_is_restorative) as block_entirely_restorative
+    from category_blocks_numbered cbn
+    group by cbn.course_id, cbn.category_block_id, cbn.effective_category_name
+  ),
+
+  -- Initial Standing block (if starts at pose_index = 1)
+  initial_standing_block as (
+    select
+      course_id,
+      category_block_id,
+      block_pose_count,
+      block_seconds
+    from block_summary
+    where block_start_index = 1
+      and effective_category_name = 'Standing and Basic'
+  ),
+
+  -- Backbends blocks
+  backbend_blocks as (
+    select
+      bs.course_id,
+      bs.category_block_id,
+      bs.block_start_index,
+      bs.block_end_index,
+      bs.block_pose_count,
+      bs.block_seconds,
+      bs.block_entirely_restorative,
+      row_number() over (
+        partition by bs.course_id
+        order by bs.block_start_index
+      ) as bb_block_seq
+    from block_summary bs
+    where bs.effective_category_name = 'Backbends'
+  ),
+
+  -- Forward Bends blocks
+  forward_bend_blocks as (
+    select
+      bs.course_id,
+      bs.category_block_id,
+      bs.block_start_index,
+      bs.block_end_index,
+      bs.block_pose_count,
+      bs.block_seconds,
+      bs.block_entirely_restorative,
+      row_number() over (
+        partition by bs.course_id
+        order by bs.block_start_index
+      ) as fb_block_seq
+    from block_summary bs
+    where bs.effective_category_name = 'Forward Bends'
+  ),
+
+  -- Main Backbends block (first substantial one)
+  main_backbend_block as (
+    select
+      course_id,
+      block_start_index,
+      block_end_index,
+      block_pose_count,
+      block_seconds
+    from backbend_blocks
+    where bb_block_seq = 1
+      and block_pose_count >= 3
+      and block_seconds >= 90
+      and not block_entirely_restorative
+  ),
+
+  -- Main Forward Bends block (first substantial one)
+  main_forward_bend_block as (
+    select
+      course_id,
+      block_start_index,
+      block_pose_count,
+      block_seconds
+    from forward_bend_blocks
+    where fb_block_seq = 1
   )
 
   select
@@ -467,6 +600,66 @@ begin
     case
       when ts.top_theme is null then null
       when ts.top_theme_share < 45 then 'Mixed'
+
+      -- Backbends focus-block correction:
+      -- Override to Backbends when the sequence structure clearly indicates
+      -- Backbends is the actual teaching focus, not the duration-dominant category.
+      when (
+        -- Only apply to non-excluded sub_categories
+        cm.sub_category_id not in (5, 55, 233, 235, 236, 560)
+        -- Current primary must be Standing and Basic or Forward Bends
+        and ts.top_theme in ('Standing and Basic', 'Forward Bends')
+        -- Backbends must have at least 15% share
+        and coalesce(
+          (ts.theme_profile->'Backbends'->>'share_pct')::numeric,
+          0
+        ) >= 15
+        -- Must have a coherent Backbends block
+        and mbb.course_id is not null
+        and (
+          -- Standing and Basic case: initial Standing block is 5-7 poses, <= 650s,
+          -- followed by Backbends block
+          (
+            ts.top_theme = 'Standing and Basic'
+            and isb.course_id is not null
+            and isb.block_pose_count between 5 and 7
+            and isb.block_seconds <= 650
+            and mbb.block_start_index > (
+              select coalesce(max(bs.block_end_index), 0)
+              from block_summary bs
+              where bs.course_id = ctot.course_id
+                and bs.category_block_id < (
+                  select min(bs2.category_block_id)
+                  from block_summary bs2
+                  where bs2.course_id = ctot.course_id
+                    and bs2.effective_category_name = 'Backbends'
+                    and bs2.block_pose_count >= 3
+                )
+            )
+          )
+          or
+          -- Forward Bends case: Backbends is secondary or within 10pp,
+          -- and Backbends block precedes Forward Bends block
+          (
+            ts.top_theme = 'Forward Bends'
+            and (
+              ts.second_theme = 'Backbends'
+              or (
+                coalesce(
+                  (ts.theme_profile->'Backbends'->>'share_pct')::numeric,
+                  0
+                )
+                >= coalesce(
+                  (ts.theme_profile->'Forward Bends'->>'share_pct')::numeric,
+                  0
+                ) - 10
+              )
+            )
+            and mbb.block_start_index < mfbb.block_start_index
+          )
+        )
+      ) then 'Backbends'
+
       else ts.top_theme
     end as primary_theme,
 
@@ -526,6 +719,14 @@ begin
     on mpi.course_id = ctot.course_id
   left join missing_stage_ids msi
     on msi.course_id = ctot.course_id
+  left join course_meta cm
+    on cm.course_id = ctot.course_id
+  left join initial_standing_block isb
+    on isb.course_id = ctot.course_id
+  left join main_backbend_block mbb
+    on mbb.course_id = ctot.course_id
+  left join main_forward_bend_block mfbb
+    on mfbb.course_id = ctot.course_id
 
   on conflict (course_id) do update set
     course_title = excluded.course_title,

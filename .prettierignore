@@ -1,0 +1,9 @@
+# Ignore build artifacts and node modules
+node_modules
+dist
+build
+
+# Ignore database and sync logs to prevent logic corruption
+*.md
+supabase_schema.json
+FUNCTION_INDEX.md
