@@ -295,7 +295,7 @@
 - `src/ui/builderUI.js`: Refactored `createExportSnapshot` to fill slots and calculate duration using the strict 8-index schema.
 
 **Lessons Learned & Efficiency Audit:**
-- **The "Ghost Element" Bug:** Dynamic manipulation of a cloned DOM often fails if the capture engine (html2canvas) triggers before layout stabilization. 
+- **The "Ghost Element" Bug:** Dynamic manipulation of a cloned DOM often fails if the capture engine (html2canvas) triggers before layout stabilization.
 - **AI Visibility Gap:** Coding assistants lack visibility into the *execution order* of external libraries. Providing a "Capture Manifest" (a list of what the PDF engine actually captures) would have reduced a 45-minute task to 5 minutes.
 
 **Next Steps / Improvement Proposals:**
@@ -649,3 +649,53 @@
 - Verify the queue processor script works end-to-end by running `npm run db:refresh-analysis` after the next Supabase migration.
 - Consider adding a "Retry" button to the error state in the rating overlay.
 - Audit any remaining hardcoded rating references in the codebase.
+---
+
+## [2026-05-03] - Session [01]
+**Goal:** Fix "Add Stage" auto-populating stage_name with conflicting Roman numeral; clean up redundant migration files.
+
+**Architectural Decisions:**
+- **Stop Auto-Populating stage_name:** Removed `toRoman()`, `fromRoman()`, and `getNextStageName()` functions from `asanaEditor.js`. The "Key" field is now left blank for the user to fill in, preventing conflicts with existing stage names.
+- **ID-Based Stage Save:** Changed save logic from `upsert` (which relied on the `(asana_id, stage_name)` unique constraint) to `update` by UUID for existing stages and `insert` for new stages. The stage's database UUID is stored as `data-stage-id` on the DOM row.
+- **Migration Cleanup:** Deleted 4 redundant migration files that were superseded by later migrations or were one-time operational commands:
+  - `20260123010854_create_sequence_completions_table.sql` — superseded by `20260222030649`
+  - `20260224222345_reload_schema_cache.sql` — one-time `NOTIFY pgrst` command
+  - `20260225025455_refresh_schema_cache.sql` — same as above
+  - `20260225013305_add_duration_to_user_stages.sql` — column added then immediately replaced by `hold`
+
+**Code Changed:**
+- `src/ui/asanaEditor.js`: Removed Roman numeral auto-generation functions; stage key left empty; save logic changed from upsert to update/insert by UUID; stage DB ID stored as `data-stage-id` on DOM.
+- `supabase/migrations/`: Deleted 4 redundant migration files.
+
+**Lessons Learned:**
+- The `(asana_id, stage_name)` unique constraint was originally added to support upsert during the user_stages → stages migration, but is no longer needed since the save logic now uses UUID-based operations.
+- Migration files that create tables later recreated with more columns, or that are one-time operational commands, can be safely deleted since Supabase tracks applied migrations by filename — they won't be re-run.
+- When removing auto-population logic, ensure the save path doesn't depend on the auto-generated value for any other purpose (e.g., conflict resolution in upsert).
+- **Critical:** The UI code fix alone is NOT sufficient — the `stages_asana_stage_key` unique constraint on `(asana_id, stage_name)` still exists in the database and will fire on `INSERT` even when using UUID-based operations. The constraint must be dropped via a migration.
+
+**Code Changed (Corrected):**
+- `supabase/migrations/20260503000001_drop_stages_asana_stage_key_constraint.sql`: **NEW** — Drops the `stages_asana_stage_key` unique constraint that was causing "duplicate key value violates unique constraint" errors on save.
+
+**Next Steps for Next Session:**
+- Run the migration in Supabase SQL editor to drop the constraint.
+- Verify the "Add Stage" flow works end-to-end: create stage → leave key blank → fill in custom key → save → reload → edit.
+- Consider adding a "Delete Stage" confirmation dialog to prevent accidental removal.
+---
+
+## [2026-05-03] - Session [02]
+**Goal:** Fix remaining bugs from stage_name auto-population removal — stages with empty stage_name not loading in browse detail view, key field showing internal fallback IDs, and delete button not deleting from database.
+
+**Architectural Decisions:**
+- **normalizeStageRow Fallback Key:** When `stage_name` is empty, `normalizeStageRow()` in `dataAdapter.js` was returning `null`, silently dropping the stage from the variations map. Changed to generate a fallback key using the database ID (`_id_${stage.id}`) so the stage is always included in the variations map and visible in the UI.
+- **Key Field Display Filter:** The `addStageToEditor()` function now filters out internal fallback keys (those starting with `_id_` or `_new_`) from the stage-name input field, leaving it blank for the user to fill in. The actual `stage_name` column in the database is only written when the user types something.
+- **Database Delete on Remove:** The ✕ delete button now calls `window.deleteStageRow()` which checks for a `data-stage-id` attribute and calls `supabase.from("stages").delete().eq("id", stageId)` before removing the DOM element. Previously it only removed the DOM element, leaving orphaned rows in the database.
+- **UI Refresh After Save:** The save handler now calls `await window.showAsanaDetail(freshAsana)` after reloading the library, ensuring the browse detail view immediately reflects saved changes (new stages, updated fields) without requiring a manual re-click or hard refresh.
+
+**Code Changed:**
+- `src/services/dataAdapter.js`: `normalizeStageRow()` now generates fallback key `_id_${stage.id}` when `stage_name` is empty instead of returning `null`.
+- `src/ui/asanaEditor.js`: Key field filters out internal fallback keys; delete button now calls `window.deleteStageRow()` which performs a Supabase DELETE; save handler awaits `showAsanaDetail()` for immediate UI refresh.
+
+**Lessons Learned:**
+- The `normalizeStageRow()` function was a silent data filter — any stage with an empty `stage_name` was completely invisible to the UI, even though it existed in the database. This is a dangerous pattern because it creates "ghost" data that can only be seen in the database.
+- When removing auto-population logic, always trace the full data pipeline: editor → save → database → load → normalize → display. A gap at any stage can cause the data to be invisible even after a hard refresh.
+- The delete button's `onclick="this.closest('.stage-row').remove()"` was a classic "UI-only delete" pattern. Any DOM removal that represents a database record must also perform the database operation.

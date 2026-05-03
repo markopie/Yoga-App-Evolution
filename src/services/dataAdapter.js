@@ -312,8 +312,11 @@ function normalizeAsana(row, existingData = {}) {
  * Hardens a stage/variation row from Supabase.
  */
 function normalizeStageRow(stage, index = 0) {
-    const stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
-    if (!stageKey) return null;
+    let stageKey = String(stage.Stage_Name ?? stage.stage_name ?? '').trim();
+    if (!stageKey) {
+        // Fallback: use the database ID as the key when stage_name is empty
+        stageKey = stage.id ? `_id_${stage.id}` : `_new_${index}`;
+    }
 
     const holdStr = stage.Hold ?? stage.hold ?? '';
 

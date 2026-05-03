@@ -8,82 +8,6 @@ import { supabase } from '../services/supabaseClient.js';
 import { loadAsanaLibrary } from '../services/dataAdapter.js';
 import { getOrCreateAsanaCategoryId } from '../services/persistence.js';
 
-/**
- * Converts an integer to a Roman numeral string.
- */
-function toRoman(num) {
-    const map = [
-        ['M', 1000], ['CM', 900], ['D', 500], ['CD', 400],
-        ['C', 100], ['XC', 90], ['L', 50], ['XL', 40],
-        ['X', 10], ['IX', 9], ['V', 5], ['IV', 4], ['I', 1]
-    ];
-    let result = '';
-    for (const [letter, value] of map) {
-        while (num >= value) {
-            result += letter;
-            num -= value;
-        }
-    }
-    return result;
-}
-
-/**
- * Parses a Roman numeral string to an integer.
- */
-function fromRoman(roman) {
-    const map = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
-    let total = 0;
-    let prev = 0;
-    for (let i = roman.length - 1; i >= 0; i--) {
-        const curr = map[roman[i]] || 0;
-        if (curr < prev) total -= curr;
-        else total += curr;
-        prev = curr;
-    }
-    return total;
-}
-
-/**
- * Determines the next stage_name for a new stage.
- * Looks at existing stage-name inputs in the container and finds the highest
- * Roman numeral. If a prefix exists (e.g. "KI", "KII"), it preserves the prefix
- * and increments the Roman numeral. If no stages exist, starts at "I".
- */
-function getNextStageName() {
-    const container = document.getElementById("stagesContainer");
-    if (!container) return "I";
-
-    const existingNames = Array.from(container.querySelectorAll(".stage-name"))
-        .map(inp => inp.value.trim())
-        .filter(Boolean);
-
-    if (existingNames.length === 0) return "I";
-
-    let maxNum = 0;
-    let prefix = "";
-
-    for (const name of existingNames) {
-        // Match optional prefix (letters before the Roman numeral) + Roman numeral + optional suffix (a/b)
-        const match = name.match(/^([A-Za-z]*)([IVXLCDM]+)([a-z]?)$/);
-        if (match) {
-            const p = match[1] || "";
-            const rn = match[2].toUpperCase();
-            const suffix = match[3] || "";
-            const num = fromRoman(rn);
-            if (num > 0) {
-                // If we haven't set a prefix yet, use the first one found
-                if (!prefix && p) prefix = p;
-                // Only compare if same prefix (or no prefix)
-                if (p === prefix || (!p && !prefix)) {
-                    if (num > maxNum) maxNum = num;
-                }
-            }
-        }
-    }
-
-    const nextNum = maxNum + 1;
-    return prefix + toRoman(nextNum);
-}
 
 /**
  * Creates a new stage pre-filled with data from the current asana.
@@ -100,8 +24,8 @@ window.createStageFromAsana = function() {
     const lib = window.asanaLibrary || {};
     const asana = lib[normId] || {};
 
-    // Determine next stage_name (Roman numeral)
-    const stageKey = getNextStageName();
+    // Stage key left empty for the user to fill in
+    const stageKey = "";
 
     // Copy technique from the asana editor's technique field
     const technique = $("editAsanaTechnique")?.value?.trim() || asana.technique || "";
@@ -262,6 +186,10 @@ window.addStageToEditor = function(stageKey, stageData = {}) {
     const div = document.createElement("div");
     div.className = "stage-row";
     div.style.cssText = "border:1px solid #eee; padding:12px; border-radius:8px; background:#fff; margin-bottom:10px;";
+    // Store the database ID if this is an existing stage (for update on save)
+    if (stageData.id) {
+        div.dataset.stageId = stageData.id;
+    }
     
     const existingTech = stageData.full_technique || stageData.technique || "";
     const hj = stageData.hold_json || {};
@@ -269,11 +197,14 @@ window.addStageToEditor = function(stageKey, stageData = {}) {
     const holdShort = hj.short || 15;
     const holdLong = hj.long || 60;
 
+    // Only show the actual stage_name in the key field, not internal fallback keys
+    const displayKey = (stageKey && !stageKey.startsWith('_id_') && !stageKey.startsWith('_new_')) ? stageKey : '';
+
     div.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-           <input type="text" class="stage-name" value="${stageKey || ''}" placeholder="Key (e.g. I)" style="width:80px; font-weight:bold; padding:4px;">
+           <input type="text" class="stage-name" value="${displayKey}" placeholder="Key (e.g. I)" style="width:80px; font-weight:bold; padding:4px;">
            <input type="text" class="stage-title" value="${stageData.title || ''}" placeholder="Display Title" style="flex:1; margin:0 10px; padding:4px;">
-           <button type="button" class="tiny warn" onclick="this.closest('.stage-row').remove()">✕</button>
+           <button type="button" class="tiny warn" onclick="window.deleteStageRow(this)">✕</button>
         </div>
         <div style="margin-bottom:8px;">
            <textarea class="stage-tech" style="height:60px; padding:6px; width:100%; font-family:inherit; border:1px solid #ccc; border-radius:4px;">${existingTech}</textarea>
@@ -310,6 +241,30 @@ window.addStageToEditor = function(stageKey, stageData = {}) {
         </div>
     `;
     container.appendChild(div);
+};
+
+/**
+ * Deletes a stage row from the editor and from the database if it has been saved.
+ * Called when the ✕ button on a stage row is clicked.
+ */
+window.deleteStageRow = async function(btn) {
+    const div = btn.closest('.stage-row');
+    if (!div) return;
+
+    const stageId = div.dataset.stageId;
+    if (stageId) {
+        // This stage exists in the database — delete it
+        try {
+            const { error } = await supabase.from("stages").delete().eq("id", stageId);
+            if (error) throw error;
+        } catch (err) {
+            console.error("Failed to delete stage:", err);
+            alert("Error deleting stage: " + err.message);
+            return;
+        }
+    }
+    // Remove the DOM element
+    div.remove();
 };
 
 /**
@@ -595,6 +550,7 @@ window.setupAsanaEditorSave = function() {
             if (asanaErr) throw asanaErr;
 
             // Handle Stages...
+            // Use insert for new stages, update for existing ones (identified by data-stage-id)
             const stageRows = document.querySelectorAll(".stage-row");
             for (let i = 0; i < stageRows.length; i++) {
                 const div = stageRows[i];
@@ -608,7 +564,21 @@ window.setupAsanaEditorSave = function() {
                     preparatory_pose_id: buildInjectionPayload(div.querySelector(".stage-prep")?.value),
                     recovery_pose_id: buildInjectionPayload(div.querySelector(".stage-recov")?.value)
                 };
-                await supabase.from("stages").upsert(stagePayload);
+                const existingStageId = div.dataset.stageId;
+                if (existingStageId) {
+                    // Update existing stage by its UUID
+                    const { error: stageErr } = await supabase
+                        .from("stages")
+                        .update(stagePayload)
+                        .eq("id", existingStageId);
+                    if (stageErr) throw stageErr;
+                } else {
+                    // Insert new stage
+                    const { error: stageErr } = await supabase
+                        .from("stages")
+                        .insert(stagePayload);
+                    if (stageErr) throw stageErr;
+                }
             }
 
             // Reload the asana library so the editor shows fresh data on re-open
@@ -619,6 +589,13 @@ window.setupAsanaEditorSave = function() {
             $("asanaEditorStatus").textContent = "✓ Saved Successfully!";
             if (typeof window.applyBrowseFilters === "function") {
                 window.applyBrowseFilters();
+            }
+            // Re-render the browse detail view with fresh data from the reloaded library
+            if (typeof window.showAsanaDetail === "function") {
+                const freshAsana = (window.asanaLibrary || {})[id];
+                if (freshAsana) {
+                    await window.showAsanaDetail(freshAsana);
+                }
             }
         } catch (err) {
             console.error("Save failed:", err);

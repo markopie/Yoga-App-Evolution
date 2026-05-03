@@ -175,10 +175,12 @@
 - `applyBrowseFilters` (window binding)
 - `asanaLibrary` (window binding)
 - `createStageFromAsana` (window binding)
+- `deleteStageRow` (window binding)
 - `normalizePlate` (window binding)
 - `openAsanaEditor` (window binding)
 - `selectAsanaInjectionSearch` (window binding)
 - `setupAsanaEditorSave` (window binding)
+- `showAsanaDetail` (window binding)
 - `triggerAsanaInjectionSearch` (window binding)
 
 ### 📄 `ui/browse.js`
