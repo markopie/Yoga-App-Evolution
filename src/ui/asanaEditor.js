@@ -60,18 +60,18 @@ window.createStageFromAsana = function() {
 async function populateCategorySelect() {
     const select = $("editAsanaCategory");
     if (!select) return;
-    
+
     // Only populate if not already done
     if (select.options.length > 1) return;
-    
+
     try {
         const { data: categories, error } = await supabase
             .from('asana_categories')
             .select('id, name')
             .order('name');
-        
+
         if (error) throw error;
-        
+
         if (categories) {
             categories.forEach(cat => {
                 const opt = document.createElement('option');
@@ -107,7 +107,7 @@ window.openAsanaEditor = async function(asanaId) {
     $("editAsanaDescription").value = asana?.description || "";
     $("editAsanaTechnique").value = asana?.technique || "";
     $("editAsanaRequiresSides").checked = !!(asana?.requires_sides);
-    
+
     // Category — select the matching option or show custom input
     const catSelect = $("editAsanaCategory");
     const catCustom = $("editAsanaCategoryCustom");
@@ -133,6 +133,15 @@ window.openAsanaEditor = async function(asanaId) {
 
     // Intensity
     if ($("editAsanaIntensity")) $("editAsanaIntensity").value = asana?.intensity || "";
+
+    // Hold Times — populate from hold_json
+    const hj = asana?.hold_json || {};
+    if ($("editAsanaHoldStandard")) $("editAsanaHoldStandard").value = hj.standard ?? 30;
+    if ($("editAsanaHoldShort")) $("editAsanaHoldShort").value = hj.short ?? 15;
+    if ($("editAsanaHoldLong")) $("editAsanaHoldLong").value = hj.long ?? 60;
+
+    // Note
+    if ($("editAsanaNote")) $("editAsanaNote").value = asana?.note || "";
 
     // Relational Injections
     const formatInjection = (val) => {
@@ -190,7 +199,7 @@ window.addStageToEditor = function(stageKey, stageData = {}) {
     if (stageData.id) {
         div.dataset.stageId = stageData.id;
     }
-    
+
     const existingTech = stageData.full_technique || stageData.technique || "";
     const hj = stageData.hold_json || {};
     const holdStd = hj.standard || 30;
@@ -199,12 +208,23 @@ window.addStageToEditor = function(stageKey, stageData = {}) {
 
     // Only show the actual stage_name in the key field, not internal fallback keys
     const displayKey = (stageKey && !stageKey.startsWith('_id_') && !stageKey.startsWith('_new_')) ? stageKey : '';
+    const stageId = stageData.id || '';
 
     div.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-           <input type="text" class="stage-name" value="${displayKey}" placeholder="Key (e.g. I)" style="width:80px; font-weight:bold; padding:4px;">
-           <input type="text" class="stage-title" value="${stageData.title || ''}" placeholder="Display Title" style="flex:1; margin:0 10px; padding:4px;">
-           <button type="button" class="tiny warn" onclick="window.deleteStageRow(this)">✕</button>
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:8px; gap:8px;">
+           <div style="width:80px; flex-shrink:0;">
+             <label style="font-size:0.75rem; font-weight:600; color:#666; margin-bottom:2px; display:block;">ID (Locked)</label>
+             <input type="text" class="stage-id-display" value="${stageId}" disabled style="width:100%; padding:6px; background:#f5f5f7; border:1px solid #d2d2d7; border-radius:6px; font-weight:bold; color:#86868b; box-sizing:border-box; font-size:0.75rem;">
+           </div>
+           <div style="width:80px; flex-shrink:0;">
+             <label style="font-size:0.75rem; font-weight:600; color:#666; margin-bottom:2px; display:block;">Key</label>
+             <input type="text" class="stage-name" value="${displayKey}" placeholder="e.g. I" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px; font-weight:bold; box-sizing:border-box;">
+           </div>
+           <div style="flex:1; min-width:0;">
+             <label style="font-size:0.75rem; font-weight:600; color:#666; margin-bottom:2px; display:block;">Title</label>
+             <input type="text" class="stage-title" value="${stageData.title || ''}" placeholder="Display Title" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+           </div>
+           <button type="button" class="tiny warn" onclick="window.deleteStageRow(this)" style="margin-bottom:1px;">✕</button>
         </div>
         <div style="margin-bottom:8px;">
            <textarea class="stage-tech" style="height:60px; padding:6px; width:100%; font-family:inherit; border:1px solid #ccc; border-radius:4px;">${existingTech}</textarea>
@@ -542,6 +562,12 @@ window.setupAsanaEditorSave = function() {
                 requires_sides: $("editAsanaRequiresSides").checked,
                 category_id,
                 intensity: $("editAsanaIntensity")?.value?.trim() || "",
+                hold_json: {
+                    standard: parseInt($("editAsanaHoldStandard")?.value || "30", 10),
+                    short: parseInt($("editAsanaHoldShort")?.value || "15", 10),
+                    long: parseInt($("editAsanaHoldLong")?.value || "60", 10)
+                },
+                note: $("editAsanaNote")?.value?.trim() || "",
                 preparatory_pose_id: buildInjectionPayload($("editAsanaPrep")?.value),
                 recovery_pose_id: buildInjectionPayload($("editAsanaRecov")?.value)
             };

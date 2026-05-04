@@ -699,3 +699,24 @@
 - The `normalizeStageRow()` function was a silent data filter — any stage with an empty `stage_name` was completely invisible to the UI, even though it existed in the database. This is a dangerous pattern because it creates "ghost" data that can only be seen in the database.
 - When removing auto-population logic, always trace the full data pipeline: editor → save → database → load → normalize → display. A gap at any stage can cause the data to be invisible even after a hard refresh.
 - The delete button's `onclick="this.closest('.stage-row').remove()"` was a classic "UI-only delete" pattern. Any DOM removal that represents a database record must also perform the database operation.
+
+---
+
+## [2026-05-04] - Session [01]
+**Goal:** Fix asana editor bugs — hold_json not saving/populating, note field not saving/populating, and add stage ID locked display.
+
+**Architectural Decisions:**
+- **hold_json Write-Path Fix:** The `asanaPayload` in `setupAsanaEditorSave()` was missing `hold_json` entirely. Added `hold_json: { standard, short, long }` reading from `editAsanaHoldStandard`, `editAsanaHoldShort`, `editAsanaHoldLong` inputs. This was the root cause of the bug where changing duration fields showed "Save successful" but no change persisted in Supabase.
+- **hold_json Read-Path Fix:** `openAsanaEditor()` was not populating the hold duration inputs from the asana's `hold_json` data. Added code to read `asana.hold_json` and set the three inputs, using nullish coalescing (`??`) to fall back to defaults (30, 15, 60) when values are missing.
+- **Note Field Wiring:** Both the read path (`openAsanaEditor()`) and write path (`setupAsanaEditorSave()`) were missing the `editAsanaNote` field. Added `note` to `asanaPayload` and populated it on open from `asana.note`.
+- **Stage ID Locked Display:** Added a disabled input with label "ID (Locked)" to each stage row in `addStageToEditor()`, matching the asana ID field format. The stage's database UUID is shown when available. Also added labels for "Key" and "Title" fields to ensure vertical alignment with the ID field.
+- **Alignment Fix:** Wrapped all header row inputs (ID, Key, Title) in `<div>` containers with labels above them, using `align-items:flex-end` on the flex container so all input bottoms align perfectly.
+
+**Code Changed:**
+- `src/ui/asanaEditor.js`: Added hold_json and note to asanaPayload in save handler; populated hold_json and note fields on editor open; added stage ID locked display with label in stage rows; added Key/Title labels for alignment.
+
+**Next Steps for Next Session:**
+- Verify the hold_json fix works end-to-end: edit hold times → save → close → reopen → confirm values persist.
+- Verify the stage ID locked display shows correctly for existing stages and is empty for new stages.
+- Consider adding a "Delete Stage" confirmation dialog to prevent accidental removal.
+---
