@@ -15,12 +15,38 @@ function getSequenceTitle() {
     return (document.getElementById('builderTitle')?.value || '').trim();
 }
 
+function getCategoryInitials(categoryValue) {
+    const mainCategory = String(categoryValue || '')
+        .split('>')[0]
+        .trim();
+
+    if (!mainCategory) return '';
+
+    const compact = mainCategory.replace(/[^A-Za-z0-9]/g, '');
+    if (compact.length >= 2 && compact.length <= 5 && compact === compact.toUpperCase()) {
+        return compact;
+    }
+
+    return mainCategory
+        .split(/[\s/&+-]+/)
+        .map(part => part.match(/[A-Za-z0-9]/)?.[0] || '')
+        .join('')
+        .toUpperCase()
+        .slice(0, 6);
+}
+
+function buildPdfFilename(title, categoryValue) {
+    const initials = getCategoryInitials(categoryValue);
+    const suffix = initials ? ` (${initials})` : '';
+    return sanitizeFilename(`${title || 'Yoga-Sequence'}${suffix}`);
+}
+
 function sanitizeFilename(title) {
     const base = String(title || 'Yoga-Sequence')
         .trim()
         .replace(/\.pdf$/i, '')
         .replace(/[/\\?%*:|"<>]/g, '-')
-        .replace(/\s+/g, '-')
+        .replace(/\s+/g, ' ')
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '');
 
@@ -38,10 +64,187 @@ async function ensureJsPdfLoaded() {
     });
 }
 
+async function ensureJsZipLoaded() {
+    if (typeof window.JSZip !== 'undefined') return;
+    await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
+
+function triggerBlobDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
+function getCurrentCategoryValue() {
+    const catEl = document.getElementById('builderCategory');
+    return (catEl?.value === "__NEW__" ? document.getElementById('builderCategoryCustom')?.value : catEl?.value || '').trim();
+}
+
+function resolveLinkedSequence(identifier) {
+    const needle = String(identifier || '').trim();
+    if (!needle) return null;
+    const lowerNeedle = needle.toLowerCase();
+
+    return (window.courses || []).find(c =>
+        String(c.title || "").trim().toLowerCase() === lowerNeedle ||
+        String(c.id || "").trim() === needle ||
+        String(c.supabaseId || "").trim() === needle
+    ) || null;
+}
+
+function collectLinkedSequences(poses, visited = new Set()) {
+    const linked = [];
+
+    (poses || []).forEach(pose => {
+        const idStr = String(pose?.id ?? (Array.isArray(pose?.[0]) ? pose[0][0] : pose?.[0]) ?? '');
+        if (!idStr.startsWith('MACRO:')) return;
+
+        const identifier = idStr.replace('MACRO:', '').trim();
+        const course = resolveLinkedSequence(identifier);
+        if (!course) return;
+
+        const courseKey = String(course.id || course.supabaseId || course.title || identifier);
+        if (visited.has(courseKey)) return;
+        visited.add(courseKey);
+        linked.push(course);
+        linked.push(...collectLinkedSequences(courseToPdfPoses(course), visited));
+    });
+
+    return linked;
+}
+
+function courseToPdfPoses(course) {
+    const seqIsFlow = course?.playbackMode === "flow" || course?.isFlow;
+    const libraryArray = Object.values(window.asanaLibrary || {});
+
+    return (course?.poses || []).map(p => {
+        const rawId = Array.isArray(p?.[0]) ? p[0][0] : p?.[0] || "";
+        const idStr = String(rawId);
+
+        if (idStr === "LOOP_START" || idStr === "LOOP_END") {
+            return {
+                id: idStr,
+                name: idStr === "LOOP_START" ? `Repeat Block (${p[1]} Rounds)` : "End Repeat Block",
+                duration: idStr === "LOOP_START" ? Number(p[1]) || 2 : 0,
+                variation: "",
+                note: ""
+            };
+        }
+
+        if (idStr.startsWith("MACRO:")) {
+            const identifier = idStr.replace("MACRO:", "").trim();
+            const subCourse = resolveLinkedSequence(identifier);
+            return {
+                id: idStr,
+                name: `[Sequence] ${subCourse ? subCourse.title : identifier}`,
+                duration: Number(p[1]) || 1,
+                variation: "",
+                note: p[4] || ""
+            };
+        }
+
+        const id = idStr.padStart(3, '0');
+        const asana = libraryArray.find(a => String(a.id || a.asanaNo) === id);
+        const originalJson = p?.[7]?.originalJson || null;
+        const variation = p?.[3] || "";
+        const tier = originalJson?.tier;
+        const holdTier = tier === 'S' ? 'short' : (tier === 'L' ? 'long' : 'standard');
+        const holdTimes = asana && window.getHoldTimes
+            ? window.getHoldTimes(asana, variation || null)
+            : { standard: 30, flow: 5 };
+
+        return {
+            id,
+            name: asana ? (asana.name || asana.english || id) : id,
+            duration: Number(p?.[1]) || (seqIsFlow ? (holdTimes.flow || holdTimes.standard || 5) : (holdTimes.standard || 30)),
+            variation,
+            note: originalJson ? (originalJson.note || "") : [p?.[2], p?.[4]].filter(Boolean).join(" | ").trim(),
+            holdTier,
+            side: p?.[7]?.explicitSide || "",
+            props: [...(p?.[7]?.props || [])]
+        };
+    });
+}
+
+function getUniqueFilename(filename, usedNames) {
+    if (!usedNames.has(filename)) {
+        usedNames.add(filename);
+        return filename;
+    }
+
+    const base = filename.replace(/\.pdf$/i, '');
+    let suffix = 2;
+    let candidate = `${base} ${suffix}.pdf`;
+    while (usedNames.has(candidate)) {
+        suffix += 1;
+        candidate = `${base} ${suffix}.pdf`;
+    }
+    usedNames.add(candidate);
+    return candidate;
+}
+
 export async function downloadSequencePdf() {
     try {
         await ensureJsPdfLoaded();
-        await generateTablePdf();
+        const titleText = getSequenceTitle() || 'Untitled Sequence';
+        const categoryValue = getCurrentCategoryValue();
+        const linkedSequences = collectLinkedSequences(builderState.poses);
+
+        if (!linkedSequences.length) {
+            await generateTablePdf({
+                title: titleText,
+                category: categoryValue,
+                notes: (document.getElementById('builderNotes')?.value || '').trim(),
+                poses: builderState.poses,
+                courseId: builderState.editingSupabaseId,
+                filename: buildPdfFilename(titleText, categoryValue),
+                save: true
+            });
+            return;
+        }
+
+        await ensureJsZipLoaded();
+        const zip = new window.JSZip();
+        const usedNames = new Set();
+
+        const mainFilename = getUniqueFilename(buildPdfFilename(titleText, categoryValue), usedNames);
+        const mainBlob = await generateTablePdf({
+            title: titleText,
+            category: categoryValue,
+            notes: (document.getElementById('builderNotes')?.value || '').trim(),
+            poses: builderState.poses,
+            courseId: builderState.editingSupabaseId,
+            save: false
+        });
+        zip.file(mainFilename, mainBlob);
+
+        for (const course of linkedSequences) {
+            const linkedCategory = course.categoryName || course.category || '';
+            const linkedFilename = getUniqueFilename(buildPdfFilename(course.title, linkedCategory), usedNames);
+            const linkedBlob = await generateTablePdf({
+                title: course.title || 'Linked Sequence',
+                category: course.category || linkedCategory,
+                notes: course.condition_notes || '',
+                poses: courseToPdfPoses(course),
+                courseId: course.id || course.supabaseId,
+                save: false
+            });
+            zip.file(linkedFilename, linkedBlob);
+        }
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        triggerBlobDownload(zipBlob, sanitizeFilename(`${titleText || 'Yoga-Sequence'} sequence PDFs`).replace(/\.pdf$/i, '.zip'));
     } catch (err) {
         console.error('[PDF] Text export failed:', err);
         alert('PDF generation encountered an error.');
@@ -96,7 +299,7 @@ async function loadFont(pdf, fontPath, fontName) {
  * Produces a PDF that looks like the original (table with columns, borders, headers)
  * but with real selectable, copyable text instead of rasterized images.
  */
-async function generateTablePdf() {
+async function generateTablePdf(options = {}) {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -110,10 +313,10 @@ async function generateTablePdf() {
     const iastFont = await loadFont(pdf, 'fonts/NotoSerif-Regular.ttf', 'NotoSerif');
 
     // ── Gather Data ──────────────────────────────────────────────────────────
-    const titleText = getSequenceTitle() || 'Untitled Sequence';
-    const catEl = document.getElementById('builderCategory');
-    const catVal = (catEl?.value === "__NEW__" ? document.getElementById('builderCategoryCustom')?.value : catEl?.value || '').trim();
-    const notesVal = (document.getElementById('builderNotes')?.value || '').trim();
+    const titleText = options.title || getSequenceTitle() || 'Untitled Sequence';
+    const catVal = (options.category ?? getCurrentCategoryValue()).trim();
+    const notesVal = (options.notes ?? (document.getElementById('builderNotes')?.value || '')).trim();
+    const sourcePoses = options.poses || builderState.poses;
     const libMap = window.asanaLibrary || {};
     const libArray = Object.values(libMap);
 
@@ -127,7 +330,7 @@ async function generateTablePdf() {
     if (devanagariFont) {
         pdf.setFont(devanagariFont, 'normal');
         pdf.setFontSize(8);
-        builderState.poses.forEach(pose => {
+        sourcePoses.forEach(pose => {
             const idStr = String(pose.id);
             const normId = idStr.match(/^\d+/)?.[0]?.padStart(3, '0') || idStr;
             const asana = libMap[normId] || libArray.find(a => String(a.id || a.asanaNo) === String(normId));
@@ -179,7 +382,7 @@ async function generateTablePdf() {
     }
 
     // Calculate total duration
-    const tempPoses = builderState.poses.map(p => {
+    const tempPoses = sourcePoses.map(p => {
         const tierTag = (!p.holdTier || p.holdTier === 'standard') ? '' : ` tier:${p.holdTier === 'short' ? 'S' : 'L'}`;
         const cleanNote = (p.note || '').replace(/\btier:[SL]\b/gi, '').trim();
         const meta = { explicitSide: p.side || null };
@@ -230,7 +433,7 @@ async function generateTablePdf() {
     // Extract ID based on the validated builderState schema
     // Fallback to URL parameters if the builder initializes via query string
     const urlParams = new URLSearchParams(window.location.search);
-    const mainCourseId = builderState.editingSupabaseId || urlParams.get('id') || '';
+    const mainCourseId = options.courseId || builderState.editingSupabaseId || urlParams.get('id') || '';
     const idDisplay = mainCourseId ? `   |   Course ID: ${mainCourseId}` : '';
     
     pdf.text(`Date: ${dateStr}${idDisplay}`, margin, y + 4);
@@ -299,7 +502,7 @@ async function generateTablePdf() {
     // 6. Table Rows
     let poseCounter = 0;
 
-    builderState.poses.forEach((pose, idx) => {
+    sourcePoses.forEach(pose => {
         const idStr = String(pose.id);
         const isMacro = idStr.startsWith("MACRO:");
         const isLoopStart = idStr === "LOOP_START";
@@ -531,7 +734,11 @@ async function generateTablePdf() {
     pdf.text(`Generated on ${dateStr}`, margin, y);
 
     // 8. Save
-    pdf.save(sanitizeFilename(titleText));
+    if (options.save === false) {
+        return pdf.output('blob');
+    }
+
+    pdf.save(options.filename || buildPdfFilename(titleText, catVal));
 }
 
 export function initExportUI(container) {
