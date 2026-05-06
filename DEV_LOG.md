@@ -745,3 +745,25 @@
 - Consider adding a canonical abbreviation map for book/course categories if derived initials like `YAGFW` should be replaced with preferred short forms.
 - Consider moving PDF export helpers out of `builderUI.js` into a dedicated export module with utility tests.
 ---
+
+## [2026-05-06] - Session [02]
+**Goal:** Make the routine save/push/db workflow use the project `.venv` instead of global Python.
+
+**Architectural Decisions:**
+- **Venv-First Maintenance:** Updated npm maintenance scripts to call `.\.venv\Scripts\python.exe` directly, preventing accidental use of global Python or elevated user-site packages.
+- **Small Maintenance Dependency Set:** Added `requirements-maintenance.txt` for the normal repo workflow (`index`, `backup`, `db:refresh-analysis`) instead of requiring the broad AI/Google/Pandas stack in `requirements.txt`.
+- **Python 3.14 Compatibility:** Avoided full `requirements.txt` for daily workflow because its pinned Google/grpc dependencies currently conflict under Python 3.14.
+
+**Code Changed:**
+- `package.json`: Pointed `index`, `backup`, and `db:refresh-analysis` scripts at `.venv`.
+- `requirements-maintenance.txt`: Added `python-dotenv` and `supabase` pins for the maintenance scripts.
+
+**Validation Results:**
+- Rebuilt `.venv` locally and installed the maintenance dependencies.
+- `npm run index` runs successfully through `.venv`.
+- `npm run db:refresh-analysis` runs successfully through `.venv` and reports the queue empty.
+
+**Next Steps for Next Session:**
+- Consider splitting the large `requirements.txt` into task-specific files if legacy audio, Google, or data scripts are still actively used.
+- Set `PYTHONUTF8=1` at the Windows user environment level if not already applied, so Python hook output remains Unicode-safe.
+---
