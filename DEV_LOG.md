@@ -720,3 +720,28 @@
 - Verify the stage ID locked display shows correctly for existing stages and is empty for new stages.
 - Consider adding a "Delete Stage" confirmation dialog to prevent accidental removal.
 ---
+
+## [2026-05-06] - Session [01]
+**Goal:** Improve sequence PDF download filenames, bundle linked flow/cycle PDFs, and remove lint blockers.
+
+**Architectural Decisions:**
+- **PDF Source Initials:** Standard course sequence PDFs now append derived initials from the main course category, e.g. `Rheumatoid Arthritis (LOY).pdf`, so saved files show their source without needing to open them.
+- **Flow/Cycle Filename Exception:** Flow and cycle PDFs keep plain sequence names; they do not append category initials because their source context is already their playback mode.
+- **Linked Sequence Export:** When a sequence includes embedded linked flows/cycles (`MACRO:` rows), export now creates a zip containing the main PDF plus separate PDFs for each linked sequence, including nested linked sequences with duplicate protection.
+- **Lint as a Trustworthy Gate:** Removed the two lint errors that prevented `npm run lint` from serving as a reliable green/red check; remaining lint output is warnings only.
+
+**Code Changed:**
+- `src/ui/builderUI.js`: Added category-initial filename generation, linked-sequence PDF collection, zip export via JSZip, and flow/cycle filename suppression.
+- `src/ui/builderSearch.js`: Removed stale `processSemicolonCommand` reference and used the injected `onSemicolonCommand` callback.
+- `scripts/active/audit_url_asana_mismatch.cjs`: Repaired malformed console output and removed empty branches that triggered lint noise.
+
+**Validation Results:**
+- Confirmed PDF download behavior manually in the app browser.
+- `node --check` passed for touched JavaScript files.
+- `npm run lint` exits with 0 errors; existing warnings remain.
+- `npm run build` passes.
+
+**Next Steps for Next Session:**
+- Consider adding a canonical abbreviation map for book/course categories if derived initials like `YAGFW` should be replaced with preferred short forms.
+- Consider moving PDF export helpers out of `builderUI.js` into a dedicated export module with utility tests.
+---

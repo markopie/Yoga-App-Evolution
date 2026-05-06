@@ -65,10 +65,7 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
         if (isBatch) {
             e.preventDefault();
             
-            // ARCHITECT'S NOTE: Ensure this name matches your defined function
-            if (typeof processSemicolonCommand === "function") {
-                processSemicolonCommand(val);
-            } else if (typeof onSemicolonCommand === "function") {
+            if (typeof onSemicolonCommand === "function") {
                 onSemicolonCommand(val);
             } else {
                 console.error("FATAL: Batch processing function not found in scope.");
@@ -105,7 +102,7 @@ export function setupBuilderSearch(getAsanaIndex, onResultSelected, onSemicolonC
         const { results } = getSearchResults(query); // 🔥 Removed undefined source
 
         if (results.length > 0) {
-            resultsBox.innerHTML = results.slice(0, 15).map(({ asma, score }) => {
+            resultsBox.innerHTML = results.slice(0, 15).map(({ asma }) => {
                 const catLabel = asma.category ? asma.category.replace(/^\d+_/, '').replace(/_/g, ' ') : '';
 
                 return `

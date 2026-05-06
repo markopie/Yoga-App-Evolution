@@ -131,7 +131,7 @@ async function main() {
                     url:        s.image_url,
                 });
             } else if (VERBOSE) {
-: ${imgFile}`);
+                console.log(`[OK image] stage ${s.id}: ${imgFile}`);
             }
         }
 
@@ -153,16 +153,14 @@ async function main() {
                     url:        s.audio_url,
                 });
             } else if (VERBOSE) {
-: ${audFile}`);
+                console.log(`[OK audio] stage ${s.id}: ${audFile}`);
             }
         }
     }
 
     // ── Print Image Mismatches ────────────────────────────────────────────────
-    if (imageMismatches.length === 0) {
-
-    } else {
-\n`);
+    if (imageMismatches.length > 0) {
+        console.log(`\nImage URL asana mismatches\n`);
         console.log('  Stage ID  │ Actual AsanaID │ Embedded AsanaID │ Stage Name     │ Filename');
         console.log('  ──────────┼────────────────┼──────────────────┼────────────────┼──────────────────────────────────────');
         imageMismatches.forEach(r => {
@@ -177,10 +175,8 @@ async function main() {
     }
 
     // ── Print Audio Mismatches ────────────────────────────────────────────────
-    if (audioMismatches.length === 0) {
-
-    } else {
-\n`);
+    if (audioMismatches.length > 0) {
+        console.log(`\nAudio URL asana mismatches\n`);
         console.log('  Stage ID  │ Actual AsanaID │ Embedded AsanaID │ Stage Name     │ Filename');
         console.log('  ──────────┼────────────────┼──────────────────┼────────────────┼──────────────────────────────────────');
         audioMismatches.forEach(r => {
@@ -199,27 +195,23 @@ async function main() {
     const sharedAudios = Object.entries(audioUrlIndex).filter(([, ids]) => ids.length > 1);
 
     if (sharedImages.length > 0) {
-\n`);
+        console.log(`\nShared image URLs\n`);
         sharedImages.forEach(([url, ids]) => {
             const fname = filenameFromUrl(url);
             console.log(`  File: ${fname}`);
             console.log(`    Used by stage IDs: ${ids.join(', ')}`);
             console.log(`    URL: ${url}\n`);
         });
-    } else {
-
     }
 
     if (sharedAudios.length > 0) {
-\n`);
+        console.log(`\nShared audio URLs\n`);
         sharedAudios.forEach(([url, ids]) => {
             const fname = filenameFromUrl(url);
             console.log(`  File: ${fname}`);
             console.log(`    Used by stage IDs: ${ids.join(', ')}`);
             console.log(`    URL: ${url}\n`);
         });
-    } else {
-
     }
 
     // ── Summary + Recommendation ──────────────────────────────────────────────

@@ -35,7 +35,11 @@ function getCategoryInitials(categoryValue) {
         .slice(0, 6);
 }
 
-function buildPdfFilename(title, categoryValue) {
+function buildPdfFilename(title, categoryValue, options = {}) {
+    if (options.skipCategoryInitials) {
+        return sanitizeFilename(title || 'Yoga-Sequence');
+    }
+
     const initials = getCategoryInitials(categoryValue);
     const suffix = initials ? ` (${initials})` : '';
     return sanitizeFilename(`${title || 'Yoga-Sequence'}${suffix}`);
@@ -208,7 +212,9 @@ export async function downloadSequencePdf() {
                 notes: (document.getElementById('builderNotes')?.value || '').trim(),
                 poses: builderState.poses,
                 courseId: builderState.editingSupabaseId,
-                filename: buildPdfFilename(titleText, categoryValue),
+                filename: buildPdfFilename(titleText, categoryValue, {
+                    skipCategoryInitials: builderState.currentPlaybackMode === 'flow' || builderState.currentPlaybackMode === 'cycle'
+                }),
                 save: true
             });
             return;
@@ -218,7 +224,9 @@ export async function downloadSequencePdf() {
         const zip = new window.JSZip();
         const usedNames = new Set();
 
-        const mainFilename = getUniqueFilename(buildPdfFilename(titleText, categoryValue), usedNames);
+        const mainFilename = getUniqueFilename(buildPdfFilename(titleText, categoryValue, {
+            skipCategoryInitials: builderState.currentPlaybackMode === 'flow' || builderState.currentPlaybackMode === 'cycle'
+        }), usedNames);
         const mainBlob = await generateTablePdf({
             title: titleText,
             category: categoryValue,
@@ -231,7 +239,9 @@ export async function downloadSequencePdf() {
 
         for (const course of linkedSequences) {
             const linkedCategory = course.categoryName || course.category || '';
-            const linkedFilename = getUniqueFilename(buildPdfFilename(course.title, linkedCategory), usedNames);
+            const linkedFilename = getUniqueFilename(buildPdfFilename(course.title, linkedCategory, {
+                skipCategoryInitials: course.playbackMode === 'flow' || course.playbackMode === 'cycle' || course.isFlow || course.isCycle
+            }), usedNames);
             const linkedBlob = await generateTablePdf({
                 title: course.title || 'Linked Sequence',
                 category: course.category || linkedCategory,
