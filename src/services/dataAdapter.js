@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient.js';
 import { parseHoldTimes, parseSequenceText } from '../utils/parsing.js';
 import { setCourses, setAsanaLibrary } from '../store/state.js';
+import { attachPrivatePlateUrls, parsePlateGroups } from './privatePlateImages.js';
 
 /** 
  * Bridge: Converts new JSON schema into the app's internal array format 
@@ -209,6 +210,8 @@ async function loadAsanaLibrary() {
             }));
         });
 
+        await attachPrivatePlateUrls(normalized);
+
         setAsanaLibrary(normalized);
         return normalized;
 
@@ -283,6 +286,7 @@ function normalizeAsana(row, existingData = {}) {
         devanagari: row.devanagari ?? existingData.devanagari ?? '', 
         audio: row.audio_url ?? row.audio ?? existingData.audio ?? '',
         image_url: row.image_url ?? existingData.image_url ?? '',
+        plate_numbers_raw: row.plate_numbers ?? existingData.plate_numbers_raw ?? '',
         technique: row.technique ?? row.Technique ?? existingData.technique ?? '',
         description: row.description ?? row.Description ?? existingData.description ?? '',
         category: asanaCategory,
@@ -381,30 +385,7 @@ function normalizePlate(p) {
 }
 
 function parsePlates(plateStr) {
-    const result = {
-        intermediate: [],
-        final: []
-    };
-
-    if (!plateStr || typeof plateStr !== 'string') {
-        return result;
-    }
-
-    // Split by common delimiters and look for "Final:" and "Intermediate:"
-    const finalMatch = plateStr.match(/Final:\s*([^,\n]+(?:,\s*[^,\n]+)*)/i);
-    const intermediateMatch = plateStr.match(/Intermediate:\s*([^,\n]+(?:,\s*[^,\n]+)*)/i);
-
-    if (finalMatch) {
-        const plates = finalMatch[1].split(',').map(s => s.trim()).filter(s => s);
-        result.final = plates;
-    }
-
-    if (intermediateMatch) {
-        const plates = intermediateMatch[1].split(',').map(s => s.trim()).filter(s => s);
-        result.intermediate = plates;
-    }
-
-    return result;
+    return parsePlateGroups(plateStr);
 }
 
 function normaliseAsanaId(q){

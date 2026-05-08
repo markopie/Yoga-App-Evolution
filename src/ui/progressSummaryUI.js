@@ -1,5 +1,7 @@
 // progressSummaryUI.js
 
+import { renderLinkedSequenceDetailsHtml, sequenceNodeToDetailItem } from "./linkedSequenceDetails.js";
+
 // ── Internal State (Closure) ─────────────────────────────────────────────────
 let completionTracker = {};
 
@@ -60,18 +62,24 @@ function renderProgressSummaryModal() {
                              noteText.includes("preparat") || labelText.includes("preparat") ||
                              noteText.includes("preparation");
 
+        const sourceRow = typeof origIdx === 'number' ? window.currentSequence?.poses?.[origIdx] : null;
+        const rawSourceId = Array.isArray(sourceRow?.[0]) ? sourceRow[0][0] : sourceRow?.[0];
+        const macroNote = sourceRow?.[4] || "";
+
         if (!groupMap[origIdx]) {
             groupMap[origIdx] = {
                 firstPlaybackIndex: playbackIdx,
                 macroTitle: node[7]?.macroTitle || null,
                 macroId: node[7]?.macroId || null,
+                macroNote,
                 firstAsanaInfo: null,
                 label: node[6] || null, 
                 variation: node[3] || null, // Capture parsed variation [code]
                 rawId: Array.isArray(node[0]) ? node[0][0] : node[0],
                 totalAllocated: 0,
                 totalCompleted: 0,
-                loopTotal: node[7]?.loopTotal || 1 
+                loopTotal: node[7]?.loopTotal || 1,
+                detailItems: []
             };
             groups.push(groupMap[origIdx]);
         }
@@ -96,9 +104,7 @@ function renderProgressSummaryModal() {
             // Fallback for Macro ID if missing on the first node
             if (!g.macroId && node[7]?.macroId) {
                 g.macroId = node[7].macroId;
-            } else if (!g.macroId && g.macroTitle && typeof origIdx === 'number') {
-                const sourceRow = window.currentSequence?.poses?.[origIdx];
-                const rawSourceId = Array.isArray(sourceRow?.[0]) ? sourceRow[0][0] : sourceRow?.[0];
+            } else if (!g.macroId && g.macroTitle && rawSourceId) {
                 if (String(rawSourceId || "").startsWith("MACRO:")) {
                     g.macroId = String(rawSourceId).replace("MACRO:", "").trim();
                 }
@@ -111,6 +117,15 @@ function renderProgressSummaryModal() {
             
             g.totalAllocated += Number(node[1] || 0);
             g.totalCompleted += Number(tracker[playbackIdx] || 0);
+
+            if (g.macroTitle) {
+                const detailItem = sequenceNodeToDetailItem(node, {
+                    playbackIndex: playbackIdx,
+                    completedSeconds: tracker[playbackIdx] || 0,
+                    stripNotePrefix: g.macroNote,
+                });
+                if (detailItem) g.detailItems.push(detailItem);
+            }
         }
     });
 
@@ -210,6 +225,13 @@ function renderProgressSummaryModal() {
         const loopHtml = (g.loopTotal > 1 && !g.macroTitle) 
             ? `<div style="font-size:0.75rem; opacity:0.6; margin-top:2px;">${g.loopTotal} Rounds</div>` 
             : "";
+        const linkedDetailsHtml = g.macroTitle
+            ? renderLinkedSequenceDetailsHtml(g.detailItems, {
+                summaryText: g.macroNote ? `Show poses for ${g.macroNote}` : "Show linked sequence poses",
+                showCompletion: true,
+                className: "linked-sequence-details--summary",
+            })
+            : "";
 
         const nameDisplayHtml = `
             <div class="progress-asana-stack">
@@ -220,6 +242,7 @@ function renderProgressSummaryModal() {
                 ${secondaryIast ? `<span class="progress-asana-iast"><em>${secondaryIast}</em></span>` : ''}
                 ${subLabel ? `<div class="progress-skip-tag" style="background:rgba(0,122,255,0.1); border-color:rgba(0,122,255,0.2); color:#007aff;">${subLabel}</div>` : ''}
                 ${loopHtml}
+                ${linkedDetailsHtml}
             </div>
         `;
 
@@ -256,6 +279,7 @@ function renderProgressSummaryModal() {
 
     modal.querySelectorAll('tr[data-index]').forEach(row => {
         row.addEventListener('click', (e) => {
+            if (e.target.closest('.linked-sequence-details')) return;
             const targetIndex = parseInt(e.currentTarget.getAttribute('data-index'), 10);
             closeModals();
             if (typeof window.setCurrentIndex === 'function') window.setCurrentIndex(targetIndex);

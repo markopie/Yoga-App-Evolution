@@ -391,6 +391,22 @@ async function generateTablePdf(options = {}) {
         pdf.rect(x, y, w, h, 'S');
     }
 
+    function drawTableHeader() {
+        drawCellBg(col1X, y, col1W, 8, headerBg);
+        drawCellBg(col2X, y, col2W, 8, headerBg);
+        drawCellBg(col3X, y, col3W, 8, headerBg);
+        drawCellBorder(col1X, y, col1W, 8);
+        drawCellBorder(col2X, y, col2W, 8);
+        drawCellBorder(col3X, y, col3W, 8);
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(headerTextColor[0], headerTextColor[1], headerTextColor[2]);
+        pdf.text('# / ID', col1X + (col1W / 2), y + 5.5, { align: 'center' });
+        pdf.text('Pose / Sequence Details', col2X + 3, y + 5.5);
+        pdf.text('Info', col3X + (col3W / 2), y + 5.5, { align: 'center' });
+        y += 8;
+    }
+
     // Calculate total duration
     const tempPoses = sourcePoses.map(p => {
         const tierTag = (!p.holdTier || p.holdTier === 'standard') ? '' : ` tier:${p.holdTier === 'short' ? 'S' : 'L'}`;
@@ -430,8 +446,11 @@ async function generateTablePdf(options = {}) {
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(100, 100, 100);
-        pdf.text(catVal, margin, y + 4);
-        y += 8;
+        const categoryLines = pdf.splitTextToSize(catVal, contentWidth);
+        categoryLines.forEach((line, index) => {
+            pdf.text(line, margin, y + 4 + (index * 4.5));
+        });
+        y += 4 + (categoryLines.length * 4.5);
     }
 
    // 3. Date + Duration + Course ID (header meta bar)
@@ -495,19 +514,7 @@ async function generateTablePdf(options = {}) {
 
     // 5. Table Header
     addPageIfNeeded(11);
-    drawCellBg(col1X, y, col1W, 8, headerBg);
-    drawCellBg(col2X, y, col2W, 8, headerBg);
-    drawCellBg(col3X, y, col3W, 8, headerBg);
-    drawCellBorder(col1X, y, col1W, 8);
-    drawCellBorder(col2X, y, col2W, 8);
-    drawCellBorder(col3X, y, col3W, 8);
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(headerTextColor[0], headerTextColor[1], headerTextColor[2]);
-    pdf.text('# / ID', col1X + (col1W / 2), y + 5.5, { align: 'center' });
-    pdf.text('Pose Details', col2X + 3, y + 5.5);
-    pdf.text('Info', col3X + (col3W / 2), y + 5.5, { align: 'center' });
-    y += 8;
+    drawTableHeader();
 
     // 6. Table Rows
     let poseCounter = 0;
@@ -544,10 +551,14 @@ async function generateTablePdf(options = {}) {
             );
             const subTitle = subCourse ? subCourse.title : identifier;
             const subId = subCourse ? (subCourse.id || subCourse.course_id || identifier) : identifier;
+            const subCategory = subCourse?.category || '';
+            const partLabel = String(pose.note || '').trim();
             const rounds = Number(pose.duration) || 1;
-            col1Lines = [`Course ID ${subId}`];
+            col1Lines = ['Course', `ID ${subId}`];
 
             col2Lines = [`${subTitle} (${rounds} round${rounds !== 1 ? 's' : ''})`];
+            if (partLabel) col2Lines.push(partLabel);
+            if (subCategory) col2Lines.push(subCategory);
             col3Lines = [''];
 
             // Calculate macro time info (matching buildMacroInfoHTML logic)
@@ -620,19 +631,7 @@ async function generateTablePdf(options = {}) {
 
         // If we just added a page, redraw the table header
         if (y <= margin + 2) {
-            drawCellBg(col1X, y, col1W, 8, headerBg);
-            drawCellBg(col2X, y, col2W, 8, headerBg);
-            drawCellBg(col3X, y, col3W, 8, headerBg);
-            drawCellBorder(col1X, y, col1W, 8);
-            drawCellBorder(col2X, y, col2W, 8);
-            drawCellBorder(col3X, y, col3W, 8);
-            pdf.setFontSize(8);
-            pdf.setFont('helvetica', 'bold');
-            pdf.setTextColor(headerTextColor[0], headerTextColor[1], headerTextColor[2]);
-            pdf.text('# / ID', col1X + (col1W / 2), y + 5.5, { align: 'center' });
-            pdf.text('Pose Details', col2X + 3, y + 5.5);
-            pdf.text('Info', col3X + (col3W / 2), y + 5.5, { align: 'center' });
-            y += 8;
+            drawTableHeader();
         }
 
         // Draw row background
@@ -652,7 +651,7 @@ async function generateTablePdf(options = {}) {
         col1Lines.forEach((line, i) => {
             if (i === 0) {
                 // Pose number
-                pdf.setFontSize(11);
+                pdf.setFontSize(line === 'Course' ? 8 : 11);
                 pdf.setFont('helvetica', 'bold');
                 pdf.setTextColor(linkColor[0], linkColor[1], linkColor[2]);
                 pdf.text(line, col1X + (col1W / 2), y + padding + (lineH * (i + 1)), { align: 'center' });
@@ -681,6 +680,11 @@ async function generateTablePdf(options = {}) {
                 pdf.setFontSize(10);
                 pdf.setFont('helvetica', 'bold');
                 pdf.setTextColor(bodyTextColor[0], bodyTextColor[1], bodyTextColor[2]);
+                pdf.text(line, col2X + 3, y + padding + (lineH * (i + 1)));
+            } else if (line.startsWith('Part ')) {
+                pdf.setFontSize(8);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(linkColor[0], linkColor[1], linkColor[2]);
                 pdf.text(line, col2X + 3, y + padding + (lineH * (i + 1)));
             } else if (line.startsWith('Note:')) {
                 pdf.setFontSize(8);

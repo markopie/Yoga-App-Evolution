@@ -767,3 +767,36 @@
 - Consider splitting the large `requirements.txt` into task-specific files if legacy audio, Google, or data scripts are still actively used.
 - Set `PYTHONUTF8=1` at the Windows user environment level if not already applied, so Python hook output remains Unicode-safe.
 ---
+
+## [2026-05-08] - Session [01]
+**Goal:** Stabilize the integrated Iyengar curriculum draft_v1 runtime slice before extending beyond Week 12.
+
+**Architectural Decisions:**
+- **Concrete Multi-Part Curriculum Days:** `draft_v1` now supports concrete composed curriculum nodes where one calendar day can include multiple scheduled source sequences.
+- **Asana + Appended Pranayama:** Composed curriculum days can combine a primary asana sequence with appended Light on Pranayama foundation work, while keeping the user-facing flow as one recommended practice.
+- **Playable Synthetic Session:** The UI builds composed days as a synthetic linked-sequence session using existing `MACRO:`/linked sequence behaviour, so the player can run Part 1 and Part 2 as one practice.
+- **Completion Items:** Completion now supports multiple `sequence_completions` rows via `completion_items`, allowing each counted composition part to be recorded against the same `curriculum_node_id`.
+- **Source Completion Policy:** Appended pranayama can count as completing its Light on Pranayama source sequence when it is a concrete scheduled part of `curriculum_payload.practice_composition`, not a vague suggestion.
+- **Review/Summary Reuse:** Review and Practice Summary now reuse the existing linked-sequence expansion/display path for curriculum/composed practices, showing itemized asanas under linked sequence parts instead of creating a curriculum-only display system.
+- **Coverage Counting Rule:** Curriculum coverage/audit logic must count both `program_curriculum.sequence_id` for normal nodes and `curriculum_payload.practice_composition[*].sequence_id` for composed nodes, otherwise appended pranayama will incorrectly appear unplaced.
+
+**Code Changed:**
+- `src/ui/curriculumUI.js`: Loads composed curriculum days into a playable synthetic linked-sequence session and exposes completion items for counted parts.
+- `src/services/historyService.js`, `app.js`, `src/playback/timerEvents.js`: Propagate and persist multi-row curriculum completion payloads.
+- `src/ui/builder.js`, `src/ui/progressSummaryUI.js`, `src/ui/linkedSequenceDetails.js`: Added shared linked-sequence detail expansion so Review and Practice Summary can show itemized linked-sequence contents.
+- `src/ui/builderUI.js`: Improved curriculum/composed PDF output for linked sequence rows, including clearer sequence details and less cramped Course ID display.
+- `scripts/active/seed_integrated_curriculum_v1.mjs`: Represents the pilot composed nodes and inactive replaced pranayama nodes in the draft_v1 seed logic.
+- `scripts/active/audit_curriculum_coverage_v1.mjs` and `scripts/active/audit_curriculum_coverage_v1.sql`: Added read-only coverage audits that understand `practice_composition`.
+
+**Validation Results:**
+- Concrete test slice works: composed curriculum days play as one linked-sequence session; appended pranayama can count as source completion; completing a composed day inserts one row per counted part; `get_today_curriculum_practice` advances correctly.
+- Coverage audit confirms Light on Pranayama Course 1 is fully placed in draft_v1 when appended pranayama composition parts are counted.
+- Duplicate audit found no active required source sequence scheduled both as a standalone node and as an appended composition part.
+
+**Next Steps for Next Session:**
+- Run/update composed-day coverage reports before extending Weeks 13-24.
+- Validate duplicate or accidental placements after every seed change now that `practice_composition` can schedule source sequences.
+- Revise draft_v1 more fully with the composed-day model before extending into Weeks 13-24.
+- Eventually plan a Curriculum Map / Course Roadmap screen, but do not implement it yet.
+- Keep the main user experience simple: Start Today's Practice -> practise -> complete -> advance.
+---

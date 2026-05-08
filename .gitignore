@@ -1,6 +1,7 @@
 .env
 supabase/.temp/
 backups/
+assets/
 *.local
 node_modules/
 dist/

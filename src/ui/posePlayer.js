@@ -28,9 +28,9 @@ window.showConflictModal = function(onConfirm, onResume) {
         `);
         modal = document.getElementById("sessionConflictModal");
     }
-    
+
     modal.style.display = "flex";
-    
+
     document.getElementById("btnConfirmNewSession").onclick = () => {
         modal.style.display = "none";
         onConfirm();
@@ -95,15 +95,15 @@ window.handleNext = () => {
 };
 
 function nextPose() {
-    const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
-                  ? window.activePlaybackList 
+    const poses = (window.activePlaybackList && window.activePlaybackList.length > 0)
+                  ? window.activePlaybackList
                   : (window.currentSequence.poses || []);
 
     if (!poses.length) return false;
 
     if (window.needsSecondSide) {
         window.setCurrentSide("left");
-        window.setNeedsSecondSide(false); 
+        window.setNeedsSecondSide(false);
         // Fix: Use window.currentIndex to ensure we stay on the same pose for the second side
         const currentIdx = window.currentIndex;
         // Update playback engine to reflect the side change
@@ -124,8 +124,8 @@ function nextPose() {
 }
 
 function prevPose() {
-    const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
-                  ? window.activePlaybackList 
+    const poses = (window.activePlaybackList && window.activePlaybackList.length > 0)
+                  ? window.activePlaybackList
                   : (window.currentSequence.poses || []);
 
     if (window.currentIndex === 0) {
@@ -142,7 +142,7 @@ function prevPose() {
         // Only move back to 'right' side if this isn't an explicit single-sided pose
         if (!meta.explicitSide) {
             window.setCurrentSide("right");
-            window.setNeedsSecondSide(true); 
+            window.setNeedsSecondSide(true);
             setPose(window.currentIndex, true);
             return;
         }
@@ -151,7 +151,7 @@ function prevPose() {
     if (window.currentIndex > 0) {
         const newIndex = window.currentIndex - 1;
         const prevPoseData = poses[newIndex];
-        
+
         const id = Array.isArray(prevPoseData[0]) ? prevPoseData[0][0] : prevPoseData[0];
         const asana = window.findAsanaByIdOrPlate(window.normalizePlate(id));
         const meta = prevPoseData[7] || {};
@@ -164,7 +164,7 @@ function prevPose() {
             window.setCurrentSide("left");
             window.setNeedsSecondSide(false);
             if (window.playbackEngine) window.playbackEngine.currentSide = "left";
-            setPose(newIndex, true); 
+            setPose(newIndex, true);
         } else {
             setPose(newIndex);
         }
@@ -176,8 +176,8 @@ function prevPose() {
    ========================================================================== */
 function setPose(idx, keepSamePose = false) {
     if (!window.currentSequence) return;
-    const poses = (window.activePlaybackList && window.activePlaybackList.length > 0) 
-                  ? window.activePlaybackList 
+    const poses = (window.activePlaybackList && window.activePlaybackList.length > 0)
+                  ? window.activePlaybackList
                   : (window.currentSequence.poses || []);
 
     if (idx < 0 || idx >= poses.length) return;
@@ -185,7 +185,7 @@ function setPose(idx, keepSamePose = false) {
     // 1. SAVE PROGRESS
     window.setCurrentIndex(idx);
     if (typeof window.saveCurrentProgress === "function") window.saveCurrentProgress();
-    
+
     if (!keepSamePose) {
         window.setCurrentSide("right");
         window.setNeedsSecondSide(false);
@@ -199,8 +199,8 @@ function setPose(idx, keepSamePose = false) {
     const currentPose = poses[idx];
     const poseMeta = currentPose[7] || {};
     const explicitSide = poseMeta.explicitSide;
-    const originalRowIndex = (currentPose && currentPose[5] !== undefined) 
-                            ? currentPose[5] 
+    const originalRowIndex = (currentPose && currentPose[5] !== undefined)
+                            ? currentPose[5]
                             : idx;
 
     const displayTotal = window.currentSequence.poses ? window.currentSequence.poses.length : poses.length;
@@ -223,10 +223,10 @@ function setPose(idx, keepSamePose = false) {
 
     // 3. SMART LOOKUP
     const asana = window.findAsanaByIdOrPlate(lookupId);
-    const storedVarKey = currentPose[3]; 
+    const storedVarKey = currentPose[3];
 
     // --- 🛑 DURATION RESOLUTION (TRUST THE PLAYBACK LIST) ---
-    // applyDurationDial() has ALREADY evaluated the strict rules, 
+    // applyDurationDial() has ALREADY evaluated the strict rules,
     // applied the dial scaling, and calculated sides. We just read it directly!
     let seconds = Number(currentPose[1]);
 
@@ -254,15 +254,15 @@ function setPose(idx, keepSamePose = false) {
 
     // ARCHITECT FIX: Check both naming conventions for bilateral detection
     const isBilateral = asana && (asana.requires_sides === true || asana.requires_sides === "true" || asana.requiresSides === true);
-    
-    
+
+
 
     if (isBilateral) {
         if (!keepSamePose) {
             if (explicitSide === 'L' || explicitSide === 'R') {
                 // Strict override from Flow Builder: Lock the side, kill the bilateral loop.
                 window.setCurrentSide(explicitSide === 'L' ? 'left' : 'right');
-                window.setNeedsSecondSide(false); 
+                window.setNeedsSecondSide(false);
             } else {
                 // Standard behavior: Default to right, ask engine to play left next.
                 window.setCurrentSide("right");
@@ -274,7 +274,7 @@ function setPose(idx, keepSamePose = false) {
 
     // VARIATION & NOTE EXTRACTION (The Perfect Rollback)
     let noteField = currentPose[4] || "";
-    let variationTitle = currentPose[3] || ""; 
+    let variationTitle = currentPose[3] || "";
     let actualNote = noteField;
     let baseOverrideName = currentPose[2] || "";
 
@@ -294,7 +294,7 @@ function setPose(idx, keepSamePose = false) {
 
     // 2. THE PROP SANITIZER (Multi-Prop Logic)
     let propModifier = null; // Legacy single-prop pointer
-    
+
     // JSON-Native First: Rely strictly on the props array
     const registry = window.PROP_REGISTRY || {};
     let activeProps = Array.isArray(poseMeta.props) ? [...poseMeta.props] : [];
@@ -304,7 +304,7 @@ function setPose(idx, keepSamePose = false) {
     Object.keys(registry).forEach(propName => {
         const tag = `:${propName}`;
         const searchStr = (actualNote + " " + variationTitle + " " + baseOverrideName).toLowerCase();
-        
+
         if (searchStr.includes(tag)) {
             if (!activeProps.includes(propName)) activeProps.push(propName);
             actualNote = actualNote.replace(new RegExp(tag, 'gi'), '').trim();
@@ -324,7 +324,7 @@ function setPose(idx, keepSamePose = false) {
     // VARIATION TECHNIQUE & SHORTHAND
     let displayShorthand = "";
     let displayTechnique = asana ? (asana.technique || asana.Technique || "") : "";
-    let matchedVariationKey = variationTitle || currentPose[3]; 
+    let matchedVariationKey = variationTitle || currentPose[3];
 
     const normalizeText = (str) => (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     const compactText = (str) => normalizeText(str).replace(/\s+/g, "");
@@ -351,22 +351,22 @@ function setPose(idx, keepSamePose = false) {
         for (const [vKey, vData] of Object.entries(asana.variations)) {
             const resolvedTitle = typeof vData === 'object' ? (vData.title || vData.Title || "") : "";
             const stageName = typeof vData === 'object' ? (vData.stage_name || vData.stage || vData.Stage || "") : "";
-            
+
             const compactTitle = compactText(resolvedTitle);
             const compactShort = compactText(typeof vData === 'object' ? (vData.shorthand || vData.Shorthand || "") : "");
             const compactStage = compactText(stageName);
             const compactKey = compactText(vKey);
 
-            if (compactVarTitle === compactTitle || 
-                compactVarTitle === compactShort || 
+            if (compactVarTitle === compactTitle ||
+                compactVarTitle === compactShort ||
                 compactVarTitle === compactStage || // <-- CRITICAL: Catches "I", "II", "III" directly
-                compactVarTitle === `stage${compactKey}` || 
+                compactVarTitle === `stage${compactKey}` ||
                 compactVarTitle === compactKey) {
-                
+
                 const varTech = (typeof vData === 'object') ? (vData.full_technique || vData.Full_Technique || vData.technique || vData.Technique) : vData;
                 if (varTech) displayTechnique = varTech;
                 if (typeof vData === 'object') displayShorthand = vData.shorthand || vData.Shorthand || "";
-                
+
                 const idNum = parseInt(asana.id || asana.asanaNo || "0", 10);
                 if (idNum >= 214 && idNum <= 230 && resolvedTitle) {
                     variationTitle = resolvedTitle;
@@ -392,7 +392,7 @@ function setPose(idx, keepSamePose = false) {
                 const normKey = vKey.toLowerCase();
                 const vData = asana.variations[vKey];
                 const resolvedTitle = typeof vData === 'object' ? (vData.title || vData.Title || "") : "";
-                
+
                 const normVarTitle = normalizeText(variationTitle);
                 const safeVarTitle = normVarTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const matchRegex = new RegExp(`\\b${safeVarTitle}\\b`, 'i');
@@ -435,7 +435,7 @@ function setPose(idx, keepSamePose = false) {
     const nameEl = document.getElementById("poseName");
     const focusNameEl = document.getElementById("focusPoseName");
     const labelEl = document.getElementById("poseLabel");
-    
+
     if (labelEl) {
         if (currentPose[6]) {
             labelEl.textContent = currentPose[6];
@@ -462,7 +462,7 @@ function setPose(idx, keepSamePose = false) {
         const sideMarker = (explicitSide === "L" || explicitSide === "R") ? explicitSide : (window.getCurrentSide() === "right" ? "R" : "L");
         titleParts.push(`<span class="pose-player__side" style="font-weight:300; opacity:0.5; font-size:0.8em; vertical-align: middle;">• ${sideMarker}</span>`);
     }
-    
+
     if (poseMeta.macroTitle || (poseMeta.loopCurrent && poseMeta.loopTotal > 1)) {
         const contextLabel = poseMeta.macroTitle || poseMeta.loopLabel || "";
         const labelDisplay = contextLabel ? ` (${contextLabel})` : "";
@@ -524,11 +524,11 @@ function setPose(idx, keepSamePose = false) {
         if (window.isBriefingActive) metaContainer.style.display = "none";
 
         const infoSpan = document.createElement("span");
-        infoSpan.className = "meta-text-only"; 
+        infoSpan.className = "meta-text-only";
 
         // ✅ Pass matchedVariationKey so Stage-specific times appear in the UI
         const hj = asana ? (window.getHoldTimes ? window.getHoldTimes(asana, matchedVariationKey) : asana.hold_json) : null;
-        
+
         let rangeText = "";
         if (hj && hj.short && hj.long) {
             // Using \u2013 for the elegant en-dash
@@ -538,16 +538,16 @@ function setPose(idx, keepSamePose = false) {
         }
 
         // Standard Apple-style separator: ID • Timing
-        infoSpan.textContent = rangeText 
-            ? `ID: ${lookupId} \u2022 ${rangeText}` 
+        infoSpan.textContent = rangeText
+            ? `ID: ${lookupId} \u2022 ${rangeText}`
             : `ID: ${lookupId}`;
         metaContainer.appendChild(infoSpan);
 
         if (asana) {
             const btn = document.createElement("button");
             btn.className = "tiny"; btn.innerHTML = "🔊"; btn.style.marginLeft = "12px"; btn.style.opacity = "0.7";
-            btn.onclick = (e) => { 
-                e.stopPropagation(); 
+            btn.onclick = (e) => {
+                e.stopPropagation();
                 window.playAsanaAudio(asana, null, false, null, matchedVariationKey, false, activeProps, actualNote);
             };
             metaContainer.appendChild(btn);
@@ -559,7 +559,7 @@ function setPose(idx, keepSamePose = false) {
         // 🛡️ ARCHITECT FIX: Fully reset wrap to prevent image accumulation from previous poses
         wrap.innerHTML = '<div class="banner-stack" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px; width:100%;"></div>';
         const bannerStack = wrap.querySelector(".banner-stack");
-        
+
         activeProps.forEach(pid => {
             const p = registry[pid];
             if (!p) return; // 🛡️ Safety check: Skip if prop is missing from registry
@@ -574,10 +574,10 @@ function setPose(idx, keepSamePose = false) {
         });
 
         const urls = window.smartUrlsForPoseId(lookupId, matchedVariationKey);
-        if (urls.length > 0) { 
-            wrap.appendChild(window.renderCollage(urls)); 
-        } else { 
-            wrap.insertAdjacentHTML('beforeend', `<div class="msg">No image found for: ${lookupId}</div>`); 
+        if (urls.length > 0) {
+            wrap.appendChild(window.renderCollage(urls));
+        } else {
+            wrap.insertAdjacentHTML('beforeend', `<div class="msg">No image found for: ${lookupId}</div>`);
         }
     }
 
@@ -601,14 +601,30 @@ function setPose(idx, keepSamePose = false) {
         focusPropWrap.innerHTML = activeProps.length > 0 ? `<div style="background:rgba(255,255,255,0.95); padding:8px 18px; border-radius:24px; font-weight:700; color:#1d1d1f; border:1px solid #d2d2d7; display:flex; align-items:center; gap:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1);">${propIcons} <span style="font-size:0.95rem; opacity:0.9;">${propNames}</span></div>` : "";
         focusPropWrap.style.display = activeProps.length > 0 ? "flex" : "none";
     }
-    
+
     if (overlayImageWrap) {
-        overlayImageWrap.innerHTML = ""; 
+        overlayImageWrap.innerHTML = "";
         const focusUrls = window.smartUrlsForPoseId(lookupId, matchedVariationKey);
         if (focusUrls.length > 0) {
-            const img = document.createElement("img");
-            img.src = focusUrls[0]; 
-            overlayImageWrap.appendChild(img);
+            const isFlowContext = !!(currentPose?.[7]?.flowSegment || window.currentSequence?.playbackMode === "flow" || window.currentSequence?.isFlow);
+            if (isFlowContext && focusUrls.length > 1) {
+                const grid = document.createElement("div");
+                grid.className = "focus-plate-collage";
+                focusUrls.forEach((src) => {
+                    const item = document.createElement("div");
+                    item.className = "focus-plate-collage__item";
+                    const img = document.createElement("img");
+                    img.src = src;
+                    img.alt = "";
+                    item.appendChild(img);
+                    grid.appendChild(item);
+                });
+                overlayImageWrap.appendChild(grid);
+            } else {
+                const img = document.createElement("img");
+                img.src = focusUrls[0];
+                overlayImageWrap.appendChild(img);
+            }
         }
     }
 
@@ -623,22 +639,22 @@ function setPose(idx, keepSamePose = false) {
     }
 
     // SKIP BUTTON VISIBILITY (Recovery / Preparatory)
-    const activeSkipBtn = document.getElementById("activePoseSkipBtn"); 
+    const activeSkipBtn = document.getElementById("activePoseSkipBtn");
     if (activeSkipBtn) {
-        // Stringify the currentPose array to easily catch 'recovery' or 'preparatory' 
+        // Stringify the currentPose array to easily catch 'recovery' or 'preparatory'
         // whether it's in the note (index 4), the name (index 6), or meta (index 7)
         const poseDataString = JSON.stringify(currentPose).toLowerCase();
-        
-        const isSkipType = poseDataString.includes("recovery") || 
-                           poseDataString.includes("preparat") || 
+
+        const isSkipType = poseDataString.includes("recovery") ||
+                           poseDataString.includes("preparat") ||
                            poseDataString.includes("preparation");
-        
+
         if (isSkipType) {
             activeSkipBtn.style.display = "inline-block";
             activeSkipBtn.onclick = () => {
                 // 1. Stop the current timer
                 if (typeof window.stopTimer === 'function') window.stopTimer();
-                
+
                 // 2. Advance to the next pose
                 const nextIdx = idx + 1;
                 if (nextIdx < poses.length) {

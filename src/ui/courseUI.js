@@ -233,6 +233,54 @@ export function updateActiveCategoryTitle() {
     }
 }
 
+function normalisePoseId(value) {
+    const token = String(value ?? '').trim();
+    if (!token) return '';
+    const match = token.match(/^(\d+)([a-z]?)$/i);
+    if (!match) return token.toLowerCase();
+    return match[1].padStart(3, '0') + (match[2] || '').toLowerCase();
+}
+
+function poseIdFromNode(node) {
+    const rawId = Array.isArray(node?.[0]) ? node[0][0] : node?.[0];
+    if (!rawId || String(rawId).startsWith('LOOP') || String(rawId).startsWith('MACRO:')) return '';
+    return normalisePoseId(rawId);
+}
+
+function courseContainsPose(course, poseQuery) {
+    const target = normalisePoseId(poseQuery);
+    if (!target) return true;
+
+    const poses = typeof window.getExpandedPoses === 'function'
+        ? window.getExpandedPoses(course)
+        : (course.poses || []);
+
+    return poses.some((node) => poseIdFromNode(node) === target);
+}
+
+function setupPoseSequenceFilter() {
+    const input = document.getElementById('poseSequenceFilter');
+    const clearBtn = document.getElementById('clearPoseSequenceFilter');
+    if (!input || input.dataset.wired === 'true') return;
+
+    let timer = null;
+    const rerender = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => renderCourseUI(), 80);
+    };
+
+    input.dataset.wired = 'true';
+    input.addEventListener('input', rerender);
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            renderCourseUI();
+            input.focus();
+        });
+    }
+}
+
 /**
  * Rebuilds the sequence <select> filtered by the current category selection.
  * Groups courses by their category string and sorts alphabetically.
@@ -240,11 +288,15 @@ export function updateActiveCategoryTitle() {
 export function renderCourseUI() {
     const sel      = document.getElementById("sequenceSelect");
     const filterEl = document.getElementById("categoryFilter");
+    const poseFilterEl = document.getElementById("poseSequenceFilter");
+    const poseStatusEl = document.getElementById("poseSequenceFilterStatus");
     if (!sel) return;
 
     const courses    = window.courses || [];
     const filterVal  = filterEl ? filterEl.value : "ALL";
+    const poseFilter = poseFilterEl ? poseFilterEl.value.trim() : "";
     const currentVal = sel.value;
+    let matchedCount = 0;
 
     sel.innerHTML = `<option value="">Select a course</option>`;
 
@@ -252,6 +304,8 @@ export function renderCourseUI() {
     courses.forEach((course, idx) => {
         const cat = course.category ? course.category.trim() : "Uncategorized";
         if (filterVal !== "ALL" && cat !== filterVal) return;
+        if (poseFilter && !courseContainsPose(course, poseFilter)) return;
+        matchedCount += 1;
         if (!grouped[cat]) grouped[cat] = [];
         grouped[cat].push({ course, idx });
     });
@@ -281,6 +335,14 @@ export function renderCourseUI() {
     if (currentVal) {
         const exists = Array.from(sel.options).some(o => o.value === currentVal);
         if (exists) sel.value = currentVal;
+        else sel.value = "";
+    }
+
+    if (poseStatusEl) {
+        const target = normalisePoseId(poseFilter);
+        poseStatusEl.textContent = target
+            ? `${matchedCount} sequence${matchedCount === 1 ? '' : 's'} contain pose ${target}`
+            : '';
     }
 }
 
@@ -290,6 +352,7 @@ export function renderCourseUI() {
  */
 export function renderSequenceDropdown() {
     renderCategoryFilter();
+    setupPoseSequenceFilter();
     renderCourseUI();
 }
 

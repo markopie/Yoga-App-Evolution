@@ -58,6 +58,27 @@
           </div>
        </div>
        
+       <section id="curriculumPracticePanel" class="curriculum-practice-panel">
+          <div class="curriculum-practice-panel__main">
+             <div>
+                <div class="curriculum-practice-panel__eyebrow">Integrated Curriculum</div>
+                <strong>Today's Practice</strong>
+                <div id="curriculumPracticeSummary" class="curriculum-practice-panel__summary">Ready when you are.</div>
+             </div>
+             <button id="startTodayPracticeBtn" type="button" class="curriculum-practice-panel__button">Start Today's Practice</button>
+             <button id="markCurriculumCompleteBtn" type="button" class="tiny curriculum-practice-panel__dev-button" style="display:none;">Mark Node Complete</button>
+             <button id="undoCurriculumCompletionBtn" type="button" class="tiny curriculum-practice-panel__dev-button curriculum-practice-panel__dev-button--danger" style="display:none;">Undo Curriculum Completion</button>
+             <button id="resetCurriculumTestProgressBtn" type="button" class="tiny curriculum-practice-panel__dev-button curriculum-practice-panel__dev-button--danger" style="display:none;">Reset Curriculum Test Progress</button>
+          </div>
+          <div id="curriculumPracticeDetails" class="curriculum-practice-panel__details" style="display:none;"></div>
+       </section>
+
+       <div class="manual-library-label">Browse Sequence Library</div>
+       <div class="sequence-pose-filter">
+         <input id="poseSequenceFilter" type="search" inputmode="numeric" placeholder="Filter by pose ID, e.g. 176" aria-label="Filter sequences by pose ID">
+         <button id="clearPoseSequenceFilter" type="button" class="tiny">Clear</button>
+         <span id="poseSequenceFilterStatus" class="sequence-pose-filter__status"></span>
+       </div>
        <div class="row" style="margin-top:10px; gap: 8px;">
          <select id="categoryFilter" style="max-width: 240px; font-weight:bold; color:#444;">
             

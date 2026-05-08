@@ -58,6 +58,10 @@ export function smartUrlsForPoseId(idField, variationKey = null) {
         }
         
         // B. Check for main asana image
+        if (asana.private_plate_urls && asana.private_plate_urls.length) {
+            return asana.private_plate_urls;
+        }
+
         if (asana.image_url) {
             return [asana.image_url];
         }

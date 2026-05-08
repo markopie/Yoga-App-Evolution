@@ -21,6 +21,7 @@ import "./src/ui/browse.js";
 import "./src/ui/asanaEditor.js";
 import "./src/ui/durationDial.js";
 import "./src/ui/courseUI.js";
+import "./src/ui/curriculumUI.js";
 import "./src/ui/wiring.js"; 
 
 window.db = supabase;
@@ -255,6 +256,7 @@ async function init() {
         
         if (typeof window.setupProgressSummary === 'function') window.setupProgressSummary();
         if (typeof setupBrowseUI === "function") window.setupBrowseUI();
+        if (typeof window.setupCurriculumUI === "function") window.setupCurriculumUI();
         if (typeof updateDialUI === 'function') window.updateDialUI();
 
         if (statusEl) statusEl.textContent = "Ready";
@@ -304,7 +306,15 @@ safeListen("completeBtn", "click", async () => {
     try {
         const title = window.currentSequence.title || "Unknown Sequence";
         const category = window.currentSequence.category || null;
-        const sessionId = await appendServerHistory(title, new Date(), category, Math.round(practiced));
+        const curriculumPractice = window.currentCurriculumPractice || null;
+        const sessionId = await appendServerHistory(title, new Date(), category, Math.round(practiced), {
+            status: 'Completed',
+            sequence_id: curriculumPractice?.resolved_sequence_id || window.currentSequence?.supabaseId || window.currentSequence?.id || null,
+            curriculum_node_id: curriculumPractice?.curriculum_node_id || null,
+            completion_items: typeof window.getCurriculumCompletionItems === 'function'
+                ? window.getCurriculumCompletionItems(curriculumPractice)
+                : null,
+        });
 
         alert("Sequence Completed and Logged!");
         const ratingOverlay = document.getElementById("ratingOverlay");

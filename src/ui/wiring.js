@@ -208,6 +208,13 @@ function setupSequenceSelector() {
     seqSelect.addEventListener("change", () => {
         const idx = seqSelect.value;
         if (typeof window.stopTimer === "function") window.stopTimer(); 
+        if (!window.suppressCurriculumClear) {
+            window.currentCurriculumPractice = null;
+            const summary = $("curriculumPracticeSummary");
+            const details = $("curriculumPracticeDetails");
+            if (summary) summary.textContent = "Manual library practice selected.";
+            if (details) details.style.display = "none";
+        }
         
         // Reset granular progress so we don't carry over completion data to the new sequence
         if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();

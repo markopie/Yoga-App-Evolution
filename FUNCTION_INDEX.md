@@ -51,6 +51,7 @@
 - `getActivePlaybackList` (window binding)
 - `getCompletionTracker` (window binding)
 - `getCurrentAudio` (window binding)
+- `getCurriculumCompletionItems` (window binding)
 - `getPosePillTime` (window binding)
 - `needsSecondSide` (window binding)
 - `nextPose` (window binding)
@@ -92,6 +93,7 @@
 - `fetchServerHistory` (window binding)
 - `lastCompletionFor` (function)
 - `loadCompletionLog` (function)
+- `pendingRatingCompletionIds` (window binding)
 - `safeGetLocalStorage` (function)
 - `safeSetLocalStorage` (function)
 - `saveCompletionLog` (function)
@@ -108,6 +110,13 @@
 - `getOrCreateAsanaCategoryId` (function)
 - `getOrCreateSubCategoryId` (function)
 - `saveSequence` (function)
+
+### 📄 `services/privatePlateImages.js`
+- `attachPrivatePlateUrls` (function)
+- `canUsePrivatePlateImages` (function)
+- `normalizePlateLabel` (function)
+- `parsePlateGroups` (function)
+- `plateStoragePath` (function)
 
 ### 📄 `services/ratingOptionsService.js`
 - `fetchRatingOptions` (function)
@@ -251,6 +260,7 @@
 - `updateBuilderModeUI` (function)
 
 ### 📄 `ui/courseUI.js`
+- `getExpandedPoses` (window binding)
 - `renderCategoryFilter` (function)
 - `renderCategoryFilter` (window binding)
 - `renderCollage` (function)
@@ -262,6 +272,29 @@
 - `renderSequenceDropdown` (window binding)
 - `updateActiveCategoryTitle` (function)
 - `updateActiveCategoryTitle` (window binding)
+
+### 📄 `ui/curriculumUI.js`
+- `applySequenceInternal` (window binding)
+- `completionTracker` (window binding)
+- `currentCurriculumPractice` (window binding)
+- `currentSequence` (window binding)
+- `getCurriculumCompletionItems` (window binding)
+- `isAliasView` (window binding)
+- `isBriefingActive` (window binding)
+- `markCurrentCurriculumNodeCompleteForTesting` (window binding)
+- `masterCourseTitle` (window binding)
+- `pendingSequence` (window binding)
+- `remedialNote` (window binding)
+- `renderCourseUI` (window binding)
+- `resetCompletionTracker` (window binding)
+- `resetCurriculumTestProgress` (window binding)
+- `setupCurriculumUI` (window binding)
+- `startTodayPractice` (window binding)
+- `stopTimer` (window binding)
+- `suppressCurriculumClear` (window binding)
+- `undoCurrentCurriculumNodeCompletionForTesting` (window binding)
+- `updateAliasUIFeedback` (window binding)
+- `updateNextBtnText` (window binding)
 
 ### 📄 `ui/durationDial.js`
 - `activePlaybackList` (window binding)
@@ -287,6 +320,14 @@
 - `openHistoryModal` (module export)
 - `renderGlobalHistory` (module export)
 - `switchHistoryTab` (module export)
+
+### 📄 `ui/linkedSequenceDetails.js`
+- `findLinkedSequence` (function)
+- `getExpandedPoses` (window binding)
+- `getLinkedSequenceDetailItems` (function)
+- `getPosePillTime` (window binding)
+- `renderLinkedSequenceDetailsHtml` (function)
+- `sequenceNodeToDetailItem` (function)
 
 ### 📄 `ui/posePlayer.js`
 - `currentActualNote` (window binding)
@@ -361,6 +402,7 @@
 - `clearProgress` (window binding)
 - `completionTracker` (window binding)
 - `createRepeatGroup` (window binding)
+- `currentCurriculumPractice` (window binding)
 - `currentIndex` (window binding)
 - `currentSequence` (window binding)
 - `currentUserEmail` (window binding)

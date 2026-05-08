@@ -10,6 +10,7 @@ import { builderPoseName, generateVariationSelectHTML, generateInfoCellHTML, res
 import { builderState, setPoseSide, movePose, movePoseToIndex, removePose, addPoseToBuilder, isFlowSequence } from '../store/builderState.js';
 import { updateBuilderModeUI, openLinkSequenceModal } from "./builderUI.js";
 import { PROP_REGISTRY } from "../config/propRegistry.js";
+import { findLinkedSequence, getLinkedSequenceDetailItems, renderLinkedSequenceDetailsHtml } from "./linkedSequenceDetails.js";
 
 const isProtectedSequence = (...args) => window.isProtectedSequence ? window.isProtectedSequence(...args) : false;
 const getEffectiveTime = (...args) => window.getEffectiveTime ? window.getEffectiveTime(...args) : args[1];
@@ -87,13 +88,12 @@ function builderRender() {
         let asana = null;
     
         let macroInfo = null;
+        let macroCourse = null;
         if (isMacro) {
             const identifier = idStr.replace("MACRO:", "").trim(); 
-            const subCourse = window.courses ? window.courses.find(c => 
-                String(c.title || "").trim().toLowerCase() === identifier.toLowerCase() || 
-                String(c.id || "").trim() === identifier
-            ) : null;
+            const subCourse = findLinkedSequence(identifier);
             if (subCourse && subCourse.poses) {
+                macroCourse = subCourse;
                 const cacheKey = String(subCourse.id || subCourse.supabaseId || subCourse.title || identifier);
                 let oneRoundSecs = macroDurationCache.get(cacheKey);
                 if (oneRoundSecs == null) {
@@ -195,6 +195,13 @@ function builderRender() {
             </div>`;
         }
 
+        const linkedSequenceDetailsHTML = (isMacro && macroCourse)
+            ? renderLinkedSequenceDetailsHtml(
+                getLinkedSequenceDetailItems(macroCourse),
+                { summaryText: pose.note ? `Show poses for ${pose.note}` : "Show linked sequence poses" }
+            )
+            : "";
+
         let injectionBadgesHTML = '';
         if (!isSpecial && asana && !isProtected) {
             let prepId = asana.preparatory_pose_id;
@@ -261,6 +268,7 @@ function builderRender() {
               </div>
               ${injectionBadgesHTML}
               ${roundsHTML}
+              ${linkedSequenceDetailsHTML}
            </td>
            ${isMacro ? buildMacroInfoHTML(macroInfo || { rounds: durOrReps, note: pose.note || "" }) : generateInfoCellHTML(asana, pose, idx, { isSpecial, isFlow: isFlowTiming })}
            <td class="b-col-controls builder-order-column" style="vertical-align: middle; border: none;">

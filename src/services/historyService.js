@@ -123,26 +123,58 @@ export async function fetchServerHistory() {
     }
 }
 
-export async function appendServerHistory(title, whenDate, category = null, durationSeconds = null) {
+export async function appendServerHistory(title, whenDate, category = null, durationSeconds = null, options = {}) {
    addCompletion(title, whenDate, category);
 
    if (!supabase) return false;
 
    try {
-      const payload = { title, category, completed_at: whenDate.toISOString() };
-      if (durationSeconds !== null && !isNaN(durationSeconds)) {
-          payload.duration_seconds = durationSeconds;
-      }
+      const completionOptions = typeof options === 'string' ? { status: options } : (options || {});
+      const completionItems = Array.isArray(completionOptions.completion_items)
+         ? completionOptions.completion_items.filter(item => item && item.counts_for_source_completion !== false)
+         : [];
+
+      const buildPayload = (item = {}) => {
+         const payload = {
+            title: item.title || title,
+            category: item.category || category,
+            completed_at: whenDate.toISOString(),
+            status: item.status || completionOptions.status || 'Completed',
+         };
+
+         const itemDuration = item.duration_seconds ?? durationSeconds;
+         if (itemDuration !== null && itemDuration !== undefined && !isNaN(itemDuration)) {
+            payload.duration_seconds = itemDuration;
+         }
+         if (completionOptions.notes !== undefined) payload.notes = completionOptions.notes;
+         if (completionOptions.rating !== undefined) payload.rating = completionOptions.rating;
+         if (completionOptions.difficulty_feedback !== undefined) payload.difficulty_feedback = completionOptions.difficulty_feedback;
+
+         const sequenceId = item.sequence_id ?? completionOptions.sequence_id;
+         if (sequenceId !== undefined && sequenceId !== null) {
+            payload.sequence_id = sequenceId;
+         }
+         if (completionOptions.curriculum_node_id !== undefined && completionOptions.curriculum_node_id !== null) {
+            payload.curriculum_node_id = completionOptions.curriculum_node_id;
+         }
+         if (window.currentUserId) payload.user_id = window.currentUserId;
+         return payload;
+      };
+
+      const rows = completionItems.length
+         ? completionItems.map(buildPayload)
+         : [buildPayload()];
 
       const { data, error } = await supabase
          .from('sequence_completions')
-         .insert([payload])
+         .insert(rows)
          .select();
 
       if (error) throw error;
       await fetchServerHistory();
       
       if (data && data.length > 0) {
+          window.pendingRatingCompletionIds = data.map(row => row.id);
           return data[0].id;
       }
       return true;
@@ -155,11 +187,17 @@ export async function appendServerHistory(title, whenDate, category = null, dura
 export async function updateCompletionRating(id, rating) {
    if (!supabase || !id) return false;
    try {
+      const ratingIds = Array.isArray(window.pendingRatingCompletionIds) && window.pendingRatingCompletionIds.includes(id)
+         ? window.pendingRatingCompletionIds
+         : [id];
       const { error } = await supabase
          .from('sequence_completions')
          .update({ rating: rating })
-         .eq('id', id);
+         .in('id', ratingIds);
       if (error) throw error;
+      if (Array.isArray(window.pendingRatingCompletionIds) && window.pendingRatingCompletionIds.includes(id)) {
+         window.pendingRatingCompletionIds = null;
+      }
       return true;
    } catch (e) {
       console.error("Failed to update rating:", e);

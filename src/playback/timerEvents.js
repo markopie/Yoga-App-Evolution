@@ -338,7 +338,15 @@ async function triggerSequenceEnd() {
             const dur = Math.round(totalSecsPracticed);
             
             try {
-                const sessionId = await window.appendServerHistory(title, new Date(), window.currentSequence?.category, dur);
+                const curriculumPractice = window.currentCurriculumPractice || null;
+                const sessionId = await window.appendServerHistory(title, new Date(), window.currentSequence?.category, dur, {
+                    status: 'Completed',
+                    sequence_id: curriculumPractice?.resolved_sequence_id || window.currentSequence?.supabaseId || window.currentSequence?.id || null,
+                    curriculum_node_id: curriculumPractice?.curriculum_node_id || null,
+                    completion_items: typeof window.getCurriculumCompletionItems === 'function'
+                        ? window.getCurriculumCompletionItems(curriculumPractice)
+                        : null,
+                });
                 
                 if (ratingOverlay) {
                     ratingOverlay.dataset.sessionId = sessionId || "fallback-id";

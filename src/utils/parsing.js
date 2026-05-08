@@ -68,7 +68,7 @@ function parseSequenceText(sequenceText) {
     const side = sideMatch ? sideMatch[1].toUpperCase() : '';
 
     const props = [];
-    const registry = window.PROP_REGISTRY || {};
+    const registry = (typeof window !== 'undefined' && window.PROP_REGISTRY) ? window.PROP_REGISTRY : {};
     Object.keys(registry).forEach(p => {
         if (note.toLowerCase().includes(`:${p}`)) props.push(p);
     });
