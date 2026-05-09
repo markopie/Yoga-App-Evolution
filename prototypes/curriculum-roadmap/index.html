@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Curriculum Roadmap – Prototype</title>
+    <link rel="stylesheet" href="roadmap.css" />
+  </head>
+  <body>
+    <!--
+      PROTOTYPE ONLY
+      curriculum_slug: iyengar_integrated_master_path_draft_v1
+      No Supabase calls. No production app code. Mock data only.
+
+      FUTURE IMPLEMENTATION NOTE
+      ──────────────────────────
+      The current get_today_curriculum_practice RPC returns only the current
+      node. A roadmap view requires the full program graph plus user completion
+      state. Recommend adding a new read-only RPC:
+
+        get_curriculum_roadmap(p_user_id uuid, p_curriculum_slug text)
+
+      It should return a single JSON object shaped like MOCK_ROADMAP in
+      roadmap.js – denormalized phases/weeks/nodes with completion, rating,
+      source coverage, and practice_composition baked in so the client does
+      not have to JOIN program_curriculum + courses + sequence_completions.
+
+      That keeps the client simple and lets Postgres do the heavy lifting.
+    -->
+
+    <div class="curriculum-roadmap" id="app">
+      <!-- rendered by roadmap.js -->
+    </div>
+
+    <script type="module" src="roadmap.js"></script>
+  </body>
+</html>
