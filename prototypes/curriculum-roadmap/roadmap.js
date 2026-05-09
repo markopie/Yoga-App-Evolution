@@ -2,767 +2,491 @@
  * PROTOTYPE ONLY – curriculum-roadmap
  * No Supabase calls. No production app imports. Mock data only.
  *
- * ── Confirmed real DB shape (qrcpiyncvfmpmeuyhsha) ───────────────────────────
+ * ── Real DB shape reference (qrcpiyncvfmpmeuyhsha) ──────────────────────────
  *
- * public.sequence_completions columns (all confirmed live):
- *   id, title, category, completed_at, duration_seconds, notes, created_at,
- *   status, user_id, rating, sequence_id, curriculum_node_id,
- *   difficulty_feedback, completed, duration_scale_used,
- *   planned_duration_minutes, actual_adjusted_duration_minutes
+ * program_curriculum: id (bigint PK), curriculum_slug, week_number, day_number,
+ *   order_index, sequence_id → courses.id, node_type, is_revision_node,
+ *   special_instructions, source_name, source_reference, level_number,
+ *   intensity, primary_focus, is_active
  *
- * Other confirmed live objects:
- *   - public.completion_rating_options
- *   - public.program_curriculum
- *   - public.source_sequence_inventory
- *   - public.v_source_sequence_inventory_enriched
- *   - RPC: get_today_curriculum_practice
- *   - RPC: get_next_curriculum_node
- *   - RPC: resolve_revision_curriculum_node
+ * sequence_completions: id, curriculum_node_id → program_curriculum.id,
+ *   sequence_id, rating (1–5), status, completed_at, duration_seconds,
+ *   duration_scale_used, planned_duration_minutes, actual_adjusted_duration_minutes
  *
- * ── Mock field status legend ──────────────────────────────────────────────────
+ * completion_rating_options: rating 1–5, label (Too Much / Challenging /
+ *   Balanced / Comfortable / Ready for More), subtitle
  *
- * [REAL-RPC]    Field returned by get_today_curriculum_practice. Confirmed.
- * [REAL-DB]     Column exists in a live table. Confirmed.
- * [DERIVED]     Not stored; computed from real fields (e.g. status from
- *               completions + current-node pointer, duration from
- *               course_sequence_analysis).
- * [ROADMAP-RPC] Would be returned by a future get_curriculum_roadmap RPC.
- *               Does not exist yet; shape is a design proposal.
- * [SPECULATIVE] Not in any live table or RPC today. Future planning concept.
+ * course_sequence_analysis: course_id, total_duration_minutes, intensity_band,
+ *   primary_theme, secondary_theme
  *
- * ── Future RPC recommendation ────────────────────────────────────────────────
+ * curriculum_payload.practice_composition roles (confirmed in curriculumUI.js):
+ *   primary_asana | appended_pranayama | quiet_asana | light_asana | primary_pranayama
  *
- * get_today_curriculum_practice returns only the current node.
- * A roadmap needs the full graph + completion + rating + source coverage,
- * denormalized so the client doesn't JOIN program_curriculum +
- * source_sequence_inventory + sequence_completions itself.
- *
- * Recommended new read-only RPC:
- *   get_curriculum_roadmap(p_user_id uuid, p_curriculum_slug text)
- *
- * It should return the shape defined by MOCK_ROADMAP below.
- *
- * ── Composed-day duplicate-completion note ───────────────────────────────────
- *
- * historyService.js writes one sequence_completions row per
- * counts_for_source_completion part. A roadmap grouping by
- * curriculum_node_id must deduplicate (e.g. GROUP BY curriculum_node_id,
- * take MAX(rating)) to avoid double-counting.
+ * ── Future RPC ───────────────────────────────────────────────────────────────
+ * get_curriculum_roadmap(p_user_id uuid, p_curriculum_slug text)
+ * Should return the full graph + completion state + duration + composition
+ * denormalized, matching the shape of MOCK_ROADMAP below.
  */
+
+// ─── Source name map ──────────────────────────────────────────────────────────
+// Maps internal source_key / source_name values to canonical user-facing labels.
+const SOURCE_LABELS = {
+  light_on_yoga:        'Light on Yoga',
+  light_on_pranayama:   'Light on Pranayama',
+  yoga_dipika_extra:    'Light on Yoga',       // not user-facing as separate source
+  iyengar_way:          'Yoga: The Iyengar Way',
+  gem_for_women:        'Yoga: A Gem for Women',
+  how_to_use_yoga:      'How to Use Yoga',
+};
+
+function sourceLabel(key) {
+  return SOURCE_LABELS[key] || null;
+}
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 //
-// sequence_id values are integers matching courses.id in the real DB.
-// practice_composition roles use the real vocabulary from curriculumUI.js:
-//   primary_asana | appended_pranayama | quiet_asana | supplemental_pranayama
+// node_type uses real vocabulary from seed_integrated_curriculum_v1.mjs:
+//   sequence | revision | rest | choice
 //
-// Numeric course IDs used in mock (representative placeholders):
-//   101 = LoY Week 1 Standing
-//   102 = LoY Week 1 Seated
-//   103 = LoY Week 2 Standing
-//   104 = LoP Week 1 Ujjayi Intro
-//   105 = LoY Week 2 Revision
-//   106 = LoY Inversions Intro
-//   107 = LoY Week 3 Backbends
-//   108 = LoY Phase 1 Mastery
-//   109 = LoY Week 4 Standing Extended
-//   110 = LoY Week 4 Twists
-//   111 = LoP Week 3 Nadi Shodhana
-//   112 = LoY Week 5 Shoulder
-//   113 = IW Chapter 4 Hips
-//   114 = LoY Week 5 Backbend Extended
-//   115 = LoP Week 5 Ujjayi Extended
-//   116 = LoY Week 6 Supine
-//   117 = LoY Phase 2 Revision
-//   118 = LoY Week 7 Inversions Advanced
-//   119 = LoP Week 7 Gate
-//   120 = LoY Week 8 Full Standing
+// level_number maps to display grouping (Foundation / Development / Deepening)
+// — a display convention, not a DB concept.
+//
+// curriculum_node_id uses integers to match program_curriculum.id (bigint).
+// Internal IDs are never rendered to the user.
+//
+// duration_minutes comes from course_sequence_analysis.total_duration_minutes.
+// It is omitted where not yet computed.
+//
+// [SPECULATIVE] fields (is_optional, is_locked, metadata flags) have been
+// removed. Status is derived from completion state only.
 
 const MOCK_ROADMAP = {
-  // [ROADMAP-RPC] Top-level curriculum identifier
-  curriculum_slug: "iyengar_integrated_master_path_draft_v1",
-  program_name: "Iyengar Integrated Master Path",
+  curriculum_slug: 'iyengar_integrated_master_path_draft_v1',
+  program_name: 'Integrated Iyengar Practice Path',
 
   summary: {
-    // [REAL-RPC] current_curriculum_node_id returned by get_today_curriculum_practice
-    current_curriculum_node_id: "cn_p2_w5_d3",
-    // [ROADMAP-RPC] week/day derived from program_curriculum row for current node
+    current_node_id: 14,         // program_curriculum.id of today's node
     current_week_number: 5,
     current_day_number: 3,
-    // [DERIVED] COUNT(*) from program_curriculum for this curriculum_slug
     total_nodes: 84,
-    // [DERIVED] COUNT of distinct curriculum_node_id in sequence_completions where completed=true
     completed_nodes: 18,
-    // [DERIVED] from source_sequence_inventory JOIN sequence_completions
-    required_source_sequences_total: 62,
-    required_source_sequences_attempted: 17,
-    required_source_sequences_remaining: 45,
-    // [DERIVED] from v_source_sequence_inventory_enriched + sequence_completions
-    source_coverage: [
-      {
-        source_key: "light_on_yoga",
-        source_course: "Light on Yoga – Asana Programme",
-        required_count: 28,
-        scheduled_count: 28,
-        completed_count: 8,
-      },
-      {
-        source_key: "light_on_pranayama",
-        source_course: "Light on Pranayama – 200-Week Course",
-        required_count: 18,
-        scheduled_count: 18,
-        completed_count: 4,
-      },
-      {
-        source_key: "yoga_dipika_extra",
-        source_course: "Yoga Dipika Supplemental",
-        required_count: 8,
-        scheduled_count: 8,
-        completed_count: 3,
-      },
-      {
-        source_key: "iyengar_way",
-        source_course: "The Iyengar Way",
-        required_count: 8,
-        scheduled_count: 8,
-        completed_count: 2,
-      },
-    ],
+    level_display: 'Level 2 – Development',
   },
 
-  phases: [
-    // ── Phase 1: Foundation (all weeks completed) ─────────────────────────────
+  // Levels map to program_curriculum.level_number.
+  // The label is a display convention; it does not exist in the DB.
+  levels: [
     {
-      // [ROADMAP-RPC] phase grouping — not in program_curriculum today; proposed addition
-      phase_id: "ph_1",
-      title: "Phase 1 – Foundation",
-      // [DERIVED] from completion state of contained nodes
-      status: "complete",
+      level_number: 1,
+      label: 'Foundation',
+      status: 'complete',
       weeks: [
         {
-          // [REAL-DB] program_curriculum.week_number
           week_number: 1,
-          // [DERIVED]
-          status: "complete",
+          status: 'complete',
           nodes: [
             {
-              // [REAL-DB] program_curriculum.curriculum_node_id
-              curriculum_node_id: "cn_p1_w1_d1",
-              // [REAL-DB] program_curriculum.order_index
-              order_index: 1,
+              id: 1,
               week_number: 1,
               day_number: 1,
-              // [REAL-RPC] resolved_course_title from get_today_curriculum_practice
-              title: "Standing Poses Introduction",
-              // [REAL-DB] program_curriculum.node_type
-              node_type: "practice",
-              // [REAL-RPC] resolved_node_type
-              resolved_node_type: "practice",
-              // [REAL-RPC] practice_track
-              practice_track: "asana",
-              // [REAL-DB] program_curriculum.sequence_id → courses.id (integer)
-              sequence_id: 101,
-              // [DERIVED] from sequence_completions WHERE curriculum_node_id = this AND completed = true
-              status: "complete",
-              // [REAL-DB] sequence_completions.rating (1–5 via completion_rating_options)
-              rating: 4,
-              // [DERIVED] course_sequence_analysis.total_duration_minutes for sequence_id 101
+              title: 'Standing Poses',
+              node_type: 'sequence',
+              source_name: 'Light on Yoga',
+              source_reference: 'Week 1, Sequence 1',
               duration_minutes: 45,
-              // [REAL-RPC] source_key
-              source_key: "light_on_yoga",
-              // [REAL-RPC] source_course
-              source_course: "Light on Yoga – Asana Programme",
-              // [REAL-RPC] source_reference
-              source_reference: "LoY Week 1",
-              is_rest_day: false,
-              // [SPECULATIVE] not in program_curriculum today
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              status: 'complete',
+              rating: 4,
+              intensity_band: 'light',
+              primary_theme: 'Standing and Basic',
               curriculum_payload: null,
-              // [SPECULATIVE] future metadata fields — not in any live table today
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
             {
-              curriculum_node_id: "cn_p1_w1_d2",
-              order_index: 2,
+              id: 2,
               week_number: 1,
               day_number: 2,
-              title: "Rest Day",
-              node_type: "rest",
-              resolved_node_type: "rest",
-              practice_track: null,
-              sequence_id: null,
-              status: "complete",
-              rating: null,
-              duration_minutes: 0,
-              source_key: null,
-              source_course: null,
+              title: 'Rest Day',
+              node_type: 'rest',
+              source_name: null,
               source_reference: null,
-              is_rest_day: true,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              duration_minutes: null,
+              status: 'complete',
+              rating: null,
+              intensity_band: null,
+              primary_theme: null,
               curriculum_payload: null,
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
             {
-              curriculum_node_id: "cn_p1_w1_d3",
-              order_index: 3,
+              id: 3,
               week_number: 1,
               day_number: 3,
-              title: "Seated Forward Bends – Level 1",
-              node_type: "practice",
-              resolved_node_type: "practice",
-              practice_track: "asana",
-              sequence_id: 102,
-              status: "complete",
-              rating: 5,
+              title: 'Seated Forward Bends',
+              node_type: 'sequence',
+              source_name: 'Light on Yoga',
+              source_reference: 'Week 1, Sequence 2',
               duration_minutes: 50,
-              source_key: "light_on_yoga",
-              source_course: "Light on Yoga – Asana Programme",
-              source_reference: "LoY Week 1 – Seated",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              status: 'complete',
+              rating: 5,
+              intensity_band: 'moderate',
+              primary_theme: 'Forward Bends',
               curriculum_payload: null,
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
           ],
         },
         {
           week_number: 2,
-          status: "complete",
+          status: 'complete',
           nodes: [
             {
-              curriculum_node_id: "cn_p1_w2_d1",
-              order_index: 4,
+              id: 4,
               week_number: 2,
               day_number: 1,
-              title: "Standing Poses + Pranayama Introduction",
-              node_type: "practice",
-              // [REAL-RPC] resolved_node_type = "composed" when is_composed_practice is true
-              resolved_node_type: "composed",
-              practice_track: "combined",
-              // [REAL-DB] null for composed nodes; parts live in curriculum_payload
-              sequence_id: null,
-              status: "complete",
-              // [REAL-DB] sequence_completions.rating — for composed days, taken from
-              // the primary part's completion row (curriculum_node_id + MAX(rating))
-              rating: 3,
+              title: 'Standing Poses & Ujjayi Pranayama',
+              node_type: 'sequence',
+              source_name: null,
+              source_reference: null,
               duration_minutes: 60,
-              source_key: null,
-              source_course: null,
-              source_reference: "LoY W2 + LoP W1",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              status: 'complete',
+              rating: 3,
+              intensity_band: 'moderate',
+              primary_theme: 'Standing and Basic',
               curriculum_payload: {
-                // [REAL-RPC] practice_composition from curriculum_payload JSONB
-                // Role vocabulary confirmed from curriculumUI.js:
-                //   primary_asana | appended_pranayama | quiet_asana | supplemental_pranayama
                 practice_composition: [
                   {
                     part_number: 1,
-                    role: "primary_asana",
-                    // sequence_id is integer → courses.id
-                    sequence_id: 103,
-                    title: "Standing Poses – Set 2",
+                    role: 'primary_asana',
+                    title: 'Standing Poses – Set 2',
+                    source_name: 'Light on Yoga',
                     duration_minutes: 45,
-                    // [REAL-RPC] counts_for_source_completion controls whether
-                    // historyService writes a sequence_completions row for this part
                     counts_for_source_completion: true,
-                    source_key: "light_on_yoga",
-                    source_course: "Light on Yoga – Asana Programme",
                   },
                   {
                     part_number: 2,
-                    role: "appended_pranayama",
-                    sequence_id: 104,
-                    title: "Ujjayi Introduction",
+                    role: 'appended_pranayama',
+                    title: 'Ujjayi Introduction',
+                    source_name: 'Light on Pranayama',
                     duration_minutes: 15,
                     counts_for_source_completion: true,
-                    source_key: "light_on_pranayama",
-                    source_course: "Light on Pranayama – 200-Week Course",
                   },
                 ],
                 total_duration_minutes: 60,
               },
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
             {
-              curriculum_node_id: "cn_p1_w2_d2",
-              order_index: 5,
+              id: 5,
               week_number: 2,
               day_number: 2,
-              title: "Week 2 Revision",
-              node_type: "revision",
-              resolved_node_type: "revision",
-              practice_track: "asana",
-              sequence_id: 105,
-              status: "complete",
-              rating: 4,
+              title: 'Revision Practice',
+              node_type: 'revision',
+              source_name: 'Light on Yoga',
+              source_reference: 'Week 2',
               duration_minutes: 50,
-              source_key: "light_on_yoga",
-              source_course: "Light on Yoga – Asana Programme",
-              source_reference: "LoY W2 Revision",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: true,
+              status: 'complete',
+              rating: 4,
+              intensity_band: 'light',
+              primary_theme: 'Standing and Basic',
               curriculum_payload: null,
-              // [SPECULATIVE] can_repeat_indefinitely not in live program_curriculum
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: true },
-              practice_composition: null,
             },
             {
-              curriculum_node_id: "cn_p1_w2_d3",
-              order_index: 6,
+              id: 6,
               week_number: 2,
               day_number: 3,
-              title: "Inversions Introduction (Optional)",
-              node_type: "practice",
-              resolved_node_type: "practice",
-              practice_track: "asana",
-              sequence_id: 106,
-              status: "complete",
-              rating: 5,
+              title: 'Inversions Introduction',
+              node_type: 'sequence',
+              source_name: 'Light on Yoga',
+              source_reference: 'Week 2, Optional',
               duration_minutes: 35,
-              source_key: "light_on_yoga",
-              source_course: "Light on Yoga – Asana Programme",
-              source_reference: "LoY W2 Optional",
-              is_rest_day: false,
-              is_optional: true,
-              is_locked: false,
-              is_revision_node: false,
+              status: 'complete',
+              rating: 5,
+              intensity_band: 'strong',
+              primary_theme: 'Inversions',
               curriculum_payload: null,
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
           ],
         },
         {
           week_number: 3,
-          status: "complete",
+          status: 'complete',
           nodes: [
             {
-              curriculum_node_id: "cn_p1_w3_d1",
-              order_index: 7,
+              id: 7,
               week_number: 3,
               day_number: 1,
-              title: "Backbend Foundations",
-              node_type: "practice",
-              resolved_node_type: "practice",
-              practice_track: "asana",
-              sequence_id: 107,
-              status: "complete",
-              rating: 4,
+              title: 'Backbend Foundations',
+              node_type: 'sequence',
+              source_name: 'Light on Yoga',
+              source_reference: 'Week 3',
               duration_minutes: 55,
-              source_key: "light_on_yoga",
-              source_course: "Light on Yoga – Asana Programme",
-              source_reference: "LoY Week 3",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              status: 'complete',
+              rating: 4,
+              intensity_band: 'moderate',
+              primary_theme: 'Backbends',
               curriculum_payload: null,
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
             {
-              curriculum_node_id: "cn_p1_w3_milestone",
-              order_index: 8,
+              id: 8,
               week_number: 3,
               day_number: 2,
-              title: "Phase 1 Mastery Check",
-              node_type: "mastery_gate",
-              resolved_node_type: "mastery_gate",
-              practice_track: "asana",
-              sequence_id: 108,
-              status: "complete",
-              rating: 5,
+              title: 'Foundation Review',
+              node_type: 'revision',
+              source_name: 'Light on Yoga',
+              source_reference: 'Phase 1',
               duration_minutes: 75,
-              source_key: "light_on_yoga",
-              source_course: "Light on Yoga – Asana Programme",
-              source_reference: "LoY Phase 1 Gate",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              status: 'complete',
+              rating: 5,
+              intensity_band: 'moderate',
+              primary_theme: 'Mixed',
               curriculum_payload: null,
-              // [SPECULATIVE] milestone_type and progression_gate not in live program_curriculum
-              metadata: { plateau_candidate: false, milestone_type: "phase_gate", progression_gate: true, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
           ],
         },
       ],
     },
 
-    // ── Phase 2: Development (current) ───────────────────────────────────────
     {
-      phase_id: "ph_2",
-      title: "Phase 2 – Development",
-      status: "current",
+      level_number: 2,
+      label: 'Development',
+      status: 'current',
       weeks: [
         {
           week_number: 4,
-          status: "complete",
+          status: 'complete',
           nodes: [
             {
-              curriculum_node_id: "cn_p2_w4_d1",
-              order_index: 9,
+              id: 9,
               week_number: 4,
               day_number: 1,
-              title: "Extended Standing Cycle",
-              node_type: "practice",
-              resolved_node_type: "practice",
-              practice_track: "asana",
-              sequence_id: 109,
-              status: "complete",
-              rating: 3,
+              title: 'Extended Standing Cycle',
+              node_type: 'sequence',
+              source_name: 'Light on Yoga',
+              source_reference: 'Week 4',
               duration_minutes: 60,
-              source_key: "light_on_yoga",
-              source_course: "Light on Yoga – Asana Programme",
-              source_reference: "LoY Week 4",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              status: 'complete',
+              rating: 3,
+              intensity_band: 'moderate',
+              primary_theme: 'Standing and Basic',
               curriculum_payload: null,
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
             {
-              curriculum_node_id: "cn_p2_w4_d2",
-              order_index: 10,
+              id: 10,
               week_number: 4,
               day_number: 2,
-              title: "Rest Day",
-              node_type: "rest",
-              resolved_node_type: "rest",
-              practice_track: null,
-              sequence_id: null,
-              status: "complete",
-              rating: null,
-              duration_minutes: 0,
-              source_key: null,
-              source_course: null,
+              title: 'Rest Day',
+              node_type: 'rest',
+              source_name: null,
               source_reference: null,
-              is_rest_day: true,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              duration_minutes: null,
+              status: 'complete',
+              rating: null,
+              intensity_band: null,
+              primary_theme: null,
               curriculum_payload: null,
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
             {
-              curriculum_node_id: "cn_p2_w4_d3",
-              order_index: 11,
+              id: 11,
               week_number: 4,
               day_number: 3,
-              title: "Twists + Nadi Shodhana",
-              node_type: "practice",
-              resolved_node_type: "composed",
-              practice_track: "combined",
-              sequence_id: null,
-              status: "complete",
-              rating: 4,
+              title: 'Twists & Nadi Shodhana',
+              node_type: 'sequence',
+              source_name: null,
+              source_reference: null,
               duration_minutes: 65,
-              source_key: null,
-              source_course: null,
-              source_reference: "LoY W4 + LoP W3",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              status: 'complete',
+              rating: 4,
+              intensity_band: 'moderate',
+              primary_theme: 'Twists',
               curriculum_payload: {
                 practice_composition: [
                   {
                     part_number: 1,
-                    role: "primary_asana",
-                    sequence_id: 110,
-                    title: "Twists Sequence",
+                    role: 'primary_asana',
+                    title: 'Twists Sequence',
+                    source_name: 'Light on Yoga',
                     duration_minutes: 50,
                     counts_for_source_completion: true,
-                    source_key: "light_on_yoga",
-                    source_course: "Light on Yoga – Asana Programme",
                   },
                   {
                     part_number: 2,
-                    role: "appended_pranayama",
-                    sequence_id: 111,
-                    title: "Nadi Shodhana – Stage 1",
+                    role: 'appended_pranayama',
+                    title: 'Nadi Shodhana – Stage 1',
+                    source_name: 'Light on Pranayama',
                     duration_minutes: 15,
                     counts_for_source_completion: true,
-                    source_key: "light_on_pranayama",
-                    source_course: "Light on Pranayama – 200-Week Course",
                   },
                 ],
                 total_duration_minutes: 65,
               },
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
           ],
         },
         {
           week_number: 5,
-          status: "current",
+          status: 'current',
           nodes: [
             {
-              curriculum_node_id: "cn_p2_w5_d1",
-              order_index: 12,
+              id: 12,
               week_number: 5,
               day_number: 1,
-              title: "Shoulder Girdle Opening",
-              node_type: "practice",
-              resolved_node_type: "practice",
-              practice_track: "asana",
-              sequence_id: 112,
-              status: "complete",
-              rating: 3,
+              title: 'Shoulder Girdle Opening',
+              node_type: 'sequence',
+              source_name: 'Light on Yoga',
+              source_reference: 'Week 5',
               duration_minutes: 55,
-              source_key: "light_on_yoga",
-              source_course: "Light on Yoga – Asana Programme",
-              source_reference: "LoY Week 5",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              status: 'complete',
+              rating: 3,
+              intensity_band: 'moderate',
+              primary_theme: 'Standing and Basic',
               curriculum_payload: null,
-              // [SPECULATIVE] plateau_candidate not in live program_curriculum
-              metadata: { plateau_candidate: true, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
             {
-              curriculum_node_id: "cn_p2_w5_d2",
-              order_index: 13,
+              id: 13,
               week_number: 5,
               day_number: 2,
-              title: "Hip Opening Sequence",
-              node_type: "practice",
-              resolved_node_type: "practice",
-              practice_track: "asana",
-              sequence_id: 113,
-              status: "complete",
-              rating: 2,
+              title: 'Hip Opening',
+              node_type: 'sequence',
+              source_name: 'Yoga: The Iyengar Way',
+              source_reference: 'Chapter 4',
               duration_minutes: 50,
-              source_key: "iyengar_way",
-              source_course: "The Iyengar Way",
-              source_reference: "IW Ch.4 Hips",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              status: 'complete',
+              rating: 2,
+              intensity_band: 'moderate',
+              primary_theme: 'Forward Bends',
               curriculum_payload: null,
-              metadata: { plateau_candidate: true, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
             {
-              // This is the current node — matches summary.current_curriculum_node_id
-              curriculum_node_id: "cn_p2_w5_d3",
-              order_index: 14,
+              id: 14,          // ← current node
               week_number: 5,
               day_number: 3,
-              title: "Extended Backbend + Ujjayi Ratio Work",
-              node_type: "practice",
-              resolved_node_type: "composed",
-              practice_track: "combined",
-              sequence_id: null,
-              // [DERIVED] "current" because curriculum_node_id matches
-              // get_today_curriculum_practice response
-              status: "current",
-              rating: null,
+              title: 'Extended Backbends & Ujjayi',
+              node_type: 'sequence',
+              source_name: null,
+              source_reference: null,
               duration_minutes: 70,
-              source_key: null,
-              source_course: null,
-              source_reference: "LoY W5 + LoP W5",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              status: 'current',
+              rating: null,
+              intensity_band: 'strong',
+              primary_theme: 'Backbends',
               curriculum_payload: {
                 practice_composition: [
                   {
                     part_number: 1,
-                    role: "primary_asana",
-                    sequence_id: 114,
-                    title: "Extended Backbend Practice",
+                    role: 'primary_asana',
+                    title: 'Extended Backbend Practice',
+                    source_name: 'Light on Yoga',
                     duration_minutes: 50,
                     counts_for_source_completion: true,
-                    source_key: "light_on_yoga",
-                    source_course: "Light on Yoga – Asana Programme",
                   },
                   {
                     part_number: 2,
-                    role: "appended_pranayama",
-                    sequence_id: 115,
-                    title: "Ujjayi – Extended Ratio Work",
+                    role: 'appended_pranayama',
+                    title: 'Ujjayi – Extended Ratio Work',
+                    source_name: 'Light on Pranayama',
                     duration_minutes: 20,
                     counts_for_source_completion: true,
-                    source_key: "light_on_pranayama",
-                    source_course: "Light on Pranayama – 200-Week Course",
                   },
                 ],
                 total_duration_minutes: 70,
               },
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
           ],
         },
         {
           week_number: 6,
-          status: "upcoming",
+          status: 'upcoming',
           nodes: [
             {
-              curriculum_node_id: "cn_p2_w6_d1",
-              order_index: 15,
+              id: 15,
               week_number: 6,
               day_number: 1,
-              title: "Supine Sequence",
-              node_type: "practice",
-              resolved_node_type: "practice",
-              practice_track: "asana",
-              sequence_id: 116,
-              status: "upcoming",
-              rating: null,
+              title: 'Supine Sequence',
+              node_type: 'sequence',
+              source_name: 'Light on Yoga',
+              source_reference: 'Week 6',
               duration_minutes: 55,
-              source_key: "light_on_yoga",
-              source_course: "Light on Yoga – Asana Programme",
-              source_reference: "LoY Week 6",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: false,
-              is_revision_node: false,
+              status: 'upcoming',
+              rating: null,
+              intensity_band: 'light',
+              primary_theme: 'Forward Bends',
               curriculum_payload: null,
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
             {
-              curriculum_node_id: "cn_p2_w6_d2",
-              order_index: 16,
+              id: 16,
               week_number: 6,
               day_number: 2,
-              title: "Phase 2 Revision (Optional)",
-              node_type: "revision",
-              resolved_node_type: "revision",
-              practice_track: "asana",
-              sequence_id: 117,
-              status: "upcoming",
-              rating: null,
+              title: 'Revision Practice',
+              node_type: 'revision',
+              source_name: 'Light on Yoga',
+              source_reference: 'Level 2',
               duration_minutes: 60,
-              source_key: "light_on_yoga",
-              source_course: "Light on Yoga – Asana Programme",
-              source_reference: "LoY P2 Rev",
-              is_rest_day: false,
-              is_optional: true,
-              is_locked: false,
-              is_revision_node: true,
+              status: 'upcoming',
+              rating: null,
+              intensity_band: 'light',
+              primary_theme: null,
               curriculum_payload: null,
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: true },
-              practice_composition: null,
             },
           ],
         },
       ],
     },
 
-    // ── Phase 3: Deepening (locked) ───────────────────────────────────────────
     {
-      phase_id: "ph_3",
-      title: "Phase 3 – Deepening",
-      status: "locked",
+      level_number: 3,
+      label: 'Deepening',
+      status: 'upcoming',
       weeks: [
         {
           week_number: 7,
-          status: "locked",
+          status: 'upcoming',
           nodes: [
             {
-              curriculum_node_id: "cn_p3_w7_d1",
-              order_index: 17,
+              id: 17,
               week_number: 7,
               day_number: 1,
-              title: "Advanced Inversions",
-              node_type: "practice",
-              resolved_node_type: "practice",
-              practice_track: "asana",
-              sequence_id: 118,
-              status: "locked",
-              rating: null,
+              title: 'Advanced Inversions',
+              node_type: 'sequence',
+              source_name: 'Light on Yoga',
+              source_reference: 'Week 7',
               duration_minutes: 65,
-              source_key: "light_on_yoga",
-              source_course: "Light on Yoga – Asana Programme",
-              source_reference: "LoY Week 7",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: true,
-              is_revision_node: false,
+              status: 'upcoming',
+              rating: null,
+              intensity_band: 'advanced',
+              primary_theme: 'Inversions',
               curriculum_payload: null,
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
             {
-              curriculum_node_id: "cn_p3_w7_d2",
-              order_index: 18,
+              id: 18,
               week_number: 7,
               day_number: 2,
-              title: "Pranayama Mastery Gate",
-              node_type: "mastery_gate",
-              resolved_node_type: "mastery_gate",
-              practice_track: "pranayama",
-              sequence_id: 119,
-              status: "locked",
-              rating: null,
+              title: 'Pranayama Practice',
+              node_type: 'sequence',
+              source_name: 'Light on Pranayama',
+              source_reference: 'Week 7',
               duration_minutes: 80,
-              source_key: "light_on_pranayama",
-              source_course: "Light on Pranayama – 200-Week Course",
-              source_reference: "LoP Week 7 Gate",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: true,
-              is_revision_node: false,
+              status: 'upcoming',
+              rating: null,
+              intensity_band: 'strong',
+              primary_theme: 'Pranayama',
               curriculum_payload: null,
-              metadata: { plateau_candidate: false, milestone_type: "phase_gate", progression_gate: true, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
           ],
         },
         {
           week_number: 8,
-          status: "locked",
+          status: 'upcoming',
           nodes: [
             {
-              curriculum_node_id: "cn_p3_w8_d1",
-              order_index: 19,
+              id: 19,
               week_number: 8,
               day_number: 1,
-              title: "Full Standing Programme",
-              node_type: "practice",
-              resolved_node_type: "practice",
-              practice_track: "asana",
-              sequence_id: 120,
-              status: "locked",
-              rating: null,
+              title: 'Full Standing Programme',
+              node_type: 'sequence',
+              source_name: 'Light on Yoga',
+              source_reference: 'Week 8',
               duration_minutes: 75,
-              source_key: "light_on_yoga",
-              source_course: "Light on Yoga – Asana Programme",
-              source_reference: "LoY Week 8",
-              is_rest_day: false,
-              is_optional: false,
-              is_locked: true,
-              is_revision_node: false,
+              status: 'upcoming',
+              rating: null,
+              intensity_band: 'advanced',
+              primary_theme: 'Standing and Basic',
               curriculum_payload: null,
-              metadata: { plateau_candidate: false, milestone_type: null, progression_gate: false, can_repeat_indefinitely: false },
-              practice_composition: null,
             },
           ],
         },
@@ -774,284 +498,330 @@ const MOCK_ROADMAP = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function esc(str) {
-  if (str == null) return "";
+  if (str == null) return '';
   return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function statusBadge(node) {
-  if (node.is_rest_day) return { key: "rest", label: "Rest" };
-  if (node.is_locked)   return { key: "locked", label: "Locked" };
-  const resolvedMap = {
-    mastery_gate: { key: "mastery",  label: "Mastery Gate" },
-    revision:     { key: "revision", label: "Revision" },
-  };
-  if (resolvedMap[node.resolved_node_type]) return resolvedMap[node.resolved_node_type];
-  if (node.is_optional) return { key: "optional", label: "Optional" };
-  const statusMap = {
-    complete:  { key: "complete",  label: "Done" },
-    current:   { key: "current",   label: "Today" },
-    upcoming:  { key: "upcoming",  label: "Upcoming" },
-    locked:    { key: "locked",    label: "Locked" },
-  };
-  return statusMap[node.status] || { key: "upcoming", label: node.status };
-}
-
-function renderStars(rating, maxStars = 5) {
-  if (rating == null) return "";
-  let html = `<span class="curriculum-roadmap__rating" aria-label="Rating: ${rating} of ${maxStars}">`;
-  for (let i = 1; i <= maxStars; i++) {
-    const cls = i <= rating
-      ? "curriculum-roadmap__rating-star--filled"
-      : "curriculum-roadmap__rating-star--empty";
-    html += `<span class="${cls}">★</span>`;
-  }
-  html += "</span>";
-  return html;
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function formatDuration(mins) {
-  if (!mins) return "";
-  if (mins < 60) return `${mins}m`;
+  if (!mins) return null;
+  if (mins < 60) return `${mins} min`;
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
+  return m ? `${h} hr ${m} min` : `${h} hr`;
 }
 
-function phaseStatusLabel(status) {
-  const map = { complete: "Done", current: "In Progress", locked: "Locked", upcoming: "Upcoming" };
-  return map[status] || status;
-}
-
-function coveragePct(row) {
-  if (!row.scheduled_count) return 0;
-  return Math.round((row.completed_count / row.scheduled_count) * 100);
-}
-
-// ─── Render helpers ───────────────────────────────────────────────────────────
-
-function renderFlags(node) {
-  // These metadata flags are [SPECULATIVE] — not in live program_curriculum today.
-  const flags = [];
-  if (node.metadata?.plateau_candidate)       flags.push("Plateau Candidate");
-  if (node.metadata?.progression_gate)        flags.push("Progression Gate");
-  if (node.metadata?.can_repeat_indefinitely) flags.push("Repeatable");
-  if (node.metadata?.milestone_type)          flags.push(node.metadata.milestone_type.replace(/_/g, " "));
-  if (!flags.length) return "";
-  return `<div class="curriculum-roadmap__flags">${flags.map(f => `<span class="curriculum-roadmap__flag">${esc(f)}</span>`).join("")}</div>`;
-}
-
-function roleLabel(role) {
-  // Maps real practice_composition role values to display labels
-  const map = {
-    primary_asana:           "Asana",
-    appended_pranayama:      "Pranayama",
-    quiet_asana:             "Quiet Asana",
-    supplemental_pranayama:  "Pranayama (Supp.)",
-  };
-  return map[role] || role;
-}
-
-function renderParts(node) {
+// Maps program_curriculum.node_type to a friendly display label
+function nodeTypeLabel(node) {
+  if (node.node_type === 'rest') return 'Rest Day';
+  if (node.node_type === 'revision') return 'Revision Practice';
+  if (node.node_type === 'choice') return 'Your Choice';
   const comp = node.curriculum_payload?.practice_composition;
-  if (!comp?.length) return "";
-  const rows = comp.map(p => `
-    <div class="curriculum-roadmap__part">
-      <span class="curriculum-roadmap__part-num">P${p.part_number}</span>
-      <div class="curriculum-roadmap__part-body">
-        <div class="curriculum-roadmap__part-title">${esc(p.title)}</div>
-        <div class="curriculum-roadmap__part-meta">
-          ${p.duration_minutes ? `<span>${formatDuration(p.duration_minutes)}</span>` : ""}
-          <span class="curriculum-roadmap__part-role">${esc(roleLabel(p.role))}</span>
-          ${p.source_key ? `<span>${esc(p.source_key)}</span>` : ""}
-          <span class="curriculum-roadmap__node-ref">courses.id: ${esc(String(p.sequence_id))}</span>
-          ${p.counts_for_source_completion ? `<span class="curriculum-roadmap__part-counts-tag">counts</span>` : ""}
-        </div>
-      </div>
-    </div>
-  `).join("");
-  return `<div class="curriculum-roadmap__parts">${rows}</div>`;
+  if (Array.isArray(comp) && comp.length > 1) return 'Combined Practice';
+  return null; // sequence — just show the title
 }
 
-function renderNode(node, currentNodeId) {
-  const isCurrent = node.curriculum_node_id === currentNodeId;
-  const badge = statusBadge(node);
-  const parts = renderParts(node);
-  const flags = renderFlags(node);
-  const seqRef = node.sequence_id != null
-    ? `<span class="curriculum-roadmap__node-ref">courses.id: ${node.sequence_id}</span>`
-    : "";
+// Maps curriculum_payload.practice_composition role to a friendly label
+// Matches curriculumUI.js role vocabulary exactly.
+function roleLabel(role) {
+  const labels = {
+    primary_asana:          'Asana',
+    appended_pranayama:     'Short Pranayama',
+    quiet_asana:            'Quiet Asana',
+    light_asana:            'Light Asana',
+    primary_pranayama:      'Pranayama',
+    supplemental_pranayama: 'Pranayama',
+  };
+  return labels[role] || String(role || '').replace(/_/g, ' ');
+}
+
+// Maps intensity_band to a friendly label
+function intensityLabel(band) {
+  const labels = {
+    restorative: 'Restorative',
+    light:       'Light',
+    moderate:    'Moderate',
+    strong:      'Strong',
+    advanced:    'Advanced',
+  };
+  return labels[band] || null;
+}
+
+// Maps rating integer to completion_rating_options label + subtitle
+function ratingMeta(rating) {
+  const map = {
+    1: { label: 'Too Much',       subtitle: 'Heavy' },
+    2: { label: 'Challenging',    subtitle: 'Effortful' },
+    3: { label: 'Balanced',       subtitle: 'Right level' },
+    4: { label: 'Comfortable',    subtitle: 'Fluid' },
+    5: { label: 'Ready for More', subtitle: 'Strong' },
+  };
+  return map[rating] || null;
+}
+
+function renderStars(rating) {
+  if (rating == null) return '';
+  const meta = ratingMeta(rating);
+  const title = meta ? `${meta.label} – ${meta.subtitle}` : `${rating}/5`;
+  let html = `<span class="cr-stars" aria-label="${esc(title)}" title="${esc(title)}">`;
+  for (let i = 1; i <= 5; i++) {
+    html += `<span class="${i <= rating ? 'cr-star--filled' : 'cr-star--empty'}">★</span>`;
+  }
+  html += '</span>';
+  return html;
+}
+
+// ─── Today hero card ──────────────────────────────────────────────────────────
+
+function renderTodayHero(data) {
+  const { summary, levels } = data;
+  let currentNode = null;
+  for (const level of levels) {
+    for (const week of level.weeks) {
+      for (const node of week.nodes) {
+        if (node.id === summary.current_node_id) {
+          currentNode = node;
+          break;
+        }
+      }
+    }
+  }
+  if (!currentNode) return '';
+
+  const comp = currentNode.curriculum_payload?.practice_composition;
+  const isComposed = Array.isArray(comp) && comp.length > 1;
+  const dur = formatDuration(currentNode.duration_minutes);
+  const typeLabel = nodeTypeLabel(currentNode);
+
+  const partsHtml = isComposed
+    ? comp.map(p => `
+        <div class="cr-hero-part">
+          <span class="cr-hero-part-num">Part ${p.part_number}</span>
+          <span class="cr-hero-part-role">${esc(roleLabel(p.role))}</span>
+          <span class="cr-hero-part-title">${esc(p.title)}</span>
+          ${p.source_name ? `<span class="cr-hero-part-source">${esc(p.source_name)}</span>` : ''}
+          ${p.duration_minutes ? `<span class="cr-hero-part-dur">${formatDuration(p.duration_minutes)}</span>` : ''}
+        </div>`).join('')
+    : '';
+
+  const metaItems = [
+    dur ? `<span class="cr-hero-meta-item">${esc(dur)}</span>` : '',
+    currentNode.source_name ? `<span class="cr-hero-meta-item">${esc(currentNode.source_name)}</span>` : '',
+    currentNode.intensity_band && !isComposed ? `<span class="cr-hero-meta-item cr-hero-meta-intensity">${esc(intensityLabel(currentNode.intensity_band))}</span>` : '',
+  ].filter(Boolean).join('');
 
   return `
-    <div class="curriculum-roadmap__node${isCurrent ? " curriculum-roadmap__node--current" : ""}">
-      <div class="curriculum-roadmap__node-row">
-        <span class="curriculum-roadmap__node-day">D${node.day_number}</span>
-        <div class="curriculum-roadmap__node-body">
-          <div class="curriculum-roadmap__node-title">${esc(node.title)}</div>
-          <div class="curriculum-roadmap__node-meta-row">
-            ${node.duration_minutes ? `<span class="curriculum-roadmap__node-duration">${formatDuration(node.duration_minutes)}</span>` : ""}
-            ${node.source_key ? `<span class="curriculum-roadmap__node-source">${esc(node.source_key)}</span>` : ""}
-            ${node.practice_track ? `<span class="curriculum-roadmap__node-track">${esc(node.practice_track)}</span>` : ""}
-            ${node.source_reference ? `<span class="curriculum-roadmap__node-ref">${esc(node.source_reference)}</span>` : ""}
-            ${seqRef}
-          </div>
-          ${flags}
-        </div>
-        <div class="curriculum-roadmap__node-right">
-          <span class="curriculum-roadmap__badge curriculum-roadmap__badge--${badge.key}">${badge.label}</span>
-          ${renderStars(node.rating)}
-        </div>
+    <div class="cr-today">
+      <div class="cr-today-eyebrow">Today's Practice &nbsp;·&nbsp; Week ${summary.current_week_number}, Day ${summary.current_day_number}</div>
+      <div class="cr-today-title">${esc(currentNode.title)}</div>
+      ${typeLabel ? `<div class="cr-today-type">${esc(typeLabel)}</div>` : ''}
+      ${metaItems ? `<div class="cr-today-meta">${metaItems}</div>` : ''}
+      ${isComposed ? `<div class="cr-hero-parts">${partsHtml}</div>` : ''}
+      <div class="cr-today-action">
+        <button class="cr-today-btn" onclick="alert('Prototype only — navigation not wired.')">Begin Practice</button>
       </div>
-      ${parts}
-    </div>
-  `;
+    </div>`;
 }
 
-function weekStatusBadge(status) {
-  const map = { complete: "complete", current: "current", upcoming: "upcoming", locked: "locked" };
-  return map[status] || "upcoming";
-}
-
-function renderWeek(week, currentNodeId, forceOpen) {
-  const open = forceOpen ? " open" : "";
-  const nodeCount = week.nodes.length;
-  const doneCount = week.nodes.filter(n => n.status === "complete").length;
-  const badgeCls = `curriculum-roadmap__badge curriculum-roadmap__badge--${weekStatusBadge(week.status)}`;
-  const nodes = week.nodes.map(n => renderNode(n, currentNodeId)).join("");
-
-  return `
-    <details class="curriculum-roadmap__week"${open}>
-      <summary class="curriculum-roadmap__week-summary">
-        <svg class="curriculum-roadmap__week-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="5,3 11,8 5,13"/>
-        </svg>
-        <span class="curriculum-roadmap__week-label">Week ${week.week_number}</span>
-        <span class="${badgeCls}" style="margin-right:.35rem">${phaseStatusLabel(week.status)}</span>
-        <span class="curriculum-roadmap__week-meta">${doneCount}/${nodeCount} done</span>
-      </summary>
-      <div class="curriculum-roadmap__nodes">
-        ${nodes}
-      </div>
-    </details>
-  `;
-}
-
-function renderPhase(phase, currentWeek, currentNodeId) {
-  const isCurrent = phase.status === "current";
-  const isComplete = phase.status === "complete";
-  const open = isCurrent ? " open" : "";
-  const totalNodes = phase.weeks.reduce((s, w) => s + w.nodes.length, 0);
-  const doneNodes  = phase.weeks.reduce((s, w) => s + w.nodes.filter(n => n.status === "complete").length, 0);
-  const badgeCls = `curriculum-roadmap__badge curriculum-roadmap__badge--${weekStatusBadge(phase.status)}`;
-
-  const weeks = phase.weeks.map(w => {
-    const isCurrentWeek = w.week_number === currentWeek;
-    const weekOpen = !isComplete && (isCurrentWeek || w.status === "current");
-    return renderWeek(w, currentNodeId, weekOpen);
-  }).join("");
-
-  return `
-    <details class="curriculum-roadmap__phase"${open}>
-      <summary class="curriculum-roadmap__phase-summary">
-        <svg class="curriculum-roadmap__phase-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="5,3 11,8 5,13"/>
-        </svg>
-        <span class="curriculum-roadmap__phase-title">${esc(phase.title)}</span>
-        <span class="${badgeCls}" style="margin-right:.5rem">${phaseStatusLabel(phase.status)}</span>
-        <span class="curriculum-roadmap__phase-meta">${doneNodes}/${totalNodes} nodes</span>
-      </summary>
-      <div class="curriculum-roadmap__weeks">${weeks}</div>
-    </details>
-  `;
-}
+// ─── Summary strip ─────────────────────────────────────────────────────────────
 
 function renderSummary(summary) {
-  const completedPct = Math.round((summary.completed_nodes / summary.total_nodes) * 100);
-  const sourcePct    = Math.round((summary.required_source_sequences_attempted / summary.required_source_sequences_total) * 100);
-
-  const coverageRows = summary.source_coverage.map(row => {
-    const pct = coveragePct(row);
-    return `
-      <div class="curriculum-roadmap__coverage-row">
-        <span class="curriculum-roadmap__coverage-source" title="${esc(row.source_course)}">${esc(row.source_course)}</span>
-        <div class="curriculum-roadmap__coverage-bar-wrap">
-          <div class="curriculum-roadmap__coverage-bar">
-            <div class="curriculum-roadmap__coverage-bar-fill" style="width:${pct}%"></div>
-          </div>
-          <span class="curriculum-roadmap__coverage-pct">${row.completed_count}/${row.scheduled_count} (${pct}%)</span>
+  const pct = Math.round((summary.completed_nodes / summary.total_nodes) * 100);
+  return `
+    <div class="cr-summary">
+      <div class="cr-summary-stats">
+        <div class="cr-stat">
+          <span class="cr-stat-label">Position</span>
+          <span class="cr-stat-value">Week ${summary.current_week_number} · Day ${summary.current_day_number}</span>
+        </div>
+        <div class="cr-stat">
+          <span class="cr-stat-label">Completed</span>
+          <span class="cr-stat-value">${summary.completed_nodes} <span class="cr-stat-of">of ${summary.total_nodes}</span></span>
+          <span class="cr-stat-sub">${pct}% of the programme</span>
+        </div>
+        <div class="cr-stat">
+          <span class="cr-stat-label">Current stage</span>
+          <span class="cr-stat-value">${esc(summary.level_display)}</span>
         </div>
       </div>
-    `;
-  }).join("");
+      <div class="cr-progress-bar-wrap" aria-label="Programme progress: ${pct}%">
+        <div class="cr-progress-bar">
+          <div class="cr-progress-bar-fill" style="width:${pct}%"></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─── Node cards ───────────────────────────────────────────────────────────────
+
+function renderNodeParts(node) {
+  const comp = node.curriculum_payload?.practice_composition;
+  if (!Array.isArray(comp) || comp.length <= 1) return '';
+  const rows = comp.map(p => `
+    <div class="cr-node-part">
+      <span class="cr-node-part-label">${esc(roleLabel(p.role))}</span>
+      <span class="cr-node-part-title">${esc(p.title)}</span>
+      ${p.source_name ? `<span class="cr-node-part-source">${esc(p.source_name)}</span>` : ''}
+    </div>`).join('');
+  return `<div class="cr-node-parts">${rows}</div>`;
+}
+
+function renderNode(node, currentNodeId, levelStatus) {
+  const isCurrent = node.id === currentNodeId;
+  const isComplete = node.status === 'complete';
+  const isUpcoming = node.status === 'upcoming';
+  const isRest = node.node_type === 'rest';
+
+  const typeLabel = nodeTypeLabel(node);
+  const dur = formatDuration(node.duration_minutes);
+  const parts = renderNodeParts(node);
+
+  // Status chip
+  let chipHtml = '';
+  if (isCurrent) {
+    chipHtml = '<span class="cr-chip cr-chip--current">Today</span>';
+  } else if (isRest) {
+    chipHtml = '<span class="cr-chip cr-chip--rest">Rest</span>';
+  } else if (node.node_type === 'revision') {
+    chipHtml = '<span class="cr-chip cr-chip--revision">Revision</span>';
+  } else if (node.node_type === 'choice') {
+    chipHtml = '<span class="cr-chip cr-chip--choice">Your Choice</span>';
+  } else if (isComplete) {
+    chipHtml = '<span class="cr-chip cr-chip--done">Done</span>';
+  } else if (isUpcoming && levelStatus === 'upcoming') {
+    chipHtml = '<span class="cr-chip cr-chip--ahead">Ahead</span>';
+  } else if (isUpcoming) {
+    chipHtml = '<span class="cr-chip cr-chip--upcoming">Coming up</span>';
+  }
+
+  const starsHtml = isComplete && node.rating != null ? renderStars(node.rating) : '';
+
+  // Completed nodes get a quieter treatment
+  const cardMod = isComplete && !isCurrent ? ' cr-node--done' : '';
+  const upcomingMod = isUpcoming ? ' cr-node--upcoming' : '';
+
+  const metaRow = [
+    dur && !isRest ? `<span class="cr-node-dur">${esc(dur)}</span>` : '',
+    node.source_name ? `<span class="cr-node-source">${esc(node.source_name)}</span>` : '',
+    node.primary_theme && !isRest ? `<span class="cr-node-theme">${esc(node.primary_theme)}</span>` : '',
+  ].filter(Boolean).join('');
 
   return `
-    <div class="curriculum-roadmap__summary">
-      <div class="curriculum-roadmap__summary-grid">
-        <div class="curriculum-roadmap__stat">
-          <span class="curriculum-roadmap__stat-label">Current</span>
-          <span class="curriculum-roadmap__stat-value">W${summary.current_week_number} · D${summary.current_day_number}</span>
+    <div class="cr-node${cardMod}${upcomingMod}${isCurrent ? ' cr-node--current' : ''}">
+      <div class="cr-node-row">
+        <span class="cr-node-day">D${node.day_number}</span>
+        <div class="cr-node-body">
+          <div class="cr-node-head">
+            <span class="cr-node-title">${esc(isRest ? 'Rest Day' : (typeLabel && node.node_type !== 'sequence' ? typeLabel : node.title))}</span>
+            ${chipHtml}
+          </div>
+          ${node.node_type === 'sequence' && node.title && typeLabel ? `<div class="cr-node-subtitle">${esc(node.title)}</div>` : ''}
+          ${metaRow ? `<div class="cr-node-meta">${metaRow}</div>` : ''}
         </div>
-        <div class="curriculum-roadmap__stat">
-          <span class="curriculum-roadmap__stat-label">Nodes</span>
-          <span class="curriculum-roadmap__stat-value">${summary.completed_nodes} / ${summary.total_nodes}</span>
-          <span class="curriculum-roadmap__stat-sub">${completedPct}% complete</span>
-        </div>
-        <div class="curriculum-roadmap__stat">
-          <span class="curriculum-roadmap__stat-label">Sources Attempted</span>
-          <span class="curriculum-roadmap__stat-value">${summary.required_source_sequences_attempted} / ${summary.required_source_sequences_total}</span>
-          <span class="curriculum-roadmap__stat-sub">${sourcePct}% of required</span>
-        </div>
-        <div class="curriculum-roadmap__stat">
-          <span class="curriculum-roadmap__stat-label">Remaining</span>
-          <span class="curriculum-roadmap__stat-value">${summary.required_source_sequences_remaining}</span>
-          <span class="curriculum-roadmap__stat-sub">required sequences left</span>
-        </div>
+        ${starsHtml ? `<div class="cr-node-rating">${starsHtml}</div>` : ''}
       </div>
-      <div class="curriculum-roadmap__coverage-title">Source Coverage</div>
-      <div class="curriculum-roadmap__coverage-list">${coverageRows}</div>
-    </div>
-  `;
+      ${parts}
+    </div>`;
+}
+
+// ─── Week accordion ───────────────────────────────────────────────────────────
+
+function renderWeek(week, currentNodeId, levelStatus, forceOpen) {
+  const open = forceOpen ? ' open' : '';
+  const doneCount = week.nodes.filter(n => n.status === 'complete').length;
+  const total = week.nodes.length;
+  const allDone = doneCount === total;
+  const hasCurrent = week.nodes.some(n => n.id === currentNodeId);
+
+  let weekStatus = '';
+  if (hasCurrent) weekStatus = '<span class="cr-week-status cr-week-status--current">In progress</span>';
+  else if (allDone) weekStatus = '<span class="cr-week-status cr-week-status--done">Complete</span>';
+
+  const nodes = week.nodes.map(n => renderNode(n, currentNodeId, levelStatus)).join('');
+  return `
+    <details class="cr-week"${open}>
+      <summary class="cr-week-summary">
+        <svg class="cr-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polyline points="5,3 11,8 5,13"/>
+        </svg>
+        <span class="cr-week-label">Week ${week.week_number}</span>
+        ${weekStatus}
+        <span class="cr-week-count">${doneCount}/${total}</span>
+      </summary>
+      <div class="cr-nodes">${nodes}</div>
+    </details>`;
+}
+
+// ─── Level accordion ──────────────────────────────────────────────────────────
+
+function renderLevel(level, currentWeek, currentNodeId) {
+  const isComplete = level.status === 'complete';
+  const isCurrent = level.status === 'current';
+  const open = isCurrent ? ' open' : '';
+  const totalNodes = level.weeks.reduce((s, w) => s + w.nodes.length, 0);
+  const doneNodes = level.weeks.reduce((s, w) => s + w.nodes.filter(n => n.status === 'complete').length, 0);
+
+  let levelStatus = '';
+  if (isComplete) levelStatus = '<span class="cr-level-status cr-level-status--done">Complete</span>';
+  else if (isCurrent) levelStatus = '<span class="cr-level-status cr-level-status--current">In progress</span>';
+  else levelStatus = '<span class="cr-level-status cr-level-status--upcoming">Coming later</span>';
+
+  const weeks = level.weeks.map(w => {
+    const isCurrentWeek = w.week_number === currentWeek;
+    const weekOpen = !isComplete && (isCurrentWeek || w.status === 'current');
+    return renderWeek(w, currentNodeId, level.status, weekOpen);
+  }).join('');
+
+  return `
+    <details class="cr-level"${open}>
+      <summary class="cr-level-summary">
+        <svg class="cr-chevron cr-level-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polyline points="5,3 11,8 5,13"/>
+        </svg>
+        <span class="cr-level-label">${esc(level.label)}</span>
+        ${levelStatus}
+        <span class="cr-level-count">${doneNodes} of ${totalNodes}</span>
+      </summary>
+      <div class="cr-weeks">${weeks}</div>
+    </details>`;
 }
 
 // ─── Main render ──────────────────────────────────────────────────────────────
 
 function render(data) {
-  const { summary, phases, program_name, curriculum_slug } = data;
-  const currentNodeId = summary.current_curriculum_node_id;
+  const { summary, levels, program_name } = data;
+  const currentNodeId = summary.current_node_id;
   const currentWeek   = summary.current_week_number;
 
-  const phasesHtml = phases
-    .map(ph => renderPhase(ph, currentWeek, currentNodeId))
-    .join("");
+  const levelsHtml = levels
+    .map(l => renderLevel(l, currentWeek, currentNodeId))
+    .join('');
 
   return `
-    <div class="curriculum-roadmap__header">
-      <div>
-        <div class="curriculum-roadmap__title">${esc(program_name)}</div>
-        <div class="curriculum-roadmap__slug">${esc(curriculum_slug)}</div>
+    <div class="cr-header">
+      <div class="cr-header-titles">
+        <div class="cr-program-name">${esc(program_name)}</div>
       </div>
-      <button class="curriculum-roadmap__jump-btn" onclick="alert('Prototype only – no navigation wired.')">
-        Jump to Current Practice
-      </button>
     </div>
-    <div class="curriculum-roadmap__proto-banner">
-      PROTOTYPE · mock data only · no Supabase · qrcpiyncvfmpmeuyhsha
-    </div>
+    ${renderTodayHero(data)}
     ${renderSummary(summary)}
-    <div class="curriculum-roadmap__phases">
-      ${phasesHtml || '<div class="curriculum-roadmap__empty">No phases found.</div>'}
+    <div class="cr-roadmap-label">Your Journey</div>
+    <div class="cr-levels">
+      ${levelsHtml || '<div class="cr-empty">No levels found.</div>'}
     </div>
-  `;
+    <div class="cr-footer-note">
+      Visual prototype using mock data &mdash; not connected to live progress yet.
+    </div>`;
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
-const root = document.getElementById("app");
+const root = document.getElementById('app');
 if (root) {
   root.innerHTML = render(MOCK_ROADMAP);
 } else {
-  console.error("[roadmap] #app element not found");
+  console.error('[roadmap] #app element not found');
 }

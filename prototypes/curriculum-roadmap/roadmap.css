@@ -1,24 +1,23 @@
-/* ─── Reset / Base ──────────────────────────────────────────────────────────── */
+/* ─── Reset / Base ───────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 
-  /* Neutral ramp */
-  --n0:  #ffffff;
-  --n50: #f8f8f7;
-  --n100: #f1f0ee;
-  --n200: #e4e2de;
-  --n300: #ccc9c3;
-  --n400: #a8a49c;
-  --n500: #7e7b72;
-  --n600: #5a574f;
-  --n700: #3d3b35;
-  --n800: #28261f;
-  --n900: #141310;
+  /* Neutral ramp – warm stone */
+  --n0:   #ffffff;
+  --n50:  #f9f8f6;
+  --n100: #f2f0ed;
+  --n200: #e5e2dc;
+  --n300: #ccc8c0;
+  --n400: #a8a39a;
+  --n500: #7e7a70;
+  --n600: #5a5650;
+  --n700: #3d3a33;
+  --n800: #28251e;
+  --n900: #14120d;
 
-  /* Primary – warm teal */
+  /* Teal – primary */
   --p100: #d6f0ed;
   --p200: #a7ddd8;
   --p300: #6fc4bc;
@@ -27,74 +26,64 @@
   --p600: #147268;
   --p700: #0d5750;
 
-  /* Accent – amber */
+  /* Amber – accent */
   --a100: #fef3d6;
   --a200: #fde196;
   --a300: #f9c840;
   --a400: #e8a800;
   --a500: #c48c00;
 
-  /* Status */
-  --s-complete-bg:  #d4edda;
-  --s-complete-fg:  #1a6430;
-  --s-current-bg:   #d6f0ed;
-  --s-current-fg:   #0d5750;
-  --s-upcoming-bg:  #f1f0ee;
-  --s-upcoming-fg:  #5a574f;
-  --s-locked-bg:    #f1f0ee;
-  --s-locked-fg:    #a8a49c;
-  --s-optional-bg:  #e8f4fd;
-  --s-optional-fg:  #1a5276;
-  --s-rest-bg:      #f9f3e8;
-  --s-rest-fg:      #7d5a1e;
-  --s-revision-bg:  #e8edfd;
-  --s-revision-fg:  #1a2d6b;
-  --s-mastery-bg:   #fef3d6;
-  --s-mastery-fg:   #7a5100;
+  /* Semantic status */
+  --done-bg:     #e6f4ea;
+  --done-fg:     #1a6430;
+  --current-bg:  #d6f0ed;
+  --current-fg:  #0d5750;
+  --upcoming-bg: #f2f0ed;
+  --upcoming-fg: #5a5650;
+  --rest-bg:     #faf4e8;
+  --rest-fg:     #7d5a1e;
+  --revision-bg: #edf0fc;
+  --revision-fg: #1a2d6b;
+  --choice-bg:   #f2f0ed;
+  --choice-fg:   #5a5650;
 
-  --success: #1a6430;
-  --warning: #e8a800;
-  --error: #c0392b;
+  --radius-sm: 5px;
+  --radius:    7px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
 
-  --radius: 6px;
-  --radius-lg: 8px;
+  --shadow-card: 0 1px 4px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.04);
+  --shadow-hero: 0 2px 12px rgba(0,0,0,.09), 0 0 0 1px rgba(0,0,0,.05);
 
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
-  --shadow-md: 0 2px 8px rgba(0,0,0,.1);
-
-  --transition: 120ms ease;
+  --transition: 130ms ease;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --n0:  #1a1917;
-    --n50: #211f1c;
-    --n100: #28261f;
-    --n200: #3d3b35;
-    --n300: #5a574f;
-    --n400: #7e7b72;
-    --n500: #a8a49c;
-    --n600: #ccc9c3;
-    --n700: #e4e2de;
-    --n800: #f1f0ee;
-    --n900: #f8f8f7;
+    --n0:   #1c1a16;
+    --n50:  #232018;
+    --n100: #2b2820;
+    --n200: #3d3a33;
+    --n300: #5a5650;
+    --n400: #7e7a70;
+    --n500: #a8a39a;
+    --n600: #ccc8c0;
+    --n700: #e5e2dc;
+    --n800: #f2f0ed;
+    --n900: #f9f8f6;
 
-    --s-complete-bg:  #143d22;
-    --s-complete-fg:  #6fcf97;
-    --s-current-bg:   #0d3632;
-    --s-current-fg:   #6fc4bc;
-    --s-upcoming-bg:  #28261f;
-    --s-upcoming-fg:  #ccc9c3;
-    --s-locked-bg:    #211f1c;
-    --s-locked-fg:    #5a574f;
-    --s-optional-bg:  #0e2438;
-    --s-optional-fg:  #85c1e9;
-    --s-rest-bg:      #2e230e;
-    --s-rest-fg:      #f0c050;
-    --s-revision-bg:  #0e1538;
-    --s-revision-fg:  #85a4e9;
-    --s-mastery-bg:   #3a2800;
-    --s-mastery-fg:   #f9c840;
+    --done-bg:     #14311e;
+    --done-fg:     #6fcf97;
+    --current-bg:  #0d3632;
+    --current-fg:  #6fc4bc;
+    --upcoming-bg: #2b2820;
+    --upcoming-fg: #ccc8c0;
+    --rest-bg:     #2e2210;
+    --rest-fg:     #f0c050;
+    --revision-bg: #0e153a;
+    --revision-fg: #85a4e9;
+    --choice-bg:   #2b2820;
+    --choice-fg:   #a8a39a;
   }
 }
 
@@ -107,482 +96,572 @@ body {
   min-height: 100dvh;
 }
 
-/* ─── Layout ────────────────────────────────────────────────────────────────── */
+/* ─── Outer container ────────────────────────────────────────────────────────── */
 .curriculum-roadmap {
-  max-width: 900px;
+  max-width: 680px;
   margin: 0 auto;
-  padding: 1.5rem 1rem 4rem;
+  padding: 1.5rem 1rem 5rem;
 }
 
-/* ─── Header ────────────────────────────────────────────────────────────────── */
-.curriculum-roadmap__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.25rem;
+/* ─── Header ─────────────────────────────────────────────────────────────────── */
+.cr-header {
+  margin-bottom: 1.5rem;
 }
-
-.curriculum-roadmap__title {
-  font-size: 1.15rem;
+.cr-program-name {
+  font-size: 1rem;
   font-weight: 600;
-  color: var(--n900);
+  color: var(--n700);
   letter-spacing: -.01em;
 }
 
-.curriculum-roadmap__slug {
-  font-size: 0.72rem;
-  font-family: var(--font-mono);
-  color: var(--n400);
-  margin-top: .15rem;
+/* ─── Today hero card ────────────────────────────────────────────────────────── */
+.cr-today {
+  background: var(--n0);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-hero);
+  padding: 1.4rem 1.5rem 1.5rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--p200);
+  border-top: 3px solid var(--p400);
 }
 
-.curriculum-roadmap__jump-btn {
-  flex-shrink: 0;
-  padding: .45rem 1rem;
+.cr-today-eyebrow {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--p500);
+  font-weight: 600;
+  margin-bottom: .45rem;
+}
+
+.cr-today-title {
+  font-size: 1.25rem;
+  font-weight: 650;
+  color: var(--n900);
+  line-height: 1.2;
+  letter-spacing: -.015em;
+  margin-bottom: .35rem;
+}
+
+.cr-today-type {
+  font-size: .8rem;
+  color: var(--p600);
+  font-weight: 500;
+  margin-bottom: .5rem;
+}
+
+.cr-today-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-bottom: 1rem;
+}
+
+.cr-hero-meta-item {
+  font-size: .78rem;
+  color: var(--n600);
+  background: var(--n100);
+  border-radius: 99px;
+  padding: .2rem .65rem;
+}
+
+.cr-hero-meta-intensity {
+  background: var(--a100);
+  color: var(--a500);
+}
+
+/* Composed practice parts inside hero */
+.cr-hero-parts {
+  border-top: 1px solid var(--n100);
+  padding-top: .85rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+
+.cr-hero-part {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  align-items: center;
+  gap: .45rem;
+}
+
+.cr-hero-part-num {
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--n400);
+  white-space: nowrap;
+  min-width: 3rem;
+}
+
+.cr-hero-part-role {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--p600);
+  background: var(--p100);
+  border-radius: 4px;
+  padding: .15rem .45rem;
+  white-space: nowrap;
+}
+
+.cr-hero-part-title {
+  font-size: .85rem;
+  color: var(--n800);
+  font-weight: 500;
+}
+
+.cr-hero-part-source {
+  font-size: .72rem;
+  color: var(--n500);
+  white-space: nowrap;
+}
+
+.cr-hero-part-dur {
+  font-size: .72rem;
+  color: var(--n500);
+  white-space: nowrap;
+}
+
+.cr-today-action {
+  margin-top: .25rem;
+}
+
+.cr-today-btn {
+  display: inline-block;
+  padding: .6rem 1.4rem;
   background: var(--p500);
   color: #fff;
   border: none;
   border-radius: var(--radius);
-  font-size: .85rem;
-  font-weight: 500;
+  font-size: .88rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background var(--transition);
-  white-space: nowrap;
+  transition: background var(--transition), transform var(--transition);
+  letter-spacing: .01em;
 }
-.curriculum-roadmap__jump-btn:hover { background: var(--p600); }
-.curriculum-roadmap__jump-btn:active { background: var(--p700); }
+.cr-today-btn:hover  { background: var(--p600); transform: translateY(-1px); }
+.cr-today-btn:active { background: var(--p700); transform: none; }
 
-/* ─── Summary Band ──────────────────────────────────────────────────────────── */
-.curriculum-roadmap__summary {
+/* ─── Summary strip ──────────────────────────────────────────────────────────── */
+.cr-summary {
   background: var(--n0);
   border: 1px solid var(--n200);
   border-radius: var(--radius-lg);
   padding: 1rem 1.25rem;
   margin-bottom: 1.5rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
 }
 
-.curriculum-roadmap__summary-grid {
+.cr-summary-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: .75rem 1.25rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .5rem 1.25rem;
+  margin-bottom: .85rem;
 }
 
-.curriculum-roadmap__stat {
+.cr-stat {
   display: flex;
   flex-direction: column;
   gap: .1rem;
 }
-.curriculum-roadmap__stat-label {
-  font-size: .7rem;
+.cr-stat-label {
+  font-size: .68rem;
   text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: .07em;
   color: var(--n400);
-  font-weight: 500;
-}
-.curriculum-roadmap__stat-value {
-  font-size: 1rem;
   font-weight: 600;
-  color: var(--n800);
 }
-.curriculum-roadmap__stat-sub {
-  font-size: .75rem;
+.cr-stat-value {
+  font-size: .95rem;
+  font-weight: 650;
+  color: var(--n800);
+  line-height: 1.2;
+}
+.cr-stat-of {
+  font-size: .8rem;
+  font-weight: 400;
+  color: var(--n500);
+}
+.cr-stat-sub {
+  font-size: .72rem;
   color: var(--n500);
 }
 
-.curriculum-roadmap__coverage-title {
-  font-size: .75rem;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--n400);
-  font-weight: 500;
-  margin-bottom: .5rem;
+.cr-progress-bar-wrap {
+  margin-top: .1rem;
 }
-
-.curriculum-roadmap__coverage-list {
-  display: flex;
-  flex-direction: column;
-  gap: .35rem;
-}
-
-.curriculum-roadmap__coverage-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: .5rem;
-}
-
-.curriculum-roadmap__coverage-source {
-  font-size: .8rem;
-  color: var(--n700);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.curriculum-roadmap__coverage-bar-wrap {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  min-width: 140px;
-}
-
-.curriculum-roadmap__coverage-bar {
-  flex: 1;
-  height: 6px;
+.cr-progress-bar {
+  height: 5px;
   background: var(--n200);
   border-radius: 99px;
   overflow: hidden;
 }
-.curriculum-roadmap__coverage-bar-fill {
+.cr-progress-bar-fill {
   height: 100%;
   background: var(--p400);
   border-radius: 99px;
-  transition: width .3s ease;
+  transition: width .4s ease;
 }
 
-.curriculum-roadmap__coverage-pct {
-  font-size: .72rem;
-  color: var(--n500);
-  white-space: nowrap;
-  min-width: 2.8rem;
-  text-align: right;
+/* ─── Roadmap label ──────────────────────────────────────────────────────────── */
+.cr-roadmap-label {
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--n400);
+  font-weight: 600;
+  margin-bottom: .6rem;
 }
 
-/* ─── Phases ────────────────────────────────────────────────────────────────── */
-.curriculum-roadmap__phases {
+/* ─── Levels ─────────────────────────────────────────────────────────────────── */
+.cr-levels {
   display: flex;
   flex-direction: column;
-  gap: .75rem;
+  gap: .6rem;
 }
 
-.curriculum-roadmap__phase {
+.cr-level {
   background: var(--n0);
   border: 1px solid var(--n200);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
 }
 
-.curriculum-roadmap__phase-summary {
+.cr-level-summary {
   display: flex;
   align-items: center;
-  gap: .75rem;
-  padding: .75rem 1rem;
+  gap: .65rem;
+  padding: .8rem 1rem;
   cursor: pointer;
   list-style: none;
   user-select: none;
+  transition: background var(--transition);
 }
-.curriculum-roadmap__phase-summary::-webkit-details-marker { display: none; }
-.curriculum-roadmap__phase-summary:hover { background: var(--n50); }
+.cr-level-summary::-webkit-details-marker { display: none; }
+.cr-level-summary:hover { background: var(--n50); }
 
-.curriculum-roadmap__phase-chevron {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  color: var(--n400);
-  transition: transform var(--transition);
-}
-details[open] .curriculum-roadmap__phase-chevron { transform: rotate(90deg); }
-
-.curriculum-roadmap__phase-title {
-  font-size: .9rem;
-  font-weight: 600;
-  color: var(--n800);
+.cr-level-label {
   flex: 1;
+  font-size: .9rem;
+  font-weight: 650;
+  color: var(--n800);
+  letter-spacing: -.01em;
 }
-.curriculum-roadmap__phase-meta {
-  font-size: .75rem;
+
+.cr-level-count {
+  font-size: .72rem;
   color: var(--n500);
   white-space: nowrap;
 }
 
-/* ─── Weeks ─────────────────────────────────────────────────────────────────── */
-.curriculum-roadmap__weeks {
-  border-top: 1px solid var(--n200);
+/* Level status chips */
+.cr-level-status {
+  font-size: .65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: .15rem .5rem;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.cr-level-status--done     { background: var(--done-bg);     color: var(--done-fg); }
+.cr-level-status--current  { background: var(--current-bg);  color: var(--current-fg); }
+.cr-level-status--upcoming { background: var(--upcoming-bg); color: var(--upcoming-fg); }
+
+/* ─── Weeks ──────────────────────────────────────────────────────────────────── */
+.cr-weeks {
+  border-top: 1px solid var(--n100);
 }
 
-.curriculum-roadmap__week {
+.cr-week {
   border-bottom: 1px solid var(--n100);
 }
-.curriculum-roadmap__week:last-child { border-bottom: none; }
+.cr-week:last-child { border-bottom: none; }
 
-.curriculum-roadmap__week-summary {
+.cr-week-summary {
   display: flex;
   align-items: center;
-  gap: .6rem;
-  padding: .55rem .9rem .55rem 2rem;
+  gap: .5rem;
+  padding: .55rem .9rem .55rem 1.75rem;
   cursor: pointer;
   list-style: none;
   user-select: none;
   background: var(--n50);
+  transition: background var(--transition);
 }
-.curriculum-roadmap__week-summary::-webkit-details-marker { display: none; }
-.curriculum-roadmap__week-summary:hover { background: var(--n100); }
+.cr-week-summary::-webkit-details-marker { display: none; }
+.cr-week-summary:hover { background: var(--n100); }
 
-.curriculum-roadmap__week-chevron {
+.cr-week-label {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--n700);
+  flex: 1;
+}
+
+.cr-week-status {
+  font-size: .65rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: .1rem .45rem;
+  border-radius: 3px;
+}
+.cr-week-status--done    { background: var(--done-bg);    color: var(--done-fg); }
+.cr-week-status--current { background: var(--current-bg); color: var(--current-fg); }
+
+.cr-week-count {
+  font-size: .7rem;
+  color: var(--n400);
+  white-space: nowrap;
+}
+
+/* ─── Chevron ────────────────────────────────────────────────────────────────── */
+.cr-chevron {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
   color: var(--n400);
   transition: transform var(--transition);
 }
-details[open] .curriculum-roadmap__week-chevron { transform: rotate(90deg); }
+.cr-level-chevron { width: 15px; height: 15px; }
+details[open] > summary .cr-chevron { transform: rotate(90deg); }
 
-.curriculum-roadmap__week-label {
-  font-size: .82rem;
-  font-weight: 600;
-  color: var(--n700);
-  flex: 1;
-}
-.curriculum-roadmap__week-meta {
-  font-size: .72rem;
-  color: var(--n500);
-  white-space: nowrap;
-}
-
-/* ─── Nodes ─────────────────────────────────────────────────────────────────── */
-.curriculum-roadmap__nodes {
-  padding: .35rem .5rem .5rem 2rem;
+/* ─── Nodes ──────────────────────────────────────────────────────────────────── */
+.cr-nodes {
+  padding: .4rem .6rem .55rem 1.75rem;
   display: flex;
   flex-direction: column;
-  gap: .4rem;
+  gap: .35rem;
 }
 
-.curriculum-roadmap__node {
+/* Base node card */
+.cr-node {
   border: 1px solid var(--n200);
   border-radius: var(--radius);
+  background: var(--n0);
   overflow: hidden;
+  transition: box-shadow var(--transition);
 }
 
-.curriculum-roadmap__node--current {
+/* Current node — standout */
+.cr-node--current {
   border-color: var(--p400);
-  box-shadow: 0 0 0 2px var(--p100);
+  box-shadow: 0 0 0 2px var(--p100), var(--shadow-card);
 }
 
-/* node header row */
-.curriculum-roadmap__node-row {
+/* Completed nodes — quieter */
+.cr-node--done {
+  background: var(--n50);
+  border-color: var(--n200);
+  opacity: .85;
+}
+
+/* Upcoming nodes — muted, not locked */
+.cr-node--upcoming {
+  border-color: var(--n200);
+  background: var(--n0);
+  opacity: .65;
+}
+
+.cr-node-row {
   display: flex;
   align-items: flex-start;
-  gap: .6rem;
+  gap: .55rem;
   padding: .55rem .75rem;
-  background: var(--n0);
 }
 
-.curriculum-roadmap__node-day {
-  font-size: .7rem;
-  font-family: var(--font-mono);
+.cr-node-day {
+  font-size: .68rem;
   color: var(--n400);
-  padding-top: .1rem;
+  padding-top: .15rem;
   white-space: nowrap;
   flex-shrink: 0;
-  min-width: 2.8rem;
+  min-width: 2.2rem;
+  font-weight: 500;
 }
 
-.curriculum-roadmap__node-body {
+.cr-node-body {
   flex: 1;
   min-width: 0;
 }
 
-.curriculum-roadmap__node-title {
+.cr-node-head {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  flex-wrap: wrap;
+}
+
+.cr-node-title {
   font-size: .85rem;
-  font-weight: 500;
+  font-weight: 550;
   color: var(--n800);
   line-height: 1.3;
 }
 
-.curriculum-roadmap__node-meta-row {
+.cr-node--done .cr-node-title { color: var(--n600); }
+.cr-node--upcoming .cr-node-title { color: var(--n600); }
+
+.cr-node-subtitle {
+  font-size: .78rem;
+  color: var(--n500);
+  margin-top: .1rem;
+}
+
+.cr-node-meta {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: .35rem;
+  gap: .3rem;
   margin-top: .3rem;
 }
 
-.curriculum-roadmap__node-source {
+.cr-node-dur {
   font-size: .72rem;
   color: var(--n500);
 }
-.curriculum-roadmap__node-duration {
+.cr-node-source {
   font-size: .72rem;
   color: var(--n500);
 }
-.curriculum-roadmap__node-track {
+.cr-node-theme {
   font-size: .68rem;
-  font-family: var(--font-mono);
   color: var(--n400);
   background: var(--n100);
   padding: .1rem .35rem;
   border-radius: 3px;
 }
-.curriculum-roadmap__node-ref {
-  font-size: .68rem;
-  font-family: var(--font-mono);
-  color: var(--n400);
+.cr-node-dur::after,
+.cr-node-source::after {
+  content: '·';
+  margin-left: .3rem;
+  color: var(--n300);
 }
+.cr-node-theme:last-child::after,
+.cr-node-source:last-child::after,
+.cr-node-dur:last-child::after { content: ''; }
 
-.curriculum-roadmap__node-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: .3rem;
+.cr-node-rating {
   flex-shrink: 0;
+  padding-top: .1rem;
 }
 
-/* ─── Badges ────────────────────────────────────────────────────────────────── */
-.curriculum-roadmap__badge {
+/* ─── Status chips ───────────────────────────────────────────────────────────── */
+.cr-chip {
   display: inline-block;
-  font-size: .65rem;
-  font-weight: 600;
+  font-size: .62rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .05em;
   padding: .15rem .45rem;
   border-radius: 3px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
-.curriculum-roadmap__badge--complete  { background: var(--s-complete-bg);  color: var(--s-complete-fg); }
-.curriculum-roadmap__badge--current   { background: var(--s-current-bg);   color: var(--s-current-fg); }
-.curriculum-roadmap__badge--upcoming  { background: var(--s-upcoming-bg);  color: var(--s-upcoming-fg); }
-.curriculum-roadmap__badge--locked    { background: var(--s-locked-bg);    color: var(--s-locked-fg); }
-.curriculum-roadmap__badge--optional  { background: var(--s-optional-bg);  color: var(--s-optional-fg); }
-.curriculum-roadmap__badge--rest      { background: var(--s-rest-bg);      color: var(--s-rest-fg); }
-.curriculum-roadmap__badge--revision  { background: var(--s-revision-bg);  color: var(--s-revision-fg); }
-.curriculum-roadmap__badge--mastery   { background: var(--s-mastery-bg);   color: var(--s-mastery-fg); }
+.cr-chip--done     { background: var(--done-bg);     color: var(--done-fg); }
+.cr-chip--current  { background: var(--current-bg);  color: var(--current-fg); }
+.cr-chip--upcoming { background: var(--upcoming-bg); color: var(--upcoming-fg); }
+.cr-chip--ahead    { background: var(--upcoming-bg); color: var(--n400); }
+.cr-chip--rest     { background: var(--rest-bg);     color: var(--rest-fg); }
+.cr-chip--revision { background: var(--revision-bg); color: var(--revision-fg); }
+.cr-chip--choice   { background: var(--choice-bg);   color: var(--choice-fg); }
 
-/* ─── Rating Stars ──────────────────────────────────────────────────────────── */
-.curriculum-roadmap__rating {
+/* ─── Rating stars ───────────────────────────────────────────────────────────── */
+.cr-stars {
   display: flex;
   gap: 1px;
-  font-size: .8rem;
+  font-size: .78rem;
   line-height: 1;
 }
-.curriculum-roadmap__rating-star--filled { color: var(--a400); }
-.curriculum-roadmap__rating-star--empty  { color: var(--n300); }
+.cr-star--filled { color: var(--a400); }
+.cr-star--empty  { color: var(--n300); }
 
-/* ─── Composed Parts ────────────────────────────────────────────────────────── */
-.curriculum-roadmap__parts {
+/* ─── Composed parts (inside roadmap node cards) ─────────────────────────────── */
+.cr-node-parts {
   border-top: 1px solid var(--n100);
   background: var(--n50);
-  padding: .4rem .75rem .5rem 2rem;
+  padding: .45rem .75rem .5rem 2rem;
   display: flex;
   flex-direction: column;
   gap: .3rem;
 }
 
-.curriculum-roadmap__part {
-  display: flex;
-  align-items: flex-start;
-  gap: .5rem;
-}
-
-.curriculum-roadmap__part-num {
-  font-size: .65rem;
-  font-family: var(--font-mono);
-  color: var(--n400);
-  padding-top: .12rem;
-  flex-shrink: 0;
-  min-width: 1.4rem;
-}
-
-.curriculum-roadmap__part-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.curriculum-roadmap__part-title {
-  font-size: .78rem;
-  color: var(--n700);
-  font-weight: 500;
-}
-
-.curriculum-roadmap__part-meta {
+.cr-node-part {
   display: flex;
   flex-wrap: wrap;
-  gap: .3rem;
-  margin-top: .15rem;
+  align-items: center;
+  gap: .35rem;
+}
+
+.cr-node-part-label {
   font-size: .68rem;
+  font-weight: 600;
+  color: var(--p600);
+  background: var(--p100);
+  padding: .1rem .35rem;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.cr-node-part-title {
+  font-size: .78rem;
+  color: var(--n700);
+}
+
+.cr-node-part-source {
+  font-size: .7rem;
   color: var(--n500);
 }
 
-.curriculum-roadmap__part-role {
-  font-size: .68rem;
-  color: var(--n600);
-  font-weight: 500;
+/* ─── Footer note ────────────────────────────────────────────────────────────── */
+.cr-footer-note {
+  margin-top: 2rem;
+  font-size: .72rem;
+  color: var(--n400);
+  text-align: center;
+  padding: .65rem 1rem;
+  background: var(--n100);
+  border-radius: var(--radius);
+  border: 1px solid var(--n200);
 }
 
-.curriculum-roadmap__part-counts-tag {
-  font-size: .63rem;
-  background: var(--p100);
-  color: var(--p700);
-  padding: .1rem .3rem;
-  border-radius: 3px;
-  font-weight: 500;
-}
-
-/* ─── Metadata flags ────────────────────────────────────────────────────────── */
-.curriculum-roadmap__flags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .25rem;
-  margin-top: .3rem;
-}
-
-.curriculum-roadmap__flag {
-  font-size: .62rem;
-  color: var(--a500);
-  background: var(--a100);
-  padding: .1rem .3rem;
-  border-radius: 3px;
-  font-weight: 500;
-}
-
-/* ─── Empty state ───────────────────────────────────────────────────────────── */
-.curriculum-roadmap__empty {
+/* ─── Empty state ────────────────────────────────────────────────────────────── */
+.cr-empty {
   text-align: center;
   padding: 3rem 1rem;
   color: var(--n400);
   font-size: .9rem;
 }
 
-/* ─── Prototype banner ──────────────────────────────────────────────────────── */
-.curriculum-roadmap__proto-banner {
-  font-size: .7rem;
-  font-family: var(--font-mono);
-  color: var(--n400);
-  background: var(--n100);
-  border: 1px solid var(--n200);
-  border-radius: var(--radius);
-  padding: .35rem .65rem;
-  margin-bottom: 1.25rem;
-  letter-spacing: .02em;
-}
+/* ─── Responsive ─────────────────────────────────────────────────────────────── */
+@media (max-width: 540px) {
+  .curriculum-roadmap { padding: 1rem .75rem 4rem; }
 
-/* ─── Responsive ────────────────────────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .curriculum-roadmap { padding: 1rem .75rem 3rem; }
+  .cr-today { padding: 1.1rem 1.1rem 1.2rem; }
+  .cr-today-title { font-size: 1.1rem; }
 
-  .curriculum-roadmap__summary-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .cr-summary-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cr-summary-stats .cr-stat:last-child {
+    grid-column: 1 / -1;
   }
 
-  .curriculum-roadmap__node-row {
-    flex-wrap: wrap;
+  .cr-hero-part {
+    grid-template-columns: auto auto 1fr;
+    grid-template-rows: auto auto;
+  }
+  .cr-hero-part-source,
+  .cr-hero-part-dur {
+    grid-column: 2 / -1;
   }
 
-  .curriculum-roadmap__node-right {
-    flex-direction: row;
-    align-items: center;
+  .cr-node-row { flex-wrap: wrap; }
+  .cr-node-rating {
     width: 100%;
-    justify-content: flex-end;
-  }
-
-  .curriculum-roadmap__coverage-row {
-    grid-template-columns: 1fr;
-  }
-  .curriculum-roadmap__coverage-bar-wrap {
-    min-width: unset;
+    padding-top: 0;
+    padding-left: 2.75rem;
   }
 }
