@@ -253,11 +253,24 @@ body {
 }
 
 /* ─── Map view ───────────────────────────────────────────────────────────────── */
+.cr-map-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .65rem;
+  flex-wrap: wrap;
+}
+.cr-map-hint {
+  font-size: .72rem;
+  color: var(--n400);
+  font-style: italic;
+  white-space: nowrap;
+}
 .cr-map-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: .5rem .9rem;
-  margin-bottom: .7rem;
+  gap: .4rem .85rem;
   align-items: center;
 }
 .cr-legend-item {
@@ -307,25 +320,59 @@ body {
 }
 .cr-map-pulse { animation: cr-pulse 2.6s ease-in-out infinite; }
 
+/* Keyboard focus ring on SVG station circles */
+.cr-map-station:focus-visible {
+  outline: 2px solid var(--p400);
+  outline-offset: 3px;
+}
+
 /* ─── Station detail panel ───────────────────────────────────────────────────── */
+.cr-detail-section {
+  margin-top: .1rem;
+}
+.cr-detail-section-label {
+  font-size: .66rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--n400);
+  font-weight: 600;
+  margin-bottom: .45rem;
+}
 .cr-detail-wrap {
   margin-bottom: .5rem;
 }
+/* Base detail card — intentionally lighter than the hero card */
 .cr-detail {
   background: var(--n0);
   border: 1px solid var(--n200);
   border-radius: var(--radius-lg);
-  padding: 1rem 1.15rem;
-  box-shadow: var(--shadow-card);
-  transition: all var(--transition);
+  padding: .85rem 1.1rem;
+  /* No box-shadow — quieter visual weight than the hero */
+  transition: border-color var(--transition);
 }
-.cr-detail--empty {
+/* When the selected station is Today, add a subtle left accent — but no button */
+.cr-detail--today {
+  border-left: 3px solid var(--p300);
+}
+/* Idle / prompt state */
+.cr-detail--prompt {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 3.5rem;
+  gap: .65rem;
+  min-height: 3.2rem;
+  border-style: dashed;
+  background: var(--n50);
+}
+.cr-detail-prompt-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--n300);
+}
+.cr-detail-prompt-text {
   color: var(--n400);
-  font-size: .82rem;
+  font-size: .8rem;
+  line-height: 1.4;
 }
 .cr-detail-head {
   display: flex;
@@ -339,6 +386,9 @@ body {
   letter-spacing: .07em;
   color: var(--n400);
   font-weight: 600;
+}
+.cr-detail-week--today {
+  color: var(--p500);
 }
 .cr-detail-title {
   font-size: 1rem;

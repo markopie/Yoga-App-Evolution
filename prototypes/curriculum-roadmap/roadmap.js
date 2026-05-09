@@ -477,21 +477,27 @@ function renderMap(data, currentNodeId, selectedNodeId) {
         <circle class="cr-map-pulse" cx="${n.x}" cy="${n.y}" r="${r + 8}" fill="none" stroke="${STREAM_COLOUR[n.stream]}" stroke-width="1.5" opacity="0.3"/>`;
     }
 
-    // Selection ring
-    if (isSelected) {
-      stations += `<circle cx="${n.x}" cy="${n.y}" r="${r + 5}" fill="none" stroke="${STREAM_COLOUR[n.stream]}" stroke-width="2" opacity="0.4"/>`;
+    // Selection ring — solid, clearly distinct from the pulse ring
+    if (isSelected && !isCurrent) {
+      stations += `<circle cx="${n.x}" cy="${n.y}" r="${r + 5}" fill="none" stroke="${STREAM_COLOUR[n.stream]}" stroke-width="2.5" opacity="0.9"/>`;
+    }
+    // Current+selected gets a bolder ring
+    if (isSelected && isCurrent) {
+      stations += `<circle cx="${n.x}" cy="${n.y}" r="${r + 5}" fill="none" stroke="${STREAM_COLOUR[n.stream]}" stroke-width="2.5" opacity="1"/>`;
     }
 
     // Interchange: show second ring at pranayama lane y
     if (isInterchange) {
       const fillP   = n.status === 'complete' ? STREAM_COLOUR.pranayama : 'none';
       const strokeP = n.status === 'upcoming' ? '#ccc8c0' : STREAM_COLOUR.pranayama;
-      stations += `<circle cx="${n.x}" cy="${LANE_Y.pranayama}" r="7" fill="${fillP}" stroke="${strokeP}" stroke-width="2.5" opacity="${op}" data-id="${n.id}" class="cr-map-station" style="cursor:pointer"/>`;
+      const ariaLabel = `Week ${n.week_number} Day ${n.day_number}: ${n.title} (Combined Practice)`;
+      stations += `<circle cx="${n.x}" cy="${LANE_Y.pranayama}" r="7" fill="${fillP}" stroke="${strokeP}" stroke-width="2.5" opacity="${op}" data-id="${n.id}" class="cr-map-station" role="button" aria-label="${esc(ariaLabel)}" tabindex="0" style="cursor:pointer"/>`;
     }
 
     // Main station circle
+    const ariaLabel = `Week ${n.week_number} Day ${n.day_number}: ${n.node_type === 'rest' ? 'Rest Day' : n.title}`;
     stations += `
-      <circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" opacity="${op}" data-id="${n.id}" class="cr-map-station" style="cursor:pointer"/>`;
+      <circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" opacity="${op}" data-id="${n.id}" class="cr-map-station" role="button" aria-label="${esc(ariaLabel)}" tabindex="0" style="cursor:pointer"/>`;
 
     // "You are here" label
     if (isCurrent) {
@@ -532,18 +538,29 @@ function renderMap(data, currentNodeId, selectedNodeId) {
 }
 
 // ─── Station detail panel ─────────────────────────────────────────────────────
+// Called with node=null for the idle (no selection) state.
+// The Begin Practice button lives only in the Today hero card — never here.
 
-function renderStationDetail(node) {
-  if (!node) {
-    return `<div class="cr-detail cr-detail--empty">
-      <span>Select a station to see details</span>
+function renderStationDetail(node, isIdle) {
+  if (isIdle) {
+    return `<div class="cr-detail cr-detail--prompt" id="cr-detail-inner">
+      <svg class="cr-detail-prompt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <circle cx="12" cy="12" r="3"/>
+        <line x1="12" y1="3" x2="12" y2="6"/>
+        <line x1="12" y1="18" x2="12" y2="21"/>
+        <line x1="3" y1="12" x2="6" y2="12"/>
+        <line x1="18" y1="12" x2="21" y2="12"/>
+      </svg>
+      <span class="cr-detail-prompt-text">Select any station on the map to preview that practice</span>
     </div>`;
   }
 
-  const typeLabel = nodeTypeLabel(node);
-  const dur       = formatDuration(node.duration_minutes);
-  const comp      = node.curriculum_payload?.practice_composition;
+  const typeLabel  = nodeTypeLabel(node);
+  const dur        = formatDuration(node.duration_minutes);
+  const comp       = node.curriculum_payload?.practice_composition;
   const isComposed = Array.isArray(comp) && comp.length > 1;
+  const isToday    = node.status === 'current';
 
   const starsHtml = node.rating != null ? (() => {
     let s = '<span class="cr-stars">';
@@ -568,14 +585,20 @@ function renderStationDetail(node) {
       </div>`
     : '';
 
-  // Status chip
-  const statusMap = { complete:'Done', current:'Today', upcoming:'Ahead' };
+  const statusMap   = { complete:'Done', current:'Today', upcoming:'Ahead' };
+  const chipKey     = isToday ? 'current' : node.status === 'complete' ? 'done' : 'ahead';
   const statusLabel = statusMap[node.status] || node.status;
 
-  return `<div class="cr-detail">
+  // "Today" badge replaces the week/day eyebrow when this is the current node,
+  // so the panel reads differently to the hero card above it.
+  const eyebrow = isToday
+    ? `<div class="cr-detail-week cr-detail-week--today">Today's Practice</div>`
+    : `<div class="cr-detail-week">Week ${node.week_number} · Day ${node.day_number}</div>`;
+
+  return `<div class="cr-detail${isToday ? ' cr-detail--today' : ''}" id="cr-detail-inner">
     <div class="cr-detail-head">
-      <div class="cr-detail-week">Week ${node.week_number} · Day ${node.day_number}</div>
-      <span class="cr-chip cr-chip--${node.status === 'current' ? 'current' : node.status === 'complete' ? 'done' : 'ahead'}">${esc(statusLabel)}</span>
+      ${eyebrow}
+      <span class="cr-chip cr-chip--${chipKey}">${esc(statusLabel)}</span>
     </div>
     <div class="cr-detail-title">${esc(node.node_type === 'rest' ? 'Rest Day' : node.title)}</div>
     ${typeLabel ? `<div class="cr-detail-type">${esc(typeLabel)}</div>` : ''}
@@ -586,7 +609,6 @@ function renderStationDetail(node) {
     </div>
     ${partsHtml}
     ${starsHtml ? `<div class="cr-detail-rating">${starsHtml}</div>` : ''}
-    ${node.status === 'current' ? `<button class="cr-detail-btn" onclick="alert('Prototype only — navigation not wired.')">Begin Practice</button>` : ''}
   </div>`;
 }
 
@@ -791,18 +813,24 @@ function renderMapView(data) {
   const currentNode = allNodes.find(n => n.id === data.summary.current_node_id) || null;
 
   return `<div id="cr-map-view">
-    <div class="cr-map-legend">
-      <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#1e8e83"></span>Asana</span>
-      <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#9b59b6"></span>Pranayama</span>
-      <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#2980b9"></span>Revision</span>
-      <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#bfb9af;border:1px solid #a8a39a"></span>Rest</span>
-      <span class="cr-legend-item cr-legend-interchange"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke="#1e8e83" stroke-width="2"/><circle cx="7" cy="7" r="2" fill="#1e8e83"/></svg>Combined</span>
+    <div class="cr-map-topbar">
+      <div class="cr-map-legend">
+        <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#1e8e83"></span>Asana</span>
+        <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#9b59b6"></span>Pranayama</span>
+        <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#2980b9"></span>Revision</span>
+        <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#bfb9af;border:1px solid #a8a39a"></span>Rest</span>
+        <span class="cr-legend-item cr-legend-interchange"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke="#1e8e83" stroke-width="2"/><circle cx="7" cy="7" r="2" fill="#1e8e83"/></svg>Combined</span>
+      </div>
+      <span class="cr-map-hint">Tap a station to explore</span>
     </div>
     <div class="cr-map-scroll">
       ${mapSvg}
     </div>
-    <div class="cr-detail-wrap" id="cr-detail-wrap">
-      ${renderStationDetail(currentNode)}
+    <div class="cr-detail-section">
+      <div class="cr-detail-section-label">Station details</div>
+      <div class="cr-detail-wrap" id="cr-detail-wrap">
+        ${renderStationDetail(null, true)}
+      </div>
     </div>
   </div>`;
 }
@@ -848,24 +876,46 @@ window.switchView = function(view) {
   }
 };
 
-// ─── Station click handling ───────────────────────────────────────────────────
+// ─── Station click / keyboard handling ───────────────────────────────────────
 
 function wireMapClicks(data) {
   const allNodes = flattenNodes(data);
-  document.addEventListener('click', e => {
-    const circle = e.target.closest('.cr-map-station');
-    if (!circle) return;
-    const id = parseInt(circle.getAttribute('data-id'), 10);
+
+  function selectStation(id) {
     const node = allNodes.find(n => n.id === id);
     if (!node) return;
 
-    // Re-render map with selection, update detail panel
+    // Re-render map with selection ring
     const mapScroll = document.querySelector('.cr-map-scroll');
-    if (mapScroll) {
-      mapScroll.innerHTML = renderMap(data, data.summary.current_node_id, id);
-    }
+    if (mapScroll) mapScroll.innerHTML = renderMap(data, data.summary.current_node_id, id);
+
+    // Update detail panel
     const detailWrap = document.getElementById('cr-detail-wrap');
-    if (detailWrap) detailWrap.innerHTML = renderStationDetail(node);
+    if (detailWrap) {
+      detailWrap.innerHTML = renderStationDetail(node, false);
+      // Smooth scroll the detail section into view only on narrow screens
+      // (on desktop it's already visible below the map)
+      const section = detailWrap.closest('.cr-detail-section');
+      if (section && window.innerWidth < 600) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }
+
+  // Click
+  document.addEventListener('click', e => {
+    const circle = e.target.closest('.cr-map-station');
+    if (!circle) return;
+    selectStation(parseInt(circle.getAttribute('data-id'), 10));
+  });
+
+  // Keyboard: Enter or Space on a focused station
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const circle = e.target.closest('.cr-map-station');
+    if (!circle) return;
+    e.preventDefault();
+    selectStation(parseInt(circle.getAttribute('data-id'), 10));
   });
 }
 
