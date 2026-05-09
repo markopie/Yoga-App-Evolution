@@ -141,7 +141,15 @@ const weeklyPlan = [
   [17, 1, 'sequence', 196, 'How to Use Yoga Week 7 opening standing practice without new pranayama.'],
   [17, 2, 'sequence', 230, 'Yoga: The Iyengar Way Course 2 2A standing practice.'],
   [17, 3, 'consolidation', null, 'Pranayama consolidation: stay with Course 1 and early Course 2 stages; no Course 3 work yet.'],
-  [17, 4, 'sequence', 113, 'Light on Yoga Course 1 important-asana review: use the Course 1 list as a checkpoint, not a bridge into Course 2.'],
+  // TODO(sequence 113): This sequence is classified as reference_collection in sourceBlockMetadataBySequenceId.
+  // Its is_active status is currently unchanged (true). A future pass must decide:
+  //   Option A — set is_active: false, removing it from the active curriculum flow entirely
+  //              (Week 17 Day 4 would become an empty slot; consider replacing with a consolidation node).
+  //   Option B — introduce a 'checkpoint' node_type so the RPC and UI present it as a
+  //              reference/review rather than a standard practice day with a Begin Practice button.
+  // Until that decision is made and the RPC behaviour is updated, this node is delivered as a
+  // normal sequence node. Do not treat it as an ordinary progressive practice sequence.
+  [17, 4, 'sequence', 113, 'Light on Yoga Course 1 important asanas — reference collection. Present as a course checkpoint, not a new progressive practice sequence.'],
   [17, 5, 'sequence', 244, 'Yoga: The Iyengar Way Course 2 5A as supportive standing exposure.'],
   [17, 6, 'revision', null, 'Keep this light: repeat a short standing or quiet practice.'],
   [17, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
@@ -296,6 +304,29 @@ const appendedPranayamaPlan = [
   },
 ];
 
+// ─── Future protected block: LOP weekly practice injection ────────────────────
+// Sequences 107–112 (Light on Pranayama) form an authored weekly practice set
+// in the source book and are reserved for a complete, ordered injection into
+// the curriculum at an appropriate stage.
+//
+// Design rules:
+//   - Do NOT scatter these sequences across random composed-day slots.
+//   - Do NOT add them individually to appendedPranayamaPlan.
+//   - They must be introduced as a contiguous block in source order.
+//   - Prerequisite: the lop_course1_parallel thread (sequences 52–66) should
+//     be substantially complete before this block is introduced.
+//
+// When the curriculum is extended past Week 24, seed this block as:
+//   block_id:             'lop_weekly_practice_block'
+//   sequence_block_type:  'authored_weekly_practice'
+//   block_position:       1–6 (107→1, 108→2, 109→3, 110→4, 111→5, 112→6)
+//   block_total:          6
+//   suggested position:   a dedicated pranayama week or pair of weeks
+//
+// Do not seed sequences 107–112 until this design is confirmed and the
+// curriculum extension past Week 24 is planned.
+// ─────────────────────────────────────────────────────────────────────────────
+
 const longDayMetadataBySequenceId = new Map([
   [126, {
     long_day_reason: 'Light on Yoga Course 1 plateau practice; intentionally retained as a serious long practice day.',
@@ -315,6 +346,51 @@ const plateauMetadataBySequenceId = new Map([
   }]),
 ]);
 
+// Maps sequence IDs to their source-block classification metadata.
+// Used by sequenceRow() to populate curriculum_payload with block membership.
+// Revision, rest, consolidation, and choice nodes have no sequence ID and are not included.
+const sourceBlockMetadataBySequenceId = new Map([
+  // Light on Yoga Course 1 backbone — authored fortnightly progressions (sequences in source order)
+  [114, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_backbone', block_position: 1, block_total: 11 }],
+  [115, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_backbone', block_position: 2, block_total: 11 }],
+  [116, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_backbone', block_position: 3, block_total: 11 }],
+  [117, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_backbone', block_position: 4, block_total: 11 }],
+  [118, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_backbone', block_position: 5, block_total: 11 }],
+  [119, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_backbone', block_position: 6, block_total: 11 }],
+  [120, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_backbone', block_position: 7, block_total: 11 }],
+  [121, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_backbone', block_position: 8, block_total: 11 }],
+  [122, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_backbone', block_position: 9, block_total: 11 }],
+  [123, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_backbone', block_position: 10, block_total: 11 }],
+  [124, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_backbone', block_position: 11, block_total: 11 }],
+
+  // Light on Yoga Course 1 weekly practices — plateau candidates (must be completed in order)
+  [125, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_weekly_practices', block_position: 1, block_total: 3 }],
+  [126, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_weekly_practices', block_position: 2, block_total: 3 }],
+  [127, { sequence_block_type: 'authored_weekly_practice', block_id: 'loy_course1_weekly_practices', block_position: 3, block_total: 3 }],
+
+  // Light on Yoga Course 1 important asanas — reference collection, not a progressive practice
+  [113, { sequence_block_type: 'reference_collection', block_id: null, block_position: null, block_total: null }],
+
+  // Light on Pranayama Course 1 parallel thread — used as appended_pranayama composition parts
+  // These entries apply to the pranayama part objects inside composed days.
+  // The same IDs appear as inactive standalone rows (composed_part_only) via inactiveCompositionPartBySequenceId.
+  [52,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 1,  block_total: 15 }],
+  [53,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 2,  block_total: 15 }],
+  [54,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 3,  block_total: 15 }],
+  [55,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 4,  block_total: 15 }],
+  [56,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 5,  block_total: 15 }],
+  [57,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 6,  block_total: 15 }],
+  [58,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 7,  block_total: 15 }],
+  [59,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 8,  block_total: 15 }],
+  [60,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 9,  block_total: 15 }],
+  [61,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 10, block_total: 15 }],
+  [62,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 11, block_total: 15 }],
+  [63,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 12, block_total: 15 }],
+  [64,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 13, block_total: 15 }],
+  [65,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 14, block_total: 15 }],
+  [66,  { sequence_block_type: 'authored_weekly_practice', block_id: 'lop_course1_parallel', block_position: 15, block_total: 15 }],
+]);
+
 const compositionByPrimarySequenceId = new Map(
   appendedPranayamaPlan.map((plan) => [
     plan.primarySequenceId,
@@ -322,7 +398,7 @@ const compositionByPrimarySequenceId = new Map(
       ...plan,
       practiceComposition: [
         { role: 'primary_asana', sequence_id: plan.primarySequenceId, counts_for_source_completion: true },
-        { role: 'appended_pranayama', sequence_id: plan.pranayamaSequenceId, counts_for_source_completion: true },
+        { role: 'appended_pranayama', sequence_id: plan.pranayamaSequenceId, counts_for_source_completion: true, ...sourceBlockMetadataBySequenceId.get(plan.pranayamaSequenceId) },
       ],
     },
   ]),
@@ -334,6 +410,7 @@ const inactiveCompositionPartBySequenceId = new Map(
     {
       superseded_by_curriculum_node_sequence_id: plan.primarySequenceId,
       inactive_reason: 'source_sequence_scheduled_as_composition_part',
+      sequence_block_type: 'composed_part_only',
       special_instructions: `Inactive composed-day node: sequence ${plan.pranayamaSequenceId} is now appended to sequence ${plan.primarySequenceId}.`,
     },
   ]),
@@ -467,6 +544,7 @@ function sequenceRow(planRow, candidate, candidateBySequenceId) {
       curriculum_role: candidate.curriculum_role,
       planned_phase: candidate.planned_phase,
       total_duration_minutes: candidate.total_duration_minutes,
+      source_week_label: candidate.source_reference ?? null,
       course_style: candidate.course_style,
       ...(composition ? {
         composition_strategy: 'primary_asana_plus_appendable_pranayama',
@@ -474,9 +552,13 @@ function sequenceRow(planRow, candidate, candidateBySequenceId) {
         composed_total_duration_minutes: composedTotalDurationMinutes,
         composition_rationale: composition.rationale,
       } : {}),
+      // sourceBlockMetadataBySequenceId spread before inactivePilot so that
+      // inactivePilot.sequence_block_type ('composed_part_only') wins for inactive rows.
+      ...(sourceBlockMetadataBySequenceId.get(sequenceId) ?? { sequence_block_type: 'standalone_sequence' }),
       ...(inactivePilot ? {
         inactive_reason: inactivePilot.inactive_reason,
         superseded_by_curriculum_node_sequence_id: inactivePilot.superseded_by_curriculum_node_sequence_id,
+        sequence_block_type: inactivePilot.sequence_block_type,
         composition_strategy: 'source_sequence_scheduled_as_composition_part',
       } : {}),
       ...(longDayMetadata ? {
