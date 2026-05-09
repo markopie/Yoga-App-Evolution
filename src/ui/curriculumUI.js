@@ -270,7 +270,7 @@ function loadResolvedSequence(practice) {
     return true;
 }
 
-async function startTodayPractice() {
+async function startTodayPractice(repeatNodeId = null) {
     const btn = $('startTodayPracticeBtn');
     const summary = $('curriculumPracticeSummary');
     const originalText = btn?.textContent || 'Start Today\'s Practice';
@@ -282,10 +282,13 @@ async function startTodayPractice() {
     if (summary) summary.textContent = 'Finding today\'s practice...';
 
     try {
-        const { data, error } = await supabase.rpc('get_today_curriculum_practice', {
+        const rpcParams = {
             p_curriculum_slug: CURRICULUM_SLUG,
             p_user_id: window.currentUserId || null,
-        });
+        };
+        if (repeatNodeId != null) rpcParams.p_repeat_node_id = repeatNodeId;
+
+        const { data, error } = await supabase.rpc('get_today_curriculum_practice', rpcParams);
 
         if (error) throw error;
 
