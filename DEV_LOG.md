@@ -920,3 +920,25 @@
 - Test the dev flow in the browser: Start Today's Practice -> Mark Node Complete -> choose rating -> confirm the next curriculum node loads.
 - Later, implement adaptive recommendation logic that uses rating/progression intent to choose progress, repeat, consolidate, or step back.
 ---
+
+## [2026-05-09] - Session [06]
+**Goal:** Clean up stale Supabase environment notes after the curriculum roadmap prototype pull.
+
+**Architectural Decisions:**
+- Kept the cleanup documentation-only; no runtime, Supabase schema, RLS, auth, data, resume, rating, curriculum, or player behavior changed.
+- Removed the old Bolt MCP project ref entirely from tracked prototype notes while preserving the correct app runtime project ref.
+- Confirmed the roadmap prototype remains mock-data only and should not connect to Supabase.
+
+**Code Changed:**
+- `prototypes/curriculum-roadmap/REVIEW_NOTES.md`: Removed the stale wrong-project ref and clarified that old seven-column schema findings do not apply to the app runtime project.
+- `DEV_LOG.md`: Recorded this cleanup and closeout.
+
+**Validation Results:**
+- Searched the repo for the stale project ref and confirmed it no longer appears.
+- Confirmed the correct runtime project ref remains in the app/client references and prototype notes.
+- No secrets were added to tracked files.
+
+**Next Steps for Next Session:**
+- Keep future roadmap prototype work isolated under `prototypes/curriculum-roadmap/` until a real roadmap RPC/data contract is designed.
+- If package lock churn remains in the working tree, review it separately before staging any broad save command.
+---
