@@ -4,6 +4,7 @@ import { fetchCourses, loadAsanaLibrary, normalizeAsana, normalizePlate, findAsa
 import { hydratePropsFromDb } from "./src/config/propRegistry.js";
 import { themeManager } from "./src/ui/themeToggle.js";
 import { $, safeListen } from "./src/utils/dom.js";
+import { ratingOverlayOptionsForCompletion } from "./src/utils/completionFlow.js";
 import { parseHoldTimes } from "./src/utils/parsing.js"; 
 import { displayName, formatHMS } from "./src/utils/format.js";
 import { buildResumeState, resolveResumeCourse } from "./src/utils/resumeState.js";
@@ -319,7 +320,7 @@ safeListen("completeBtn", "click", async () => {
         });
 
         alert("Sequence Completed and Logged!");
-        showCompletionRatingOverlay(sessionId);
+        showCompletionRatingOverlay(sessionId, ratingOverlayOptionsForCompletion(curriculumPractice));
     } catch (e) {
         console.error("Completion error:", e);
         alert("Error saving progress. Check console.");

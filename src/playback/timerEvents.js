@@ -4,6 +4,8 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 // 1. ENGINE BINDINGS
+import { ratingOverlayOptionsForCompletion } from '../utils/completionFlow.js';
+
 window.startTimer = () => window.playbackEngine.start();
 window.stopTimer = () => window.playbackEngine.stop();
 
@@ -348,7 +350,12 @@ async function triggerSequenceEnd() {
                         : null,
                 });
                 
-                if (ratingOverlay) {
+                if (typeof window.showCompletionRatingOverlay === 'function') {
+                    window.showCompletionRatingOverlay(
+                        sessionId,
+                        ratingOverlayOptionsForCompletion(curriculumPractice),
+                    );
+                } else if (ratingOverlay) {
                     ratingOverlay.dataset.sessionId = sessionId || "fallback-id";
                     ratingOverlay.style.setProperty('display', 'flex', 'important');
                 }
