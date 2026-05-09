@@ -921,6 +921,48 @@
 - Later, implement adaptive recommendation logic that uses rating/progression intent to choose progress, repeat, consolidate, or step back.
 ---
 
+## [2026-05-09] - Session [07]
+**Goal:** Document future UI cleanup — curriculum day vs composed part vs source sequence label distinction.
+
+**Future UI Cleanup Note — Curriculum Display Labels**
+
+A curriculum day may reuse source sequences whose original titles are context-specific to their source book's chapter structure (e.g. "Week 1 Day 2", "Week 1 and 2"). If these source titles are surfaced as the curriculum day label, the UI becomes confusing because the user sees a source-chapter title instead of a curriculum-path position.
+
+Three label types must be kept distinct in any curriculum-facing UI:
+
+- **Curriculum day label** — derived from the user's position in `draft_v1`, e.g. "Week 5 Day 3 — Foundation Practice". This is the user-facing identity of the day and must never be replaced by a source title.
+- **Part label** — the role of each composition part within a composed day, e.g. "Part 1: Foundation Asana" / "Part 2: Short Pranayama". Drawn from the `practice_composition` role field via `roleLabel()` (see `prototypes/curriculum-roadmap/roadmap.js`).
+- **Source label** — the original source-sequence title, shown only in secondary/detail context, e.g. "Source: How to Use Yoga — Week 1 Day 2". Drawn from `program_curriculum.source_name` and `source_reference`.
+
+**Design pattern from the roadmap prototype that works well here:**
+
+The prototype's `roleLabel()` + `nodeTypeLabel()` separation (in `roadmap.js`) already provides the right vocabulary. In the production curriculum UI, the same three-tier hierarchy should be applied:
+
+```
+[Curriculum position] Week 5 · Day 3             ← always curriculum-derived
+[Node type badge]     Combined Practice            ← from nodeTypeLabel()
+  Part 1: Asana       Light on Yoga — Week 5      ← roleLabel() + source_reference
+  Part 2: Short Pranayama  Light on Pranayama — Week 3
+                      Source: How to Use Yoga — Week 1 Day 2   ← tertiary, detail only
+```
+
+The source title belongs in the detail/secondary layer only. It should never be promoted to become the curriculum day heading.
+
+**Files to update when implementing:**
+- `src/ui/curriculumUI.js` — curriculum day title construction
+- `prototypes/curriculum-roadmap/roadmap.js` — already has the correct label helpers; reuse in production
+- Any rating overlay or completion summary that shows the practice title
+
+**Theme/style notes:**
+- Use `--color-text-primary` for the curriculum day label (strong hierarchy)
+- Use `--color-text-secondary` for part labels
+- Use `--color-text-muted` + smaller font size for source labels (consistent with `.summary-id-badge` / `.link-option-meta` pattern already in `editor.css`)
+- Monospace or badge styling for source references matches the existing "Jobsian" typographic pattern
+
+**Do not implement now.** This is a future cleanup note only. No runtime, player, rating, curriculum, resume, or Supabase logic changes.
+
+---
+
 ## [2026-05-09] - Session [06]
 **Goal:** Clean up stale Supabase environment notes after the curriculum roadmap prototype pull.
 
