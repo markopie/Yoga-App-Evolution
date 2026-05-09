@@ -6,6 +6,8 @@ import { themeManager } from "./src/ui/themeToggle.js";
 import { $, safeListen } from "./src/utils/dom.js";
 import { parseHoldTimes } from "./src/utils/parsing.js"; 
 import { displayName, formatHMS } from "./src/utils/format.js";
+import { buildResumeState, resolveResumeCourse } from "./src/utils/resumeState.js";
+import { isElementDisplayed } from "./src/utils/visibility.js";
 import { playbackEngine } from "./src/playback/timer.js";
 
 // 🛡️ ARCHITECT FIX: Define the global engine early so static imports (like asanaEditor) can access it
@@ -130,7 +132,7 @@ function saveCurrentProgress() {
     
     // 🛡️ ARCHITECT GUARD: Do not auto-save if the user is on the completion screen!
     const ratingOverlay = document.getElementById("ratingOverlay");
-    if (ratingOverlay && ratingOverlay.style.display !== "none") {
+    if (isElementDisplayed(ratingOverlay)) {
         return; // Abort the save. The session is already over.
     }
 
@@ -144,14 +146,13 @@ function saveCurrentProgress() {
         ? (window.playbackEngine._activePracticeMs || (window.playbackEngine.activePracticeSeconds * 1000) || 0)
         : 0;
     
-    const state = {
+    const state = buildResumeState({
+        currentSequence: window.currentSequence,
         sequenceIdx: document.getElementById("sequenceSelect")?.value || "",
         poseIdx: window.currentIndex,
-        sequenceTitle: window.currentSequence.title,
         focusDuration: activeMs,
         completionTracker: trackerData,
-        timestamp: Date.now()
-    };
+    });
     
     if (typeof safeSetLocalStorage === 'function') {
         safeSetLocalStorage("yoga_resume_state_v2", state);
@@ -169,7 +170,8 @@ function showResumePrompt(state) {
     banner.id = "resumeBanner";
     banner.style.cssText = `position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 20px; border-radius: 30px; z-index: 9999; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; gap: 15px; align-items: center; font-size: 14px;`;
     
-    const seq = window.courses && window.courses[state.sequenceIdx];
+    const resolved = resolveResumeCourse(window.courses, state);
+    const seq = resolved.course;
     const seqName = seq ? seq.title : "your previous session";
     
     let poseName = `pose ${state.poseIdx + 1}`;
@@ -189,7 +191,7 @@ function showResumePrompt(state) {
     banner.querySelector("#resumeYes").onclick = () => {
         const sel = document.getElementById("sequenceSelect");
         if (sel) {
-            sel.value = state.sequenceIdx;
+            sel.value = resolved.index >= 0 ? String(resolved.index) : (state.sequenceIdx || "");
             sel.dispatchEvent(new Event('change'));
             
             setTimeout(() => {

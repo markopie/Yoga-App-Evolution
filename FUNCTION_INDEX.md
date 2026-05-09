@@ -57,6 +57,7 @@
 - `nextPose` (window binding)
 - `playFaintGong` (window binding)
 - `playSystemAudio` (window binding)
+- `showCompletionRatingOverlay` (window binding)
 - `speakRound` (window binding)
 - `speakText` (window binding)
 - `startTimer` (window binding)
@@ -438,6 +439,9 @@
 ### 📄 `utils/builderParser.js`
 - `parseSemicolonCommand` (function)
 
+### 📄 `utils/completionFlow.js`
+- `ratingOverlayOptionsForCompletion` (function)
+
 ### 📄 `utils/dom.js`
 - `$` (module export)
 - `enterBrowseDetailMode` (module export)
@@ -476,6 +480,11 @@
 - `parseSequenceText` (module export)
 - `secsToMSS` (module export)
 
+### 📄 `utils/resumeState.js`
+- `buildResumeState` (function)
+- `resolveResumeCourse` (function)
+- `resumeCourseId` (function)
+
 ### 📄 `utils/sequenceUtils.js`
 - `calculateRequiredSequenceTime` (function)
 - `calculateTotalSequenceTime` (function)
@@ -485,4 +494,7 @@
 - `getPosePillTime` (function)
 - `isProtectedSequence` (function)
 - `reindexSortOrder` (function)
+
+### 📄 `utils/visibility.js`
+- `isElementDisplayed` (function)
 
