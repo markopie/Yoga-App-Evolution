@@ -800,3 +800,123 @@
 - Eventually plan a Curriculum Map / Course Roadmap screen, but do not implement it yet.
 - Keep the main user experience simple: Start Today's Practice -> practise -> complete -> advance.
 ---
+
+## [2026-05-09] - Session [01]
+**Goal:** Verify duration-dial completion metadata before extending `draft_v1` Weeks 13-24.
+
+**Architectural Decisions:**
+- Composed days over 75 or 90 minutes are review signals, not automatic failures; longer days may be valid later in the curriculum.
+- Curriculum completion remains anchored to `curriculum_node_id`, while duration-dial changes are stored as metadata.
+- Verification must use a real `auth.users` row because `sequence_completions.user_id` has a foreign key; test UUIDs are not valid users.
+
+**Code Changed:**
+- `scripts/active/verify_completion_duration_metadata.mjs`: Added end-to-end metadata verification using a temporary Supabase auth user, then cleans up inserted completion rows and deletes the temp user.
+- `package.json`: Added `npm run verify:completion-metadata`.
+- `supabase/migrations/20260509000001_add_completion_duration_dial_metadata.sql`: Adds completion/duration metadata columns and reloads the PostgREST schema cache.
+- `scripts/active/audit_curriculum_coverage_v1.mjs`: Flags composed days over 75/90 minutes for review.
+- `src/services/historyService.js`: Saves duration-dial completion metadata with legacy fallback while schemas roll forward.
+- `docs/ARCHITECTURE.md`: Documents the metadata fields.
+
+**Validation Results:**
+- `npm run verify:completion-metadata` passed after migration was applied.
+- Verification inserted a 0.75-scale completion for curriculum node `365`, stored planned `40.42` minutes and adjusted `30.32` minutes, and confirmed the tracker advanced to node `366`.
+- Verification cleaned up the inserted completion rows and temporary auth user.
+
+**Next Steps for Next Session:**
+- Before extending Weeks 13-24, use the composed-day audit output as the guardrail: duplicates are blockers, 75/90-minute composed days are review prompts.
+- Recommended next seed step: create a report-only Weeks 13-24 placement proposal first, especially for Light on Yoga Course 2 and later Light on Pranayama Course 2 items, before generating seed changes.
+---
+
+## [2026-05-09] - Session [02]
+**Goal:** Seed `draft_v1` Weeks 13-24 using composed-day pranayama while preserving a simple weekly rhythm.
+
+**Architectural Decisions:**
+- Kept the weekly rhythm: Day 1 composed quiet/asana plus pranayama where suitable, Day 2 Yoga: The Iyengar Way, Day 3 inactive pranayama replacement where needed, Day 4 Light on Yoga backbone, Day 5 second Yoga: The Iyengar Way exposure, Day 6 lighter revision, Day 7 rest.
+- Added Light on Pranayama sequences 64-72 as concrete `practice_composition` parts rather than duplicate standalone completions.
+- Marked long Light on Yoga Day 4 backbone practices with `long_day_acknowledged`; W24D4 carries an explicit note that Week 24 Day 6 must remain light/revision.
+- Rest-day payloads now preserve optional restorative or quiet pranayama without making rest days mandatory practice.
+
+**Code Changed:**
+- `scripts/active/seed_integrated_curriculum_v1.mjs`: Added Weeks 13-24 rows, composed Day 1 pranayama pairings, inactive replacement rows for LOP 64-72, long-day metadata, and optional restorative/pranayama rest metadata.
+
+**Validation Results:**
+- Seed inserted 168 rows: 147 active and 21 inactive replacement rows.
+- Coverage audit found no duplicate required source-completion scheduling.
+- Coverage now includes Light on Pranayama Course 2 at 7/7, Light on Pranayama Course 3 Intermediate at 4/4, Light on Yoga Course 2 at 8/14, Yoga: The Iyengar Way Course 2 at 24/36, and HTUY Weeks 6-9 partially/fully placed.
+- Duration review flags remain only on composed W18D1 and W21D1 as over-75-minute composed practices; long LOY Day 4s are explicitly acknowledged in metadata.
+- `node --check`, targeted `npx eslint`, `node scripts/active/seed_integrated_curriculum_v1.mjs`, `node scripts/active/audit_curriculum_coverage_v1.mjs`, `npm test`, and `npm run build` passed.
+
+**Next Steps for Next Session:**
+- Review the seeded Weeks 13-24 experience manually in the app, especially W24D4 course ID 135 and W24D6 light revision behavior.
+- Before extending beyond Week 24, run a proposal/audit pass first and treat duplicate source scheduling as a blocker.
+---
+
+## [2026-05-09] - Session [03]
+**Goal:** Rework `draft_v1` Weeks 13-24 from early Course 2 progression into slower Light on Yoga Course 1 consolidation/deepening.
+
+**Architectural Decisions:**
+- Deferred Light on Yoga Course 2 backbone sequences `128-135`; Weeks 13-24 now remain within Course 1 consolidation and plateau work.
+- Deferred Light on Pranayama Course 3 sequences `69-72`; Course 2 pranayama now continues more slowly through `66` only.
+- Treated Light on Yoga `125-127` as a major Course 1 plateau/milestone set rather than a quick bridge into Course 2.
+- Added simple plateau metadata for `125-127`: `plateau_candidate`, `milestone_type`, `progression_gate`, source week bounds, suggested consolidation, indefinite repeat, and exploratory-next allowance.
+
+**Code Changed:**
+- `scripts/active/seed_integrated_curriculum_v1.mjs`: Reworked Weeks 13-24 Day 4 rows, slowed composed pranayama, removed Course 2/3 advancement from this block, and added plateau metadata for the Course 1 weekly practice set.
+
+**Validation Results:**
+- Seed inserted 168 rows: 153 active and 15 inactive replacement rows.
+- Coverage audit found no duplicate required source-completion scheduling.
+- Coverage after rework: Light on Yoga Course 1 `15/15`, Course 2 `0/14`; Light on Pranayama Course 2 `5/7`, Course 3 Intermediate `0/4`.
+- Active composed-day audit found no 75+ or 90+ duration review flags.
+- `node --check`, targeted `npx eslint`, `node scripts/active/seed_integrated_curriculum_v1.mjs`, `node scripts/active/audit_curriculum_coverage_v1.mjs`, `npm test`, and `npm run build` passed.
+
+**Next Steps for Next Session:**
+- Before extending beyond Week 24, decide whether Weeks 25-30 should remain in Course 1 plateau/consolidation or introduce only optional exploratory previews.
+- Do not start Light on Yoga Course 2 backbone until the curriculum explicitly models user readiness rather than automatic completion-based promotion.
+---
+
+## [2026-05-09] - Session [04]
+**Goal:** Add a small pacing guardrail after the Weeks 13-24 Course 1 consolidation rework.
+
+**Architectural Decisions:**
+- Kept the guardrail warning-only: source-week pacing warnings should inform curriculum review, not fail a technically valid seed.
+- Pacing warnings compare active source-completion placements against source week labels or explicit curriculum payload week bounds.
+
+**Code Changed:**
+- `scripts/active/audit_curriculum_coverage_v1.mjs`: Added a source-week pacing warning table using `source_reference` week labels and `curriculum_payload.source_week_min/source_week_max`.
+
+**Validation Results:**
+- Confirmed no fast-version leftovers remain in Weeks 13-24 for LOY `128-135` or LOP `69-72`.
+- Confirmed LOY `125-127` remain at W22D4-W24D4 with consistent major Course 1 plateau metadata.
+- Audit still reports no duplicate required source-completion scheduling.
+- New warning table surfaces the remaining source-week compression, including Course 1 plateau rows scheduled before their explicit W26-W30 payload bounds.
+- `node --check`, targeted `npx eslint`, `node scripts/active/audit_curriculum_coverage_v1.mjs`, `npm test`, and `npm run build` passed.
+
+**Next Steps for Next Session:**
+- Use the new pacing warning table before any further seed changes.
+- Decide whether to move LOY `125-127` from W22-W24 closer to W26-W30, or keep them as an acknowledged early plateau preview.
+---
+
+## [2026-05-09] - Session [05]
+**Goal:** Make curriculum completion/rating flow testable and clarify manual library selection while a curriculum practice is active.
+
+**Architectural Decisions:**
+- Ratings are currently recorded on `sequence_completions.rating`; they do not yet drive adaptive curriculum progression, consolidation, repeat, or step-back logic.
+- The local testing completion path now pauses on the rating overlay before loading the next curriculum node, making rating storage testable without building the adaptive progression engine.
+- Manual sequence browsing is paused while a curriculum node is active so completion remains attached to the loaded curriculum node.
+
+**Code Changed:**
+- `src/ui/curriculumUI.js`: `Mark Node Complete` now saves completion, shows the rating overlay, and loads the next curriculum practice only after rating selection. It also locks library selectors while a curriculum practice is active.
+- `app.js`: Added reusable rating overlay setup with optional post-rating actions and explicit “recorded only” messaging.
+- `index.html` and `styles/theme.css`: Added rating-overlay note text and a manual library mode note.
+- `src/ui/wiring.js`: Refreshes the library lock when manual selection clears curriculum context.
+
+**Validation Results:**
+- `node --check` passed for touched JS files.
+- Targeted `npx eslint app.js src/ui/curriculumUI.js src/ui/wiring.js` passed with existing warnings only.
+- `npm test` and `npm run build` passed.
+
+**Next Steps for Next Session:**
+- Test the dev flow in the browser: Start Today's Practice -> Mark Node Complete -> choose rating -> confirm the next curriculum node loads.
+- Later, implement adaptive recommendation logic that uses rating/progression intent to choose progress, repeat, consolidate, or step back.
+---

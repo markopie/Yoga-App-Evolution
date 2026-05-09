@@ -114,6 +114,28 @@ function completionItemsForPractice(practice = window.currentCurriculumPractice)
         }));
 }
 
+function updateCurriculumLibraryLock() {
+    const locked = !!window.currentCurriculumPractice?.curriculum_node_id;
+    const note = $('manualLibraryModeNote');
+    const controls = [
+        $('categoryFilter'),
+        $('sequenceSelect'),
+        $('poseSequenceFilter'),
+        $('clearPoseSequenceFilter'),
+    ].filter(Boolean);
+
+    controls.forEach((control) => {
+        control.disabled = locked;
+    });
+
+    if (note) {
+        note.textContent = locked
+            ? 'Curriculum practice is active. Library browsing is paused so completion stays attached to this curriculum node.'
+            : 'Manual browsing is separate from Today\'s Curriculum Practice.';
+        note.classList.toggle('manual-library-mode-note--locked', locked);
+    }
+}
+
 function renderPracticeDetails(practice) {
     const details = $('curriculumPracticeDetails');
     const summary = $('curriculumPracticeSummary');
@@ -157,6 +179,7 @@ function renderPracticeDetails(practice) {
     if (resetTestBtn && isLocalDev()) {
         resetTestBtn.style.display = '';
     }
+    updateCurriculumLibraryLock();
 }
 
 function loadResolvedSequence(practice) {
@@ -242,6 +265,7 @@ function loadResolvedSequence(practice) {
     if (typeof window.updateNextBtnText === 'function') window.updateNextBtnText();
     if ($('statusText')) $('statusText').textContent = 'Curriculum practice ready';
     if ($('startStopBtn')) $('startStopBtn').textContent = 'Start';
+    updateCurriculumLibraryLock();
 
     return true;
 }
@@ -273,6 +297,7 @@ async function startTodayPractice() {
         if (practice.is_rest_day || practice.resolved_node_type === 'rest') {
             window.currentCurriculumPractice = practice;
             if (summary) summary.textContent = practice.special_instructions || 'Rest day.';
+            updateCurriculumLibraryLock();
             return;
         }
 
@@ -311,7 +336,7 @@ async function markCurrentCurriculumNodeCompleteForTesting() {
             throw new Error('Completion service is not loaded.');
         }
 
-        await window.appendServerHistory(
+        const sessionId = await window.appendServerHistory(
             practice.resolved_course_title || practice.source_reference || 'Curriculum practice',
             new Date(),
             practice.source_course || practice.source_key || '',
@@ -324,11 +349,22 @@ async function markCurrentCurriculumNodeCompleteForTesting() {
                 notes: 'Local curriculum flow test completion.',
             },
         );
+        if (!sessionId) throw new Error('Completion was not saved.');
 
-        if (summary) summary.textContent = 'Marked complete. Loading next practice...';
+        if (summary) {
+            summary.textContent = 'Completion saved. Choose a rating to continue. Rating is recorded only; adaptive progression is not active yet.';
+        }
         if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
-        window.currentCurriculumPractice = null;
-        await startTodayPractice();
+        const shown = typeof window.showCompletionRatingOverlay === 'function' && window.showCompletionRatingOverlay(sessionId, {
+            title: 'Rate this curriculum practice',
+            note: 'For now, rating is recorded with the completion history. The curriculum will still advance after rating; adaptive consolidation/step-back logic is future work.',
+            afterRatingAction: 'startTodayPractice',
+            resetAfterRating: false,
+        });
+        if (!shown) {
+            window.currentCurriculumPractice = null;
+            await startTodayPractice();
+        }
     } catch (err) {
         console.error('Test completion failed:', err);
         if (summary) summary.textContent = err.message || 'Could not mark node complete.';
@@ -467,3 +503,4 @@ window.markCurrentCurriculumNodeCompleteForTesting = markCurrentCurriculumNodeCo
 window.undoCurrentCurriculumNodeCompletionForTesting = undoCurrentCurriculumNodeCompletionForTesting;
 window.resetCurriculumTestProgress = resetCurriculumTestProgress;
 window.getCurriculumCompletionItems = completionItemsForPractice;
+window.updateCurriculumLibraryLock = updateCurriculumLibraryLock;

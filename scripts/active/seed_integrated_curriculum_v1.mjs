@@ -105,48 +105,262 @@ const weeklyPlan = [
   [12, 5, 'sequence', 367, 'Yoga Gem First Year Day 6. Treat as a final foundation exposure, not a test.'],
   [12, 6, 'revision', null, 'End-of-draft revision: repeat the most important Do Again or Concentrate sequence.'],
   [12, 7, 'rest', null, 'Full rest day.'],
+
+  [13, 1, 'sequence', 200, 'How to Use Yoga Week 6 opening standing practice, followed by Light on Pranayama Week 32 to 34.'],
+  [13, 2, 'sequence', 226, 'Yoga: The Iyengar Way Course 2 1A standing practice.'],
+  [13, 3, 'sequence', 64, 'Light on Pranayama Week 32 to 34.'],
+  [13, 4, 'consolidation', null, 'Light on Yoga Course 1 consolidation: revisit the standing and seated work from Weeks 1-12 rather than adding new Course 2 material.'],
+  [13, 5, 'sequence', 240, 'Yoga: The Iyengar Way Course 2 4A as supportive exposure, not full Course 2 progression.'],
+  [13, 6, 'revision', null, 'Lighter consolidation: repeat a marked easy standing or quiet practice.'],
+  [13, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
+
+  [14, 1, 'sequence', 201, 'How to Use Yoga Week 6 forward-bend practice without new pranayama.'],
+  [14, 2, 'sequence', 227, 'Yoga: The Iyengar Way Course 2 1B sitting practice.'],
+  [14, 3, 'consolidation', null, 'Pranayama consolidation: repeat settled Course 1 or early Course 2 breath work only if quiet and steady.'],
+  [14, 4, 'consolidation', null, 'Light on Yoga Course 1 source-week consolidation: stay with Weeks 14-21 material until the poses feel assimilated.'],
+  [14, 5, 'sequence', 241, 'Yoga: The Iyengar Way Course 2 4B as supportive sitting exposure, not a progression gate.'],
+  [14, 6, 'revision', null, 'Lighter consolidation: repeat a marked forward-bend or relaxation practice.'],
+  [14, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
+
+  [15, 1, 'sequence', 202, 'How to Use Yoga Week 6 short standing practice without new pranayama.'],
+  [15, 2, 'sequence', 228, 'Yoga: The Iyengar Way Course 2 1C miscellaneous practice.'],
+  [15, 3, 'consolidation', null, 'Pranayama consolidation: no new source sequence; repeat a short familiar quiet practice if appropriate.'],
+  [15, 4, 'consolidation', null, 'Light on Yoga Course 1 deepening: repeat the least settled Course 1 backbone practice before moving toward the milestone set.'],
+  [15, 5, 'sequence', 242, 'Yoga: The Iyengar Way Course 2 4C as supportive exposure, not full course advancement.'],
+  [15, 6, 'revision', null, 'Keep this light: choose a short marked practice or quiet recovery.'],
+  [15, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
+
+  [16, 1, 'sequence', 203, 'How to Use Yoga Week 6 mixed practice, followed by Light on Pranayama Week 35 to 38.'],
+  [16, 2, 'sequence', 229, 'Yoga: The Iyengar Way Course 2 1D relaxation practice.'],
+  [16, 3, 'sequence', 65, 'Light on Pranayama Week 35 to 38.'],
+  [16, 4, 'consolidation', null, 'Light on Yoga Course 1 consolidation: revisit the Week 22-30 material gradually rather than treating it as completed-for-good.'],
+  [16, 5, 'sequence', 243, 'Yoga: The Iyengar Way Course 2 4D relaxation and pranayama practice.'],
+  [16, 6, 'revision', null, 'Consolidation repeat: favor quiet or restorative markers.'],
+  [16, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
+
+  [17, 1, 'sequence', 196, 'How to Use Yoga Week 7 opening standing practice without new pranayama.'],
+  [17, 2, 'sequence', 230, 'Yoga: The Iyengar Way Course 2 2A standing practice.'],
+  [17, 3, 'consolidation', null, 'Pranayama consolidation: stay with Course 1 and early Course 2 stages; no Course 3 work yet.'],
+  [17, 4, 'sequence', 113, 'Light on Yoga Course 1 important-asana review: use the Course 1 list as a checkpoint, not a bridge into Course 2.'],
+  [17, 5, 'sequence', 244, 'Yoga: The Iyengar Way Course 2 5A as supportive standing exposure.'],
+  [17, 6, 'revision', null, 'Keep this light: repeat a short standing or quiet practice.'],
+  [17, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
+
+  [18, 1, 'sequence', 193, 'How to Use Yoga Week 8 short standing practice without new pranayama.'],
+  [18, 2, 'sequence', 231, 'Yoga: The Iyengar Way Course 2 2B sitting practice.'],
+  [18, 3, 'consolidation', null, 'Pranayama consolidation: repeat a known quiet practice; defer Light on Pranayama Course 3.'],
+  [18, 4, 'consolidation', null, 'Light on Yoga Course 1 consolidation: choose a prior backbone practice that needs steadier timing and ease.'],
+  [18, 5, 'sequence', 245, 'Yoga: The Iyengar Way Course 2 5B as supportive sitting and mixed exposure.'],
+  [18, 6, 'revision', null, 'Keep this light: repeat a marked quiet or short practice.'],
+  [18, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
+
+  [19, 1, 'sequence', 198, 'How to Use Yoga Week 7 seated practice, followed by Light on Pranayama Week 39 to 42.'],
+  [19, 2, 'sequence', 232, 'Yoga: The Iyengar Way Course 2 2D relaxation practice.'],
+  [19, 3, 'sequence', 66, 'Light on Pranayama Week 39 to 42.'],
+  [19, 4, 'consolidation', null, 'Light on Yoga Course 1 deepening: use revision as recovery and assimilation, not new Course 2 progression.'],
+  [19, 5, 'sequence', 246, 'Yoga: The Iyengar Way Course 2 5C as supportive miscellaneous exposure.'],
+  [19, 6, 'revision', null, 'Use revision as recovery and consolidation.'],
+  [19, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
+
+  [20, 1, 'sequence', 199, 'How to Use Yoga Week 7 forward-bend practice without new pranayama.'],
+  [20, 2, 'sequence', 233, 'Yoga: The Iyengar Way Course 2 2C miscellaneous practice.'],
+  [20, 3, 'consolidation', null, 'Pranayama consolidation: no new source sequence; stay with the breath work that remains easy.'],
+  [20, 4, 'consolidation', null, 'Light on Yoga Course 1 consolidation: keep the backbone alive and avoid promotion by elapsed time alone.'],
+  [20, 5, 'sequence', 247, 'Yoga: The Iyengar Way Course 2 5D as supportive relaxation/pranayama exposure.'],
+  [20, 6, 'revision', null, 'Choose an easy marked practice.'],
+  [20, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
+
+  [21, 1, 'sequence', 194, 'How to Use Yoga Week 8 forward-bend practice without new pranayama.'],
+  [21, 2, 'sequence', 234, 'Yoga: The Iyengar Way Course 2 3A standing practice.'],
+  [21, 3, 'consolidation', null, 'Pranayama consolidation: defer Course 3 and repeat only settled Course 1 or Course 2 work.'],
+  [21, 4, 'consolidation', null, 'Light on Yoga Course 1 checkpoint: decide whether to remain in consolidation, step back, or approach the plateau set.'],
+  [21, 5, 'sequence', 248, 'Yoga: The Iyengar Way Course 2 6A as supportive standing exposure.'],
+  [21, 6, 'revision', null, 'Repeat a short or restorative marked practice.'],
+  [21, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
+
+  [22, 1, 'sequence', 195, 'How to Use Yoga Week 8 Day 6 consolidation without new pranayama.'],
+  [22, 2, 'sequence', 235, 'Yoga: The Iyengar Way Course 2 3B sitting practice.'],
+  [22, 3, 'consolidation', null, 'Pranayama consolidation: no new appended sequence; repeat a settled quiet breathing practice if appropriate.'],
+  [22, 4, 'sequence', 125, 'Light on Yoga Course 1 weekly practice day 1. Major Course 1 plateau practice; completion does not imply readiness for Course 2.'],
+  [22, 5, 'sequence', 249, 'Yoga: The Iyengar Way Course 2 6B as supportive sitting and mixed exposure.'],
+  [22, 6, 'revision', null, 'Choose recovery-oriented revision after the Course 1 plateau practice.'],
+  [22, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
+
+  [23, 1, 'sequence', 190, 'How to Use Yoga Week 9 Day 6 consolidation without new pranayama.'],
+  [23, 2, 'sequence', 238, 'Yoga: The Iyengar Way Course 2 3C backbend practice.'],
+  [23, 3, 'consolidation', null, 'Pranayama consolidation: no new appended sequence; repeat a settled quiet breathing practice if appropriate.'],
+  [23, 4, 'sequence', 126, 'Light on Yoga Course 1 weekly practice day 2. Major Course 1 plateau practice; remain here as long as useful.'],
+  [23, 5, 'sequence', 250, 'Yoga: The Iyengar Way Course 2 6C as supportive backbend exposure.'],
+  [23, 6, 'revision', null, 'Repeat a shorter marked practice after the heavier plateau day.'],
+  [23, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
+
+  [24, 1, 'sequence', 191, 'How to Use Yoga Week 9 Day 2 and 4 consolidation without new pranayama.'],
+  [24, 2, 'sequence', 239, 'Yoga: The Iyengar Way Course 2 3D relaxation practice.'],
+  [24, 3, 'consolidation', null, 'Pranayama consolidation: no new appended sequence; repeat a settled quiet breathing practice if appropriate.'],
+  [24, 4, 'sequence', 127, 'Light on Yoga Course 1 weekly practice day 3. Major Course 1 plateau practice; progression requires user readiness.'],
+  [24, 5, 'sequence', 251, 'Yoga: The Iyengar Way Course 2 6D as supportive relaxation/pranayama exposure.'],
+  [24, 6, 'revision', null, 'Mandatory light revision after the Course 1 plateau practice: choose a short, restorative, or quiet practice only.'],
+  [24, 7, 'rest', null, 'Rest day. Optional restorative or quiet pranayama if appropriate.'],
 ];
 
-const compositionPilotBySequenceId = new Map([
-  [173, {
-    special_instructions: 'Start gently with How to Use Yoga Week 1 Day 1, then complete the short introductory pranayama part.',
-    composed_total_duration_minutes: 47.42,
-    practice_composition: [
-      { role: 'primary_asana', sequence_id: 173, counts_for_source_completion: true },
-      { role: 'appended_pranayama', sequence_id: 52, counts_for_source_completion: true },
-    ],
-  }],
-  [115, {
-    special_instructions: 'Light on Yoga Course 1 Week 3 and 4, followed by the short Light on Pranayama Week 3 and 4 practice.',
-    composed_total_duration_minutes: 48.67,
-    practice_composition: [
-      { role: 'primary_asana', sequence_id: 115, counts_for_source_completion: true },
-      { role: 'appended_pranayama', sequence_id: 53, counts_for_source_completion: true },
-    ],
+const appendedPranayamaPlan = [
+  {
+    primarySequenceId: 173,
+    pranayamaSequenceId: 52,
+    specialInstructions: 'Start gently with How to Use Yoga Week 1 Day 1, then complete the short introductory pranayama part.',
+    rationale: 'Lowest-dose opening asana day; keeps the first pranayama source concrete without creating a separate day.',
+  },
+  {
+    primarySequenceId: 115,
+    pranayamaSequenceId: 53,
+    specialInstructions: 'Light on Yoga Course 1 Week 3 and 4, followed by the short Light on Pranayama Week 3 and 4 practice.',
+    rationale: 'Matches the Light on Yoga fortnight and remains under 50 minutes.',
+  },
+  {
+    primarySequenceId: 178,
+    pranayamaSequenceId: 54,
+    specialInstructions: 'How to Use Yoga Week 2 opening practice, followed by Light on Pranayama Week 5 and 6.',
+    rationale: 'A short standing foundation day keeps the composed practice moderate.',
+  },
+  {
+    primarySequenceId: 179,
+    pranayamaSequenceId: 55,
+    specialInstructions: 'How to Use Yoga Week 2 sitting-oriented practice, followed by Light on Pranayama Week 7 and 8.',
+    rationale: 'The seated emphasis is a better host for the longer pranayama block than the longer Light on Yoga day.',
+  },
+  {
+    primarySequenceId: 180,
+    pranayamaSequenceId: 56,
+    specialInstructions: 'How to Use Yoga Week 2 Day 6, followed by Light on Pranayama Week 9 and 10.',
+    rationale: 'Shorter standing day; avoids attaching pranayama to the backbend-focused day.',
+  },
+  {
+    primarySequenceId: 208,
+    pranayamaSequenceId: 57,
+    specialInstructions: 'How to Use Yoga Week 3 opening practice, followed by Light on Pranayama Week 11 and 12.',
+    rationale: 'Keeps the composed day below one hour while the week still has heavier source practices later.',
+  },
+  {
+    primarySequenceId: 209,
+    pranayamaSequenceId: 58,
+    specialInstructions: 'How to Use Yoga Week 3 Day 2 and 4, followed by Light on Pranayama Week 13 and 15.',
+    rationale: 'Forward-bend emphasis makes this the quietest host in Week 7.',
+  },
+  {
+    primarySequenceId: 211,
+    pranayamaSequenceId: 59,
+    specialInstructions: 'How to Use Yoga Week 3 Day 6, followed by Light on Pranayama Week 16 and 18.',
+    rationale: 'Uses the shortest practical Week 8 host and avoids the longer lesson, Light on Yoga, and Gem days.',
+  },
+  {
+    primarySequenceId: 204,
+    pranayamaSequenceId: 60,
+    specialInstructions: 'How to Use Yoga Week 4 opening practice, followed by Light on Pranayama Week 19 and 22.',
+    rationale: 'A moderate reset after the longer Week 9 Light on Yoga day.',
+  },
+  {
+    primarySequenceId: 223,
+    pranayamaSequenceId: 61,
+    specialInstructions: 'Yoga: The Iyengar Way Lesson 10, followed by Light on Pranayama Week 23 and 25.',
+    rationale: 'The lighter lesson anchor is a suitable host during the consolidation week.',
+  },
+  {
+    primarySequenceId: 224,
+    pranayamaSequenceId: 62,
+    specialInstructions: 'Yoga: The Iyengar Way Lesson 11, followed by the first Course 2 Light on Pranayama practice.',
+    rationale: 'Short Course 2 transition practice pairs cleanly with the shorter lesson day.',
+  },
+  {
+    primarySequenceId: 225,
+    pranayamaSequenceId: 63,
+    specialInstructions: 'Yoga: The Iyengar Way Lesson 12, followed by Light on Pranayama Course 2 Week 29 to 31.',
+    rationale: 'Keeps the final Week 12 pranayama exposure in source order and pairs it with a forward-bend lesson host.',
+  },
+  {
+    primarySequenceId: 200,
+    pranayamaSequenceId: 64,
+    specialInstructions: 'How to Use Yoga Week 6 opening standing practice, followed by Light on Pranayama Week 32 to 34.',
+    rationale: 'A gentle standing consolidation host keeps the continuing Course 2 pranayama concrete without making a separate day.',
+  },
+  {
+    primarySequenceId: 203,
+    pranayamaSequenceId: 65,
+    specialInstructions: 'How to Use Yoga Week 6 mixed practice, followed by Light on Pranayama Week 35 to 38.',
+    rationale: 'Spaces the next Course 2 pranayama source into the consolidation block while keeping the composed day moderate.',
+  },
+  {
+    primarySequenceId: 198,
+    pranayamaSequenceId: 66,
+    specialInstructions: 'How to Use Yoga Week 7 seated practice, followed by Light on Pranayama Week 39 to 42.',
+    rationale: 'Spaces the next Course 2 pranayama source into the consolidation block instead of finishing Course 2 quickly.',
+  },
+];
+
+const longDayMetadataBySequenceId = new Map([
+  [126, {
+    long_day_reason: 'Light on Yoga Course 1 plateau practice; intentionally retained as a serious long practice day.',
   }],
 ]);
 
-const inactiveCompositionPartBySequenceId = new Map([
-  [52, {
-    superseded_by_curriculum_node_sequence_id: 173,
-    inactive_reason: 'source_sequence_scheduled_as_composition_part',
-    special_instructions: 'Inactive pilot node: Light on Pranayama Week 1 and 2 is now appended to Week 1 Day 1.',
-  }],
-  [53, {
-    superseded_by_curriculum_node_sequence_id: 115,
-    inactive_reason: 'source_sequence_scheduled_as_composition_part',
-    special_instructions: 'Inactive pilot node: Light on Pranayama Week 3 and 4 is now appended to Week 2 Day 4.',
-  }],
+const plateauMetadataBySequenceId = new Map([
+  ...[125, 126, 127].map((sequenceId) => [sequenceId, {
+    plateau_candidate: true,
+    milestone_type: 'light_on_yoga_course_1_major_plateau',
+    progression_gate: 'user_readiness_required_not_completion_only',
+    source_week_min: 26,
+    source_week_max: 30,
+    suggested_consolidation_weeks: 4,
+    can_repeat_indefinitely: true,
+    exploratory_next_allowed: true,
+  }]),
 ]);
+
+const compositionByPrimarySequenceId = new Map(
+  appendedPranayamaPlan.map((plan) => [
+    plan.primarySequenceId,
+    {
+      ...plan,
+      practiceComposition: [
+        { role: 'primary_asana', sequence_id: plan.primarySequenceId, counts_for_source_completion: true },
+        { role: 'appended_pranayama', sequence_id: plan.pranayamaSequenceId, counts_for_source_completion: true },
+      ],
+    },
+  ]),
+);
+
+const inactiveCompositionPartBySequenceId = new Map(
+  appendedPranayamaPlan.map((plan) => [
+    plan.pranayamaSequenceId,
+    {
+      superseded_by_curriculum_node_sequence_id: plan.primarySequenceId,
+      inactive_reason: 'source_sequence_scheduled_as_composition_part',
+      special_instructions: `Inactive composed-day node: sequence ${plan.pranayamaSequenceId} is now appended to sequence ${plan.primarySequenceId}.`,
+    },
+  ]),
+);
 
 function orderIndex(week, day) {
   return Number(`${week}.${String(day).padStart(2, '0')}`);
 }
 
+function fmtDuration(value) {
+  if (!Number.isFinite(value)) return null;
+  return Math.round(value * 100) / 100;
+}
+
+function compositionDurationMinutes(composition, candidateBySequenceId) {
+  const total = composition.reduce((sum, part) => {
+    const duration = Number(candidateBySequenceId.get(part.sequence_id)?.total_duration_minutes);
+    return Number.isFinite(duration) ? sum + duration : sum;
+  }, 0);
+
+  return fmtDuration(total);
+}
+
 function nodePayload(kind, week, day) {
   const base = {
-    draft_phase: 'v1_12_week_foundation',
-    weekly_cadence: 'four_asana_one_pranayama_one_revision_one_rest',
+    draft_phase: week <= 12 ? 'v1_12_week_foundation' : 'v1_24_week_foundation_to_early_intermediate',
+    weekly_cadence: 'composed_asana_pranayama_with_revision_and_rest',
     source_mix: 'loy_backbone_htuy_revision_gem_variety_iyengar_lessons_lop_parallel',
   };
 
@@ -165,6 +379,7 @@ function nodePayload(kind, week, day) {
     return {
       ...base,
       rest_protocol: 'full_rest_optional_savasana_or_quiet_observation',
+      optional_restorative_or_pranayama: true,
     };
   }
 
@@ -216,10 +431,16 @@ function nonSequenceRow([week, day, nodeType, , instructions]) {
   };
 }
 
-function sequenceRow(planRow, candidate) {
+function sequenceRow(planRow, candidate, candidateBySequenceId) {
   const [week, day, nodeType, sequenceId, instructions] = planRow;
-  const compositionPilot = compositionPilotBySequenceId.get(sequenceId);
+  const composition = compositionByPrimarySequenceId.get(sequenceId);
   const inactivePilot = inactiveCompositionPartBySequenceId.get(sequenceId);
+  const longDayMetadata = longDayMetadataBySequenceId.get(sequenceId);
+  const plateauMetadata = plateauMetadataBySequenceId.get(sequenceId);
+  const practiceComposition = composition?.practiceComposition || null;
+  const composedTotalDurationMinutes = practiceComposition
+    ? compositionDurationMinutes(practiceComposition, candidateBySequenceId)
+    : null;
 
   return {
     sequence_id: sequenceId,
@@ -229,7 +450,7 @@ function sequenceRow(planRow, candidate) {
     day_number: day,
     order_index: orderIndex(week, day),
     is_revision_node: false,
-    special_instructions: inactivePilot?.special_instructions || compositionPilot?.special_instructions || instructions,
+    special_instructions: inactivePilot?.special_instructions || composition?.specialInstructions || instructions,
     source_name: candidate.source_title,
     source_reference: candidate.source_reference,
     level_number: week <= 10 ? 1 : 2,
@@ -247,17 +468,22 @@ function sequenceRow(planRow, candidate) {
       planned_phase: candidate.planned_phase,
       total_duration_minutes: candidate.total_duration_minutes,
       course_style: candidate.course_style,
-      ...(compositionPilot ? {
+      ...(composition ? {
         composition_strategy: 'primary_asana_plus_appendable_pranayama',
-        practice_composition: compositionPilot.practice_composition,
-        composed_total_duration_minutes: compositionPilot.composed_total_duration_minutes,
-        composition_test_pilot: true,
+        practice_composition: practiceComposition,
+        composed_total_duration_minutes: composedTotalDurationMinutes,
+        composition_rationale: composition.rationale,
       } : {}),
       ...(inactivePilot ? {
         inactive_reason: inactivePilot.inactive_reason,
         superseded_by_curriculum_node_sequence_id: inactivePilot.superseded_by_curriculum_node_sequence_id,
-        composition_test_pilot: true,
+        composition_strategy: 'source_sequence_scheduled_as_composition_part',
       } : {}),
+      ...(longDayMetadata ? {
+        long_day_acknowledged: true,
+        ...longDayMetadata,
+      } : {}),
+      ...(plateauMetadata || {}),
     },
     generated_from_rule: true,
     is_optional: false,
@@ -299,7 +525,7 @@ async function main() {
 
   const rows = weeklyPlan.map((planRow) => {
     if (planRow[2] !== 'sequence') return nonSequenceRow(planRow);
-    return sequenceRow(planRow, candidateBySequenceId.get(planRow[3]));
+    return sequenceRow(planRow, candidateBySequenceId.get(planRow[3]), candidateBySequenceId);
   });
 
   const { error: deleteError } = await supabase

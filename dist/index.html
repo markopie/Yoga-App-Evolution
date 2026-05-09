@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <link rel="icon" href="data:,">
@@ -7,14 +7,14 @@
   <title>Yoga Sequences</title>
 
 
-  <script type="module" crossorigin src="/assets/index-B9z1l4K0.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-jOSjSRf8.css">
+  <script type="module" crossorigin src="/assets/index-DAply5xt.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-Og9MC7s-.css">
 </head>
 <body>
 
   <div id="loginScreen">
     <div id="loginCard">
-      <div id="loginLogo">🧘</div>
+      <div id="loginLogo">ðŸ§˜</div>
       <h1 id="loginTitle">Yoga Evolution</h1>
       <p id="loginSubtitle">Your personal practice, beautifully organised.</p>
       <button id="googleSignInBtn">
@@ -76,6 +76,7 @@
        </section>
 
        <div class="manual-library-label">Browse Sequence Library</div>
+       <div id="manualLibraryModeNote" class="manual-library-mode-note">Manual browsing is separate from Today's Curriculum Practice.</div>
        <div class="sequence-pose-filter">
          <input id="poseSequenceFilter" type="search" inputmode="numeric" placeholder="Filter by pose ID, e.g. 176" aria-label="Filter sequences by pose ID">
          <button id="clearPoseSequenceFilter" type="button" class="tiny">Clear</button>
@@ -84,7 +85,7 @@
        <div class="row" style="margin-top:10px; gap: 8px;">
          <select id="categoryFilter" style="max-width: 240px; font-weight:bold; color:#444;">
 
-          <option value="ALL">📂 All Collections</option>
+          <option value="ALL">ðŸ“‚ All Collections</option>
             </select>
             <select id="sequenceSelect" style="flex:1; min-width: 200px;">
 
@@ -92,7 +93,7 @@
 
            </select>
 
-          <div id="durationDialWrap" title="Adjust hold pace — double-click to reset">
+          <div id="durationDialWrap" title="Adjust hold pace â€” double-click to reset">
           <div id="durationDialTrackWrap">
             <input type="range" id="durationDial" min="0" max="100" step="1" value="50">
             <div id="durationDialLabels">
@@ -105,7 +106,7 @@
 
          <button id="browseBtn" type="button" title="Browse / search asanas">Browse</button>
 
-          <span class="pill" id="poseTimer">–</span>
+          <span class="pill" id="poseTimer">â€“</span>
 
           <div id="timeDashboard" class="time-capsule" title="Time Remaining / Total Time">
              <div id="timeProgressFill"></div>
@@ -117,14 +118,14 @@
           </div>
 
           <div class="controls">
-             <button id="prevBtn" type="button">◀ Prev</button>
-             <button id="nextBtn" type="button">Next ▶</button>
+             <button id="prevBtn" type="button">â—€ Prev</button>
+             <button id="nextBtn" type="button">Next â–¶</button>
              <button id="startStopBtn" type="button">Start</button>
              <button id="resetBtn" type="button">Reset</button>
-             <button id="completeBtn" type="button" style="display:none">✓ Complete</button>
+             <button id="completeBtn" type="button" style="display:none">âœ“ Complete</button>
           </div>
 
-          <span class="muted" id="statusText" style="display:block; margin-top:5px;">Loading…</span>
+          <span class="muted" id="statusText" style="display:block; margin-top:5px;">Loadingâ€¦</span>
        </div>
     </header>
 
@@ -216,29 +217,29 @@
         </div>
 
         <div style="display:flex; gap:10px; align-items:center; flex-shrink:0; padding-top:4px;">
-          <button id="btnDownloadPdf" type="button" class="tiny" style="display:none; background:transparent; color:#007aff; border:1px solid #007aff; font-weight:600; padding:6px 14px; border-radius:16px;" title="Print / Save as PDF">🖨️ Print</button>
-          <button id="builderModeToggleBtn" type="button" class="tiny" style="background:#f5f5f7; color:#1d1d1f; border:1px solid #d2d2d7; font-weight:600; padding:6px 14px; border-radius:16px;">✏️ Edit</button>
-          <button id="editCourseCloseBtn" type="button" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#86868b; padding:0 4px;" title="Close">✕</button>
+          <button id="btnDownloadPdf" type="button" class="tiny" style="display:none; background:transparent; color:#007aff; border:1px solid #007aff; font-weight:600; padding:6px 14px; border-radius:16px;" title="Print / Save as PDF">ðŸ–¨ï¸ Print</button>
+          <button id="builderModeToggleBtn" type="button" class="tiny" style="background:#f5f5f7; color:#1d1d1f; border:1px solid #d2d2d7; font-weight:600; padding:6px 14px; border-radius:16px;">âœï¸ Edit</button>
+          <button id="editCourseCloseBtn" type="button" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#86868b; padding:0 4px;" title="Close">âœ•</button>
         </div>
       </div>
 
       <div id="modalNotesRow" class="modal-notes-row hidden">
         <div id="displayNotes" class="hidden"></div>
         <textarea id="builderNotes" class="hidden" placeholder="Safety notes, prop requirements, or sequence context..."></textarea>
-        <button id="warningRestoreBtn" type="button" class="warning-restore-btn" title="Show safety notes" onclick="window.toggleWarning(false)">⚕️</button>
+        <button id="warningRestoreBtn" type="button" class="warning-restore-btn" title="Show safety notes" onclick="window.toggleWarning(false)">âš•ï¸</button>
       </div>
 
       <div class="builder-toolbar-primary">
         <textarea id="builderSearch"
-                  placeholder="Search by name or ID — or batch: Title; Category; IDs…"
+                  placeholder="Search by name or ID â€” or batch: Title; Category; IDsâ€¦"
                   autocomplete="off"></textarea>
         <div id="builderSearchResults" style="display:none; position:absolute; z-index:9999; background:#fff; border:1px solid #ddd; border-radius:6px; max-height:240px; overflow-y:auto; box-shadow:0 4px 16px rgba(0,0,0,0.12); min-width:280px;"></div>
       </div>
       <div id="builderToolsPanel" class="builder-tools-panel">
           <button id="builderAddBlank" class="tiny" style="white-space:nowrap;">+ Blank</button>
-          <button id="btnOpenLinkModal" type="button" class="tiny secondary">🔗 Link</button>
-          <button id="btnGroupRepeat" type="button" class="tiny secondary">🔁 Repeat</button>
-          <button id="btnDeleteSelected" class="tiny warn" style="margin-left: 4px;">🗑️ Delete</button>
+          <button id="btnOpenLinkModal" type="button" class="tiny secondary">ðŸ”— Link</button>
+          <button id="btnGroupRepeat" type="button" class="tiny secondary">ðŸ” Repeat</button>
+          <button id="btnDeleteSelected" class="tiny warn" style="margin-left: 4px;">ðŸ—‘ï¸ Delete</button>
       </div>
 
       <div class="modal-body" style="max-height:55vh; overflow-y:auto; padding:0;">
@@ -254,7 +255,7 @@
         <tbody id="builderTableBody"></tbody>
     </table>
         <div id="builderEmptyMsg" style="padding:32px;text-align:center;color:#999;display:none;">
-          No poses yet — search above or add a blank row.
+          No poses yet â€” search above or add a blank row.
         </div>
       </div>
 
@@ -273,7 +274,7 @@
 
       <div class="modal-header" style="display:flex; align-items:center; justify-content:space-between; padding: 16px 20px;">
         <h2 id="asanaEditorTitle" style="margin:0; font-size:1.4rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">Edit Asana</h2>
-        <button id="asanaEditorCloseBtn" type="button" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#86868b; padding:0 4px;" title="Close">✕</button>
+        <button id="asanaEditorCloseBtn" type="button" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#86868b; padding:0 4px;" title="Close">âœ•</button>
       </div>
 
       <div class="modal-body" style="padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:20px;">
@@ -289,7 +290,7 @@
             <select id="editAsanaCategory" style="width:100%; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
               <option value="">-- Select category --</option>
             </select>
-            <input type="text" id="editAsanaCategoryCustom" placeholder="Type new category name…" style="display:none; margin-top:8px; width:100%; padding:10px; border:1px solid #f57f17; border-radius:8px; box-sizing:border-box;">
+            <input type="text" id="editAsanaCategoryCustom" placeholder="Type new category nameâ€¦" style="display:none; margin-top:8px; width:100%; padding:10px; border:1px solid #f57f17; border-radius:8px; box-sizing:border-box;">
           </div>
 
           <div style="grid-column: 1 / -1;">
@@ -317,7 +318,7 @@
           </div>
 
           <div>
-            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Intensity (LOY #) <span title="Light on Yoga intensity number — lower numbers are less difficult" style="cursor:help; color:#999; font-size:0.75rem;">ⓘ</span></label>
+            <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Intensity (LOY #) <span title="Light on Yoga intensity number â€” lower numbers are less difficult" style="cursor:help; color:#999; font-size:0.75rem;">â“˜</span></label>
             <input type="text" id="editAsanaIntensity" style="width:100%; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
           </div>
 
@@ -325,7 +326,7 @@
             <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Prep Pose (ID:Stage)</label>
             <div style="display:flex; gap:6px; align-items:center;">
               <input type="text" id="editAsanaPrep" placeholder="e.g. 020:5" style="flex:1; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
-              <button type="button" class="tiny b-row-search-btn" onclick="window.triggerAsanaInjectionSearch('editAsanaPrep')" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer; flex-shrink:0;" title="Search Asana">🔍</button>
+              <button type="button" class="tiny b-row-search-btn" onclick="window.triggerAsanaInjectionSearch('editAsanaPrep')" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer; flex-shrink:0;" title="Search Asana">ðŸ”</button>
             </div>
           </div>
 
@@ -333,7 +334,7 @@
             <label style="font-size:0.85rem; font-weight:600; color:#666; margin-bottom:4px; display:block;">Recovery Pose (ID:Stage)</label>
             <div style="display:flex; gap:6px; align-items:center;">
               <input type="text" id="editAsanaRecov" placeholder="e.g. 033" style="flex:1; padding:10px; border:1px solid #d2d2d7; border-radius:8px; box-sizing:border-box;">
-              <button type="button" class="tiny b-row-search-btn" onclick="window.triggerAsanaInjectionSearch('editAsanaRecov')" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer; flex-shrink:0;" title="Search Asana">🔍</button>
+              <button type="button" class="tiny b-row-search-btn" onclick="window.triggerAsanaInjectionSearch('editAsanaRecov')" style="padding:2px 6px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer; flex-shrink:0;" title="Search Asana">ðŸ”</button>
             </div>
           </div>
 
@@ -383,7 +384,7 @@
       <div class="modal-header">
          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <strong id="browseTitle">Browse Asanas</strong>
-            <span class="muted" id="browseCount">–</span>
+            <span class="muted" id="browseCount">â€“</span>
          </div>
          <div style="display:flex;gap:10px;align-items:center">
             <button id="browseCloseBtn" type="button">Close</button>
@@ -421,7 +422,7 @@
     <div class="modal" role="dialog" aria-modal="true" style="max-width:600px; width:95%;">
       <div class="modal-header" style="flex-direction:column; align-items:stretch; gap:10px;">
          <div style="display:flex; justify-content:space-between; align-items:center;">
-             <strong>✅ Completion History</strong>
+             <strong>âœ… Completion History</strong>
              <button id="historyCloseBtn" type="button">Close</button>
          </div>
          <div style="display:flex; background:#eee; padding:4px; border-radius:6px; gap:5px;">
@@ -468,7 +469,7 @@
    <button id="focusPauseBtn">PAUSE</button>
 
    <button id="activePoseSkipBtn" style="display:none; margin-top: 20px; background: #ffffff; border: 2px solid #d2d2d7; color: #1d1d1f; padding: 10px 24px; border-radius: 30px; font-weight: 700; font-size: 0.95rem; cursor: pointer; opacity: 1 !important; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.2s ease;">
-   ⏭️ SKIP
+   â­ï¸ SKIP
 </button>
 
   </div>
@@ -476,7 +477,7 @@
   <div id="linkSequenceOverlay" class="modal-backdrop">
     <div class="modal" style="max-width: 400px; width: 90vw; padding: 20px; border-radius: 8px; background: #fff; height: auto;">
         <h3 style="margin-top:0; color:#1976d2; display:flex; align-items:center; gap:8px;">
-            🔗 Link a Sequence
+            ðŸ”— Link a Sequence
         </h3>
         <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">
             Insert an entire sequence as a single repeating block.
@@ -501,7 +502,7 @@
 <div id="repetitionModalOverlay" class="modal-backdrop">
     <div class="modal" style="max-width: 320px; width: 85vw; padding: 20px; border-radius: 8px; background: #fff; box-shadow: 0 8px 32px rgba(0,0,0,0.25); height: auto;">
         <h3 style="margin-top:0; color:#c62828; display:flex; align-items:center; gap:8px;">
-            🔁 Set Repetitions
+            ðŸ” Set Repetitions
         </h3>
         <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">
             How many times should this section repeat?
@@ -521,16 +522,17 @@
    <div class="modal" style="width:95vw; max-width:400px; padding:20px; border-radius:12px; background:#fff; display:flex; flex-direction:column; max-height:85vh; box-sizing:border-box; height: auto;">
       <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
           <strong style="font-size:1.1rem; color:#1d1d1f;">Search Pose</strong>
-          <button onclick="window._closeInjectionSearch && window._closeInjectionSearch(); document.getElementById('rowSearchOverlay').style.display='none'" style="border:none; background:#f2f2f2; color:#333; border-radius:50%; width:28px; height:28px; cursor:pointer;">✕</button>
+          <button onclick="window._closeInjectionSearch && window._closeInjectionSearch(); document.getElementById('rowSearchOverlay').style.display='none'" style="border:none; background:#f2f2f2; color:#333; border-radius:50%; width:28px; height:28px; cursor:pointer;">âœ•</button>
       </div>
       <input type="text" id="rowSearchInput" placeholder="Type name or ID..." style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
       <div id="rowSearchResults" style="flex:1; overflow-y:auto; margin-top:15px; min-height:0;"></div>
    </div>
 </div>
   <div id="ratingOverlay" class="rating-overlay" role="dialog" aria-modal="true">
-    <h2 class="rating-overlay__title">How did your body feel?</h2>
+    <h2 id="ratingOverlayTitle" class="rating-overlay__title">How did your body feel?</h2>
+    <p id="ratingOverlayNote" class="rating-overlay__note">Rating is recorded with this completion.</p>
     <div class="rating-overlay__buttons" id="ratingButtonsContainer">
-      <div class="rating-overlay__loading">Loading rating options…</div>
+      <div class="rating-overlay__loading">Loading rating optionsâ€¦</div>
     </div>
   </div>
 

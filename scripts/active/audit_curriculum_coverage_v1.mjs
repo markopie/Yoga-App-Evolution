@@ -60,6 +60,32 @@ function fmt(value) {
   return value;
 }
 
+function sourceWeekRangeFromReference(reference = '') {
+  const matches = String(reference).match(/\bWeek(?:s)?\s+(\d+)(?:\s*(?:to|&|and|-)\s*(\d+))?/i);
+  if (!matches) return null;
+  const min = Number(matches[1]);
+  const max = Number(matches[2] || matches[1]);
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+  return { min, max };
+}
+
+function sourceWeekRangeForOccurrence(occurrence, inventoryRow, nodeById) {
+  const payload = nodeById.get(occurrence.curriculum_node_id)?.curriculum_payload || {};
+  const payloadMin = Number(payload.source_week_min);
+  const payloadMax = Number(payload.source_week_max);
+  if (Number.isFinite(payloadMin)) {
+    return {
+      min: payloadMin,
+      max: Number.isFinite(payloadMax) ? payloadMax : payloadMin,
+      range_source: 'curriculum_payload',
+    };
+  }
+
+  const parsed = sourceWeekRangeFromReference(inventoryRow?.source_reference);
+  if (!parsed) return null;
+  return { ...parsed, range_source: 'source_reference' };
+}
+
 function coverageRows(requiredInventory, activeNodes, compositionParts) {
   const requiredByKey = new Map();
   const requiredBySequenceId = new Map();
@@ -206,6 +232,11 @@ function composedNodeRows(activeNodes, compositionParts, analysisByCourseId, cou
         part_duration_minutes: fmt(analysisByCourseId.get(part.sequence_id)?.total_duration_minutes),
         node_total_calculated_minutes: fmt(totalCalculated),
         payload_total_minutes: fmt(Number(node.curriculum_payload?.composed_total_duration_minutes)),
+        duration_review_flag: totalCalculated >= 90
+          ? 'review_over_90_minutes'
+          : totalCalculated >= 75
+            ? 'review_over_75_minutes'
+            : '',
         playable_by_synthetic_macro: playable,
       }));
     });
@@ -234,13 +265,37 @@ function inactiveReplacementRows(inactiveNodes, compositionParts, courseById) {
     .sort((a, b) => Number(a.sequence_id) - Number(b.sequence_id));
 }
 
+function pacingWarningRows(sourceCompletionOccurrences, requiredBySequenceId, nodeById) {
+  return sourceCompletionOccurrences
+    .map((occ) => {
+      const inv = requiredBySequenceId.get(occ.sequence_id);
+      const range = sourceWeekRangeForOccurrence(occ, inv, nodeById);
+      if (!range) return null;
+      if (occ.week_number >= range.min) return null;
+      return {
+        curriculum_node_id: occ.curriculum_node_id,
+        week_day: `W${occ.week_number}D${occ.day_number}`,
+        sequence_id: occ.sequence_id,
+        source_key: inv?.source_key || '',
+        source_course: inv?.source_course || '',
+        source_reference: inv?.source_reference || '',
+        source_week_min: range.min,
+        source_week_max: range.max,
+        range_source: range.range_source,
+        warning: 'scheduled_before_source_week_min',
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (a.source_week_min - b.source_week_min) || (a.curriculum_node_id - b.curriculum_node_id));
+}
+
 async function main() {
   requireEnv();
 
   const [inventory, nodes, analysis, courses] = await Promise.all([
     fetchAll(
       'source_sequence_inventory',
-      'sequence_id,source_key,source_course,is_required',
+      'sequence_id,source_key,source_course,source_reference,is_required',
       (q) => q.eq('is_required', true),
     ),
     fetchAll(
@@ -257,6 +312,7 @@ async function main() {
   const compositionParts = activeNodes.flatMap(getCompositionParts);
   const analysisByCourseId = new Map(analysis.map((row) => [Number(row.course_id), row]));
   const courseById = new Map(courses.map((row) => [Number(row.id), row]));
+  const nodeById = new Map(nodes.map((row) => [Number(row.id), row]));
 
   const { coverage, sourceCompletionOccurrences, requiredBySequenceId } = coverageRows(
     inventory,
@@ -266,6 +322,7 @@ async function main() {
   const duplicates = duplicateRows(sourceCompletionOccurrences, requiredBySequenceId);
   const composed = composedNodeRows(activeNodes, compositionParts, analysisByCourseId, courseById);
   const inactiveReplacements = inactiveReplacementRows(inactiveNodes, compositionParts, courseById);
+  const pacingWarnings = pacingWarningRows(sourceCompletionOccurrences, requiredBySequenceId, nodeById);
 
   console.log(`Curriculum coverage audit: ${CURRICULUM_SLUG}`);
   console.log(`Nodes: ${nodes.length} total, ${activeNodes.length} active, ${inactiveNodes.length} inactive`);
@@ -285,6 +342,10 @@ async function main() {
 
   console.log('\nInactive nodes replaced by practice_composition');
   if (inactiveReplacements.length) console.table(inactiveReplacements);
+  else console.log('None found.');
+
+  console.log('\nSource-week pacing warnings');
+  if (pacingWarnings.length) console.table(pacingWarnings);
   else console.log('None found.');
 }
 

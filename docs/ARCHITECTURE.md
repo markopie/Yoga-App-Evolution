@@ -86,6 +86,12 @@ Private: `auth.uid() = user_id`.
 | `status` | text | `"completed"`, `"partial"` etc. |
 | `notes` | text | |
 
+Curriculum completion metadata:
+- `completed`: true when the row counts as a completed practice.
+- `duration_scale_used`: ratio of adjusted planned duration to base planned duration.
+- `planned_duration_minutes`: base planned duration for the loaded day/session.
+- `actual_adjusted_duration_minutes`: duration after the user's duration dial adjustment.
+
 ### `user_sequences` — (Legacy/Unused in current code)
 Kept in DB but not queried by the app. Sequences saved to `courses` instead.
 

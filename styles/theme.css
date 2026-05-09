@@ -289,6 +289,24 @@ table td, table th {
   color: var(--color-text-primary);
 }
 
+.rating-overlay__note {
+  margin: -0.25rem 0 1rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.manual-library-mode-note {
+  margin-top: 0.2rem;
+  color: #6b7280;
+  font-size: 0.78rem;
+}
+
+.manual-library-mode-note--locked {
+  color: #8a5a00;
+  font-weight: 600;
+}
+
 .rating-btn {
   background: var(--color-bg-tertiary);
   border-color: var(--color-border-secondary);

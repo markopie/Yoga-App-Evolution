@@ -74,6 +74,7 @@
        </section>
 
        <div class="manual-library-label">Browse Sequence Library</div>
+       <div id="manualLibraryModeNote" class="manual-library-mode-note">Manual browsing is separate from Today's Curriculum Practice.</div>
        <div class="sequence-pose-filter">
          <input id="poseSequenceFilter" type="search" inputmode="numeric" placeholder="Filter by pose ID, e.g. 176" aria-label="Filter sequences by pose ID">
          <button id="clearPoseSequenceFilter" type="button" class="tiny">Clear</button>
@@ -526,7 +527,8 @@
    </div>
 </div>  
   <div id="ratingOverlay" class="rating-overlay" role="dialog" aria-modal="true">
-    <h2 class="rating-overlay__title">How did your body feel?</h2>
+    <h2 id="ratingOverlayTitle" class="rating-overlay__title">How did your body feel?</h2>
+    <p id="ratingOverlayNote" class="rating-overlay__note">Rating is recorded with this completion.</p>
     <div class="rating-overlay__buttons" id="ratingButtonsContainer">
       <div class="rating-overlay__loading">Loading rating options…</div>
     </div>

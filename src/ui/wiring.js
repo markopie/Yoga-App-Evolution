@@ -214,6 +214,9 @@ function setupSequenceSelector() {
             const details = $("curriculumPracticeDetails");
             if (summary) summary.textContent = "Manual library practice selected.";
             if (details) details.style.display = "none";
+            if (typeof window.updateCurriculumLibraryLock === 'function') {
+                window.updateCurriculumLibraryLock();
+            }
         }
         
         // Reset granular progress so we don't carry over completion data to the new sequence

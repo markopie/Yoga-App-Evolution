@@ -317,17 +317,11 @@ safeListen("completeBtn", "click", async () => {
         });
 
         alert("Sequence Completed and Logged!");
-        const ratingOverlay = document.getElementById("ratingOverlay");
-        
-        if (ratingOverlay) {
-            ratingOverlay.dataset.sessionId = sessionId || "fallback-id";
-            ratingOverlay.style.setProperty('display', 'flex', 'important');
-        }
+        showCompletionRatingOverlay(sessionId);
     } catch (e) {
         console.error("Completion error:", e);
         alert("Error saving progress. Check console.");
-        const ratingOverlay = document.getElementById("ratingOverlay");
-        if (ratingOverlay) ratingOverlay.style.setProperty('display', 'flex', 'important');
+        showCompletionRatingOverlay("fallback-id");
     } finally {
         btn.disabled = false;
         btn.textContent = originalText;
@@ -387,11 +381,20 @@ const setupRatingButtons = async () => {
                 } catch (err) {
                     console.error("Rating Phase 2 Failed:", err);
                 } finally {
+                    const afterRatingAction = overlay.dataset.afterRatingAction || "";
+                    const shouldResetAfterRating = overlay.dataset.resetAfterRating !== "false";
                     overlay.style.display = "none";
                     delete overlay.dataset.sessionId;
+                    delete overlay.dataset.afterRatingAction;
+                    delete overlay.dataset.resetAfterRating;
 
-                    const resetBtn = document.getElementById("resetBtn");
-                    if (resetBtn) resetBtn.click();
+                    if (afterRatingAction === "startTodayPractice" && typeof window.startTodayPractice === "function") {
+                        window.currentCurriculumPractice = null;
+                        await window.startTodayPractice();
+                    } else if (shouldResetAfterRating) {
+                        const resetBtn = document.getElementById("resetBtn");
+                        if (resetBtn) resetBtn.click();
+                    }
 
                     // Reset visual state for next time
                     ratingButtons.forEach(b => {
@@ -405,6 +408,27 @@ const setupRatingButtons = async () => {
         container.innerHTML = `<div class="rating-overlay__error">Rating options could not be loaded.</div>`;
     }
 };
+
+function showCompletionRatingOverlay(sessionId, options = {}) {
+    const overlay = document.getElementById("ratingOverlay");
+    if (!overlay) return false;
+
+    const title = document.getElementById("ratingOverlayTitle");
+    const note = document.getElementById("ratingOverlayNote");
+    if (title) title.textContent = options.title || "How did your body feel?";
+    if (note) {
+        note.textContent = options.note ||
+            "Rating is recorded with this completion. Adaptive progression is not active yet.";
+    }
+
+    overlay.dataset.sessionId = sessionId || "fallback-id";
+    if (options.afterRatingAction) overlay.dataset.afterRatingAction = options.afterRatingAction;
+    overlay.dataset.resetAfterRating = options.resetAfterRating === false ? "false" : "true";
+    overlay.style.setProperty('display', 'flex', 'important');
+    return true;
+}
+
+window.showCompletionRatingOverlay = showCompletionRatingOverlay;
 
 // Run setup after DOM is ready
 if (document.readyState === "loading") {

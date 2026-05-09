@@ -75,6 +75,65 @@ export function seedManualCompletionsOnce() {
 
 let serverHistoryCache = null; // array of unified entries, newest first
 
+function sumPoseMinutes(poses = []) {
+   if (!Array.isArray(poses) || !poses.length) return null;
+   const totalSeconds = poses.reduce((acc, pose) => {
+      const seconds = typeof window.getPosePillTime === 'function'
+         ? window.getPosePillTime(pose)
+         : Number(pose?.[1] || 0);
+      return acc + (Number.isFinite(seconds) ? seconds : 0);
+   }, 0);
+   return Math.round((totalSeconds / 60) * 100) / 100;
+}
+
+function buildDurationDialCompletionMetadata() {
+   const sequence = window.currentSequence || null;
+   const plannedList = sequence && typeof window.getExpandedPoses === 'function'
+      ? window.getExpandedPoses(sequence)
+      : sequence?.poses;
+   const adjustedList = typeof window.getActivePlaybackList === 'function'
+      ? window.getActivePlaybackList()
+      : window.activePlaybackList;
+
+   const plannedMinutes = sumPoseMinutes(plannedList);
+   const adjustedMinutes = sumPoseMinutes(adjustedList);
+   const scale = plannedMinutes && adjustedMinutes
+      ? Math.round((adjustedMinutes / plannedMinutes) * 1000) / 1000
+      : null;
+
+   return {
+      completed: true,
+      duration_scale_used: scale,
+      planned_duration_minutes: plannedMinutes,
+      actual_adjusted_duration_minutes: adjustedMinutes,
+   };
+}
+
+function stripDurationMetadata(payload) {
+   const {
+      completed,
+      duration_scale_used,
+      planned_duration_minutes,
+      actual_adjusted_duration_minutes,
+      ...legacyPayload
+   } = payload;
+   void completed;
+   void duration_scale_used;
+   void planned_duration_minutes;
+   void actual_adjusted_duration_minutes;
+   return legacyPayload;
+}
+
+function isMissingDurationMetadataColumnError(error) {
+   const message = String(error?.message || error?.details || '');
+   return [
+      'completed',
+      'duration_scale_used',
+      'planned_duration_minutes',
+      'actual_adjusted_duration_minutes',
+   ].some(column => message.includes(column));
+}
+
 // Build window.completionHistory (legacy format) from the unified cache
 function _rebuildLegacyHistory(entries) {
    const hist = {};
@@ -133,6 +192,10 @@ export async function appendServerHistory(title, whenDate, category = null, dura
       const completionItems = Array.isArray(completionOptions.completion_items)
          ? completionOptions.completion_items.filter(item => item && item.counts_for_source_completion !== false)
          : [];
+      const durationMetadata = {
+         ...buildDurationDialCompletionMetadata(),
+         ...(completionOptions.duration_metadata || {}),
+      };
 
       const buildPayload = (item = {}) => {
          const payload = {
@@ -140,6 +203,7 @@ export async function appendServerHistory(title, whenDate, category = null, dura
             category: item.category || category,
             completed_at: whenDate.toISOString(),
             status: item.status || completionOptions.status || 'Completed',
+            completed: durationMetadata.completed !== false,
          };
 
          const itemDuration = item.duration_seconds ?? durationSeconds;
@@ -149,6 +213,15 @@ export async function appendServerHistory(title, whenDate, category = null, dura
          if (completionOptions.notes !== undefined) payload.notes = completionOptions.notes;
          if (completionOptions.rating !== undefined) payload.rating = completionOptions.rating;
          if (completionOptions.difficulty_feedback !== undefined) payload.difficulty_feedback = completionOptions.difficulty_feedback;
+         if (durationMetadata.duration_scale_used !== null && durationMetadata.duration_scale_used !== undefined) {
+            payload.duration_scale_used = durationMetadata.duration_scale_used;
+         }
+         if (durationMetadata.planned_duration_minutes !== null && durationMetadata.planned_duration_minutes !== undefined) {
+            payload.planned_duration_minutes = durationMetadata.planned_duration_minutes;
+         }
+         if (durationMetadata.actual_adjusted_duration_minutes !== null && durationMetadata.actual_adjusted_duration_minutes !== undefined) {
+            payload.actual_adjusted_duration_minutes = durationMetadata.actual_adjusted_duration_minutes;
+         }
 
          const sequenceId = item.sequence_id ?? completionOptions.sequence_id;
          if (sequenceId !== undefined && sequenceId !== null) {
@@ -165,10 +238,20 @@ export async function appendServerHistory(title, whenDate, category = null, dura
          ? completionItems.map(buildPayload)
          : [buildPayload()];
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
          .from('sequence_completions')
          .insert(rows)
          .select();
+
+      if (error && isMissingDurationMetadataColumnError(error)) {
+         const legacyRows = rows.map(stripDurationMetadata);
+         const retry = await supabase
+            .from('sequence_completions')
+            .insert(legacyRows)
+            .select();
+         data = retry.data;
+         error = retry.error;
+      }
 
       if (error) throw error;
       await fetchServerHistory();
