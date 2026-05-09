@@ -507,6 +507,12 @@ details[open] .curriculum-roadmap__week-chevron { transform: rotate(90deg); }
   color: var(--n500);
 }
 
+.curriculum-roadmap__part-role {
+  font-size: .68rem;
+  color: var(--n600);
+  font-weight: 500;
+}
+
 .curriculum-roadmap__part-counts-tag {
   font-size: .63rem;
   background: var(--p100);
