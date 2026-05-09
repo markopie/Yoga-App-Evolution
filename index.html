@@ -11,11 +11,17 @@
     // Prototype router — intercept before app boots
     if (new URLSearchParams(location.search).get('prototype') === 'curriculum-roadmap') {
       document.addEventListener('DOMContentLoaded', function () {
-        document.title = 'Curriculum Roadmap – Prototype';
-        document.body.innerHTML =
-          '<link rel="stylesheet" href="prototypes/curriculum-roadmap/roadmap.css">' +
-          '<div class="curriculum-roadmap" id="app"></div>' +
-          '<script type="module" src="prototypes/curriculum-roadmap/roadmap.js"><\/script>';
+        document.title = 'Curriculum Roadmap \u2013 Prototype';
+        // innerHTML does not execute scripts; build DOM imperatively instead
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'prototypes/curriculum-roadmap/roadmap.css';
+        document.head.appendChild(link);
+        document.body.innerHTML = '<div class="curriculum-roadmap" id="app"></div>';
+        var s = document.createElement('script');
+        s.type = 'module';
+        s.src = 'prototypes/curriculum-roadmap/roadmap.js';
+        document.body.appendChild(s);
       });
     }
   </script>
