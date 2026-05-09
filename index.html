@@ -7,6 +7,18 @@
   <title>Yoga Sequences</title>
   <link rel="stylesheet" href="styles/main.css?v=30">
   <link rel="stylesheet" href="styles/theme.css?v=30">
+  <script>
+    // Prototype router — intercept before app boots
+    if (new URLSearchParams(location.search).get('prototype') === 'curriculum-roadmap') {
+      document.addEventListener('DOMContentLoaded', function () {
+        document.title = 'Curriculum Roadmap – Prototype';
+        document.body.innerHTML =
+          '<link rel="stylesheet" href="prototypes/curriculum-roadmap/roadmap.css">' +
+          '<div class="curriculum-roadmap" id="app"></div>' +
+          '<script type="module" src="prototypes/curriculum-roadmap/roadmap.js"><\/script>';
+      });
+    }
+  </script>
 </head>
 <body>
 
@@ -534,8 +546,14 @@
     </div>
   </div>
 
-<script type="module" src="src/services/supabaseClient.js"></script>
-<script type="module" src="src/services/dataAdapter.js"></script>
-<script type="module" src="app.js"></script>
+<script>
+  // Skip main app scripts when running a prototype
+  if (!new URLSearchParams(location.search).get('prototype')) {
+    ['src/services/supabaseClient.js','src/services/dataAdapter.js','app.js'].forEach(function(src){
+      var s = document.createElement('script'); s.type = 'module'; s.src = src;
+      document.currentScript.parentNode.appendChild(s);
+    });
+  }
+</script>
 
 </body>
