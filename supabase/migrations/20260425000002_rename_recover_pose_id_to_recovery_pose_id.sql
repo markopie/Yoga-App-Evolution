@@ -10,7 +10,26 @@
 -- for fallback logic.
 -- ════════════════════════════════════════════════════════════════
 
-ALTER TABLE stages RENAME COLUMN recover_pose_id TO recovery_pose_id;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'stages'
+      AND column_name = 'recover_pose_id'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'stages'
+      AND column_name = 'recovery_pose_id'
+  ) THEN
+    ALTER TABLE stages RENAME COLUMN recover_pose_id TO recovery_pose_id;
+  END IF;
+END $$;
+
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS recovery_pose_id jsonb;
 
 -- ════════════════════════════════════════════════════════════════
 -- Verification (run after to confirm)
