@@ -379,7 +379,7 @@ async function markCurrentCurriculumNodeCompleteForTesting() {
         if (!sessionId) throw new Error('Completion was not saved.');
 
         if (summary) {
-            summary.textContent = 'Completion saved. Choose a rating to continue. Rating is recorded only; adaptive progression is not active yet.';
+            summary.textContent = 'Completion saved. Choose a rating to continue.';
         }
         if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
         const shown = typeof window.showCompletionRatingOverlay === 'function' && window.showCompletionRatingOverlay(sessionId, {

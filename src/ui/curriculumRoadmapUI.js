@@ -1,13 +1,14 @@
 import { supabase } from '../services/supabaseClient.js';
 
 const CURRICULUM_SLUG = 'iyengar_integrated_master_path_draft_v1';
+const ROADMAP_ADMIN_EMAIL = 'mark.opie@gmail.com';
 
 // ─── Dev gate ─────────────────────────────────────────────────────────────────
 // Roadmap button is only visible to local dev or admin (god mode) users.
 function isDevOrAdmin() {
     const h = window.location.hostname;
     const isLocal = ['localhost', '127.0.0.1', '::1'].includes(h) || h.endsWith('.webcontainer-api.io');
-    return isLocal || !!window.adminMode;
+    return isLocal || !!window.adminMode || window.currentUserEmail === ROADMAP_ADMIN_EMAIL;
 }
 
 // ─── Vocabulary helpers ───────────────────────────────────────────────────────
@@ -801,9 +802,13 @@ function closeCurriculumRoadmap() {
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
 export function setupCurriculumRoadmapUI() {
-    // Show/hide the button based on dev/admin status
     const btn = document.getElementById('curriculumMapBtn');
     if (!btn) return;
+
+    if (!isDevOrAdmin()) {
+        btn.style.display = 'none';
+        return;
+    }
 
     btn.style.display = '';
 

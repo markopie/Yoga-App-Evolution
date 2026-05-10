@@ -12,7 +12,7 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     transition: color 0.3s ease;
     display: inline-block;
-    min-width: 4.5ch; 
+    min-width: 4.5ch;
     text-align: center;
 }
 
@@ -57,11 +57,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: fit-content; 
+    width: fit-content;
     height: 36px;
     background: #e0e0e0;
     border-radius: 18px;
-    overflow: hidden; 
+    overflow: hidden;
     vertical-align: middle;
     margin: 0 5px;
     box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
@@ -70,16 +70,16 @@
 #timeProgressFill {
     position: absolute;
     left: 0; top: 0; bottom: 0;
-    width: 100%; 
-    background: #c8e6c9; 
-    transition: width 0.3s ease; 
+    width: 100%;
+    background: #c8e6c9;
+    transition: width 0.3s ease;
     z-index: 1;
 }
 
 .time-content {
     position: relative;
     z-index: 2;
-    font-family: 'SF Mono', 'Roboto Mono', monospace; 
+    font-family: 'SF Mono', 'Roboto Mono', monospace;
     font-size: 0.9rem;
     font-weight: 600;
     color: #333;
@@ -97,7 +97,7 @@
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
     background: var(--color-bg-surface);
-    z-index: 10000; 
+    z-index: 10000;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -123,14 +123,14 @@
 #focusPoseName { font-size: 1.8rem; font-weight: 600; margin: 5px 0 15px 0; text-align: center; }
 
 #focusImageWrap {
-    flex: 1; 
+    flex: 1;
     width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
     overflow: hidden;
     margin-bottom: 20px;
-    min-height: 0; 
+    min-height: 0;
 }
 
 #focusImageWrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -233,7 +233,7 @@
     cursor: pointer;
 }
 
-#durationDial::-webkit-slider-thumb, 
+#durationDial::-webkit-slider-thumb,
 #durationDial::-moz-range-thumb {
     -webkit-appearance: none;
     width: 16px;
@@ -267,7 +267,7 @@
    ──────────────────────────────────────────────────────────────────────────── */
 .progress-status-wrapper {
     display: flex;
-    justify-content: flex-end; 
+    justify-content: flex-end;
     margin-top: 4px;
 }
 
@@ -297,7 +297,7 @@
 }
 
 .progress-summary-close-top {
-    background: none; border: none; font-size: 1.6rem; color: #86868b; 
+    background: none; border: none; font-size: 1.6rem; color: #86868b;
     cursor: pointer; padding: 0 4px; line-height: 1;
 }
 
@@ -312,16 +312,16 @@
     width: 100%;
     border-collapse: collapse;
     /* This creates the necessary space at the end of the scroll */
-    margin-bottom: 50px !important; 
+    margin-bottom: 50px !important;
 }
 
 .progress-summary-table thead {
-    position: sticky; top: 0; background: rgba(255,255,255,0.95); 
+    position: sticky; top: 0; background: rgba(255,255,255,0.95);
     backdrop-filter: blur(4px); z-index: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .progress-summary-table th {
-    padding: 10px 16px; color: #86868b; font-weight: 600; font-size: 0.75rem; 
+    padding: 10px 16px; color: #86868b; font-weight: 600; font-size: 0.75rem;
     text-transform: uppercase; letter-spacing: 0.05em;
 }
 
@@ -357,8 +357,8 @@
 .progress-asana-name { color: #1d1d1f; font-size: 0.95rem; font-weight: 700; display: block; margin-bottom: 2px;}
 .progress-asana-iast { font-size: 0.8rem; color: #86868b; font-style: italic; }
 .progress-skip-tag {
-    font-size: 0.65rem; background: #f5f5f7; border: 1px solid #d2d2d7; 
-    padding: 2px 6px; border-radius: 12px; color: #86868b; 
+    font-size: 0.65rem; background: #f5f5f7; border: 1px solid #d2d2d7;
+    padding: 2px 6px; border-radius: 12px; color: #86868b;
     text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;
     display: inline-block; margin-top: 6px;
 }
@@ -373,8 +373,8 @@
 }
 
 .progress-summary-close-btn {
-    background: #007aff; color: white; padding: 12px 24px; border: none; 
-    border-radius: 10px; font-weight: 600; font-size: 1rem; cursor: pointer; 
+    background: #007aff; color: white; padding: 12px 24px; border: none;
+    border-radius: 10px; font-weight: 600; font-size: 1rem; cursor: pointer;
     width: 100%; box-shadow: 0 2px 4px rgba(0,122,255,0.2);
 }
 .progress-status-badge::before {
