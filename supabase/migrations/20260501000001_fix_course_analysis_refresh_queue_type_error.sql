@@ -21,6 +21,15 @@ create table if not exists public.course_analysis_refresh_queue (
     last_error text
 );
 
+-- Fresh migration replay starts from the original minimal schema. These columns
+-- are watched by the refresh triggers below, so they must exist before trigger
+-- creation even if the live database already had them from manual evolution.
+alter table public.asanas add column if not exists category_id bigint;
+alter table public.asanas add column if not exists is_restorative boolean default false;
+alter table public.asanas add column if not exists hold_json jsonb;
+
+alter table public.courses add column if not exists sequence_json jsonb;
+
 -- ============================================================
 -- STEP 2: Queue helper (SECURITY DEFINER = RLS fix)
 -- ============================================================
