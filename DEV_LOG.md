@@ -984,3 +984,43 @@ The source title belongs in the detail/secondary layer only. It should never be 
 - Keep future roadmap prototype work isolated under `prototypes/curriculum-roadmap/` until a real roadmap RPC/data contract is designed.
 - If package lock churn remains in the working tree, review it separately before staging any broad save command.
 ---
+
+## [2026-05-10] - Session [01]
+**Goal:** Adaptive Progression Pass 2 — implement and then simplify plateau node repeat behaviour.
+
+**Architectural Decisions:**
+- **Pass 2 Plateau Logic:** On plateau/stay-here nodes (identified by `curriculum_payload` flags), a rating of 3 now triggers a repeat of the same node rather than advancing. The interpretation is that "Balanced / Right level" on a plateau node means the user is still consolidating — they can advance by rating 4 or 5 next time.
+- **No Extra Overlay:** An initial implementation used a "Stay here a while?" prompt overlay to ask the user to choose Stay or Continue. This was removed in the same session as inconsistent with the app's toddler-simple philosophy — the rating itself is sufficient signal.
+- **isStayHereNode Helper:** A small `isStayHereNode(practice)` function checks `curriculum_payload` for any of: `plateau_candidate === true`, `can_repeat_indefinitely === true`, `progression_gate` present, `milestone_type` present. Fails closed if the payload is missing or throws.
+- **Final post-rating logic:**
+  - `rating <= 2` → repeat current node (Pass 1, unchanged)
+  - `rating === 3` and `isStayHereNode` → repeat current node (Pass 2)
+  - `rating 4 or 5`, or `rating 3` on a normal node → advance normally
+  - Any failure → `startTodayPractice()` fallback
+
+**Code Changed:**
+- `app.js`: Added `isStayHereNode()`; updated post-rating branch; removed stale "not active yet" copy from rating overlay note.
+- `src/ui/curriculumUI.js`: Removed stale "future work" copy from dev/test overlay call.
+
+**No DB, RPC, schema, migration, or completion-row changes.**
+
+---
+
+## [2026-05-10] - Session [02]
+**Goal:** Remove disallowed course categories from the curriculum.
+
+**Architectural Decisions:**
+- The curriculum slug `iyengar_integrated_master_path_draft_v1` must only contain sequences from categories 2 (Light on Prānāyāma), 5 (Light on Yoga), 13 (Yoga: The Iyengar Way), 19, and 232 (Yoga A Gem For Women).
+- 30 nodes from category 10 (How to Use Yoga) and 1 node from category 56 (Cycle — sequence 362 "Virasana", Week 4 Day 5) were removed.
+- 9 of those nodes had test completion rows attached; these were removed first to satisfy the `NO ACTION` FK constraint on `sequence_completions.curriculum_node_id`.
+
+**Code Changed:**
+- `supabase/migrations/20260510000001_remove_disallowed_category_curriculum_nodes.sql`: Deletes completion rows then curriculum nodes for categories not in the allowed list.
+
+**Validation Results:**
+- Post-migration query confirms only categories 2, 5, 13, 232 remain — 71 active nodes total.
+- Category 10 (How to Use Yoga) and category 56 (Cycle) have zero nodes remaining.
+
+**Next Steps for Next Session:**
+- The curriculum now has gaps where the removed How to Use Yoga and Cycle nodes sat (Weeks 1-24 Day 1 slots and Week 4 Day 5). Decide whether to fill these gaps with sequences from allowed categories or to renumber/restructure the weekly rhythm.
+---
