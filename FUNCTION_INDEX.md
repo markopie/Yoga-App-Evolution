@@ -277,6 +277,10 @@
 - `updateActiveCategoryTitle` (function)
 - `updateActiveCategoryTitle` (window binding)
 
+### 📄 `ui/curriculumRoadmapUI.js`
+- `currentUserEmail` (window binding)
+- `setupCurriculumRoadmapUI` (function)
+
 ### 📄 `ui/curriculumUI.js`
 - `applySequenceInternal` (window binding)
 - `completionTracker` (window binding)
