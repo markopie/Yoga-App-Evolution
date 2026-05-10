@@ -421,6 +421,16 @@ async function undoCurrentCurriculumNodeCompletionForTesting() {
     }
 
     try {
+        // Find the previous node so we can repeat it after deleting this one's completion.
+        const { data: prevData } = await supabase
+            .from('program_curriculum')
+            .select('id')
+            .eq('curriculum_slug', CURRICULUM_SLUG)
+            .lt('order_index', practice.order_index)
+            .order('order_index', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
         let query = supabase
             .from('sequence_completions')
             .delete()
@@ -436,7 +446,7 @@ async function undoCurrentCurriculumNodeCompletionForTesting() {
         if (summary) summary.textContent = 'Curriculum completion undone. Reloading practice...';
         if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
         window.currentCurriculumPractice = null;
-        await startTodayPractice();
+        await startTodayPractice(prevData?.id ?? null);
     } catch (err) {
         console.error('Undo curriculum completion failed:', err);
         if (summary) summary.textContent = err.message || 'Could not undo curriculum completion.';
