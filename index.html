@@ -11,7 +11,7 @@
     // Prototype router — intercept before app boots
     if (new URLSearchParams(location.search).get('prototype') === 'curriculum-roadmap') {
       document.addEventListener('DOMContentLoaded', function () {
-        document.title = 'Curriculum Roadmap \u2013 Prototype';
+        document.title = 'Curriculum Roadmap – Prototype';
         // innerHTML does not execute scripts; build DOM imperatively instead
         var link = document.createElement('link');
         link.rel = 'stylesheet';
@@ -84,7 +84,7 @@
                 <div id="curriculumPracticeSummary" class="curriculum-practice-panel__summary">Ready when you are.</div>
              </div>
              <button id="startTodayPracticeBtn" type="button" class="curriculum-practice-panel__button">Start Today's Practice</button>
-             <button id="curriculumMapBtn" type="button" class="tiny curriculum-practice-panel__dev-button" style="display:none;" title="View curriculum roadmap (dev)">Curriculum Map</button>
+             <button id="curriculumMapBtn" type="button" class="tiny curriculum-practice-panel__dev-button" title="View curriculum roadmap (dev)">Curriculum Map</button>
              <button id="markCurriculumCompleteBtn" type="button" class="tiny curriculum-practice-panel__dev-button" style="display:none;">Mark Node Complete</button>
              <button id="undoCurriculumCompletionBtn" type="button" class="tiny curriculum-practice-panel__dev-button curriculum-practice-panel__dev-button--danger" style="display:none;">Undo Curriculum Completion</button>
              <button id="resetCurriculumTestProgressBtn" type="button" class="tiny curriculum-practice-panel__dev-button curriculum-practice-panel__dev-button--danger" style="display:none;">Reset Curriculum Test Progress</button>
@@ -576,3 +576,4 @@
 </script>
 
 </body>
+</html>
