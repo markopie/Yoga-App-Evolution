@@ -3,6 +3,11 @@
 -- The Browse Screen queries this view instead of the raw asanas table,
 -- so a search for "Supta" returns both base poses AND stage-level variations.
 
+-- Compatibility for fresh migration replay from the original minimal schema.
+ALTER TABLE asanas ADD COLUMN IF NOT EXISTS image_url text;
+ALTER TABLE asanas ADD COLUMN IF NOT EXISTS page_primary integer;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS page_primary integer;
+
 CREATE OR REPLACE VIEW searchable_asanas_view AS
 
   -- Arm 1: Base asanas (no stage context)

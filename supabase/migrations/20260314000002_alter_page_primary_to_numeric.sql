@@ -3,6 +3,9 @@
 -- All existing integer values (44, 100, etc.) are preserved exactly as-is.
 -- Safe to run multiple times (the USING clause handles the cast cleanly).
 
+ALTER TABLE asanas ADD COLUMN IF NOT EXISTS page_primary integer;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS page_primary integer;
+
 ALTER TABLE asanas
     ALTER COLUMN page_primary TYPE numeric(6,2)
     USING page_primary::numeric(6,2);
