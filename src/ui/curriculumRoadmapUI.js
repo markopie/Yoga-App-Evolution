@@ -67,16 +67,22 @@ function esc(s) {
 // ─── Status derivation ────────────────────────────────────────────────────────
 // Groups completions by curriculum_node_id to avoid double-counting composed nodes.
 
+const DONE_STATUSES = ['completed', 'repeated', 'plateau', 'rest', 'revision'];
+
 function buildCompletionMap(completions) {
     const map = new Map(); // node_id → { count, bestRating, lastAt }
     for (const row of completions) {
         if (!row.curriculum_node_id) continue;
         const id = row.curriculum_node_id;
+        const attemptKey = row.completed_at || `${row.sequence_id ?? 'sequence'}:${id}`;
         const existing = map.get(id);
         if (!existing) {
-            map.set(id, { count: 1, bestRating: row.rating, lastAt: row.completed_at });
+            map.set(id, { count: 1, bestRating: row.rating, lastAt: row.completed_at, attempts: new Set([attemptKey]) });
         } else {
-            existing.count++;
+            if (!existing.attempts.has(attemptKey)) {
+                existing.attempts.add(attemptKey);
+                existing.count = existing.attempts.size;
+            }
             if (row.rating != null && (existing.bestRating == null || row.rating > existing.bestRating)) {
                 existing.bestRating = row.rating;
             }
@@ -84,6 +90,15 @@ function buildCompletionMap(completions) {
         }
     }
     return map;
+}
+
+function resolveCurrentNodeId(nodes, completionMap, explicitCurrentNodeId) {
+    if (explicitCurrentNodeId && nodes.some(node => node.id === explicitCurrentNodeId)) {
+        return explicitCurrentNodeId;
+    }
+
+    const nextNode = nodes.find(node => !completionMap.has(node.id));
+    return nextNode?.id ?? null;
 }
 
 function deriveNodeStatus(node, completionMap, currentNodeId) {
@@ -143,10 +158,12 @@ async function loadRoadmapData() {
 
 function assembleRoadmapNodes(nodes, completions, currentNodeId) {
     const completionMap = buildCompletionMap(completions);
+    const effectiveCurrentNodeId = resolveCurrentNodeId(nodes, completionMap, currentNodeId);
+    const hasExplicitCurrent = !!currentNodeId && effectiveCurrentNodeId === currentNodeId;
 
     return nodes.map(node => {
         const rec = completionMap.get(node.id) || null;
-        const status = deriveNodeStatus(node, completionMap, currentNodeId);
+        const status = deriveNodeStatus(node, completionMap, effectiveCurrentNodeId);
 
         // Duration: prefer composed total, fallback to course analysis (not available here), or null
         const payload = node.curriculum_payload || {};
@@ -161,7 +178,8 @@ function assembleRoadmapNodes(nodes, completions, currentNodeId) {
             completion_count: rec ? rec.count : 0,
             best_rating:      rec ? rec.bestRating : null,
             last_completed_at: rec ? rec.lastAt : null,
-            is_current:       node.id === currentNodeId,
+            is_current:       node.id === effectiveCurrentNodeId,
+            is_explicit_current: hasExplicitCurrent && node.id === effectiveCurrentNodeId,
             duration_minutes: durationMinutes,
             // Title: derive from source for sequences, type label for rest/revision
             title: buildNodeTitle(node),
@@ -226,24 +244,34 @@ function levelDisplayName(n) {
 }
 
 function computeGroupStatus(nodes) {
-    if (nodes.some(n => n.status === 'current')) return 'current';
-    if (nodes.every(n => ['completed', 'repeated', 'plateau', 'rest', 'revision'].includes(n.status))) return 'complete';
+    if (nodes.length === 0) return 'upcoming';
+    if (nodes.every(n => DONE_STATUSES.includes(n.status))) return 'complete';
+    if (nodes.some(n => n.status === 'current' || DONE_STATUSES.includes(n.status))) return 'current';
     return 'upcoming';
 }
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
 
 function buildSummary(levels, assembledNodes, currentNode) {
-    const completedCount = assembledNodes.filter(n =>
-        ['completed', 'repeated', 'plateau', 'rest', 'revision'].includes(n.status)
-    ).length;
+    const completedCount = assembledNodes.filter(n => DONE_STATUSES.includes(n.status)).length;
 
     const currentLevel = levels.find(l => l.status === 'current') || levels[0];
+    const isComplete = assembledNodes.length > 0 && completedCount === assembledNodes.length;
+    const positionText = currentNode
+        ? `Week ${currentNode.week_number} - Day ${currentNode.day_number}`
+        : isComplete
+            ? 'Complete'
+            : completedCount > 0
+                ? `${completedCount} completed`
+                : 'Not started';
+    const positionLabel = currentNode?.is_explicit_current ? 'Current' : currentNode ? 'Next' : 'Position';
 
     return {
         current_node_id:     currentNode?.id ?? null,
         current_week_number: currentNode?.week_number ?? null,
         current_day_number:  currentNode?.day_number ?? null,
+        position_label:      positionLabel,
+        position_text:       positionText,
         total_nodes:         assembledNodes.length,
         completed_nodes:     completedCount,
         level_display:       currentLevel ? `Level ${currentLevel.level_number} — ${currentLevel.label}` : '',
@@ -408,7 +436,7 @@ function renderMap(placed, currentNodeId, selectedNodeId) {
         stations += `<circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" opacity="${op}" data-id="${n.id}" class="cr-map-station" role="button" aria-label="${esc(ariaLabel)}" tabindex="0" style="cursor:pointer"/>`;
 
         if (isCurrent) {
-            stations += `<text x="${n.x}" y="${n.y - r - 6}" text-anchor="middle" font-size="8" fill="${STREAM_COLOUR[n.stream]}" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,sans-serif">YOU ARE HERE</text>`;
+            stations += `<text x="${n.x}" y="${n.y - r - 6}" text-anchor="middle" font-size="8" fill="${STREAM_COLOUR[n.stream]}" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${n.is_explicit_current ? 'YOU ARE HERE' : 'NEXT'}</text>`;
         }
 
         const labelY = isRest ? n.y + 14 : n.y + r + 13;
@@ -471,11 +499,14 @@ function renderStationDetail(node, isIdle) {
           </div>`).join('')}
         </div>` : '';
 
-    const chipKey = isToday ? 'current' : ['completed', 'repeated', 'plateau', 'rest', 'revision'].includes(node.status) ? 'done' : 'ahead';
-    const chipLabel = { current: 'Today', completed: 'Done', repeated: 'Repeated', plateau: 'Plateau', rest: 'Rest', revision: 'Revision', upcoming: 'Ahead' }[node.status] || node.status;
+    const chipKey = isToday ? 'current' : DONE_STATUSES.includes(node.status) ? 'done' : 'ahead';
+    const currentLabel = node.is_explicit_current ? 'Today' : 'Next';
+    const chipLabel = isToday
+        ? currentLabel
+        : { completed: 'Done', repeated: 'Repeated', plateau: 'Plateau', rest: 'Rest', revision: 'Revision', upcoming: 'Ahead' }[node.status] || node.status;
 
     const eyebrow = isToday
-        ? `<div class="cr-detail-week cr-detail-week--today">Today's Practice</div>`
+        ? `<div class="cr-detail-week cr-detail-week--today">${node.is_explicit_current ? "Today's Practice" : 'Next Practice'}</div>`
         : `<div class="cr-detail-week">Week ${node.week_number} · Day ${node.day_number}</div>`;
 
     return `<div class="cr-detail${isToday ? ' cr-detail--today' : ''}" id="cr-detail-inner">
@@ -499,14 +530,11 @@ function renderSummaryStrip(summary) {
     const pct = summary.total_nodes > 0
         ? Math.round((summary.completed_nodes / summary.total_nodes) * 100)
         : 0;
-    const positionText = summary.current_week_number != null
-        ? `Week ${summary.current_week_number} · Day ${summary.current_day_number}`
-        : 'Not started';
     return `<div class="cr-summary">
     <div class="cr-summary-stats">
       <div class="cr-stat">
-        <span class="cr-stat-label">Position</span>
-        <span class="cr-stat-value">${esc(positionText)}</span>
+        <span class="cr-stat-label">${esc(summary.position_label || 'Position')}</span>
+        <span class="cr-stat-value">${esc(summary.position_text || 'Not started')}</span>
       </div>
       <div class="cr-stat">
         <span class="cr-stat-label">Completed</span>
@@ -544,7 +572,7 @@ function renderNodeCard(node, currentNodeId) {
     const isComposed = Array.isArray(comp) && comp.length > 1;
 
     let chipHtml = '';
-    if (isCurrent)                      chipHtml = '<span class="cr-chip cr-chip--current">Today</span>';
+    if (isCurrent)                      chipHtml = `<span class="cr-chip cr-chip--current">${node.is_explicit_current ? 'Today' : 'Next'}</span>`;
     else if (isRest)                    chipHtml = '<span class="cr-chip cr-chip--rest">Rest</span>';
     else if (isRevision)                chipHtml = '<span class="cr-chip cr-chip--revision">Revision</span>';
     else if (node.status === 'plateau') chipHtml = '<span class="cr-chip cr-chip--plateau">Plateau</span>';
@@ -575,7 +603,7 @@ function renderNodeCard(node, currentNodeId) {
 
     const cardMod = [
         isCurrent ? ' cr-node--current' : '',
-        ['completed', 'repeated', 'plateau', 'rest', 'revision'].includes(node.status) && !isCurrent ? ' cr-node--done' : '',
+        DONE_STATUSES.includes(node.status) && !isCurrent ? ' cr-node--done' : '',
         node.status === 'upcoming' ? ' cr-node--upcoming' : '',
     ].join('');
 
@@ -601,7 +629,7 @@ function renderListView(levels, currentNodeId) {
         const isComplete = level.status === 'complete';
         const isCurrent  = level.status === 'current';
         const allNodes   = level.weeks.flatMap(w => w.nodes);
-        const doneCount  = allNodes.filter(n => ['completed', 'repeated', 'plateau', 'rest', 'revision'].includes(n.status)).length;
+        const doneCount  = allNodes.filter(n => DONE_STATUSES.includes(n.status)).length;
         const levelStatusHtml = isComplete
             ? '<span class="cr-level-status cr-level-status--done">Complete</span>'
             : isCurrent
@@ -610,12 +638,13 @@ function renderListView(levels, currentNodeId) {
 
         const weeks = level.weeks.map(week => {
             const hasCurrent = week.nodes.some(n => n.id === currentNodeId);
-            const allDone    = week.nodes.every(n => ['completed', 'repeated', 'plateau', 'rest', 'revision'].includes(n.status));
-            const doneW      = week.nodes.filter(n => ['completed', 'repeated', 'plateau', 'rest', 'revision'].includes(n.status)).length;
+            const allDone    = week.nodes.length > 0 && week.nodes.every(n => DONE_STATUSES.includes(n.status));
+            const doneW      = week.nodes.filter(n => DONE_STATUSES.includes(n.status)).length;
             let weekStatus = '';
             if (hasCurrent) weekStatus = '<span class="cr-week-status cr-week-status--current">In progress</span>';
             else if (allDone) weekStatus = '<span class="cr-week-status cr-week-status--done">Complete</span>';
-            const open = hasCurrent ? ' open' : '';
+            else if (doneW > 0) weekStatus = '<span class="cr-week-status cr-week-status--current">In progress</span>';
+            const open = hasCurrent || (doneW > 0 && !allDone) ? ' open' : '';
             return `<details class="cr-week"${open}>
           <summary class="cr-week-summary">
             <svg class="cr-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="5,3 11,8 5,13"/></svg>
@@ -647,20 +676,24 @@ function renderListView(levels, currentNodeId) {
 function renderMapView(placed, currentNodeId) {
     const mapSvg = renderMap(placed, currentNodeId, currentNodeId);
     return `<div id="cr-map-view">
-    <div class="cr-map-topbar">
-      <div class="cr-map-legend">
-        <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#1e8e83"></span>Asana</span>
-        <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#5e9ed6"></span>Pranayama</span>
-        <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#4a7fa5"></span>Revision</span>
-        <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#bfb9af;border:1px solid #a8a39a"></span>Rest</span>
-        <span class="cr-legend-item cr-legend-interchange"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke="#1e8e83" stroke-width="2"/><circle cx="7" cy="7" r="2" fill="#1e8e83"/></svg>Combined</span>
+    <div class="cr-map-content">
+      <div class="cr-map-main">
+        <div class="cr-map-topbar">
+          <div class="cr-map-legend">
+            <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#1e8e83"></span>Asana</span>
+            <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#5e9ed6"></span>Pranayama</span>
+            <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#4a7fa5"></span>Revision</span>
+            <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#bfb9af;border:1px solid #a8a39a"></span>Rest</span>
+            <span class="cr-legend-item cr-legend-interchange"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke="#1e8e83" stroke-width="2"/><circle cx="7" cy="7" r="2" fill="#1e8e83"/></svg>Combined</span>
+          </div>
+          <span class="cr-map-hint">Scroll sideways and tap a station</span>
+        </div>
+        <div class="cr-map-scroll">${mapSvg}</div>
       </div>
-      <span class="cr-map-hint">Tap a station to explore</span>
-    </div>
-    <div class="cr-map-scroll">${mapSvg}</div>
-    <div class="cr-detail-section">
-      <div class="cr-detail-section-label">Station details</div>
-      <div class="cr-detail-wrap" id="cr-detail-wrap">${renderStationDetail(null, true)}</div>
+      <div class="cr-detail-section">
+        <div class="cr-detail-section-label">Station details</div>
+        <div class="cr-detail-wrap" id="cr-detail-wrap">${renderStationDetail(null, true)}</div>
+      </div>
     </div>
   </div>`;
 }
@@ -757,6 +790,7 @@ async function openCurriculumRoadmap() {
 
     // Show modal immediately with loading state
     backdrop.style.display = 'flex';
+    document.body.classList.add('modal-open');
     body.innerHTML = '<div class="cr-loading">Loading curriculum map…</div>';
 
     try {
@@ -767,20 +801,22 @@ async function openCurriculumRoadmap() {
         const currentNodeId   = currentPractice?.curriculum_node_id ?? null;
 
         const assembledNodes = assembleRoadmapNodes(nodes, completions, currentNodeId);
+        const currentNode    = assembledNodes.find(n => n.is_current) || null;
+        const effectiveCurrentNodeId = currentNode?.id ?? null;
         const levels         = groupIntoLevels(assembledNodes);
-        const summary        = buildSummary(levels, assembledNodes, assembledNodes.find(n => n.is_current) || null);
+        const summary        = buildSummary(levels, assembledNodes, currentNode);
 
         body.innerHTML = renderRoadmap(assembledNodes, levels, summary);
 
         wireViewToggle();
-        wireMapClicks(assembledNodes, currentNodeId);
+        wireMapClicks(assembledNodes, effectiveCurrentNodeId);
 
         // Scroll map to current node if it exists
-        if (currentNodeId) {
+        if (effectiveCurrentNodeId) {
             const mapScroll = body.querySelector('.cr-map-scroll');
             if (mapScroll) {
                 const placed = buildLayout(assembledNodes.map(n => ({ ...n, level_label: levelDisplayName(n.level_number) })));
-                const currentPlaced = placed.find(n => n.id === currentNodeId);
+                const currentPlaced = placed.find(n => n.id === effectiveCurrentNodeId);
                 if (currentPlaced) {
                     // Scroll horizontally so current node is visible
                     const scrollTarget = Math.max(0, currentPlaced.x - 120);
@@ -797,6 +833,7 @@ async function openCurriculumRoadmap() {
 function closeCurriculumRoadmap() {
     const backdrop = document.getElementById('curriculumMapBackdrop');
     if (backdrop) backdrop.style.display = 'none';
+    document.body.classList.remove('modal-open');
 }
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
