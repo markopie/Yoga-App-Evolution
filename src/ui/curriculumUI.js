@@ -335,7 +335,8 @@ async function markCurrentCurriculumNodeCompleteForTesting() {
     }
 
     try {
-        if (practice.is_rest_day || practice.resolved_node_type === 'rest') {
+        console.log('[dev] markComplete practice keys:', { is_rest_day: practice.is_rest_day, resolved_node_type: practice.resolved_node_type, node_type: practice.node_type });
+        if (practice.is_rest_day || practice.resolved_node_type === 'rest' || practice.node_type === 'rest') {
             console.log('[dev] Rest node skipped rating overlay in test helper — advancing directly.');
             window.currentCurriculumPractice = null;
             await startTodayPractice();
