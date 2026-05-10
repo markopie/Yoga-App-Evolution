@@ -19,6 +19,22 @@ BEGIN
   END IF;
 END $$;
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'stages'
+      AND column_name = 'asana_id'
+      AND data_type = 'ARRAY'
+  ) THEN
+    ALTER TABLE stages
+      ALTER COLUMN asana_id TYPE text
+      USING asana_id[1];
+  END IF;
+END $$;
+
 ALTER TABLE stages ADD COLUMN IF NOT EXISTS hold text;
 ALTER TABLE stages ADD COLUMN IF NOT EXISTS hold_json jsonb;
 ALTER TABLE stages ADD COLUMN IF NOT EXISTS devanagari text;
