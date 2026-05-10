@@ -67,6 +67,9 @@
 - `updateTimerUI` (window binding)
 - `updateTotalAndLastUI` (window binding)
 
+### 📄 `services/coursePoseIndexService.js`
+- `fetchCourseIdsByPoseId` (function)
+
 ### 📄 `services/dataAdapter.js`
 - `asanaLibrary` (window binding)
 - `fetchCourses` (module export)
@@ -483,6 +486,10 @@
 - `parseHoldTimes` (module export)
 - `parseSequenceText` (module export)
 - `secsToMSS` (module export)
+
+### 📄 `utils/poseId.js`
+- `normalisePoseId` (function)
+- `poseIdFromSequenceNode` (function)
 
 ### 📄 `utils/resumeState.js`
 - `buildResumeState` (function)
