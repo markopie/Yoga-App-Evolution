@@ -4,6 +4,10 @@
 ALTER TABLE asanas DROP CONSTRAINT IF EXISTS asanas_id_key;
 ALTER TABLE asanas ADD CONSTRAINT asanas_id_key UNIQUE (id);
 
+-- Fresh migration replay starts from the original asanas table, which did not
+-- include the later `hold` timing column yet.
+ALTER TABLE asanas ADD COLUMN IF NOT EXISTS hold text;
+
 -- 2. Execute the Migration (UPSERT)
 -- Migrate all data from user_asanas into asanas, resolving conflicts with UPDATE logic.
 WITH upsert_cte AS (

@@ -28,24 +28,40 @@
   - No schema changes; data-only cleanup.
 */
 
--- Step 1: remove completion rows that reference the nodes being deleted
-DELETE FROM public.sequence_completions
-WHERE curriculum_node_id IN (
-  SELECT pc.id
-  FROM public.program_curriculum pc
-  JOIN public.courses c ON c.id = pc.sequence_id
-  JOIN public.course_sub_categories csc ON csc.id = c.sub_category_id
-  WHERE pc.curriculum_slug = 'iyengar_integrated_master_path_draft_v1'
-    AND csc.category_id NOT IN (2, 5, 13, 19, 232)
-);
+DO $$
+BEGIN
+  IF to_regclass('public.program_curriculum') IS NOT NULL
+    AND to_regclass('public.sequence_completions') IS NOT NULL
+    AND to_regclass('public.courses') IS NOT NULL
+    AND to_regclass('public.course_sub_categories') IS NOT NULL
+    AND EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'courses'
+        AND column_name = 'sub_category_id'
+    )
+  THEN
+    -- Step 1: remove completion rows that reference the nodes being deleted
+    DELETE FROM public.sequence_completions
+    WHERE curriculum_node_id IN (
+      SELECT pc.id
+      FROM public.program_curriculum pc
+      JOIN public.courses c ON c.id = pc.sequence_id
+      JOIN public.course_sub_categories csc ON csc.id = c.sub_category_id
+      WHERE pc.curriculum_slug = 'iyengar_integrated_master_path_draft_v1'
+        AND csc.category_id NOT IN (2, 5, 13, 19, 232)
+    );
 
--- Step 2: remove the curriculum nodes themselves
-DELETE FROM public.program_curriculum
-WHERE id IN (
-  SELECT pc.id
-  FROM public.program_curriculum pc
-  JOIN public.courses c ON c.id = pc.sequence_id
-  JOIN public.course_sub_categories csc ON csc.id = c.sub_category_id
-  WHERE pc.curriculum_slug = 'iyengar_integrated_master_path_draft_v1'
-    AND csc.category_id NOT IN (2, 5, 13, 19, 232)
-);
+    -- Step 2: remove the curriculum nodes themselves
+    DELETE FROM public.program_curriculum
+    WHERE id IN (
+      SELECT pc.id
+      FROM public.program_curriculum pc
+      JOIN public.courses c ON c.id = pc.sequence_id
+      JOIN public.course_sub_categories csc ON csc.id = c.sub_category_id
+      WHERE pc.curriculum_slug = 'iyengar_integrated_master_path_draft_v1'
+        AND csc.category_id NOT IN (2, 5, 13, 19, 232)
+    );
+  END IF;
+END $$;

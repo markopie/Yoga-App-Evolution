@@ -1,3 +1,67 @@
+-- 0. Bring the original `stages` table shape forward for fresh migration replay.
+-- The first table migration used parent_id; later app/migration code uses asana_id.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'stages'
+      AND column_name = 'parent_id'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'stages'
+      AND column_name = 'asana_id'
+  ) THEN
+    ALTER TABLE stages RENAME COLUMN parent_id TO asana_id;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'stages'
+      AND column_name = 'asana_id'
+      AND data_type = 'ARRAY'
+  ) THEN
+    ALTER TABLE stages
+      ALTER COLUMN asana_id TYPE text
+      USING asana_id[1];
+  END IF;
+END $$;
+
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS hold text;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS hold_json jsonb;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS devanagari text;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS translation text;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS oracle_lore text;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS symbol_prompt text;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS is_curated boolean default false;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS image_url text;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS audio_url text;
+
+ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS asana_id text;
+UPDATE user_stages
+SET asana_id = coalesce(asana_id, parent_id[1])
+WHERE asana_id IS NULL;
+
+ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS hold_json jsonb;
+ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS devanagari text;
+ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS translation text;
+ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS oracle_lore text;
+ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS symbol_prompt text;
+ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS is_curated boolean default false;
+ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS image_url text;
+ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS audio_url text;
+
+ALTER TABLE user_stages DROP CONSTRAINT IF EXISTS user_stages_asana_stage_key;
+ALTER TABLE user_stages ADD CONSTRAINT user_stages_asana_stage_key UNIQUE (asana_id, stage_name);
+
 -- 0. Deduplicate the base `stages` table
 -- Cleans up any existing duplicated rows mathematically; otherwise, the ALTER TABLE command below will fail!
 DELETE FROM stages
@@ -18,8 +82,9 @@ ALTER TABLE stages ADD CONSTRAINT stages_asana_stage_key UNIQUE (asana_id, stage
 -- 2. Create a Sample Row in user_stages for testing
 -- We use '001' (Tadasana) as the parent since it's practically guaranteed to exist.
 INSERT INTO user_stages (
-  asana_id, stage_name, title, shorthand, full_technique, hold
+  parent_id, asana_id, stage_name, title, shorthand, full_technique, hold
 ) VALUES (
+  ARRAY['001']::text[],
   '001', 
   'TestStage', 
   'Test Migration Stage', 

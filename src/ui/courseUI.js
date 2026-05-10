@@ -2,6 +2,8 @@
 // Course/Sequence dropdown rendering + collage/plate renderers
 
 import { mobileVariantUrl, smartUrlsForPoseId } from "../utils/helpers.js";
+import { fetchCourseIdsByPoseId } from "../services/coursePoseIndexService.js";
+import { normalisePoseId, poseIdFromSequenceNode } from "../utils/poseId.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IMAGE COLLAGE
@@ -233,29 +235,65 @@ export function updateActiveCategoryTitle() {
     }
 }
 
-function normalisePoseId(value) {
-    const token = String(value ?? '').trim();
-    if (!token) return '';
-    const match = token.match(/^(\d+)([a-z]?)$/i);
-    if (!match) return token.toLowerCase();
-    return match[1].padStart(3, '0') + (match[2] || '').toLowerCase();
-}
-
-function poseIdFromNode(node) {
-    const rawId = Array.isArray(node?.[0]) ? node[0][0] : node?.[0];
-    if (!rawId || String(rawId).startsWith('LOOP') || String(rawId).startsWith('MACRO:')) return '';
-    return normalisePoseId(rawId);
-}
-
-function courseContainsPose(course, poseQuery) {
-    const target = normalisePoseId(poseQuery);
+function courseContainsPose(course, target) {
     if (!target) return true;
 
-    const poses = typeof window.getExpandedPoses === 'function'
-        ? window.getExpandedPoses(course)
-        : (course.poses || []);
+    const poses = course.poses || [];
 
-    return poses.some((node) => poseIdFromNode(node) === target);
+    return poses.some((node) => poseIdFromSequenceNode(node) === target);
+}
+
+const poseFilterIndexState = {
+    target: '',
+    ids: null,
+    loading: false,
+    error: null,
+    requestId: 0,
+};
+
+function courseId(course) {
+    const id = course?.supabaseId ?? course?.id;
+    return id == null ? '' : String(id);
+}
+
+async function requestPoseFilterMatches(poseFilter) {
+    const target = normalisePoseId(poseFilter);
+
+    if (!target) {
+        poseFilterIndexState.requestId += 1;
+        poseFilterIndexState.target = '';
+        poseFilterIndexState.ids = null;
+        poseFilterIndexState.loading = false;
+        poseFilterIndexState.error = null;
+        return;
+    }
+
+    if (poseFilterIndexState.target === target && (poseFilterIndexState.loading || poseFilterIndexState.ids || poseFilterIndexState.error)) {
+        return;
+    }
+
+    const requestId = poseFilterIndexState.requestId + 1;
+    poseFilterIndexState.target = target;
+    poseFilterIndexState.ids = null;
+    poseFilterIndexState.loading = true;
+    poseFilterIndexState.error = null;
+    poseFilterIndexState.requestId = requestId;
+
+    try {
+        const ids = await fetchCourseIdsByPoseId(target);
+        if (poseFilterIndexState.requestId !== requestId) return;
+        poseFilterIndexState.ids = ids;
+        poseFilterIndexState.loading = false;
+        poseFilterIndexState.error = null;
+        renderCourseUI();
+    } catch (error) {
+        if (poseFilterIndexState.requestId !== requestId) return;
+        console.warn('[courseUI] Falling back to local pose filtering:', error);
+        poseFilterIndexState.ids = null;
+        poseFilterIndexState.loading = false;
+        poseFilterIndexState.error = error;
+        renderCourseUI();
+    }
 }
 
 function setupPoseSequenceFilter() {
@@ -295,8 +333,12 @@ export function renderCourseUI() {
     const courses    = window.courses || [];
     const filterVal  = filterEl ? filterEl.value : "ALL";
     const poseFilter = poseFilterEl ? poseFilterEl.value.trim() : "";
+    const poseTarget = normalisePoseId(poseFilter);
     const currentVal = sel.value;
     let matchedCount = 0;
+
+    if (poseTarget) requestPoseFilterMatches(poseTarget);
+    else requestPoseFilterMatches('');
 
     sel.innerHTML = `<option value="">Select a course</option>`;
 
@@ -304,7 +346,15 @@ export function renderCourseUI() {
     courses.forEach((course, idx) => {
         const cat = course.category ? course.category.trim() : "Uncategorized";
         if (filterVal !== "ALL" && cat !== filterVal) return;
-        if (poseFilter && !courseContainsPose(course, poseFilter)) return;
+        if (poseTarget) {
+            const useIndex = poseFilterIndexState.target === poseTarget && poseFilterIndexState.ids;
+            const fallbackToLocalScan = poseFilterIndexState.target === poseTarget && poseFilterIndexState.error;
+            const indexLoading = poseFilterIndexState.target === poseTarget && poseFilterIndexState.loading;
+
+            if (useIndex && !poseFilterIndexState.ids.has(courseId(course))) return;
+            if (!useIndex && fallbackToLocalScan && !courseContainsPose(course, poseTarget)) return;
+            if (!useIndex && !fallbackToLocalScan && !indexLoading) return;
+        }
         matchedCount += 1;
         if (!grouped[cat]) grouped[cat] = [];
         grouped[cat].push({ course, idx });
@@ -339,9 +389,12 @@ export function renderCourseUI() {
     }
 
     if (poseStatusEl) {
-        const target = normalisePoseId(poseFilter);
-        poseStatusEl.textContent = target
-            ? `${matchedCount} sequence${matchedCount === 1 ? '' : 's'} contain pose ${target}`
+        const indexLoading = poseTarget && poseFilterIndexState.target === poseTarget && poseFilterIndexState.loading;
+        const indexError = poseTarget && poseFilterIndexState.target === poseTarget && poseFilterIndexState.error;
+        poseStatusEl.textContent = indexLoading
+            ? `Searching direct pose ${poseTarget}...`
+            : poseTarget
+            ? `${matchedCount} sequence${matchedCount === 1 ? '' : 's'} contain direct pose ${poseTarget}${indexError ? ' (local fallback)' : ''}`
             : '';
     }
 }

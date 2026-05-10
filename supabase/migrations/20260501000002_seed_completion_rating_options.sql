@@ -4,6 +4,19 @@
 -- Ensures the lookup table has data and is readable by the app.
 -- Uses INSERT ... ON CONFLICT to be idempotent (safe to re-run).
 
+create table if not exists public.completion_rating_options (
+    rating integer primary key,
+    feedback_key text not null,
+    label text not null,
+    subtitle text,
+    emoji text,
+    progression_score integer not null default 0,
+    sort_order integer not null default 0,
+    is_active boolean not null default true,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
 -- ============================================================
 -- STEP 1: Enable RLS (safe to re-run)
 -- ============================================================

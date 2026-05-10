@@ -3,6 +3,27 @@
 -- of the 170 rows already in existence. This fast-forwards the internal counter to the actual max ID!
 SELECT setval(pg_get_serial_sequence('courses', 'id'), coalesce(max(id), 1)) FROM courses;
 
+-- The original courses table used `course_title`; later migrations and app code use `title`.
+-- Keep fresh migration replay compatible with the historical create-table shape.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'courses'
+      AND column_name = 'course_title'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'courses'
+      AND column_name = 'title'
+  ) THEN
+    ALTER TABLE courses RENAME COLUMN course_title TO title;
+  END IF;
+END $$;
+
 -- 2. Create a Composite Unique Constraint (Idempotent)
 ALTER TABLE courses DROP CONSTRAINT IF EXISTS courses_title_category_key;
 ALTER TABLE courses ADD CONSTRAINT courses_title_category_key UNIQUE (title, category);
