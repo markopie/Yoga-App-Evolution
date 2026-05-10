@@ -267,7 +267,6 @@
 - `updateBuilderModeUI` (function)
 
 ### 📄 `ui/courseUI.js`
-- `getExpandedPoses` (window binding)
 - `renderCategoryFilter` (function)
 - `renderCategoryFilter` (window binding)
 - `renderCollage` (function)
