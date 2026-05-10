@@ -66,8 +66,9 @@ ALTER TABLE stages ADD CONSTRAINT stages_asana_stage_key UNIQUE (asana_id, stage
 -- 2. Create a Sample Row in user_stages for testing
 -- We use '001' (Tadasana) as the parent since it's practically guaranteed to exist.
 INSERT INTO user_stages (
-  asana_id, stage_name, title, shorthand, full_technique, hold
+  parent_id, asana_id, stage_name, title, shorthand, full_technique, hold
 ) VALUES (
+  ARRAY['001']::text[],
   '001', 
   'TestStage', 
   'Test Migration Stage', 
