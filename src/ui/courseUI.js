@@ -235,8 +235,8 @@ export function updateActiveCategoryTitle() {
     }
 }
 
-function courseContainsPose(course, poseQuery) {
-    const target = normalisePoseId(poseQuery);
+function courseContainsPose(course, target) {
+    if (!target) return true;
     if (!target) return true;
 
     const poses = typeof window.getExpandedPoses === 'function'
