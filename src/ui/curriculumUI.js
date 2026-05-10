@@ -5,7 +5,8 @@ import { playbackEngine } from '../playback/timer.js';
 const CURRICULUM_SLUG = 'iyengar_integrated_master_path_draft_v1';
 
 function isLocalDev() {
-    return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+    const h = window.location.hostname;
+    return ['localhost', '127.0.0.1', '::1'].includes(h) || h.endsWith('.webcontainer-api.io');
 }
 
 function escapeHtml(value) {
