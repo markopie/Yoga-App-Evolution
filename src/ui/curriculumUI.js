@@ -335,6 +335,13 @@ async function markCurrentCurriculumNodeCompleteForTesting() {
     }
 
     try {
+        if (practice.is_rest_day || practice.resolved_node_type === 'rest') {
+            console.log('[dev] Rest node skipped rating overlay in test helper — advancing directly.');
+            window.currentCurriculumPractice = null;
+            await startTodayPractice();
+            return;
+        }
+
         const completionItems = completionItemsForPractice(practice);
         if (typeof window.appendServerHistory !== 'function') {
             throw new Error('Completion service is not loaded.');
