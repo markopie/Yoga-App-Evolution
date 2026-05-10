@@ -1,0 +1,179 @@
+/*
+  # Adaptive Progression Pass 1 — optional repeat node parameter
+
+  ## Summary
+  Adds an optional p_repeat_node_id parameter (bigint, DEFAULT NULL) to
+  get_today_curriculum_practice. This is the sole change needed for Pass 1
+  adaptive progression: when a user rates a curriculum practice 1 or 2, the
+  client passes the current node id back and the RPC returns the same node
+  instead of advancing to the next incomplete node.
+
+  ## Changes
+  - get_today_curriculum_practice: new optional parameter p_repeat_node_id
+    bigint DEFAULT NULL.
+    - When NULL (all existing callers): behaviour is 100% identical to before.
+    - When supplied: the function queries program_curriculum directly by id and
+      returns that node without consulting get_next_curriculum_node.
+
+  ## Files not changed
+  - get_next_curriculum_node: untouched
+  - resolve_revision_curriculum_node: untouched
+  - All tables, columns, and data: untouched
+
+  ## Rollback
+  Re-run CREATE OR REPLACE with the original two-parameter signature (omitting
+  p_repeat_node_id) and remove the UNION ALL repeat branch from the next_node
+  CTE. The original body is preserved verbatim below in the fallback branch.
+
+  ## Original function body (preserved for rollback reference)
+  The normal path (p_repeat_node_id IS NULL) below is a verbatim copy of the
+  pre-existing function body. Nothing in that branch has been altered.
+*/
+
+CREATE OR REPLACE FUNCTION public.get_today_curriculum_practice(
+  p_curriculum_slug text DEFAULT 'iyengar_integrated_master_path_draft_v0',
+  p_user_id uuid DEFAULT auth.uid(),
+  p_repeat_node_id bigint DEFAULT NULL
+)
+RETURNS TABLE(
+  curriculum_node_id bigint,
+  curriculum_slug text,
+  program_name text,
+  week_number integer,
+  day_number integer,
+  order_index numeric,
+  node_type text,
+  resolved_node_type text,
+  resolved_sequence_id bigint,
+  resolved_course_title text,
+  source_name text,
+  source_key text,
+  source_course text,
+  source_reference text,
+  practice_track text,
+  curriculum_phase text,
+  intensity text,
+  primary_focus text,
+  special_instructions text,
+  requires_user_selection boolean,
+  is_rest_day boolean,
+  completion_requirement text,
+  curriculum_payload jsonb,
+  resolution_reason text
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+  with next_node as (
+    -- Pass 1 repeat: if caller supplies p_repeat_node_id, return that node
+    -- directly instead of advancing to the next incomplete node.
+    select
+      pc.id             as curriculum_node_id,
+      pc.curriculum_slug,
+      pc.program_name,
+      pc.week_number,
+      pc.day_number,
+      pc.order_index,
+      pc.node_type,
+      pc.sequence_id,
+      pc.source_name,
+      pc.source_key,
+      pc.source_course,
+      pc.source_reference,
+      pc.practice_track,
+      pc.curriculum_phase,
+      pc.intensity,
+      pc.primary_focus,
+      pc.special_instructions,
+      pc.requires_user_selection,
+      pc.is_rest_day,
+      pc.completion_requirement,
+      pc.curriculum_payload
+    from public.program_curriculum pc
+    where p_repeat_node_id is not null
+      and pc.id = p_repeat_node_id
+      and pc.curriculum_slug = p_curriculum_slug
+
+    union all
+
+    -- Normal path (verbatim original): first incomplete node in order.
+    select *
+    from public.get_next_curriculum_node(p_curriculum_slug)
+    where p_repeat_node_id is null
+  ),
+
+  revision_resolution as (
+    select rr.*
+    from next_node nn
+    cross join lateral public.resolve_revision_curriculum_node(
+      nn.curriculum_node_id,
+      p_user_id
+    ) rr
+    where nn.node_type in ('revision', 'choice')
+  )
+
+  select
+    nn.curriculum_node_id,
+    nn.curriculum_slug,
+    nn.program_name,
+    nn.week_number,
+    nn.day_number,
+    nn.order_index,
+    nn.node_type,
+
+    case
+      when nn.node_type in ('revision', 'choice')
+        and rr.resolved_sequence_id is not null
+      then 'sequence'
+
+      when nn.node_type = 'rest'
+      then 'rest'
+
+      else nn.node_type
+    end as resolved_node_type,
+
+    case
+      when nn.node_type in ('revision', 'choice')
+      then rr.resolved_sequence_id
+      else nn.sequence_id
+    end as resolved_sequence_id,
+
+    case
+      when nn.node_type in ('revision', 'choice')
+      then rr.resolved_course_title
+      else c.title
+    end as resolved_course_title,
+
+    nn.source_name,
+    nn.source_key,
+    nn.source_course,
+    nn.source_reference,
+
+    nn.practice_track,
+    nn.curriculum_phase,
+    nn.intensity,
+    nn.primary_focus,
+
+    nn.special_instructions,
+    nn.requires_user_selection,
+    nn.is_rest_day,
+    nn.completion_requirement,
+    nn.curriculum_payload,
+
+    case
+      when nn.node_type in ('revision', 'choice')
+      then rr.reason
+      when nn.node_type = 'rest'
+      then 'Rest node: no sequence required.'
+      when p_repeat_node_id is not null
+      then 'Repeat: low rating on previous attempt.'
+      else 'Fixed sequence node.'
+    end as resolution_reason
+
+  from next_node nn
+  left join revision_resolution rr
+    on true
+  left join public.courses c
+    on c.id = nn.sequence_id;
+$function$;

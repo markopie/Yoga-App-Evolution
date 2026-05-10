@@ -5,7 +5,8 @@ import { playbackEngine } from '../playback/timer.js';
 const CURRICULUM_SLUG = 'iyengar_integrated_master_path_draft_v1';
 
 function isLocalDev() {
-    return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+    const h = window.location.hostname;
+    return ['localhost', '127.0.0.1', '::1'].includes(h) || h.endsWith('.webcontainer-api.io');
 }
 
 function escapeHtml(value) {
@@ -270,7 +271,7 @@ function loadResolvedSequence(practice) {
     return true;
 }
 
-async function startTodayPractice() {
+async function startTodayPractice(repeatNodeId = null) {
     const btn = $('startTodayPracticeBtn');
     const summary = $('curriculumPracticeSummary');
     const originalText = btn?.textContent || 'Start Today\'s Practice';
@@ -282,10 +283,13 @@ async function startTodayPractice() {
     if (summary) summary.textContent = 'Finding today\'s practice...';
 
     try {
-        const { data, error } = await supabase.rpc('get_today_curriculum_practice', {
+        const rpcParams = {
             p_curriculum_slug: CURRICULUM_SLUG,
             p_user_id: window.currentUserId || null,
-        });
+        };
+        if (repeatNodeId != null) rpcParams.p_repeat_node_id = repeatNodeId;
+
+        const { data, error } = await supabase.rpc('get_today_curriculum_practice', rpcParams);
 
         if (error) throw error;
 
@@ -331,6 +335,29 @@ async function markCurrentCurriculumNodeCompleteForTesting() {
     }
 
     try {
+        if (practice.is_rest_day || practice.resolved_node_type === 'rest' || practice.node_type === 'rest') {
+            console.log('[dev] Rest node — writing acknowledgement row and advancing (no rating).');
+            if (typeof window.appendServerHistory !== 'function') {
+                throw new Error('Completion service is not loaded.');
+            }
+            await window.appendServerHistory(
+                `Rest day — Week ${practice.week_number} Day ${practice.day_number}`,
+                new Date(),
+                practice.source_course || practice.source_key || '',
+                null,
+                {
+                    status: 'Completed',
+                    sequence_id: null,
+                    curriculum_node_id: practice.curriculum_node_id,
+                    completion_items: [],
+                    notes: 'Rest day acknowledged via dev test helper.',
+                },
+            );
+            window.currentCurriculumPractice = null;
+            await startTodayPractice();
+            return;
+        }
+
         const completionItems = completionItemsForPractice(practice);
         if (typeof window.appendServerHistory !== 'function') {
             throw new Error('Completion service is not loaded.');
@@ -394,6 +421,16 @@ async function undoCurrentCurriculumNodeCompletionForTesting() {
     }
 
     try {
+        // Find the previous node so we can repeat it after deleting this one's completion.
+        const { data: prevData } = await supabase
+            .from('program_curriculum')
+            .select('id')
+            .eq('curriculum_slug', CURRICULUM_SLUG)
+            .lt('order_index', practice.order_index)
+            .order('order_index', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
         let query = supabase
             .from('sequence_completions')
             .delete()
@@ -409,7 +446,7 @@ async function undoCurrentCurriculumNodeCompletionForTesting() {
         if (summary) summary.textContent = 'Curriculum completion undone. Reloading practice...';
         if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
         window.currentCurriculumPractice = null;
-        await startTodayPractice();
+        await startTodayPractice(prevData?.id ?? null);
     } catch (err) {
         console.error('Undo curriculum completion failed:', err);
         if (summary) summary.textContent = err.message || 'Could not undo curriculum completion.';
@@ -476,7 +513,7 @@ async function resetCurriculumTestProgress() {
 
 function setupCurriculumUI() {
     const btn = $('startTodayPracticeBtn');
-    if (btn) btn.addEventListener('click', startTodayPractice);
+    if (btn) btn.addEventListener('click', () => startTodayPractice());
 
     const devCompleteBtn = $('markCurriculumCompleteBtn');
     if (devCompleteBtn && isLocalDev()) {

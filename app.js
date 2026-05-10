@@ -392,8 +392,15 @@ const setupRatingButtons = async () => {
                     delete overlay.dataset.resetAfterRating;
 
                     if (afterRatingAction === "startTodayPractice" && typeof window.startTodayPractice === "function") {
+                        const repeatNodeId = rating <= 2
+                            ? (window.currentCurriculumPractice?.curriculum_node_id ?? null)
+                            : null;
                         window.currentCurriculumPractice = null;
-                        await window.startTodayPractice();
+                        try {
+                            await window.startTodayPractice(repeatNodeId);
+                        } catch (_) {
+                            await window.startTodayPractice();
+                        }
                     } else if (shouldResetAfterRating) {
                         const resetBtn = document.getElementById("resetBtn");
                         if (resetBtn) resetBtn.click();
