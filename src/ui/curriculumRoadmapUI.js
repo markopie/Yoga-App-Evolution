@@ -805,9 +805,7 @@ export function setupCurriculumRoadmapUI() {
     const btn = document.getElementById('curriculumMapBtn');
     if (!btn) return;
 
-    if (isDevOrAdmin()) {
-        btn.style.display = '';
-    }
+    btn.style.display = '';
 
     btn.addEventListener('click', () => openCurriculumRoadmap());
 
