@@ -153,9 +153,15 @@ export async function fetchServerHistory() {
           return serverHistoryCache;
        }
  
-       const { data, error } = await supabase
+       let query = supabase
           .from('sequence_completions')
           .select('id, title, category, completed_at');
+
+       if (window.currentUserId) {
+          query = query.eq('user_id', window.currentUserId);
+       }
+
+       const { data, error } = await query;
  
        if (error) throw error;
  

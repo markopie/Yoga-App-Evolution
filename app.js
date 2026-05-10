@@ -249,7 +249,7 @@ async function init() {
 
         if (statusEl) statusEl.textContent = "Loading courses...";
         await window.loadCourses();
-        await fetchServerHistory();
+        void fetchServerHistory().catch(err => console.warn("History preload failed:", err));
 
         if (statusEl) statusEl.textContent = "Initializing player...";
         await Promise.all([
