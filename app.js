@@ -403,22 +403,18 @@ const setupRatingButtons = async () => {
                                 await window.startTodayPractice();
                             }
                         } else if (rating === 3 && isStayHereNode(practice)) {
-                            // Pass 2: plateau node at rating 3 — ask Stay or Continue
-                            const nodeId = practice?.curriculum_node_id ?? null;
+                            // Pass 2: plateau node at rating 3 — repeat (means "right level, stay here")
+                            const repeatNodeId = practice?.curriculum_node_id ?? null;
                             window.currentCurriculumPractice = null;
                             try {
-                                await showPlateauPrompt(nodeId);
+                                await window.startTodayPractice(repeatNodeId);
                             } catch (_) {
                                 await window.startTodayPractice();
                             }
                         } else {
                             // Advance normally
                             window.currentCurriculumPractice = null;
-                            try {
-                                await window.startTodayPractice();
-                            } catch (_) {
-                                await window.startTodayPractice();
-                            }
+                            await window.startTodayPractice();
                         }
                     } else if (shouldResetAfterRating) {
                         const resetBtn = document.getElementById("resetBtn");
@@ -451,41 +447,6 @@ function isStayHereNode(practice) {
     } catch (_) {
         return false;
     }
-}
-
-function showPlateauPrompt(repeatNodeId) {
-    return new Promise((resolve) => {
-        const overlay = document.getElementById("plateauPrompt");
-        const stayBtn = document.getElementById("plateauStayBtn");
-        const continueBtn = document.getElementById("plateauContinueBtn");
-
-        if (!overlay || !stayBtn || !continueBtn) {
-            // Fallback: advance normally if the element is missing
-            resolve(window.startTodayPractice());
-            return;
-        }
-
-        overlay.style.setProperty('display', 'flex', 'important');
-
-        function cleanup() {
-            overlay.style.display = "none";
-            stayBtn.removeEventListener("click", onStay);
-            continueBtn.removeEventListener("click", onContinue);
-        }
-
-        function onStay() {
-            cleanup();
-            resolve(window.startTodayPractice(repeatNodeId));
-        }
-
-        function onContinue() {
-            cleanup();
-            resolve(window.startTodayPractice());
-        }
-
-        stayBtn.addEventListener("click", onStay, { once: true });
-        continueBtn.addEventListener("click", onContinue, { once: true });
-    });
 }
 
 function showCompletionRatingOverlay(sessionId, options = {}) {
