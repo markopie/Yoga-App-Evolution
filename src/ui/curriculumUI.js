@@ -479,7 +479,7 @@ async function resetCurriculumTestProgress() {
 
 function setupCurriculumUI() {
     const btn = $('startTodayPracticeBtn');
-    if (btn) btn.addEventListener('click', startTodayPractice);
+    if (btn) btn.addEventListener('click', () => startTodayPractice());
 
     const devCompleteBtn = $('markCurriculumCompleteBtn');
     if (devCompleteBtn && isLocalDev()) {
