@@ -335,9 +335,24 @@ async function markCurrentCurriculumNodeCompleteForTesting() {
     }
 
     try {
-        console.log('[dev] markComplete practice keys:', { is_rest_day: practice.is_rest_day, resolved_node_type: practice.resolved_node_type, node_type: practice.node_type });
         if (practice.is_rest_day || practice.resolved_node_type === 'rest' || practice.node_type === 'rest') {
-            console.log('[dev] Rest node skipped rating overlay in test helper — advancing directly.');
+            console.log('[dev] Rest node — writing acknowledgement row and advancing (no rating).');
+            if (typeof window.appendServerHistory !== 'function') {
+                throw new Error('Completion service is not loaded.');
+            }
+            await window.appendServerHistory(
+                `Rest day — Week ${practice.week_number} Day ${practice.day_number}`,
+                new Date(),
+                practice.source_course || practice.source_key || '',
+                null,
+                {
+                    status: 'Completed',
+                    sequence_id: null,
+                    curriculum_node_id: practice.curriculum_node_id,
+                    completion_items: [],
+                    notes: 'Rest day acknowledged via dev test helper.',
+                },
+            );
             window.currentCurriculumPractice = null;
             await startTodayPractice();
             return;
