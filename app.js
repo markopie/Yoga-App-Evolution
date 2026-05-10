@@ -392,14 +392,33 @@ const setupRatingButtons = async () => {
                     delete overlay.dataset.resetAfterRating;
 
                     if (afterRatingAction === "startTodayPractice" && typeof window.startTodayPractice === "function") {
-                        const repeatNodeId = rating <= 2
-                            ? (window.currentCurriculumPractice?.curriculum_node_id ?? null)
-                            : null;
-                        window.currentCurriculumPractice = null;
-                        try {
-                            await window.startTodayPractice(repeatNodeId);
-                        } catch (_) {
-                            await window.startTodayPractice();
+                        const practice = window.currentCurriculumPractice;
+                        if (rating <= 2) {
+                            // Pass 1: repeat same node
+                            const repeatNodeId = practice?.curriculum_node_id ?? null;
+                            window.currentCurriculumPractice = null;
+                            try {
+                                await window.startTodayPractice(repeatNodeId);
+                            } catch (_) {
+                                await window.startTodayPractice();
+                            }
+                        } else if (rating === 3 && isStayHereNode(practice)) {
+                            // Pass 2: plateau node at rating 3 — ask Stay or Continue
+                            const nodeId = practice?.curriculum_node_id ?? null;
+                            window.currentCurriculumPractice = null;
+                            try {
+                                await showPlateauPrompt(nodeId);
+                            } catch (_) {
+                                await window.startTodayPractice();
+                            }
+                        } else {
+                            // Advance normally
+                            window.currentCurriculumPractice = null;
+                            try {
+                                await window.startTodayPractice();
+                            } catch (_) {
+                                await window.startTodayPractice();
+                            }
                         }
                     } else if (shouldResetAfterRating) {
                         const resetBtn = document.getElementById("resetBtn");
@@ -419,6 +438,56 @@ const setupRatingButtons = async () => {
     }
 };
 
+function isStayHereNode(practice) {
+    try {
+        const p = practice?.curriculum_payload;
+        if (!p || typeof p !== 'object') return false;
+        return !!(
+            p.plateau_candidate === true ||
+            p.can_repeat_indefinitely === true ||
+            p.progression_gate ||
+            p.milestone_type
+        );
+    } catch (_) {
+        return false;
+    }
+}
+
+function showPlateauPrompt(repeatNodeId) {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById("plateauPrompt");
+        const stayBtn = document.getElementById("plateauStayBtn");
+        const continueBtn = document.getElementById("plateauContinueBtn");
+
+        if (!overlay || !stayBtn || !continueBtn) {
+            // Fallback: advance normally if the element is missing
+            resolve(window.startTodayPractice());
+            return;
+        }
+
+        overlay.style.setProperty('display', 'flex', 'important');
+
+        function cleanup() {
+            overlay.style.display = "none";
+            stayBtn.removeEventListener("click", onStay);
+            continueBtn.removeEventListener("click", onContinue);
+        }
+
+        function onStay() {
+            cleanup();
+            resolve(window.startTodayPractice(repeatNodeId));
+        }
+
+        function onContinue() {
+            cleanup();
+            resolve(window.startTodayPractice());
+        }
+
+        stayBtn.addEventListener("click", onStay, { once: true });
+        continueBtn.addEventListener("click", onContinue, { once: true });
+    });
+}
+
 function showCompletionRatingOverlay(sessionId, options = {}) {
     const overlay = document.getElementById("ratingOverlay");
     if (!overlay) return false;
@@ -428,7 +497,7 @@ function showCompletionRatingOverlay(sessionId, options = {}) {
     if (title) title.textContent = options.title || "How did your body feel?";
     if (note) {
         note.textContent = options.note ||
-            "Rating is recorded with this completion. Adaptive progression is not active yet.";
+            "Rating is recorded with this completion.";
     }
 
     overlay.dataset.sessionId = sessionId || "fallback-id";

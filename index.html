@@ -552,6 +552,15 @@
     </div>
   </div>
 
+  <div id="plateauPrompt" class="plateau-prompt" role="dialog" aria-modal="true">
+    <h2 class="plateau-prompt__title">Stay here a while?</h2>
+    <p class="plateau-prompt__body">Some practices are worth repeating.</p>
+    <div class="plateau-prompt__buttons">
+      <button id="plateauStayBtn" class="plateau-prompt__btn plateau-prompt__btn--stay">Stay</button>
+      <button id="plateauContinueBtn" class="plateau-prompt__btn plateau-prompt__btn--continue">Continue</button>
+    </div>
+  </div>
+
 <script>
   // Skip main app scripts when running a prototype
   if (!new URLSearchParams(location.search).get('prototype')) {

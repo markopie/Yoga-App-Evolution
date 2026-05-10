@@ -384,7 +384,6 @@ async function markCurrentCurriculumNodeCompleteForTesting() {
         if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
         const shown = typeof window.showCompletionRatingOverlay === 'function' && window.showCompletionRatingOverlay(sessionId, {
             title: 'Rate this curriculum practice',
-            note: 'For now, rating is recorded with the completion history. The curriculum will still advance after rating; adaptive consolidation/step-back logic is future work.',
             afterRatingAction: 'startTodayPractice',
             resetAfterRating: false,
         });
