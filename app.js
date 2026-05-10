@@ -25,7 +25,8 @@ import "./src/ui/asanaEditor.js";
 import "./src/ui/durationDial.js";
 import "./src/ui/courseUI.js";
 import "./src/ui/curriculumUI.js";
-import "./src/ui/wiring.js"; 
+import { setupCurriculumRoadmapUI } from "./src/ui/curriculumRoadmapUI.js";
+import "./src/ui/wiring.js";
 
 window.db = supabase;
 window.currentUserId = null;
@@ -260,6 +261,7 @@ async function init() {
         if (typeof window.setupProgressSummary === 'function') window.setupProgressSummary();
         if (typeof setupBrowseUI === "function") window.setupBrowseUI();
         if (typeof window.setupCurriculumUI === "function") window.setupCurriculumUI();
+        setupCurriculumRoadmapUI();
         if (typeof updateDialUI === 'function') window.updateDialUI();
 
         if (statusEl) statusEl.textContent = "Ready";

@@ -84,6 +84,7 @@
                 <div id="curriculumPracticeSummary" class="curriculum-practice-panel__summary">Ready when you are.</div>
              </div>
              <button id="startTodayPracticeBtn" type="button" class="curriculum-practice-panel__button">Start Today's Practice</button>
+             <button id="curriculumMapBtn" type="button" class="tiny curriculum-practice-panel__dev-button" style="display:none;" title="View curriculum roadmap (dev)">Curriculum Map</button>
              <button id="markCurriculumCompleteBtn" type="button" class="tiny curriculum-practice-panel__dev-button" style="display:none;">Mark Node Complete</button>
              <button id="undoCurriculumCompletionBtn" type="button" class="tiny curriculum-practice-panel__dev-button curriculum-practice-panel__dev-button--danger" style="display:none;">Undo Curriculum Completion</button>
              <button id="resetCurriculumTestProgressBtn" type="button" class="tiny curriculum-practice-panel__dev-button curriculum-practice-panel__dev-button--danger" style="display:none;">Reset Curriculum Test Progress</button>
@@ -459,6 +460,18 @@
          <div id="histViewGlobal" style="padding:15px; display:none; max-height:60vh; overflow-y:auto; background:#f9f9f9;">
             <div id="globalHistoryList"></div>
          </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="curriculumMapBackdrop" style="display:none;">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="curriculumMapTitle">
+      <div class="modal-header">
+        <strong id="curriculumMapTitle">Curriculum Roadmap</strong>
+        <button id="curriculumMapCloseBtn" type="button" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#86868b;padding:0 4px;" title="Close">✕</button>
+      </div>
+      <div class="modal-body" style="padding:0; overflow-y:auto; max-height:80vh;">
+        <div id="curriculumMapBody"></div>
       </div>
     </div>
   </div>
