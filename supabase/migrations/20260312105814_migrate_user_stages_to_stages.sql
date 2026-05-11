@@ -1,157 +1,272 @@
--- 0. Bring the original `stages` table shape forward for fresh migration replay.
--- The first table migration used parent_id; later app/migration code uses asana_id.
+-- Legacy migration: user_asanas -> asanas
+--
+-- This migration originally copied legacy user_asanas rows into the global asanas
+-- table using old columns such as category and hold.
+--
+-- Current schema no longer uses that shape:
+-- - category has been replaced/standardised elsewhere
+-- - hold has been replaced by hold_json
+--
+-- Therefore this migration must only run on an old schema where those legacy
+-- columns still exist. On the current schema, it safely skips.
+
+-- 1. Ensure asanas.id has a conflict target when the old schema is present.
 DO $$
 BEGIN
-  IF EXISTS (
+  IF NOT EXISTS (
     SELECT 1
-    FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name = 'stages'
-      AND column_name = 'parent_id'
-  ) AND NOT EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name = 'stages'
-      AND column_name = 'asana_id'
+    FROM pg_constraint
+    WHERE conname = 'asanas_id_key'
+      AND conrelid = 'public.asanas'::regclass
   ) THEN
-    ALTER TABLE stages RENAME COLUMN parent_id TO asana_id;
+    ALTER TABLE public.asanas
+      ADD CONSTRAINT asanas_id_key UNIQUE (id);
   END IF;
+EXCEPTION
+  WHEN duplicate_table OR duplicate_object THEN
+    NULL;
 END $$;
 
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name = 'stages'
-      AND column_name = 'asana_id'
-      AND data_type = 'ARRAY'
-  ) THEN
-    ALTER TABLE stages
-      ALTER COLUMN asana_id TYPE text
-      USING asana_id[1];
-  END IF;
-END $$;
-
-ALTER TABLE stages ADD COLUMN IF NOT EXISTS hold_json jsonb;
-ALTER TABLE stages ADD COLUMN IF NOT EXISTS devanagari text;
-ALTER TABLE stages ADD COLUMN IF NOT EXISTS translation text;
-ALTER TABLE stages ADD COLUMN IF NOT EXISTS oracle_lore text;
-ALTER TABLE stages ADD COLUMN IF NOT EXISTS symbol_prompt text;
-ALTER TABLE stages ADD COLUMN IF NOT EXISTS is_curated boolean default false;
-ALTER TABLE stages ADD COLUMN IF NOT EXISTS image_url text;
-ALTER TABLE stages ADD COLUMN IF NOT EXISTS audio_url text;
-
-ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS asana_id text;
-
-ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS hold_json jsonb;
-ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS devanagari text;
-ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS translation text;
-ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS oracle_lore text;
-ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS symbol_prompt text;
-ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS is_curated boolean default false;
-ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS image_url text;
-ALTER TABLE user_stages ADD COLUMN IF NOT EXISTS audio_url text;
-
-ALTER TABLE user_stages DROP CONSTRAINT IF EXISTS user_stages_asana_stage_key;
-ALTER TABLE user_stages ADD CONSTRAINT user_stages_asana_stage_key UNIQUE (asana_id, stage_name);
-
--- 3. Execute the Migration (UPSERT)
--- Guarded block to ensure safety against the current schema where legacy columns like 'hold' may be missing.
+-- 2. Execute the legacy migration only when the old column shape exists.
 DO $$
 DECLARE
   legacy_shape_exists boolean;
   result_record record;
 BEGIN
-  -- Check for legacy hold column before running any data migration
   SELECT
-    EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'stages' AND column_name = 'hold') AND
-    EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user_stages' AND column_name = 'hold') AND
-    EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user_stages' AND column_name = 'parent_id')
+    EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'id'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'name'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'iast'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'english_name'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'technique'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'plate_numbers'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'requires_sides'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'page_2001'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'page_2015'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'intensity'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'note'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'category'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'description'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'asanas'
+        AND column_name = 'hold'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'id'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'name'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'iast'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'english_name'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'technique'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'plate_numbers'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'requires_sides'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'page_2001'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'page_2015'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'intensity'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'note'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'category'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'description'
+    )
+    AND EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_asanas'
+        AND column_name = 'hold'
+    )
   INTO legacy_shape_exists;
 
   IF legacy_shape_exists THEN
-    -- Ensure asana_id is populated for the upsert
-    UPDATE user_stages
-    SET asana_id = coalesce(asana_id, parent_id[1])
-    WHERE asana_id IS NULL;
-
-    -- 0. Deduplicate the base `stages` table
-    -- Cleans up any existing duplicated rows mathematically; otherwise, the ALTER TABLE command below will fail!
-    DELETE FROM stages
-    WHERE id IN (
-        SELECT id
-        FROM (
-            SELECT id, ROW_NUMBER() OVER(PARTITION BY asana_id, stage_name ORDER BY id ASC) as row_num
-            FROM stages
-        ) t
-        WHERE t.row_num > 1
-    );
-
-    -- 1. Create a Unique Constraint on `stages.asana_id` and `stages.stage_name`
-    -- This allows UPSERT logic to correctly resolve conflicts when moving variations over.
-    ALTER TABLE stages DROP CONSTRAINT IF EXISTS stages_asana_stage_key;
-    ALTER TABLE stages ADD CONSTRAINT stages_asana_stage_key UNIQUE (asana_id, stage_name);
-
-    -- 2. Create a Sample Row in user_stages for testing
-    INSERT INTO user_stages (
-      parent_id, asana_id, stage_name, title, shorthand, full_technique, hold
-    ) VALUES (
-      ARRAY['001']::text[],
-      '001',
-      'TestStage',
-      'Test Migration Stage',
-      'Test shorthand',
-      'This is a sample technique created for testing the user_stages migration.',
-      'Standard: 0:30'
-    )
-    ON CONFLICT (asana_id, stage_name) DO NOTHING;
-
-    -- 3. Execute the Migration (UPSERT)
-    -- Migrate all data from user_stages into stages, resolving conflicts with UPDATE logic.
     WITH upsert_cte AS (
-      INSERT INTO stages (
-          asana_id, stage_name, title, shorthand, full_technique,
-          hold, hold_json, devanagari, translation, oracle_lore,
-          symbol_prompt, is_curated, image_url, audio_url
+      INSERT INTO public.asanas (
+        id,
+        name,
+        iast,
+        english_name,
+        technique,
+        plate_numbers,
+        requires_sides,
+        page_2001,
+        page_2015,
+        intensity,
+        note,
+        category,
+        description,
+        hold
       )
       SELECT
-          asana_id, stage_name, title, shorthand, full_technique,
-          hold, hold_json, devanagari, translation, oracle_lore,
-          symbol_prompt, is_curated, image_url, audio_url
-      FROM user_stages
-      WHERE asana_id IS NOT NULL AND stage_name IS NOT NULL
-      ON CONFLICT (asana_id, stage_name)
+        id,
+        name,
+        iast,
+        english_name,
+        technique,
+        plate_numbers,
+        requires_sides,
+        page_2001,
+        page_2015,
+        intensity,
+        note,
+        category,
+        description,
+        hold
+      FROM public.user_asanas
+      ON CONFLICT (id)
       DO UPDATE SET
-          title = EXCLUDED.title,
-          shorthand = EXCLUDED.shorthand,
-          full_technique = EXCLUDED.full_technique,
-          hold = COALESCE(EXCLUDED.hold, stages.hold),
-          hold_json = COALESCE(EXCLUDED.hold_json, stages.hold_json),
-          devanagari = EXCLUDED.devanagari,
-          translation = EXCLUDED.translation,
-          oracle_lore = EXCLUDED.oracle_lore,
-          symbol_prompt = EXCLUDED.symbol_prompt,
-          is_curated = EXCLUDED.is_curated,
-          image_url = EXCLUDED.image_url,
-          audio_url = EXCLUDED.audio_url
+        name = EXCLUDED.name,
+        iast = EXCLUDED.iast,
+        english_name = EXCLUDED.english_name,
+        technique = EXCLUDED.technique,
+        plate_numbers = EXCLUDED.plate_numbers,
+        requires_sides = EXCLUDED.requires_sides,
+        page_2001 = EXCLUDED.page_2001,
+        page_2015 = EXCLUDED.page_2015,
+        intensity = EXCLUDED.intensity,
+        note = EXCLUDED.note,
+        category = EXCLUDED.category,
+        description = EXCLUDED.description,
+        hold = EXCLUDED.hold
       RETURNING (xmax = 0) AS is_insert
     )
     SELECT
-      COUNT(*) FILTER (WHERE is_insert) AS new_stages_created,
-      COUNT(*) FILTER (WHERE NOT is_insert) AS stages_updated
+      COUNT(*) FILTER (WHERE is_insert) AS new_asanas_created,
+      COUNT(*) FILTER (WHERE NOT is_insert) AS asanas_updated
     INTO result_record
     FROM upsert_cte;
 
-    RAISE NOTICE 'Legacy user_stages migration complete: % new stages created, % stages updated',
-      result_record.new_stages_created,
-      result_record.stages_updated;
+    RAISE NOTICE 'Legacy user_asanas migration complete: % new asanas created, % asanas updated',
+      result_record.new_asanas_created,
+      result_record.asanas_updated;
 
-    -- 5. Cleanup: Clears out the user_stages table to avoid duplication
-    TRUNCATE TABLE user_stages;
+    TRUNCATE TABLE public.user_asanas;
   ELSE
-    RAISE NOTICE 'Skipping legacy user_stages -> stages migration because the current schema no longer includes the legacy stages.hold shape.';
+    RAISE NOTICE 'Skipping legacy user_asanas -> asanas migration because current schema no longer includes legacy asanas.category / asanas.hold shape.';
   END IF;
 END $$;
