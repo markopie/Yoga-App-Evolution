@@ -6,7 +6,7 @@
   stage variations, and course sequences.
 
   ## 1. New Tables
-  
+
   ### `asanas` Table
   Stores the base asana (yoga pose) information:
   - `id` (text, primary key) - 3-digit padded ID (e.g., "001", "215")
@@ -55,8 +55,7 @@
 
   ## 3. Indexes
   - Primary key indexes created automatically
-  - Additional index on courses.course_id for lookups
-
+  - Optional legacy index on courses.course_id when that column exists.
   ## 4. Important Notes
   - The app expects specific data formats; transformation logic is in app.js
   - plate_numbers is stored as text and parsed by the client
@@ -105,7 +104,19 @@ CREATE TABLE IF NOT EXISTS courses (
 );
 
 -- Create index for faster course lookups
-CREATE INDEX IF NOT EXISTS idx_courses_course_id ON courses(course_id);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'courses'
+      AND column_name = 'course_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_courses_course_id
+      ON public.courses(course_id);
+  END IF;
+END $$;
 
 -- Enable Row Level Security
 ALTER TABLE asanas ENABLE ROW LEVEL SECURITY;
