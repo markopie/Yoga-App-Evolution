@@ -17,8 +17,12 @@ DROP POLICY IF EXISTS "Allow public read access to courses" ON courses;
 DROP POLICY IF EXISTS "Allow authenticated read access to courses" ON courses;
 
 -- Guests (anon) only see system-promoted sequences
+DROP POLICY IF EXISTS "Guests read system sequences" ON public.courses;
+
 CREATE POLICY "Guests read system sequences"
-  ON courses FOR SELECT TO anon
+  ON public.courses
+  FOR SELECT
+  TO anon
   USING (is_system = true);
 
 -- Authenticated users see system sequences + their own private ones
