@@ -26,22 +26,26 @@ CREATE POLICY "Guests read system sequences"
   USING (is_system = true);
 
 -- Authenticated users see system sequences + their own private ones
+DROP POLICY IF EXISTS "Users read system and own sequences" ON courses;
 CREATE POLICY "Users read system and own sequences"
   ON courses FOR SELECT TO authenticated
   USING (is_system = true OR auth.uid() = user_id);
 
 -- Step 4: Add write policies (these were missing entirely)
 -- Authenticated users can insert rows tagged with their own user_id
+DROP POLICY IF EXISTS "Users insert own sequences" ON courses;
 CREATE POLICY "Users insert own sequences"
   ON courses FOR INSERT TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
 -- Authenticated users can update their own rows
+DROP POLICY IF EXISTS "Users update own sequences" ON courses;
 CREATE POLICY "Users update own sequences"
   ON courses FOR UPDATE TO authenticated
   USING (auth.uid() = user_id);
 
 -- Authenticated users can delete their own rows
+DROP POLICY IF EXISTS "Users delete own sequences" ON courses;
 CREATE POLICY "Users delete own sequences"
   ON courses FOR DELETE TO authenticated
   USING (auth.uid() = user_id);
