@@ -4,8 +4,17 @@
 -- so a search for "Supta" returns both base poses AND stage-level variations.
 
 -- Compatibility for fresh migration replay from the original minimal schema.
+CREATE TABLE IF NOT EXISTS public.asana_categories (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE
+);
+
+ALTER TABLE asanas ADD COLUMN IF NOT EXISTS category_id bigint REFERENCES public.asana_categories(id);
 ALTER TABLE asanas ADD COLUMN IF NOT EXISTS image_url text;
 ALTER TABLE asanas ADD COLUMN IF NOT EXISTS page_primary integer;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS asana_id text;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS image_url text;
+ALTER TABLE stages ADD COLUMN IF NOT EXISTS devanagari text;
 ALTER TABLE stages ADD COLUMN IF NOT EXISTS page_primary integer;
 
 CREATE OR REPLACE VIEW searchable_asanas_view AS
