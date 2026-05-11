@@ -6,7 +6,9 @@
 ALTER TABLE asanas ADD COLUMN IF NOT EXISTS page_primary integer;
 ALTER TABLE stages ADD COLUMN IF NOT EXISTS page_primary integer;
 
+-- Drop dependent views before altering column type to avoid dependency errors
 DROP VIEW IF EXISTS searchable_asanas_view;
+DROP VIEW IF EXISTS view_asanas_admin;
 
 ALTER TABLE asanas
     ALTER COLUMN page_primary TYPE numeric(6,2)
@@ -27,6 +29,36 @@ FROM information_schema.columns
 WHERE column_name = 'page_primary'
   AND table_name IN ('asanas', 'stages');
 
+-- Recreate the Admin View using the current schema
+CREATE OR REPLACE VIEW view_asanas_admin AS
+SELECT
+    a.id,
+    a.name,
+    a.iast,
+    a.english_name,
+    a.technique,
+    a.description,
+    ac.name AS category,
+    a.category_id,
+    a.gem_plate,
+    a.plate_numbers,
+    a.hold_json,
+    a.page_primary,
+    a.requires_sides,
+    a.preparatory_pose_id,
+    a.recovery_pose_id,
+    a.audio_url,
+    a.image_url,
+    a.intensity,
+    a.is_system,
+    a.is_curated,
+    a.user_id
+FROM public.asanas a
+LEFT JOIN public.asana_categories ac ON ac.id = a.category_id;
+
+GRANT SELECT ON view_asanas_admin TO authenticated;
+
+-- Recreate the Searchable View
 CREATE OR REPLACE VIEW searchable_asanas_view AS
 
   -- Arm 1: Base asanas (no stage context)
