@@ -31,19 +31,20 @@ CREATE OR REPLACE VIEW searchable_asanas_view AS
 
   -- Arm 1: Base asanas (no stage context)
   SELECT
-    id              AS source_id,          -- asana primary key (e.g. '047')
-    id              AS asana_id,           -- always the asana row
-    english_name    AS display_name,
-    iast,
-    name,
-    category,
-    image_url,
-    page_primary,
+    a.id              AS source_id,          -- asana primary key (e.g. '047')
+    a.id              AS asana_id,           -- always the asana row
+    a.english_name    AS display_name,
+    a.iast,
+    a.name,
+    ac.name           AS category,
+    a.image_url,
+    a.page_primary,
     NULL::text      AS stage_name,         -- no stage for base poses
     NULL::text      AS stage_title,
     NULL::text      AS stage_shorthand,
     'asana'         AS source_type
-  FROM asanas
+  FROM public.asanas a
+  LEFT JOIN public.asana_categories ac ON ac.id = a.category_id
 
 UNION ALL
 
@@ -54,7 +55,7 @@ UNION ALL
     COALESCE(s.title, a.english_name)      AS display_name,
     s.devanagari    AS iast,
     COALESCE(s.title, a.name)              AS name,
-    a.category,
+    ac.name         AS category,
     COALESCE(s.image_url, a.image_url)     AS image_url,
     s.page_primary,
     s.stage_name,
@@ -62,6 +63,7 @@ UNION ALL
     s.shorthand     AS stage_shorthand,
     'stage'         AS source_type
   FROM stages s
-  LEFT JOIN asanas a ON a.id = s.asana_id;
+  LEFT JOIN public.asanas a ON a.id = s.asana_id
+  LEFT JOIN public.asana_categories ac ON ac.id = a.category_id;
 
 GRANT SELECT ON searchable_asanas_view TO anon, authenticated;

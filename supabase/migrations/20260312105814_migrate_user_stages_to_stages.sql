@@ -1,29 +1,37 @@
 -- Legacy migration: user_asanas -> asanas
+-- Legacy migration: user_stages -> stages
 --
--- This migration originally copied legacy user_asanas rows into the global asanas
--- table using old columns such as category and hold.
+-- This migration originally copied legacy user_stages rows into the global stages
+-- table using old columns such as hold (text).
 --
 -- Current schema no longer uses that shape:
--- - category has been replaced/standardised elsewhere
--- - hold has been replaced by hold_json
+-- - hold (text) has been replaced by hold_json
 --
 -- Therefore this migration must only run on an old schema where those legacy
 -- columns still exist. On the current schema, it safely skips.
 
--- 1. Ensure asanas.id has a conflict target when the old schema is present.
+-- 1. Ensure stages has a unique constraint for upsert if legacy shape exists.
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'asanas_id_key'
-      AND conrelid = 'public.asanas'::regclass
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'stages' AND column_name = 'asana_id'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'stages' AND column_name = 'stage_name'
   ) THEN
-    ALTER TABLE public.asanas
-      ADD CONSTRAINT asanas_id_key UNIQUE (id);
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_constraint
+      WHERE conname = 'stages_asana_stage_key'
+        AND conrelid = 'public.stages'::regclass
+    ) THEN
+      ALTER TABLE public.stages
+        ADD CONSTRAINT stages_asana_stage_key UNIQUE (asana_id, stage_name);
+    END IF;
   END IF;
 EXCEPTION
-  WHEN duplicate_table OR duplicate_object THEN
+  WHEN OTHERS THEN
     NULL;
 END $$;
 
