@@ -2,64 +2,51 @@
 --
 -- Authenticated app writes to courses/asanas/stages can fire these triggers.
 -- Run the trigger helpers as database-owner maintenance code so they can call
--- the restricted queue helper without exposing direct RPC access to clients.
+-- restricted queue helpers without exposing direct RPC access to clients.
+--
+-- Some legacy helper names are present in the live project but not on a clean
+-- migration replay. Harden each helper only when it exists.
 
-alter function public.queue_courses_for_asana_change()
-  security definer
-  set search_path = public;
-revoke execute on function public.queue_courses_for_asana_change() from public;
-revoke execute on function public.queue_courses_for_asana_change() from anon;
-revoke execute on function public.queue_courses_for_asana_change() from authenticated;
-grant execute on function public.queue_courses_for_asana_change() to service_role;
-comment on function public.queue_courses_for_asana_change()
-  is 'Internal trigger helper. Queues course analysis refreshes after asana changes; not intended for direct browser RPC calls.';
-
-alter function public.queue_courses_for_stage_change()
-  security definer
-  set search_path = public;
-revoke execute on function public.queue_courses_for_stage_change() from public;
-revoke execute on function public.queue_courses_for_stage_change() from anon;
-revoke execute on function public.queue_courses_for_stage_change() from authenticated;
-grant execute on function public.queue_courses_for_stage_change() to service_role;
-comment on function public.queue_courses_for_stage_change()
-  is 'Internal trigger helper. Queues course analysis refreshes after stage changes; not intended for direct browser RPC calls.';
-
-alter function public.queue_course_for_self_change()
-  security definer
-  set search_path = public;
-revoke execute on function public.queue_course_for_self_change() from public;
-revoke execute on function public.queue_course_for_self_change() from anon;
-revoke execute on function public.queue_course_for_self_change() from authenticated;
-grant execute on function public.queue_course_for_self_change() to service_role;
-comment on function public.queue_course_for_self_change()
-  is 'Internal trigger helper. Queues course analysis refreshes after course changes; not intended for direct browser RPC calls.';
-
-alter function public.trg_queue_course_analysis_from_asana()
-  security definer
-  set search_path = public;
-revoke execute on function public.trg_queue_course_analysis_from_asana() from public;
-revoke execute on function public.trg_queue_course_analysis_from_asana() from anon;
-revoke execute on function public.trg_queue_course_analysis_from_asana() from authenticated;
-grant execute on function public.trg_queue_course_analysis_from_asana() to service_role;
-comment on function public.trg_queue_course_analysis_from_asana()
-  is 'Legacy/internal trigger helper for course analysis refresh queueing; not intended for direct browser RPC calls.';
-
-alter function public.trg_queue_course_analysis_from_stage()
-  security definer
-  set search_path = public;
-revoke execute on function public.trg_queue_course_analysis_from_stage() from public;
-revoke execute on function public.trg_queue_course_analysis_from_stage() from anon;
-revoke execute on function public.trg_queue_course_analysis_from_stage() from authenticated;
-grant execute on function public.trg_queue_course_analysis_from_stage() to service_role;
-comment on function public.trg_queue_course_analysis_from_stage()
-  is 'Legacy/internal trigger helper for course analysis refresh queueing; not intended for direct browser RPC calls.';
-
-alter function public.trg_queue_course_analysis_from_course()
-  security definer
-  set search_path = public;
-revoke execute on function public.trg_queue_course_analysis_from_course() from public;
-revoke execute on function public.trg_queue_course_analysis_from_course() from anon;
-revoke execute on function public.trg_queue_course_analysis_from_course() from authenticated;
-grant execute on function public.trg_queue_course_analysis_from_course() to service_role;
-comment on function public.trg_queue_course_analysis_from_course()
-  is 'Legacy/internal trigger helper for course analysis refresh queueing; not intended for direct browser RPC calls.';
+do $$
+declare
+  target record;
+begin
+  for target in
+    select *
+    from (values
+      (
+        'public.queue_courses_for_asana_change()',
+        'Internal trigger helper. Queues course analysis refreshes after asana changes; not intended for direct browser RPC calls.'
+      ),
+      (
+        'public.queue_courses_for_stage_change()',
+        'Internal trigger helper. Queues course analysis refreshes after stage changes; not intended for direct browser RPC calls.'
+      ),
+      (
+        'public.queue_course_for_self_change()',
+        'Internal trigger helper. Queues course analysis refreshes after course changes; not intended for direct browser RPC calls.'
+      ),
+      (
+        'public.trg_queue_course_analysis_from_asana()',
+        'Legacy/internal trigger helper for course analysis refresh queueing; not intended for direct browser RPC calls.'
+      ),
+      (
+        'public.trg_queue_course_analysis_from_stage()',
+        'Legacy/internal trigger helper for course analysis refresh queueing; not intended for direct browser RPC calls.'
+      ),
+      (
+        'public.trg_queue_course_analysis_from_course()',
+        'Legacy/internal trigger helper for course analysis refresh queueing; not intended for direct browser RPC calls.'
+      )
+    ) as t(signature, comment_text)
+  loop
+    if to_regprocedure(target.signature) is not null then
+      execute format('alter function %s security definer set search_path = public', target.signature);
+      execute format('revoke execute on function %s from public', target.signature);
+      execute format('revoke execute on function %s from anon', target.signature);
+      execute format('revoke execute on function %s from authenticated', target.signature);
+      execute format('grant execute on function %s to service_role', target.signature);
+      execute format('comment on function %s is %L', target.signature, target.comment_text);
+    end if;
+  end loop;
+end $$;
