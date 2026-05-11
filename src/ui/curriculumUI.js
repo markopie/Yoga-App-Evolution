@@ -457,6 +457,20 @@ async function undoCurrentCurriculumNodeCompletionForTesting() {
     }
 }
 
+async function getFirstActiveCurriculumNodeId() {
+    const { data, error } = await supabase
+        .from('program_curriculum')
+        .select('id')
+        .eq('curriculum_slug', CURRICULUM_SLUG)
+        .eq('is_active', true)
+        .order('order_index', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) throw error;
+    return data?.id ?? null;
+}
+
 async function resetCurriculumTestProgress() {
     const btn = $('resetCurriculumTestProgressBtn');
     const summary = $('curriculumPracticeSummary');
@@ -498,7 +512,8 @@ async function resetCurriculumTestProgress() {
         if (summary) summary.textContent = 'Curriculum test progress reset. Loading first available practice...';
         if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
         window.currentCurriculumPractice = null;
-        await startTodayPractice();
+        const firstActiveNodeId = await getFirstActiveCurriculumNodeId();
+        await startTodayPractice(firstActiveNodeId);
     } catch (err) {
         console.error('Reset curriculum test progress failed:', err);
         if (summary) summary.textContent = err.message || 'Could not reset curriculum test progress.';
