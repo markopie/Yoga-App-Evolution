@@ -29,7 +29,9 @@ FROM information_schema.columns
 WHERE column_name = 'page_primary'
   AND table_name IN ('asanas', 'stages');
 
--- Recreate the Admin View using the current schema
+-- Recreate the Admin View using the schema available at this point in time (March 2026).
+-- Modern columns not yet added are provided as NULL placeholders to preserve view shape.
+-- Do not use legacy asanas.category or asanas.hold columns.
 CREATE OR REPLACE VIEW view_asanas_admin AS
 SELECT
     a.id,
@@ -40,26 +42,66 @@ SELECT
     a.description,
     ac.name AS category,
     a.category_id,
-    a.gem_plate,
+    NULL::text AS gem_plate,
     a.plate_numbers,
-    a.hold_json,
+    NULL::jsonb AS hold_json,
     a.page_primary,
     a.requires_sides,
-    a.preparatory_pose_id,
-    a.recovery_pose_id,
-    a.audio_url,
+    NULL::jsonb AS preparatory_pose_id,
+    NULL::jsonb AS recovery_pose_id,
+    NULL::text AS audio_url,
     a.image_url,
     a.intensity,
-    a.is_system,
-    a.is_curated,
-    a.user_id
+    NULL::boolean AS is_system,
+    NULL::boolean AS is_curated,
+    NULL::uuid AS user_id
 FROM public.asanas a
 LEFT JOIN public.asana_categories ac ON ac.id = a.category_id;
 
 GRANT SELECT ON view_asanas_admin TO authenticated;
 
--- Recreate the Searchable View
+-- Recreate the Searchable View using the schema available at this point in time.
+-- NULL placeholders are used for columns not yet present on stages or asanas.
 CREATE OR REPLACE VIEW searchable_asanas_view AS
+
+  -- Arm 1: Base asanas (no stage context)
+  SELECT
+    a.id              AS source_id,
+    a.id              AS asana_id,
+    a.english_name    AS display_name,
+    a.iast,
+    a.name,
+    ac.name           AS category,
+    a.image_url,
+    a.page_primary,
+    NULL::text      AS stage_name,
+    NULL::text      AS stage_title,
+    NULL::text      AS stage_shorthand,
+    'asana'         AS source_type
+  FROM public.asanas a
+  LEFT JOIN public.asana_categories ac ON ac.id = a.category_id
+
+UNION ALL
+
+  -- Arm 2: Stages - searchable by stage title / shorthand, resolves back to parent asana
+  SELECT
+    s.id::text      AS source_id,
+    s.asana_id      AS asana_id,
+    COALESCE(s.title, a.english_name)      AS display_name,
+    NULL::text                             AS iast,      -- s.devanagari not yet present
+    COALESCE(s.title, a.name)              AS name,
+    ac.name         AS category,
+    COALESCE(NULL::text, a.image_url)      AS image_url, -- s.image_url not yet present
+    s.page_primary,
+    s.stage_name,
+    s.title         AS stage_title,
+    s.shorthand     AS stage_shorthand,
+    'stage'         AS source_type
+  FROM public.stages s
+  LEFT JOIN public.asanas a ON a.id = s.asana_id
+  LEFT JOIN public.asana_categories ac ON ac.id = a.category_id;
+
+GRANT SELECT ON searchable_asanas_view TO anon, authenticated;
 
   -- Arm 1: Base asanas (no stage context)
   SELECT
