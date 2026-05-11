@@ -25,8 +25,29 @@ BEGIN
 END $$;
 
 -- 2. Create a Composite Unique Constraint (Idempotent)
-ALTER TABLE courses DROP CONSTRAINT IF EXISTS courses_title_category_key;
-ALTER TABLE courses ADD CONSTRAINT courses_title_category_key UNIQUE (title, category);
+ALTER TABLE public.courses DROP CONSTRAINT IF EXISTS courses_title_category_key;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'courses'
+      AND column_name = 'title'
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'courses'
+      AND column_name = 'category'
+  )
+  THEN
+    ALTER TABLE public.courses
+      ADD CONSTRAINT courses_title_category_key UNIQUE (title, category);
+  END IF;
+END $$;
 
 -- 3. Execute the Migration (UPSERT)
 -- Migrate all data from user_sequences into courses, resolving conflicts with UPDATE logic
@@ -34,13 +55,13 @@ WITH upsert_cte AS (
   INSERT INTO courses (title, category, sequence_text)
   SELECT title, category, sequence_text
   FROM user_sequences
-  ON CONFLICT (title, category) 
+  ON CONFLICT (title, category)
   DO UPDATE SET sequence_text = EXCLUDED.sequence_text
   RETURNING (xmax = 0) AS is_insert
 )
--- 4. Report 
+-- 4. Report
 -- This will log how many sequences were updated and created when executed in the dashboard!
-SELECT 
+SELECT
   COUNT(*) FILTER (WHERE is_insert) AS new_sequences_created,
   COUNT(*) FILTER (WHERE NOT is_insert) AS sequences_updated
 FROM upsert_cte;
