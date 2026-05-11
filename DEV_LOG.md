@@ -21,6 +21,28 @@
   }
 }
 
+## [2026-05-11] - Session [Security Advisor RLS/View Hardening]
+**Goal:** Resolve Supabase Security Advisor findings for security-definer views and public tables without RLS.
+
+**Architectural Decisions:**
+- Converted `view_asanas_admin` and `searchable_asanas_view` to security-invoker views using `ALTER VIEW ... SET (security_invoker = true)` so their existing definitions, columns, grants, and dependencies remain intact.
+- Enabled RLS on `asana_categories`, `program_curriculum`, and `course_analysis_refresh_queue`.
+- Added read-only `SELECT` policies for `anon` and `authenticated` on frontend-read reference/curriculum tables only.
+- Left `course_analysis_refresh_queue` without public anon/auth policies so it remains a backend/service-role maintenance surface.
+- Removed browser-side `asana_categories` insert behavior from the Asana Editor category resolver.
+
+**Code Changed:**
+- `supabase/migrations/20260511043158_fix_security_advisor_views_rls.sql`: Added the view security and table RLS hardening migration.
+- `src/services/persistence.js`, `src/ui/asanaEditor.js`, `index.html`: Resolve existing asana categories only; do not create categories from the browser.
+
+**Verification:**
+- `supabase db reset` passed.
+- `supabase db advisors --local --type security --level warn` no longer reports `security_definer_view` or `rls_disabled_in_public` locally.
+
+**Next Steps for Next Session:**
+- Apply the migration to the linked Supabase project and confirm the hosted Security Advisor clears the same two findings.
+---
+
 
 ## [2026-03-13] - Session [01]
 **Goal:** Resolve the 75% width constraint on #displayNotes and #builderNotes in the Builder/Viewer modals and improve Jobsian typography hierarchy.
