@@ -10,10 +10,9 @@ const supabase = createClient(
 );
 
 const weeklyPlan = [
-  [1, 1, 'sequence', 173, 'Start gently with How to Use Yoga Week 1 Day 1.'],
+  [1, 1, 'sequence', 114, 'Light on Yoga Course 1 backbone sequence, Week 1 and 2.'],
   [1, 2, 'sequence', 213, 'Yoga: The Iyengar Way Lesson 1 for lesson-based foundation work.'],
   [1, 3, 'sequence', 52, 'Light on Pranayama preparatory practice. Keep the breath quiet and unforced.'],
-  [1, 4, 'sequence', 114, 'Light on Yoga Course 1 backbone sequence, Week 1 and 2.'],
   [1, 5, 'sequence', 174, 'Shorter How to Use Yoga standing foundation repeat.'],
   [1, 6, 'revision', null, 'Revision day: repeat a completed sequence marked Do Again, Concentrate, or Favourite.'],
   [1, 7, 'rest', null, 'Rest day. Optional Savasana or quiet observation only.'],
@@ -213,12 +212,6 @@ const weeklyPlan = [
 
 const appendedPranayamaPlan = [
   {
-    primarySequenceId: 173,
-    pranayamaSequenceId: 52,
-    specialInstructions: 'Start gently with How to Use Yoga Week 1 Day 1, then complete the short introductory pranayama part.',
-    rationale: 'Lowest-dose opening asana day; keeps the first pranayama source concrete without creating a separate day.',
-  },
-  {
     primarySequenceId: 115,
     pranayamaSequenceId: 53,
     specialInstructions: 'Light on Yoga Course 1 Week 3 and 4, followed by the short Light on Pranayama Week 3 and 4 practice.',
@@ -404,8 +397,20 @@ const compositionByPrimarySequenceId = new Map(
   ]),
 );
 
-const inactiveCompositionPartBySequenceId = new Map(
-  appendedPranayamaPlan.map((plan) => [
+// TODO(curriculum): Decide where Light on Pranayama sequence 52 belongs after
+// removing the old How to Use Yoga 173 + LOP 52 composed opener.
+const deferredPranayamaBySequenceId = new Map([
+  [52, {
+    inactive_reason: 'deferred_pending_pranayama_scheduling',
+    sequence_block_type: 'composed_part_only',
+    composition_strategy: 'deferred_pending_pranayama_scheduling',
+    special_instructions: 'Inactive deferred pranayama node: Light on Pranayama Week 1 and 2 is deferred pending future pranayama scheduling.',
+  }],
+]);
+
+const inactiveCompositionPartBySequenceId = new Map([
+  ...deferredPranayamaBySequenceId,
+  ...appendedPranayamaPlan.map((plan) => [
     plan.pranayamaSequenceId,
     {
       superseded_by_curriculum_node_sequence_id: plan.primarySequenceId,
@@ -414,7 +419,7 @@ const inactiveCompositionPartBySequenceId = new Map(
       special_instructions: `Inactive composed-day node: sequence ${plan.pranayamaSequenceId} is now appended to sequence ${plan.primarySequenceId}.`,
     },
   ]),
-);
+]);
 
 function orderIndex(week, day) {
   return Number(`${week}.${String(day).padStart(2, '0')}`);
@@ -559,7 +564,7 @@ function sequenceRow(planRow, candidate, candidateBySequenceId) {
         inactive_reason: inactivePilot.inactive_reason,
         superseded_by_curriculum_node_sequence_id: inactivePilot.superseded_by_curriculum_node_sequence_id,
         sequence_block_type: inactivePilot.sequence_block_type,
-        composition_strategy: 'source_sequence_scheduled_as_composition_part',
+        composition_strategy: inactivePilot.composition_strategy || 'source_sequence_scheduled_as_composition_part',
       } : {}),
       ...(longDayMetadata ? {
         long_day_acknowledged: true,
