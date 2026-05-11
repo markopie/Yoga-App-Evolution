@@ -114,7 +114,7 @@
 - `loadJSON` (module export)
 
 ### 📄 `services/persistence.js`
-- `getOrCreateAsanaCategoryId` (function)
+- `findAsanaCategoryId` (function)
 - `getOrCreateSubCategoryId` (function)
 - `saveSequence` (function)
 

@@ -6,7 +6,7 @@
 import { $, normaliseText } from '../utils/dom.js';
 import { supabase } from '../services/supabaseClient.js';
 import { loadAsanaLibrary } from '../services/dataAdapter.js';
-import { getOrCreateAsanaCategoryId } from '../services/persistence.js';
+import { findAsanaCategoryId } from '../services/persistence.js';
 
 
 /**
@@ -544,13 +544,13 @@ window.setupAsanaEditorSave = function() {
         if (!id || id === "000") return;
 
         try {
-            // Resolve category name to category_id (FK to asana_categories table)
+            // Resolve category name to an existing category_id (FK to asana_categories table).
             const catSelect = $("editAsanaCategory");
             const catCustom = $("editAsanaCategoryCustom");
             const categoryName = (catCustom && catCustom.style.display !== "none" && catCustom.value.trim())
                 ? catCustom.value.trim()
                 : (catSelect ? catSelect.value : "");
-            const category_id = categoryName ? await getOrCreateAsanaCategoryId(categoryName) : null;
+            const category_id = categoryName ? await findAsanaCategoryId(categoryName) : null;
 
             const asanaPayload = {
                 id,
