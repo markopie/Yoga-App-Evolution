@@ -10,12 +10,14 @@
 
 -- Step 1: Add INSERT policy for stages
 -- Authenticated users can insert stages
+DROP POLICY IF EXISTS "Authenticated users can insert stages" ON stages;
 CREATE POLICY "Authenticated users can insert stages"
   ON stages FOR INSERT TO authenticated
   WITH CHECK (true);
 
 -- Step 2: Add UPDATE policy for stages
 -- Authenticated users can update any stage
+DROP POLICY IF EXISTS "Authenticated users can update stages" ON stages;
 CREATE POLICY "Authenticated users can update stages"
   ON stages FOR UPDATE TO authenticated
   USING (true)
@@ -23,6 +25,7 @@ CREATE POLICY "Authenticated users can update stages"
 
 -- Step 3: Add DELETE policy for stages
 -- Authenticated users can delete any stage
+DROP POLICY IF EXISTS "Authenticated users can delete stages" ON stages;
 CREATE POLICY "Authenticated users can delete stages"
   ON stages FOR DELETE TO authenticated
   USING (true);
