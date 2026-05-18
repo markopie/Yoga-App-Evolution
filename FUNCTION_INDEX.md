@@ -288,6 +288,7 @@
 - `completionTracker` (window binding)
 - `currentCurriculumPractice` (window binding)
 - `currentSequence` (window binding)
+- `currentUserEmail` (window binding)
 - `getCurriculumCompletionItems` (window binding)
 - `isAliasView` (window binding)
 - `isBriefingActive` (window binding)

@@ -3,10 +3,15 @@ import { $ } from '../utils/dom.js';
 import { playbackEngine } from '../playback/timer.js';
 
 const CURRICULUM_SLUG = 'iyengar_integrated_master_path_draft_v1';
+const CURRICULUM_ADMIN_EMAIL = 'mark.opie@gmail.com';
 
 function isLocalDev() {
     const h = window.location.hostname;
     return ['localhost', '127.0.0.1', '::1'].includes(h) || h.endsWith('.webcontainer-api.io');
+}
+
+function isDevOrAdmin() {
+    return isLocalDev() || !!window.adminMode || window.currentUserEmail === CURRICULUM_ADMIN_EMAIL;
 }
 
 function escapeHtml(value) {
@@ -29,6 +34,26 @@ function renderField(label, value) {
         <div class="curriculum-practice-field">
             <div class="curriculum-practice-field__label">${escapeHtml(label)}</div>
             <div class="curriculum-practice-field__value">${escapeHtml(valueText(value))}</div>
+        </div>
+    `;
+}
+
+function formatDuration(value) {
+    const duration = Number(value);
+    if (!Number.isFinite(duration) || duration <= 0) return null;
+    const minutes = Math.round(duration);
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    const remainder = minutes % 60;
+    return remainder ? `${hours} hr ${remainder} min` : `${hours} hr`;
+}
+
+function renderOverviewItem(label, value) {
+    if (value == null || value === '') return '';
+    return `
+        <div class="curriculum-practice-overview__item">
+            <span class="curriculum-practice-overview__label">${escapeHtml(label)}</span>
+            <span class="curriculum-practice-overview__value">${escapeHtml(valueText(value))}</span>
         </div>
     `;
 }
@@ -118,6 +143,7 @@ function completionItemsForPractice(practice = window.currentCurriculumPractice)
 function updateCurriculumLibraryLock() {
     const locked = !!window.currentCurriculumPractice?.curriculum_node_id;
     const note = $('manualLibraryModeNote');
+    const panel = $('manualLibraryPanel');
     const controls = [
         $('categoryFilter'),
         $('sequenceSelect'),
@@ -131,15 +157,21 @@ function updateCurriculumLibraryLock() {
 
     if (note) {
         note.textContent = locked
-            ? 'Curriculum practice is active. Library browsing is paused so completion stays attached to this curriculum node.'
-            : 'Manual browsing is separate from Today\'s Curriculum Practice.';
+            ? 'Curriculum practice is active. Library browsing is paused.'
+            : 'Manual browsing is separate from Today\'s Practice.';
         note.classList.toggle('manual-library-mode-note--locked', locked);
+    }
+
+    if (panel && locked) {
+        panel.open = false;
     }
 }
 
 function renderPracticeDetails(practice) {
     const details = $('curriculumPracticeDetails');
+    const overview = $('curriculumPracticeOverview');
     const summary = $('curriculumPracticeSummary');
+    const detailsToggle = $('curriculumDetailsToggleBtn');
     const devCompleteBtn = $('markCurriculumCompleteBtn');
     const undoBtn = $('undoCurriculumCompletionBtn');
     const resetTestBtn = $('resetCurriculumTestProgressBtn');
@@ -150,9 +182,25 @@ function renderPracticeDetails(practice) {
     const parts = enrichPracticeComposition(practice);
     const composedSummary = compositionSummary(parts);
     const totalDuration = parts.length > 1 ? compositionDurationMinutes(parts) : payload.total_duration_minutes;
+    const durationLabel = formatDuration(totalDuration);
     summary.textContent = composedSummary
         ? `Week ${practice.week_number}, Day ${practice.day_number}: ${composedSummary}`
         : `Week ${practice.week_number}, Day ${practice.day_number}: ${title}`;
+
+    if (overview) {
+        const sourceLabel = [practice.source_name, practice.source_course]
+            .filter(Boolean)
+            .join(' - ');
+        const overviewItems = [
+            ['When', `Week ${practice.week_number}, Day ${practice.day_number}`],
+            ['Practice', composedSummary || title],
+            ['Source', sourceLabel || practice.source_reference],
+            ['Duration', durationLabel],
+            ['Focus', practice.primary_focus],
+        ];
+        overview.innerHTML = overviewItems.map(([label, value]) => renderOverviewItem(label, value)).join('');
+        overview.style.display = overview.innerHTML ? 'grid' : 'none';
+    }
 
     const fields = [
         ['Title', title],
@@ -170,7 +218,12 @@ function renderPracticeDetails(practice) {
     ];
 
     details.innerHTML = `<div class="curriculum-practice-grid">${fields.map(([label, value]) => renderField(label, value)).join('')}</div>`;
-    details.style.display = 'block';
+    details.style.display = 'none';
+    if (detailsToggle) {
+        detailsToggle.style.display = isDevOrAdmin() ? '' : 'none';
+        detailsToggle.setAttribute('aria-expanded', 'false');
+        detailsToggle.textContent = 'Details';
+    }
     if (devCompleteBtn && isLocalDev()) {
         devCompleteBtn.style.display = practice.curriculum_node_id ? '' : 'none';
     }
@@ -528,6 +581,18 @@ async function resetCurriculumTestProgress() {
 function setupCurriculumUI() {
     const btn = $('startTodayPracticeBtn');
     if (btn) btn.addEventListener('click', () => startTodayPractice());
+
+    const detailsToggle = $('curriculumDetailsToggleBtn');
+    const details = $('curriculumPracticeDetails');
+    if (detailsToggle && details) {
+        detailsToggle.style.display = 'none';
+        detailsToggle.addEventListener('click', () => {
+            const isOpen = details.style.display !== 'none';
+            details.style.display = isOpen ? 'none' : 'block';
+            detailsToggle.setAttribute('aria-expanded', String(!isOpen));
+            detailsToggle.textContent = isOpen ? 'Details' : 'Hide Details';
+        });
+    }
 
     const devCompleteBtn = $('markCurriculumCompleteBtn');
     if (devCompleteBtn && isLocalDev()) {
