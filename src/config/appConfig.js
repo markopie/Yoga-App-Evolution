@@ -11,8 +11,20 @@ const AUDIO_BASE = "https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/p
  */
 const BRIDGE_SKIP_PROBABILITY = 0.5;
 
+const ADMIN_EMAILS = ['mark.opie@gmail.com'];
+
+export function normalizeEmail(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+export function isConfiguredAdminEmail(value) {
+    const email = normalizeEmail(value);
+    return !!email && ADMIN_EMAILS.some(adminEmail => normalizeEmail(adminEmail) === email);
+}
+
 export {
   BASE_RAW_URL,
   AUDIO_BASE,
   BRIDGE_SKIP_PROBABILITY,
+  ADMIN_EMAILS,
 };
