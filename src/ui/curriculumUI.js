@@ -310,7 +310,11 @@ function loadResolvedSequence(practice) {
     );
     const filter = $('categoryFilter');
     const selector = $('sequenceSelect');
-    if (filter) filter.value = 'ALL';
+    if (filter) {
+        const selectedCategory = primaryCourse?.category || 'ALL';
+        const hasSelectedCategory = Array.from(filter.options || []).some(option => option.value === selectedCategory);
+        filter.value = hasSelectedCategory ? selectedCategory : 'ALL';
+    }
     if (typeof window.renderCourseUI === 'function') window.renderCourseUI();
     if (selector && idx >= 0) selector.value = String(idx);
     window.suppressCurriculumClear = false;
