@@ -21,6 +21,11 @@ const getActivePlaybackList = () => window.activePlaybackList;
 const getCurrentSequence = () => window.currentSequence;
 const getAsanaIndex = () => Object.values(window.asanaLibrary || {}).filter(Boolean);
 
+function setManualLibraryPanelOpen(open) {
+    const panel = $("manualLibraryPanel");
+    if (panel) panel.open = !!open;
+}
+
 /** Update the Next button text: "Complete ▶" on last pose, "Next ▶" otherwise */
 window.updateNextBtnText = function updateNextBtnText() {
     const nextBtn = document.getElementById('nextBtn');
@@ -48,7 +53,7 @@ function updateAliasUIFeedback() {
     const collageWrap = document.getElementById("collageWrap");
     const playerHeader = document.querySelector(".player-header");
 
-    const fallbackNotes = 'Welcome to your practice. Work within your limits. Ensure props are ready and the space is clear. Press Start to begin.';
+    const fallbackNotes = 'Set up your space and props. Work steadily and stay within your limits.';
     
     // Correctly reference the imported playbackEngine if window.playbackEngine isn't set yet
     const engine = window.playbackEngine || playbackEngine;
@@ -101,14 +106,15 @@ function updateAliasUIFeedback() {
                         <h1 style="margin: 0; font-size: 1.8rem; font-weight: 700; color: #1d1d1f;">${sequenceName}</h1>
                         ${masterSub}
                     </div>
-                    <div style="color: #e65100; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 1rem;">
-                        <span style="font-size: 1.4rem;">⚕️</span> Safety Briefing
+                    <div class="briefing-kicker">
+                        Before You Begin
                     </div>
                     <div style="width: 100%;">
                         <p style="margin: 0; line-height: 1.7; color: #1d1d1f; font-weight: 500; text-align: center;">${activeNotes}</p>
                     </div>
-                    <div style="margin-top: 2rem; font-size: 0.9rem; color: #86868b; font-weight: 600; border-top: 1px solid #f2f2f7; padding-top: 1.5rem; width: 100%;">
-                        Press <span class='briefing-link' onclick='handleStart()'>Start</span> to begin, or the <span class='briefing-link' onclick='handleNext()'>Next</span> button to browse sequence.
+                    <div class="briefing-actions">
+                        <button type="button" class="briefing-primary-action" onclick="handleStart()">Start practice</button>
+                        <button type="button" class="briefing-secondary-action" onclick="handleNext()">Preview first pose</button>
                     </div>
                 </div>`;
             
@@ -211,9 +217,17 @@ function setupSequenceSelector() {
         if (!window.suppressCurriculumClear) {
             window.currentCurriculumPractice = null;
             const summary = $("curriculumPracticeSummary");
+            const overview = $("curriculumPracticeOverview");
             const details = $("curriculumPracticeDetails");
+            const detailsToggle = $("curriculumDetailsToggleBtn");
             if (summary) summary.textContent = "Manual library practice selected.";
+            if (overview) overview.style.display = "none";
             if (details) details.style.display = "none";
+            if (detailsToggle) {
+                detailsToggle.style.display = "none";
+                detailsToggle.setAttribute("aria-expanded", "false");
+                detailsToggle.textContent = "Details";
+            }
             if (typeof window.updateCurriculumLibraryLock === 'function') {
                 window.updateCurriculumLibraryLock();
             }
@@ -247,6 +261,8 @@ function setupSequenceSelector() {
             if (typeof window.updateActiveCategoryTitle === 'function') window.updateActiveCategoryTitle();
             return;
         }
+
+        setManualLibraryPanelOpen(true);
 
         const rawSequence = window.courses[parseInt(idx, 10)];
         

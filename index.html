@@ -84,44 +84,56 @@
                 <div id="curriculumPracticeSummary" class="curriculum-practice-panel__summary">Ready when you are.</div>
              </div>
              <button id="startTodayPracticeBtn" type="button" class="curriculum-practice-panel__button">Start Today's Practice</button>
+             <button id="exitCurriculumPracticeBtn" type="button" class="tiny curriculum-practice-panel__exit-button" style="display:none;">Exit Practice</button>
              <button id="curriculumMapBtn" type="button" class="tiny curriculum-practice-panel__dev-button" title="View curriculum roadmap (dev)">Curriculum Map</button>
+             <button id="curriculumDetailsToggleBtn" type="button" class="tiny curriculum-practice-panel__dev-button" style="display:none;" aria-expanded="false" aria-controls="curriculumPracticeDetails">Details</button>
              <button id="markCurriculumCompleteBtn" type="button" class="tiny curriculum-practice-panel__dev-button" style="display:none;">Mark Node Complete</button>
              <button id="undoCurriculumCompletionBtn" type="button" class="tiny curriculum-practice-panel__dev-button curriculum-practice-panel__dev-button--danger" style="display:none;">Undo Curriculum Completion</button>
              <button id="resetCurriculumTestProgressBtn" type="button" class="tiny curriculum-practice-panel__dev-button curriculum-practice-panel__dev-button--danger" style="display:none;">Reset Curriculum Test Progress</button>
           </div>
+          <div id="curriculumPracticeOverview" class="curriculum-practice-panel__overview" style="display:none;"></div>
           <div id="curriculumPracticeDetails" class="curriculum-practice-panel__details" style="display:none;"></div>
        </section>
 
-       <div class="manual-library-label">Browse Sequence Library</div>
-       <div id="manualLibraryModeNote" class="manual-library-mode-note">Manual browsing is separate from Today's Curriculum Practice.</div>
-       <div class="sequence-pose-filter">
-         <input id="poseSequenceFilter" type="search" inputmode="numeric" placeholder="Filter by pose ID, e.g. 176" aria-label="Filter sequences by pose ID">
-         <button id="clearPoseSequenceFilter" type="button" class="tiny">Clear</button>
-         <span id="poseSequenceFilterStatus" class="sequence-pose-filter__status"></span>
-       </div>
-       <div class="row" style="margin-top:10px; gap: 8px;">
-         <select id="categoryFilter" style="max-width: 240px; font-weight:bold; color:#444;">
-            
-          <option value="ALL">📂 All Collections</option>
-            </select>
-            <select id="sequenceSelect" style="flex:1; min-width: 200px;">
+       <details id="manualLibraryPanel" class="manual-library-panel">
+          <summary class="manual-library-panel__summary">
+             <span class="manual-library-label">Browse Library</span>
+             <span id="manualLibraryModeNote" class="manual-library-mode-note">Manual browsing is separate from Today's Practice.</span>
+          </summary>
+          <div class="manual-library-panel__body">
+             <div class="sequence-pose-filter">
+               <input id="poseSequenceFilter" type="search" inputmode="numeric" placeholder="Filter by pose ID, e.g. 176" aria-label="Filter sequences by pose ID">
+               <button id="clearPoseSequenceFilter" type="button" class="tiny">Clear</button>
+               <span id="poseSequenceFilterStatus" class="sequence-pose-filter__status"></span>
+             </div>
+             <div class="row manual-library-panel__controls">
+               <select id="categoryFilter" style="max-width: 240px; font-weight:bold; color:#444;">
 
-              <option value="">Select a course</option>
+                 <option value="ALL">📂 All Collections</option>
+               </select>
+               <select id="sequenceSelect" style="flex:1; min-width: 200px;">
 
-           </select>
+                 <option value="">Select a course</option>
+
+               </select>
            
-          <div id="durationDialWrap" title="Adjust hold pace — double-click to reset">
-          <div id="durationDialTrackWrap">
-            <input type="range" id="durationDial" min="0" max="100" step="1" value="50">
-            <div id="durationDialLabels">
-              <span>Shortest</span>
-              <span style="opacity: 0.6; font-size: 0.8rem;">Default</span>
-              <span>Longest</span>
-            </div>
+               <div id="durationDialWrap" title="Adjust hold pace — double-click to reset">
+                 <div id="durationDialTrackWrap">
+                   <input type="range" id="durationDial" min="0" max="100" step="1" value="50">
+                   <div id="durationDialLabels">
+                     <span>Shortest</span>
+                     <span style="opacity: 0.6; font-size: 0.8rem;">Default</span>
+                     <span>Longest</span>
+                   </div>
+                 </div>
+               </div>
+
+               <button id="browseBtn" type="button" title="Browse / search asanas">Browse</button>
+             </div>
           </div>
-        </div>
-         
-         <button id="browseBtn" type="button" title="Browse / search asanas">Browse</button>
+       </details>
+
+       <div class="row playback-control-band" style="margin-top:10px; gap: 8px;">
           
           <span class="pill" id="poseTimer">–</span>
           

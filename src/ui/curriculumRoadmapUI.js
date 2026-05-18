@@ -791,7 +791,7 @@ async function openCurriculumRoadmap() {
     // Show modal immediately with loading state
     backdrop.style.display = 'flex';
     document.body.classList.add('modal-open');
-    body.innerHTML = '<div class="cr-loading">Loading curriculum map…</div>';
+    body.innerHTML = '<div class="cr-loading cr-loading--full">Loading curriculum map...</div>';
 
     try {
         const { nodes, completions } = await loadRoadmapData();
