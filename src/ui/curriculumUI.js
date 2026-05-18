@@ -1,9 +1,9 @@
 import { supabase } from '../services/supabaseClient.js';
 import { $ } from '../utils/dom.js';
 import { playbackEngine } from '../playback/timer.js';
+import { isConfiguredAdminEmail } from '../config/appConfig.js';
 
 const CURRICULUM_SLUG = 'iyengar_integrated_master_path_draft_v1';
-const CURRICULUM_ADMIN_EMAIL = 'mark.opie@gmail.com';
 
 function isLocalDev() {
     const h = window.location.hostname;
@@ -11,7 +11,7 @@ function isLocalDev() {
 }
 
 function isDevOrAdmin() {
-    return isLocalDev() || !!window.adminMode || window.currentUserEmail === CURRICULUM_ADMIN_EMAIL;
+    return isLocalDev() || !!window.adminMode || isConfiguredAdminEmail(window.currentUserEmail);
 }
 
 function escapeHtml(value) {
@@ -185,13 +185,12 @@ function exitCurriculumPractice() {
         playbackEngine.resetPracticeTimer();
     }
     if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
-    window.completionTracker = {};
 
     window.currentCurriculumPractice = null;
     window.isBriefingActive = false;
     window.pendingSequence = null;
     window.currentSequence = null;
-    window.activePlaybackList = [];
+    window.activePlaybackList = null;
     window.currentIndex = 0;
 
     const filter = $('categoryFilter');

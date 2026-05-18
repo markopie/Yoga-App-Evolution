@@ -3,9 +3,12 @@
 > *Auto-generated map of all exported modules and window bindings.*
 
 ### 📄 `config/appConfig.js`
+- `ADMIN_EMAILS` (module export)
 - `AUDIO_BASE` (module export)
 - `BASE_RAW_URL` (module export)
 - `BRIDGE_SKIP_PROBABILITY` (module export)
+- `isConfiguredAdminEmail` (function)
+- `normalizeEmail` (function)
 
 ### 📄 `config/propRegistry.js`
 - `PROP_REGISTRY` (const)
@@ -280,7 +283,6 @@
 - `updateActiveCategoryTitle` (window binding)
 
 ### 📄 `ui/curriculumRoadmapUI.js`
-- `currentUserEmail` (window binding)
 - `setupCurriculumRoadmapUI` (function)
 
 ### 📄 `ui/curriculumUI.js`
@@ -290,7 +292,6 @@
 - `currentCurriculumPractice` (window binding)
 - `currentIndex` (window binding)
 - `currentSequence` (window binding)
-- `currentUserEmail` (window binding)
 - `exitCurriculumPractice` (window binding)
 - `getCurriculumCompletionItems` (window binding)
 - `isAliasView` (window binding)
