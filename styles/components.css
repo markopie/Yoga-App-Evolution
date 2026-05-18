@@ -184,6 +184,12 @@ button.tiny {
     background: #333;
 }
 
+.curriculum-practice-panel__exit-button {
+    border-color: #86868b;
+    color: #424245;
+    background: #f5f5f7;
+}
+
 .curriculum-practice-panel__dev-button {
     border-color: #b45309;
     color: #92400e;

@@ -284,11 +284,14 @@
 - `setupCurriculumRoadmapUI` (function)
 
 ### 📄 `ui/curriculumUI.js`
+- `activePlaybackList` (window binding)
 - `applySequenceInternal` (window binding)
 - `completionTracker` (window binding)
 - `currentCurriculumPractice` (window binding)
+- `currentIndex` (window binding)
 - `currentSequence` (window binding)
 - `currentUserEmail` (window binding)
+- `exitCurriculumPractice` (window binding)
 - `getCurriculumCompletionItems` (window binding)
 - `isAliasView` (window binding)
 - `isBriefingActive` (window binding)
