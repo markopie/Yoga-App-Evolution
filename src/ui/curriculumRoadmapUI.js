@@ -110,9 +110,9 @@ function deriveNodeStatus(node, completionMap, currentNodeId) {
     const rec = completionMap.get(node.id);
     if (!rec) return 'upcoming';
 
-    if (node.node_type === 'rest' || node.node_type === 'recovery') return 'rest';
-    if (['revision', 'choice', 'instruction', 'consolidation', 'assessment'].includes(node.node_type)) return 'revision';
-    if (node.node_type === 'revision') return 'revision';
+    const nodeType = (node.node_type || '').toLowerCase().trim();
+    if (nodeType === 'rest' || nodeType === 'recovery') return 'rest';
+    if (['revision', 'choice', 'instruction', 'consolidation', 'assessment'].includes(nodeType)) return 'revision';
 
     const payload = node.curriculum_payload || {};
     if (payload.plateau_candidate || payload.can_repeat_indefinitely || payload.progression_gate || payload.milestone_type) {

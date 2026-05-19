@@ -222,7 +222,15 @@ def draft_sql():
     if include_schema:
         schema_context = get_schema_summary()
 
-    raw = ask_ollama(question, schema_context=schema_context)
+    try:
+        raw = ask_ollama(question, schema_context=schema_context)
+    except Exception as exc:
+        return jsonify({
+            "ok": False,
+            "error": "Ollama request failed.",
+            "details": str(exc),
+        }), 502
+
     sql = clean_sql(raw)
     valid, validation_message = validate_read_only_sql(sql)
 
@@ -264,4 +272,4 @@ def run_sql():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8787, debug=True)
+    app.run(host="0.0.0.0", port=8787, debug=os.getenv("APP_ENV") == "local")
