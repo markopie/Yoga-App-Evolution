@@ -14,7 +14,8 @@ check (
     'mastery_gate',
     'instruction',
     'assessment',
-    'reserve'
+    'reserve',
+    'rest'
   )
 );
 
