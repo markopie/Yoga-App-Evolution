@@ -21,6 +21,28 @@
   }
 }
 
+## [2026-05-19] - Session [Testing v2 Visible Curriculum Contract]
+**Goal:** Prove the curriculum contract v2 path can represent two visible seven-day weeks with non-sequence curriculum nodes.
+
+**Architectural Decisions:**
+- Added `iyengar_integrated_master_path_testing_v2` as a separate test seed instead of rewriting `draft_v1`.
+- Treat visible curriculum rows as learning-path days first, and only route to playback when a node resolves to a sequence.
+- Kept `rest` handling intact while adding `recovery` handling through `node_type`, `day_role`, and `recovery_type`.
+
+**Code Changed:**
+- `supabase/migrations/20260519030637_curriculum_v2_visible_non_sequence_support.sql`: Added v2 curriculum columns, visible-node index, and RPC filtering for active visible rows.
+- `scripts/active/seed_testing_curriculum_v2.mjs`: Seeds 14 testing rows across two seven-day weeks.
+- `scripts/active/validate_testing_curriculum_v2.mjs`: Validates seven visible rows per week, duplicate week/day checks, D7 recovery rows, and no active invisible rows.
+- `src/config/curriculumConfig.js`, `src/ui/curriculumUI.js`, `src/ui/curriculumRoadmapUI.js`: Point the active test UI at testing v2 and route/display non-sequence nodes gracefully.
+
+**Verification:**
+- `supabase db reset` passed.
+- `npm run seed:curriculum-testing-v2` inserted 14 rows.
+- `npm run validate:curriculum-testing-v2` passed all checks.
+- `npm test`, `npm run lint`, and `npm run build` passed; lint still reports the repo's pre-existing warnings.
+
+**Next Steps for Next Session:**
+- Decide whether the active curriculum slug should stay on testing v2, move behind a dev toggle, or return to draft v1 after manual UI inspection.
 ## [2026-05-19] - Session [Supabase Local Config Hygiene]
 **Goal:** Add a minimal committed Supabase CLI config so local migration replay is explicit instead of depending on generated defaults.
 

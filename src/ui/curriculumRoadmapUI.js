@@ -1,7 +1,8 @@
 import { supabase } from '../services/supabaseClient.js';
 import { isConfiguredAdminEmail } from '../config/appConfig.js';
+import { ACTIVE_CURRICULUM_NAME, ACTIVE_CURRICULUM_SLUG } from '../config/curriculumConfig.js';
 
-const CURRICULUM_SLUG = 'iyengar_integrated_master_path_draft_v1';
+const CURRICULUM_SLUG = ACTIVE_CURRICULUM_SLUG;
 
 // ─── Dev gate ─────────────────────────────────────────────────────────────────
 // Roadmap button is only visible to local dev or admin (god mode) users.
@@ -26,6 +27,8 @@ function roleLabel(role) {
 }
 
 function nodeTypeLabel(node) {
+    if (node.node_type === 'recovery')      return 'Recovery Day';
+    if (node.node_type === 'instruction')   return 'Instruction Day';
     if (node.node_type === 'rest')          return 'Rest Day';
     if (node.node_type === 'revision')      return 'Revision Practice';
     if (node.node_type === 'consolidation') return 'Consolidation Practice';
@@ -107,8 +110,9 @@ function deriveNodeStatus(node, completionMap, currentNodeId) {
     const rec = completionMap.get(node.id);
     if (!rec) return 'upcoming';
 
-    if (node.node_type === 'rest')     return 'rest';
-    if (node.node_type === 'revision') return 'revision';
+    const nodeType = (node.node_type || '').toLowerCase().trim();
+    if (nodeType === 'rest' || nodeType === 'recovery') return 'rest';
+    if (['revision', 'choice', 'instruction', 'consolidation', 'assessment'].includes(nodeType)) return 'revision';
 
     const payload = node.curriculum_payload || {};
     if (payload.plateau_candidate || payload.can_repeat_indefinitely || payload.progression_gate || payload.milestone_type) {
@@ -128,12 +132,14 @@ async function loadRoadmapData() {
     const { data: nodes, error: nodesErr } = await supabase
         .from('program_curriculum')
         .select(`id, week_number, day_number, order_index, node_type,
+                 day_role, recovery_type, is_visible, estimated_minutes,
                  sequence_id, is_active, is_rest_day, source_name, source_key,
                  source_course, source_reference, intensity, primary_focus,
                  curriculum_payload, completion_requirement, level_number,
                  special_instructions`)
         .eq('curriculum_slug', CURRICULUM_SLUG)
         .eq('is_active', true)
+        .eq('is_visible', true)
         .order('order_index');
 
     if (nodesErr) throw nodesErr;
@@ -168,6 +174,7 @@ function assembleRoadmapNodes(nodes, completions, currentNodeId) {
         // Duration: prefer composed total, fallback to course analysis (not available here), or null
         const payload = node.curriculum_payload || {};
         const durationMinutes =
+            node.estimated_minutes ||
             payload.composed_total_duration_minutes ||
             payload.total_duration_minutes ||
             null;
@@ -188,6 +195,12 @@ function assembleRoadmapNodes(nodes, completions, currentNodeId) {
 }
 
 function buildNodeTitle(node) {
+    if (node.node_type === 'recovery') {
+        return node.recovery_type
+            ? `${tokenLabel(node.recovery_type)} Recovery`
+            : 'Recovery Day';
+    }
+    if (node.node_type === 'instruction') return node.primary_focus || 'Instruction Day';
     if (node.node_type === 'rest')     return 'Rest Day';
     if (node.node_type === 'revision') return 'Revision Practice';
     if (node.node_type === 'consolidation') {
@@ -205,6 +218,12 @@ function buildNodeTitle(node) {
     // Single sequence: prefer primary_focus as the readable label
     if (node.primary_focus && node.primary_focus !== 'Revision') return node.primary_focus;
     return node.source_reference || 'Practice';
+}
+
+function tokenLabel(value) {
+    return String(value || '')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 // ─── Group nodes into levels/weeks ───────────────────────────────────────────
@@ -293,9 +312,8 @@ const LANE_Y = { asana: 60, combined: 60, pranayama: 110, revision: 155, rest: 1
 function nodeStream(node) {
     const comp = node.curriculum_payload?.practice_composition;
     if (Array.isArray(comp) && comp.length > 1) return 'combined';
-    if (node.node_type === 'rest')          return 'rest';
-    if (node.node_type === 'revision')      return 'revision';
-    if (node.node_type === 'consolidation') return 'revision';
+    if (node.node_type === 'rest' || node.node_type === 'recovery' || node.day_role === 'recovery') return 'rest';
+    if (['revision', 'consolidation', 'choice', 'instruction', 'assessment'].includes(node.node_type)) return 'revision';
     if (node.primary_focus === 'Pranayama') return 'pranayama';
     return 'asana';
 }
@@ -469,12 +487,12 @@ function renderStationDetail(node, isIdle) {
     const comp        = node.curriculum_payload?.practice_composition;
     const isComposed  = Array.isArray(comp) && comp.length > 1;
     const isToday     = node.status === 'current';
-    const isRestNode  = node.node_type === 'rest';
-    const isRevision  = node.node_type === 'revision';
+    const isRestNode  = node.node_type === 'rest' || node.node_type === 'recovery' || node.day_role === 'recovery';
+    const isRevision  = ['revision', 'choice', 'instruction', 'consolidation'].includes(node.node_type);
 
     // Source label: suppress for rest/revision, use "Source: <name> — <ref>" for others
     let sourceLabel = null;
-    if (!isRestNode && !isRevision && node.source_name && node.source_name !== 'Integrated Iyengar Practice Path - Draft v1') {
+    if (!isRestNode && !isRevision && node.source_name && node.source_name !== ACTIVE_CURRICULUM_NAME) {
         sourceLabel = node.source_reference
             ? `${node.source_name} — ${node.source_reference}`
             : node.source_name;
@@ -516,9 +534,12 @@ function renderStationDetail(node, isIdle) {
     <div class="cr-detail-meta">
       ${dur && !isRestNode ? `<span class="cr-detail-meta-item">${esc(dur)}</span>` : ''}
       ${sourceLabel ? `<span class="cr-detail-meta-item">${esc(sourceLabel)}</span>` : ''}
+      ${node.day_role ? `<span class="cr-detail-meta-item">${esc(tokenLabel(node.day_role))}</span>` : ''}
+      ${node.recovery_type ? `<span class="cr-detail-meta-item">${esc(tokenLabel(node.recovery_type))}</span>` : ''}
       ${node.intensity ? `<span class="cr-detail-meta-item cr-detail-meta-intensity">${esc(intensityLabel(node.intensity) || node.intensity)}</span>` : ''}
     </div>
     ${partsHtml}
+    ${node.special_instructions ? `<div class="cr-detail-repeat-note">${esc(node.special_instructions)}</div>` : ''}
     ${starsHtml ? `<div class="cr-detail-rating">${starsHtml}</div>` : ''}
     ${node.completion_count > 1 ? `<div class="cr-detail-repeat-note">${node.completion_count}× completed</div>` : ''}
   </div>`;
@@ -565,16 +586,16 @@ function renderStars(rating) {
 
 function renderNodeCard(node, currentNodeId) {
     const isCurrent  = node.id === currentNodeId;
-    const isRest     = node.node_type === 'rest';
-    const isRevision = node.node_type === 'revision';
+    const isRest     = node.node_type === 'rest' || node.node_type === 'recovery' || node.day_role === 'recovery';
+    const isRevision = ['revision', 'choice', 'instruction', 'consolidation'].includes(node.node_type);
     const dur        = formatDuration(node.duration_minutes);
     const comp       = node.curriculum_payload?.practice_composition;
     const isComposed = Array.isArray(comp) && comp.length > 1;
 
-    let chipHtml = '';
+    let chipHtml;
     if (isCurrent)                      chipHtml = `<span class="cr-chip cr-chip--current">${node.is_explicit_current ? 'Today' : 'Next'}</span>`;
-    else if (isRest)                    chipHtml = '<span class="cr-chip cr-chip--rest">Rest</span>';
-    else if (isRevision)                chipHtml = '<span class="cr-chip cr-chip--revision">Revision</span>';
+    else if (isRest)                    chipHtml = `<span class="cr-chip cr-chip--rest">${node.node_type === 'recovery' ? 'Recovery' : 'Rest'}</span>`;
+    else if (isRevision)                chipHtml = `<span class="cr-chip cr-chip--revision">${esc(nodeTypeLabel(node) || 'Review')}</span>`;
     else if (node.status === 'plateau') chipHtml = '<span class="cr-chip cr-chip--plateau">Plateau</span>';
     else if (node.status === 'repeated') chipHtml = '<span class="cr-chip cr-chip--repeated">Repeated</span>';
     else if (node.status === 'completed') chipHtml = '<span class="cr-chip cr-chip--done">Done</span>';
@@ -582,7 +603,7 @@ function renderNodeCard(node, currentNodeId) {
 
     // Source: suppress for rest/revision
     let sourceText = null;
-    if (!isRest && !isRevision && node.source_name && node.source_name !== 'Integrated Iyengar Practice Path - Draft v1') {
+    if (!isRest && !isRevision && node.source_name && node.source_name !== ACTIVE_CURRICULUM_NAME) {
         sourceText = node.source_reference ? `${node.source_name} — ${node.source_reference}` : node.source_name;
     }
 
@@ -590,6 +611,8 @@ function renderNodeCard(node, currentNodeId) {
         dur && !isRest ? `<span class="cr-node-dur">${esc(dur)}</span>` : '',
         sourceText ? `<span class="cr-node-source">${esc(sourceText)}</span>` : '',
         node.primary_focus && !isRest && !isRevision ? `<span class="cr-node-theme">${esc(node.primary_focus)}</span>` : '',
+        node.day_role ? `<span class="cr-node-theme">${esc(tokenLabel(node.day_role))}</span>` : '',
+        node.recovery_type ? `<span class="cr-node-theme">${esc(tokenLabel(node.recovery_type))}</span>` : '',
     ].filter(Boolean).join('');
 
     const partsHtml = isComposed
@@ -704,7 +727,7 @@ function renderRoadmap(assembledNodes, levels, summary) {
     const placed = buildLayout(assembledNodes.map(n => ({ ...n, level_label: levelDisplayName(n.level_number) })));
 
     return `
-    <div class="cr-program-name">Integrated Iyengar Practice Path <span class="cr-dev-badge">DEV</span></div>
+    <div class="cr-program-name">${esc(ACTIVE_CURRICULUM_NAME)} <span class="cr-dev-badge">DEV</span></div>
     ${renderSummaryStrip(summary)}
     <div class="cr-view-toggle" role="tablist" aria-label="Journey view">
       <button class="cr-view-btn cr-view-btn--active" id="cr-btn-map" role="tab" aria-selected="true">Map view</button>
