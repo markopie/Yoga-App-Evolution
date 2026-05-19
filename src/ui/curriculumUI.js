@@ -2,8 +2,9 @@ import { supabase } from '../services/supabaseClient.js';
 import { $ } from '../utils/dom.js';
 import { playbackEngine } from '../playback/timer.js';
 import { isConfiguredAdminEmail } from '../config/appConfig.js';
+import { ACTIVE_CURRICULUM_SLUG } from '../config/curriculumConfig.js';
 
-const CURRICULUM_SLUG = 'iyengar_integrated_master_path_draft_v1';
+const CURRICULUM_SLUG = ACTIVE_CURRICULUM_SLUG;
 
 function isLocalDev() {
     const h = window.location.hostname;
@@ -56,6 +57,42 @@ function renderOverviewItem(label, value) {
             <span class="curriculum-practice-overview__value">${escapeHtml(valueText(value))}</span>
         </div>
     `;
+}
+
+function prettifyToken(value) {
+    return String(value || '')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function isRecoveryNode(practice) {
+    return practice?.node_type === 'recovery'
+        || practice?.day_role === 'recovery'
+        || practice?.resolved_node_type === 'recovery';
+}
+
+function isRestOrRecoveryNode(practice) {
+    return practice?.is_rest_day
+        || practice?.node_type === 'rest'
+        || practice?.resolved_node_type === 'rest'
+        || isRecoveryNode(practice);
+}
+
+function isSequenceReady(practice) {
+    return practice?.resolved_node_type === 'sequence' && !!practice?.resolved_sequence_id;
+}
+
+function nonSequenceNodeTitle(practice) {
+    if (isRecoveryNode(practice)) {
+        const recovery = practice.recovery_type ? ` - ${prettifyToken(practice.recovery_type)}` : '';
+        return `Recovery Day${recovery}`;
+    }
+    if (practice?.node_type === 'instruction') return 'Instruction Day';
+    if (practice?.node_type === 'choice') return 'Choice Day';
+    if (practice?.node_type === 'revision') return 'Revision Day';
+    if (practice?.node_type === 'consolidation') return 'Consolidation Day';
+    if (practice?.node_type === 'assessment') return 'Assessment Day';
+    return prettifyToken(practice?.day_role || practice?.node_type || 'Curriculum Day');
 }
 
 function normalisePracticeResult(data) {
@@ -238,7 +275,7 @@ function renderPracticeDetails(practice) {
     if (!details || !summary || !practice) return;
 
     const payload = practice.curriculum_payload || {};
-    const title = practice.resolved_course_title || practice.source_reference || 'Today\'s practice';
+    const title = practice.resolved_course_title || practice.source_reference || nonSequenceNodeTitle(practice);
     const parts = enrichPracticeComposition(practice);
     const composedSummary = compositionSummary(parts);
     const totalDuration = parts.length > 1 ? compositionDurationMinutes(parts) : payload.total_duration_minutes;
@@ -257,6 +294,8 @@ function renderPracticeDetails(practice) {
             ['Source', sourceLabel || practice.source_reference],
             ['Duration', durationLabel],
             ['Focus', practice.primary_focus],
+            ['Role', practice.day_role],
+            ['Recovery', practice.recovery_type && prettifyToken(practice.recovery_type)],
         ];
         overview.innerHTML = overviewItems.map(([label, value]) => renderOverviewItem(label, value)).join('');
         overview.style.display = overview.innerHTML ? 'grid' : 'none';
@@ -267,12 +306,15 @@ function renderPracticeDetails(practice) {
         ['Week / Day', `Week ${practice.week_number}, Day ${practice.day_number}`],
         ['Node type', practice.node_type],
         ['Resolved node type', practice.resolved_node_type],
+        ['Day role', practice.day_role],
+        ['Recovery type', practice.recovery_type],
         ['Practice track', practice.practice_track],
         ['Source key', practice.source_key],
         ['Source course', practice.source_course],
         ['Resolved sequence ID', practice.resolved_sequence_id],
         ['Curriculum node ID', practice.curriculum_node_id],
         ['Total duration', totalDuration],
+        ['Estimated minutes', practice.estimated_minutes],
         ['Practice parts', composedSummary],
         ['Resolution reason', practice.resolution_reason],
     ];
@@ -415,14 +457,31 @@ async function startTodayPractice(repeatNodeId = null) {
 
         renderPracticeDetails(practice);
 
-        if (practice.is_rest_day || practice.resolved_node_type === 'rest') {
+        if (isRestOrRecoveryNode(practice)) {
             window.currentCurriculumPractice = practice;
-            if (summary) summary.textContent = practice.special_instructions || 'Rest day.';
+            if (summary) summary.textContent = practice.special_instructions || `${nonSequenceNodeTitle(practice)}.`;
+            if ($('statusText')) $('statusText').textContent = nonSequenceNodeTitle(practice);
+            if ($('poseName')) $('poseName').textContent = nonSequenceNodeTitle(practice);
+            if ($('poseInstructions')) $('poseInstructions').textContent = practice.special_instructions || '';
             updateCurriculumLibraryLock();
             return;
         }
 
-        loadResolvedSequence(practice);
+        if (isSequenceReady(practice)) {
+            loadResolvedSequence(practice);
+            return;
+        }
+
+        window.currentCurriculumPractice = practice;
+        if (summary) {
+            summary.textContent = practice.special_instructions
+                || practice.resolution_reason
+                || `${nonSequenceNodeTitle(practice)}.`;
+        }
+        if ($('statusText')) $('statusText').textContent = nonSequenceNodeTitle(practice);
+        if ($('poseName')) $('poseName').textContent = nonSequenceNodeTitle(practice);
+        if ($('poseInstructions')) $('poseInstructions').textContent = practice.special_instructions || practice.resolution_reason || '';
+        updateCurriculumLibraryLock();
     } catch (err) {
         console.error('Curriculum start failed:', err);
         if (summary) summary.textContent = err.message || 'Could not load today\'s practice.';
@@ -452,13 +511,13 @@ async function markCurrentCurriculumNodeCompleteForTesting() {
     }
 
     try {
-        if (practice.is_rest_day || practice.resolved_node_type === 'rest' || practice.node_type === 'rest') {
-            console.log('[dev] Rest node — writing acknowledgement row and advancing (no rating).');
+        if (!isSequenceReady(practice)) {
+            console.log('[dev] Non-sequence curriculum node - writing acknowledgement row and advancing (no rating).');
             if (typeof window.appendServerHistory !== 'function') {
                 throw new Error('Completion service is not loaded.');
             }
             await window.appendServerHistory(
-                `Rest day — Week ${practice.week_number} Day ${practice.day_number}`,
+                `${nonSequenceNodeTitle(practice)} - Week ${practice.week_number} Day ${practice.day_number}`,
                 new Date(),
                 practice.source_course || practice.source_key || '',
                 null,
@@ -467,7 +526,7 @@ async function markCurrentCurriculumNodeCompleteForTesting() {
                     sequence_id: null,
                     curriculum_node_id: practice.curriculum_node_id,
                     completion_items: [],
-                    notes: 'Rest day acknowledged via dev test helper.',
+                    notes: `${nonSequenceNodeTitle(practice)} acknowledged via dev test helper.`,
                 },
             );
             window.currentCurriculumPractice = null;
@@ -580,6 +639,7 @@ async function getFirstActiveCurriculumNodeId() {
         .select('id')
         .eq('curriculum_slug', CURRICULUM_SLUG)
         .eq('is_active', true)
+        .eq('is_visible', true)
         .order('order_index', { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -599,7 +659,7 @@ async function resetCurriculumTestProgress() {
     }
 
     const confirmed = window.confirm(
-        'Reset curriculum test progress for draft_v1 for the current user? This deletes curriculum completion rows for this draft only.',
+        'Reset curriculum test progress for the active curriculum for the current user? This deletes curriculum completion rows for this curriculum only.',
     );
     if (!confirmed) return;
 

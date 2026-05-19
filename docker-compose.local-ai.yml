@@ -1,0 +1,15 @@
+services:
+  yoga-local-ai-helper:
+    build:
+      context: ./scripts/local-ai
+    container_name: yoga-local-ai-helper
+    ports:
+      - "8787:8787"
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: llama3.2:3b
+      SUPABASE_DB_URL: postgresql://postgres:postgres@host.docker.internal:54322/postgres
+      APP_ENV: local
+    volumes:
+      - ./scripts/local-ai:/app
+    command: python app.py
