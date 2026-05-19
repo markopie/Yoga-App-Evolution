@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 
+const SOURCE_CURRICULUM_SLUG = 'iyengar_integrated_master_path_draft_v1';
 const CURRICULUM_SLUG = 'iyengar_integrated_master_path_testing_v2';
 const PROGRAM_NAME = 'Integrated Iyengar Practice Path - Testing v2';
 
@@ -9,219 +10,179 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
-const plan = [
-  {
-    week: 1,
-    day: 1,
-    nodeType: 'instruction',
-    dayRole: 'orientation',
-    completionRequirement: 'acknowledge',
-    primaryFocus: 'Orientation',
-    sourceReference: 'Testing v2 orientation',
-    instructions: 'Read the week intention and prepare a quiet practice space.',
-    estimatedMinutes: 5,
-  },
-  {
-    week: 1,
-    day: 2,
-    nodeType: 'sequence',
-    dayRole: 'practice',
-    sequenceId: 114,
-    completionRequirement: 'attempt',
-    instructions: 'Light on Yoga Course 1 backbone practice for the test path.',
-    estimatedMinutes: 40,
-    sourceSequenceOrder: 1,
-  },
-  {
-    week: 1,
-    day: 3,
-    nodeType: 'revision',
-    dayRole: 'revision',
-    completionRequirement: 'attempt',
-    primaryFocus: 'Revision',
-    sourceReference: 'Marker-led revision',
-    instructions: 'Repeat a recently completed light foundation sequence if one is available.',
-    estimatedMinutes: 25,
-  },
-  {
-    week: 1,
-    day: 4,
-    nodeType: 'choice',
-    dayRole: 'choice',
-    completionRequirement: 'choose_one',
-    primaryFocus: 'Choice',
-    sourceReference: 'Student choice',
-    instructions: 'Choose a light prior practice, pranayama preparation, or quiet standing review.',
-    estimatedMinutes: 30,
-  },
-  {
-    week: 1,
-    day: 5,
-    nodeType: 'sequence',
-    dayRole: 'practice',
-    sequenceId: 213,
-    completionRequirement: 'attempt',
-    instructions: 'Yoga: The Iyengar Way Lesson 1 as a second playable node.',
-    estimatedMinutes: 35,
-    sourceSequenceOrder: 2,
-  },
-  {
-    week: 1,
-    day: 6,
-    nodeType: 'consolidation',
-    dayRole: 'consolidation',
-    completionRequirement: 'acknowledge',
-    primaryFocus: 'Consolidation',
-    sourceReference: 'Week 1 consolidation',
-    instructions: 'Notice what felt steady this week; no new source sequence is required.',
-    estimatedMinutes: 10,
-  },
-  {
-    week: 1,
-    day: 7,
-    nodeType: 'recovery',
-    dayRole: 'recovery',
-    recoveryType: 'full_rest',
-    completionRequirement: 'optional',
-    primaryFocus: 'Recovery',
-    sourceReference: 'Full rest',
-    instructions: 'Full rest day. Optional Savasana or quiet observation only.',
-    estimatedMinutes: 0,
-  },
-  {
-    week: 2,
-    day: 1,
-    nodeType: 'instruction',
-    dayRole: 'orientation',
-    completionRequirement: 'acknowledge',
-    primaryFocus: 'Orientation',
-    sourceReference: 'Week 2 orientation',
-    instructions: 'Review the Week 1 notes and set a simple intention for steadiness.',
-    estimatedMinutes: 5,
-  },
-  {
-    week: 2,
-    day: 2,
-    nodeType: 'sequence',
-    dayRole: 'practice',
-    sequenceId: 52,
-    completionRequirement: 'attempt',
-    instructions: 'Light on Pranayama preparatory practice as a gentle playable node.',
-    estimatedMinutes: 20,
-    sourceSequenceOrder: 3,
-  },
-  {
-    week: 2,
-    day: 3,
-    nodeType: 'revision',
-    dayRole: 'revision',
-    completionRequirement: 'attempt',
-    primaryFocus: 'Revision',
-    sourceReference: 'Marker-led revision',
-    instructions: 'Repeat the clearest learning edge from the previous playable node.',
-    estimatedMinutes: 25,
-  },
-  {
-    week: 2,
-    day: 4,
-    nodeType: 'sequence',
-    dayRole: 'practice',
-    sequenceId: 115,
-    completionRequirement: 'attempt',
-    instructions: 'Light on Yoga Course 1 Week 3 and 4 for continued playable coverage.',
-    estimatedMinutes: 45,
-    sourceSequenceOrder: 4,
-  },
-  {
-    week: 2,
-    day: 5,
-    nodeType: 'assessment',
-    dayRole: 'assessment',
-    completionRequirement: 'acknowledge',
-    primaryFocus: 'Readiness Check',
-    sourceReference: 'Testing v2 readiness check',
-    instructions: 'Record whether the current pace feels too much, balanced, or ready for more.',
-    estimatedMinutes: 5,
-  },
-  {
-    week: 2,
-    day: 6,
-    nodeType: 'choice',
-    dayRole: 'choice',
-    completionRequirement: 'choose_one',
-    primaryFocus: 'Choice',
-    sourceReference: 'Recovery-oriented choice',
-    instructions: 'Choose quiet asana, short pranayama preparation, or a favourite light practice.',
-    estimatedMinutes: 20,
-  },
-  {
-    week: 2,
-    day: 7,
-    nodeType: 'recovery',
-    dayRole: 'recovery',
-    recoveryType: 'savasana',
-    completionRequirement: 'optional',
-    primaryFocus: 'Recovery',
-    sourceReference: 'Savasana recovery',
-    instructions: 'Recovery day. Keep it to Savasana, quiet breath observation, or full rest.',
-    estimatedMinutes: 10,
-  },
-];
-
-function orderIndex(week, day) {
-  return Number(`${week}.${String(day).padStart(2, '0')}`);
+function v2NodeType(row) {
+  if (row.node_type === 'rest') return 'recovery';
+  if (row.node_type === 'choice') return 'revision';
+  return row.node_type;
 }
 
-function basePayload(row) {
+function v2DayRole(row) {
+  if (row.node_type === 'sequence') return 'practice';
+  if (row.node_type === 'rest') return 'recovery';
+  if (row.node_type === 'choice' || row.node_type === 'revision') return 'review';
+  if (row.node_type === 'consolidation') return 'consolidation';
+  return row.node_type || 'practice';
+}
+
+function isAdaptive(row) {
+  return ['revision', 'choice', 'consolidation'].includes(row.node_type);
+}
+
+function isRecovery(row) {
+  return row.node_type === 'rest';
+}
+
+function sourcePolicy(row) {
+  if (!row.is_active) return 'composition_part_only';
+  if (row.sequence_id && Array.isArray(row.curriculum_payload?.practice_composition)) return 'composed_sequence';
+  if (row.sequence_id) return 'fixed_sequence';
+  if (row.node_type === 'consolidation') return 'adaptive_consolidation';
+  if (row.node_type === 'revision' || row.node_type === 'choice') return 'adaptive_revision';
+  if (row.node_type === 'rest') return 'recovery_protocol';
+  return 'curriculum_note';
+}
+
+function estimatedMinutes(row) {
+  const payload = row.curriculum_payload || {};
+  const duration = payload.composed_total_duration_minutes || payload.total_duration_minutes;
+  if (Number.isFinite(Number(duration))) return Math.round(Number(duration));
+  if (row.node_type === 'rest') return 0;
+  if (row.node_type === 'consolidation') return 30;
+  if (row.node_type === 'revision' || row.node_type === 'choice') return 25;
+  return null;
+}
+
+function primaryFocus(row) {
+  if (row.node_type === 'rest') return 'Recovery';
+  if (row.node_type === 'choice' || row.node_type === 'revision') return 'Review';
+  if (row.node_type === 'consolidation') return 'Consolidation';
+  return row.primary_focus || 'Mixed';
+}
+
+function recoveryType(row) {
+  if (row.node_type !== 'rest') return null;
+  const text = `${row.source_reference || ''} ${row.special_instructions || ''}`.toLowerCase();
+  if (text.includes('savasana')) return 'savasana_or_full_rest';
+  return 'full_rest';
+}
+
+function adaptiveBehavior(row) {
+  if (!row.is_active) {
+    return {
+      status: 'inactive_source_shadow',
+      reason: row.curriculum_payload?.inactive_reason || 'source sequence scheduled elsewhere',
+    };
+  }
+
+  if (row.sequence_id) {
+    return {
+      status: 'fixed',
+      route_by_node_type: true,
+    };
+  }
+
+  if (row.node_type === 'consolidation') {
+    return {
+      status: 'active',
+      selector: 'best_prior_source_backed_practice',
+      use_progress_and_ratings: true,
+      fallback: 'most_recent_completed_or_previous_source_sequence',
+    };
+  }
+
+  if (row.node_type === 'revision' || row.node_type === 'choice') {
+    return {
+      status: 'active',
+      selector: 'marked_or_recent_prior_practice',
+      preferred_markers: ['concentrate', 'do_again', 'favourite'],
+      use_progress_and_ratings: true,
+      fallback: 'most_recent_completed_or_previous_source_sequence',
+    };
+  }
+
+  if (row.node_type === 'rest') {
+    return {
+      status: 'active',
+      selector: 'recovery_protocol',
+      fallback: 'acknowledge_recovery_day',
+    };
+  }
+
   return {
-    test_contract: 'curriculum_contract_v2_visible_non_sequence_week',
-    placeholder_non_sequence: !row.sequenceId,
-    adaptive_progression_future: true,
+    status: 'active',
+    selector: 'curriculum_metadata',
   };
 }
 
-function rowFromPlan(row, candidateBySequenceId) {
-  const candidate = row.sequenceId ? candidateBySequenceId.get(row.sequenceId) : null;
+function sourceReference(row) {
+  if (row.node_type === 'choice') return 'Do Again / Concentrate revision buffer';
+  return row.source_reference;
+}
+
+function specialInstructions(row) {
+  if (row.node_type === 'choice') {
+    return row.special_instructions.replace(/^Reserve-alert choice:/, 'Reserve-alert review:');
+  }
+  return row.special_instructions;
+}
+
+function rowFromDraft(row, sourceSequenceOrder) {
+  const { id, ...draftValues } = row;
+  const active = row.is_active === true;
+  const policy = sourcePolicy(row);
+  const dayRole = v2DayRole(row);
 
   return {
-    sequence_id: row.sequenceId ?? null,
+    ...draftValues,
     curriculum_slug: CURRICULUM_SLUG,
     program_name: PROGRAM_NAME,
-    week_number: row.week,
-    day_number: row.day,
-    order_index: orderIndex(row.week, row.day),
-    is_revision_node: ['revision', 'choice', 'consolidation'].includes(row.nodeType),
-    special_instructions: row.instructions,
-    source_name: candidate?.source_title || PROGRAM_NAME,
-    source_reference: candidate?.source_reference || row.sourceReference,
-    level_number: 1,
-    intensity: row.nodeType === 'recovery' ? 'restorative' : candidate?.effective_intensity_band || 'light',
-    primary_focus: candidate?.effective_primary_theme || row.primaryFocus || 'Mixed',
-    is_active: true,
-    node_type: row.nodeType,
-    source_key: candidate?.source_key || null,
-    source_rule_id: null,
-    source_course: candidate?.source_course || null,
-    curriculum_payload: basePayload(row),
-    generated_from_rule: false,
-    is_optional: ['choice', 'recovery'].includes(row.nodeType),
-    is_rest_day: row.nodeType === 'recovery',
-    requires_user_selection: ['choice', 'revision'].includes(row.nodeType),
-    mastery_gate_required: false,
-    curriculum_phase: 'testing_v2_contract',
-    practice_track: row.dayRole,
-    completion_requirement: row.completionRequirement,
-    day_role: row.dayRole,
-    recovery_type: row.recoveryType || null,
-    is_visible: true,
-    source_policy: row.sequenceId ? 'fixed_sequence' : 'placeholder_non_sequence',
-    source_sequence_order: row.sourceSequenceOrder ?? null,
-    estimated_minutes: row.estimatedMinutes,
-    curriculum_unit_id: `testing_v2_w${row.week}`,
-    adaptive_behavior: {
-      status: 'future_placeholder',
-      route_by_node_type: true,
+    node_type: v2NodeType(row),
+    day_role: dayRole,
+    recovery_type: recoveryType(row),
+    is_visible: active,
+    source_policy: policy,
+    source_sequence_order: row.sequence_id ? sourceSequenceOrder : null,
+    estimated_minutes: estimatedMinutes(row),
+    curriculum_unit_id: `testing_v2_w${row.week_number}`,
+    adaptive_behavior: adaptiveBehavior(row),
+    is_revision_node: isAdaptive(row),
+    is_optional: isRecovery(row),
+    is_rest_day: isRecovery(row),
+    requires_user_selection: false,
+    completion_requirement: isRecovery(row) ? 'optional' : 'attempt',
+    primary_focus: primaryFocus(row),
+    source_reference: sourceReference(row),
+    special_instructions: specialInstructions(row),
+    practice_track: isRecovery(row) ? 'recovery' : row.node_type === 'choice' ? 'revision' : row.practice_track,
+    curriculum_payload: {
+      ...(row.curriculum_payload || {}),
+      v2_contract: 'testing_v2_from_draft_v1_source_spine',
+      placeholder_non_sequence: false,
+      source_curriculum_slug: SOURCE_CURRICULUM_SLUG,
+      original_node_type: row.node_type,
+      day_role: dayRole,
+      source_policy: policy,
     },
+  };
+}
+
+function summariseRows(rows) {
+  const sourceBacked = rows.filter((row) =>
+    row.sequence_id != null || Array.isArray(row.curriculum_payload?.practice_composition)
+  );
+  const adaptive = rows.filter((row) =>
+    ['adaptive_revision', 'adaptive_consolidation'].includes(row.source_policy)
+  );
+  const recovery = rows.filter((row) => row.node_type === 'recovery');
+  const placeholders = rows.filter((row) => row.curriculum_payload?.placeholder_non_sequence === true);
+
+  return {
+    total: rows.length,
+    active_visible: rows.filter((row) => row.is_active && row.is_visible).length,
+    source_backed: sourceBacked.length,
+    adaptive: adaptive.length,
+    recovery: recovery.length,
+    placeholders: placeholders.length,
   };
 }
 
@@ -230,26 +191,19 @@ async function main() {
     throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env');
   }
 
-  const sequenceIds = plan
-    .map((row) => row.sequenceId)
-    .filter((sequenceId) => sequenceId != null);
-
-  const { data: candidates, error: candidateError } = await supabase
-    .from('v_master_curriculum_candidate_pool')
+  const { data: draftRows, error: draftError } = await supabase
+    .from('program_curriculum')
     .select('*')
-    .in('sequence_id', sequenceIds);
+    .eq('curriculum_slug', SOURCE_CURRICULUM_SLUG)
+    .order('order_index');
+  if (draftError) throw draftError;
+  if (!draftRows?.length) throw new Error(`No source rows found for ${SOURCE_CURRICULUM_SLUG}.`);
 
-  if (candidateError) throw candidateError;
-
-  const candidateBySequenceId = new Map(
-    (candidates || []).map((candidate) => [candidate.sequence_id, candidate]),
-  );
-  const missing = sequenceIds.filter((sequenceId) => !candidateBySequenceId.has(sequenceId));
-  if (missing.length > 0) {
-    throw new Error(`Missing candidate rows for sequence IDs: ${missing.join(', ')}`);
-  }
-
-  const rows = plan.map((row) => rowFromPlan(row, candidateBySequenceId));
+  let sourceSequenceOrder = 0;
+  const rows = draftRows.map((row) => {
+    if (row.sequence_id != null) sourceSequenceOrder += 1;
+    return rowFromDraft(row, row.sequence_id != null ? sourceSequenceOrder : null);
+  });
 
   const { error: deleteError } = await supabase
     .from('program_curriculum')
@@ -263,14 +217,13 @@ async function main() {
   if (insertError) throw insertError;
 
   console.log(`Inserted ${rows.length} rows for ${CURRICULUM_SLUG}.`);
-  console.table(rows.map((row) => ({
-    week: row.week_number,
-    day: row.day_number,
-    node_type: row.node_type,
-    day_role: row.day_role,
-    recovery_type: row.recovery_type,
-    sequence_id: row.sequence_id,
-  })));
+  console.table([summariseRows(rows)]);
+  console.table(
+    Object.entries(rows.reduce((acc, row) => {
+      acc[row.source_policy] = (acc[row.source_policy] || 0) + 1;
+      return acc;
+    }, {})).map(([source_policy, count]) => ({ source_policy, count })),
+  );
 }
 
 main().catch((error) => {

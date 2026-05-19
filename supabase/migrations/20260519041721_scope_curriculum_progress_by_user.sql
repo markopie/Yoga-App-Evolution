@@ -1,29 +1,10 @@
-alter table public.program_curriculum
-add column if not exists day_role text,
-add column if not exists recovery_type text,
-add column if not exists is_visible boolean not null default true,
-add column if not exists source_policy text,
-add column if not exists source_sequence_order integer,
-add column if not exists estimated_minutes integer,
-add column if not exists curriculum_unit_id text,
-add column if not exists adaptive_behavior jsonb not null default '{}'::jsonb;
-
-alter table public.program_curriculum
-alter column adaptive_behavior type jsonb
-using case
-  when adaptive_behavior is null then '{}'::jsonb
-  else adaptive_behavior::jsonb
-end;
-
-create index if not exists idx_program_curriculum_slug_visible_order
-  on public.program_curriculum(curriculum_slug, order_index)
-  where is_active = true and is_visible = true;
-
 drop function if exists public.get_today_curriculum_practice(text, uuid, bigint);
 drop function if exists public.get_next_curriculum_node(text);
+drop function if exists public.get_next_curriculum_node(text, uuid);
 
 create or replace function public.get_next_curriculum_node(
-  p_curriculum_slug text default 'iyengar_integrated_master_path_draft_v0'
+  p_curriculum_slug text default 'iyengar_integrated_master_path_draft_v0',
+  p_user_id uuid default auth.uid()
 )
 returns table(
   curriculum_node_id bigint,
@@ -99,6 +80,10 @@ as $function$
       from public.sequence_completions sc
       where sc.curriculum_node_id = pc.id
         and coalesce(sc.completed, true) = true
+        and (
+          (p_user_id is not null and sc.user_id = p_user_id)
+          or (p_user_id is null and sc.user_id is null)
+        )
     )
   order by pc.order_index
   limit 1;
@@ -188,18 +173,19 @@ as $function$
     union all
 
     select *
-    from public.get_next_curriculum_node(p_curriculum_slug)
+    from public.get_next_curriculum_node(p_curriculum_slug, p_user_id)
     where p_repeat_node_id is null
   ),
 
-  revision_resolution as (
+  adaptive_resolution as (
     select rr.*
     from next_node nn
     cross join lateral public.resolve_revision_curriculum_node(
       nn.curriculum_node_id,
       p_user_id
     ) rr
-    where nn.node_type in ('revision', 'choice')
+    where nn.node_type in ('revision', 'choice', 'consolidation')
+       or nn.source_policy in ('adaptive_revision', 'adaptive_consolidation')
   )
 
   select
@@ -211,21 +197,24 @@ as $function$
     nn.order_index,
     nn.node_type,
     case
-      when nn.node_type in ('revision', 'choice')
-        and rr.resolved_sequence_id is not null
+      when (nn.node_type in ('revision', 'choice', 'consolidation')
+            or nn.source_policy in ('adaptive_revision', 'adaptive_consolidation'))
+        and ar.resolved_sequence_id is not null
       then 'sequence'
       when nn.node_type in ('rest', 'recovery')
       then nn.node_type
       else nn.node_type
     end as resolved_node_type,
     case
-      when nn.node_type in ('revision', 'choice')
-      then rr.resolved_sequence_id
+      when nn.node_type in ('revision', 'choice', 'consolidation')
+        or nn.source_policy in ('adaptive_revision', 'adaptive_consolidation')
+      then ar.resolved_sequence_id
       else nn.sequence_id
     end as resolved_sequence_id,
     case
-      when nn.node_type in ('revision', 'choice')
-      then rr.resolved_course_title
+      when nn.node_type in ('revision', 'choice', 'consolidation')
+        or nn.source_policy in ('adaptive_revision', 'adaptive_consolidation')
+      then ar.resolved_course_title
       else c.title
     end as resolved_course_title,
     nn.source_name,
@@ -242,21 +231,23 @@ as $function$
     nn.completion_requirement,
     nn.curriculum_payload,
     case
-      when nn.node_type in ('revision', 'choice')
-        and rr.resolved_sequence_id is not null
-      then rr.reason
-      when nn.node_type in ('revision', 'choice')
-      then 'Selection node: no completed sequence is available yet.'
+      when (nn.node_type in ('revision', 'choice', 'consolidation')
+            or nn.source_policy in ('adaptive_revision', 'adaptive_consolidation'))
+        and ar.resolved_sequence_id is not null
+      then ar.reason
+      when nn.node_type in ('revision', 'choice', 'consolidation')
+        or nn.source_policy in ('adaptive_revision', 'adaptive_consolidation')
+      then 'Adaptive node: no prior source-backed sequence is available yet.'
       when nn.node_type = 'recovery'
       then 'Recovery node: no sequence required.'
       when nn.node_type = 'rest'
       then 'Rest node: no sequence required.'
-      when nn.node_type in ('instruction', 'assessment', 'mastery_gate', 'reserve', 'consolidation')
+      when nn.node_type in ('instruction', 'assessment', 'mastery_gate', 'reserve')
         and nn.sequence_id is null
       then 'Non-sequence curriculum node: no sequence required.'
       when p_repeat_node_id is not null
       then 'Repeat: low rating on previous attempt.'
-      else 'Fixed sequence node.'
+      else 'Curriculum sequence node.'
     end as resolution_reason,
     nn.day_role,
     nn.recovery_type,
@@ -267,8 +258,9 @@ as $function$
     nn.curriculum_unit_id,
     nn.adaptive_behavior
   from next_node nn
-  left join revision_resolution rr
+  left join adaptive_resolution ar
     on true
   left join public.courses c
-    on c.id = nn.sequence_id;
+    on c.id = nn.sequence_id
+  limit 1;
 $function$;

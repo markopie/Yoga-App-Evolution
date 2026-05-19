@@ -30,9 +30,9 @@ function nodeTypeLabel(node) {
     if (node.node_type === 'recovery')      return 'Recovery Day';
     if (node.node_type === 'instruction')   return 'Instruction Day';
     if (node.node_type === 'rest')          return 'Rest Day';
-    if (node.node_type === 'revision')      return 'Revision Practice';
+    if (node.node_type === 'revision')      return 'Review Practice';
     if (node.node_type === 'consolidation') return 'Consolidation Practice';
-    if (node.node_type === 'choice')        return 'Your Choice';
+    if (node.node_type === 'choice')        return 'Review Practice';
     const comp = node.curriculum_payload?.practice_composition;
     if (Array.isArray(comp) && comp.length > 1) return 'Combined Practice';
     return null;
@@ -202,10 +202,8 @@ function buildNodeTitle(node) {
     }
     if (node.node_type === 'instruction') return node.primary_focus || 'Instruction Day';
     if (node.node_type === 'rest')     return 'Rest Day';
-    if (node.node_type === 'revision') return 'Revision Practice';
-    if (node.node_type === 'consolidation') {
-        return node.primary_focus ? `${node.primary_focus} — Consolidation` : 'Consolidation Practice';
-    }
+    if (node.node_type === 'revision') return 'Review Practice';
+    if (node.node_type === 'consolidation') return 'Consolidation Practice';
 
     const payload = node.curriculum_payload || {};
     const comp = payload.practice_composition;

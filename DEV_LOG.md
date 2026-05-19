@@ -43,6 +43,55 @@
 
 **Next Steps for Next Session:**
 - Decide whether the active curriculum slug should stay on testing v2, move behind a dev toggle, or return to draft v1 after manual UI inspection.
+---
+
+## [2026-05-19] - Session [Testing v2 Runtime Audit]
+**Goal:** Manually audit the merged testing v2 curriculum runtime and add the smallest durable coverage for non-sequence routing.
+
+**Architectural Decisions:**
+- Kept `src/config/curriculumConfig.js` pointed at `iyengar_integrated_master_path_testing_v2` while the v2 runtime remains under active manual review.
+- Deferred a dev-only curriculum selector until the active-curriculum strategy is chosen deliberately.
+- Kept non-sequence handling as acknowledgement/label routing, not adaptive progression.
+
+**Code Changed:**
+- `src/utils/curriculumRouting.js`: Extracted pure curriculum node routing helpers from the UI module.
+- `src/utils/curriculumRouting.test.js`: Added coverage for recovery, instruction, choice, revision, assessment, consolidation, and sequence-ready routing.
+- `src/ui/curriculumUI.js`: Uses the shared routing helpers without changing the visible flow.
+
+**Verification:**
+- `supabase db reset` passed locally.
+- `npm run seed:curriculum-testing-v2` inserted 14 testing rows.
+- `npm run validate:curriculum-testing-v2`, `npm test`, `npm run build`, and `npm run lint` passed; lint still reports existing warnings only.
+- Browser audit confirmed roadmap renders 14 testing v2 nodes across two weeks, recovery labels render as Full Rest and Savasana, W1D1 acknowledgement advances to W1D2, and W1D2 loads a playable sequence.
+
+**Next Steps for Next Session:**
+- Decide whether to keep testing v2 active, switch back to draft v1, or add a dev-only selector before expanding the v2 fixture.
+---
+
+## [2026-05-19] - Session [Testing v2 Curriculum Candidate Rebuild]
+**Goal:** Rebuild `testing_v2` from a small runtime fixture into a genuine curriculum candidate using `draft_v1` as the source-backed spine.
+
+**Architectural Decisions:**
+- Kept `testing_v2` active for review, but changed its seed strategy to derive from `draft_v1` instead of inventing a separate placeholder curriculum.
+- Preserved v2 routing metadata on top of the source spine: fixed sequence, composed sequence, adaptive revision, adaptive consolidation, recovery protocol, and hidden composition-part rows.
+- Scoped progression lookup by user so Start resolves the next curriculum node from the current user's completions instead of global completion rows.
+
+**Code Changed:**
+- `scripts/active/seed_testing_curriculum_v2.mjs`: Rebuilds 160 testing v2 rows from `draft_v1`, with 145 active visible rows and no placeholders.
+- `scripts/active/validate_testing_curriculum_v2.mjs`: Validates the expanded v2 candidate, source-backed preservation, automatic adaptive nodes, recovery metadata, and visible roadmap constraints.
+- `supabase/migrations/20260519040353_improve_testing_v2_adaptive_resolution.sql`: Resolves adaptive review/consolidation nodes to completed or prior source-backed sequences.
+- `supabase/migrations/20260519041721_scope_curriculum_progress_by_user.sql`: Makes current-node selection user-scoped.
+- `src/ui/curriculumRoadmapUI.js`, `src/ui/curriculumUI.js`: Simplified user-facing adaptive labels and kept curriculum practice context stable through sequence UI refresh.
+
+**Verification:**
+- `supabase db reset` passed locally.
+- `supabase db push --yes` applied the new remote migration.
+- `npm run seed:curriculum-testing-v2` inserted 160 rows.
+- `npm run validate:curriculum-testing-v2`, `npm test`, `npm run build`, and `npm run lint` passed; lint still reports existing warnings only.
+- Browser/runtime audit covered early, middle, later, composed, adaptive review/consolidation, and recovery cases.
+
+**Next Steps for Next Session:**
+- Review whether the adaptive review/consolidation labels are still too internal for the final roadmap copy before promoting v2 beyond testing.
 ## [2026-05-19] - Session [Supabase Local Config Hygiene]
 **Goal:** Add a minimal committed Supabase CLI config so local migration replay is explicit instead of depending on generated defaults.
 

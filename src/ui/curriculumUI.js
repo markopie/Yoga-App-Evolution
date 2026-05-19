@@ -3,6 +3,12 @@ import { $ } from '../utils/dom.js';
 import { playbackEngine } from '../playback/timer.js';
 import { isConfiguredAdminEmail } from '../config/appConfig.js';
 import { ACTIVE_CURRICULUM_SLUG } from '../config/curriculumConfig.js';
+import {
+    isRestOrRecoveryNode,
+    isSequenceReady,
+    nonSequenceNodeTitle,
+    prettifyCurriculumToken,
+} from '../utils/curriculumRouting.js';
 
 const CURRICULUM_SLUG = ACTIVE_CURRICULUM_SLUG;
 
@@ -57,42 +63,6 @@ function renderOverviewItem(label, value) {
             <span class="curriculum-practice-overview__value">${escapeHtml(valueText(value))}</span>
         </div>
     `;
-}
-
-function prettifyToken(value) {
-    return String(value || '')
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function isRecoveryNode(practice) {
-    return practice?.node_type === 'recovery'
-        || practice?.day_role === 'recovery'
-        || practice?.resolved_node_type === 'recovery';
-}
-
-function isRestOrRecoveryNode(practice) {
-    return practice?.is_rest_day
-        || practice?.node_type === 'rest'
-        || practice?.resolved_node_type === 'rest'
-        || isRecoveryNode(practice);
-}
-
-function isSequenceReady(practice) {
-    return practice?.resolved_node_type === 'sequence' && !!practice?.resolved_sequence_id;
-}
-
-function nonSequenceNodeTitle(practice) {
-    if (isRecoveryNode(practice)) {
-        const recovery = practice.recovery_type ? ` - ${prettifyToken(practice.recovery_type)}` : '';
-        return `Recovery Day${recovery}`;
-    }
-    if (practice?.node_type === 'instruction') return 'Instruction Day';
-    if (practice?.node_type === 'choice') return 'Choice Day';
-    if (practice?.node_type === 'revision') return 'Revision Day';
-    if (practice?.node_type === 'consolidation') return 'Consolidation Day';
-    if (practice?.node_type === 'assessment') return 'Assessment Day';
-    return prettifyToken(practice?.day_role || practice?.node_type || 'Curriculum Day');
 }
 
 function normalisePracticeResult(data) {
@@ -295,7 +265,7 @@ function renderPracticeDetails(practice) {
             ['Duration', durationLabel],
             ['Focus', practice.primary_focus],
             ['Role', practice.day_role],
-            ['Recovery', practice.recovery_type && prettifyToken(practice.recovery_type)],
+            ['Recovery', practice.recovery_type && prettifyCurriculumToken(practice.recovery_type)],
         ];
         overview.innerHTML = overviewItems.map(([label, value]) => renderOverviewItem(label, value)).join('');
         overview.style.display = overview.innerHTML ? 'grid' : 'none';
@@ -378,7 +348,7 @@ function loadResolvedSequence(practice) {
         }
         : { ...primaryCourse };
 
-    window.currentCurriculumPractice = {
+    const curriculumPracticeState = {
         ...practice,
         composition_parts: playableParts.map((part) => {
             const cloned = { ...part };
@@ -387,6 +357,7 @@ function loadResolvedSequence(practice) {
         }),
         is_composed_practice: isComposed,
     };
+    window.currentCurriculumPractice = curriculumPracticeState;
     window.suppressCurriculumClear = true;
 
     if (typeof window.stopTimer === 'function') window.stopTimer();
@@ -420,6 +391,7 @@ function loadResolvedSequence(practice) {
     if (typeof window.renderCourseUI === 'function') window.renderCourseUI();
     if (selector && idx >= 0) selector.value = String(idx);
     window.suppressCurriculumClear = false;
+    window.currentCurriculumPractice = curriculumPracticeState;
 
     if (typeof window.updateAliasUIFeedback === 'function') window.updateAliasUIFeedback();
     if (typeof window.updateNextBtnText === 'function') window.updateNextBtnText();
