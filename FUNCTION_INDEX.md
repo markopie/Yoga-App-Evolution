@@ -10,6 +10,10 @@
 - `isConfiguredAdminEmail` (function)
 - `normalizeEmail` (function)
 
+### 📄 `config/curriculumConfig.js`
+- `ACTIVE_CURRICULUM_NAME` (const)
+- `ACTIVE_CURRICULUM_SLUG` (const)
+
 ### 📄 `config/propRegistry.js`
 - `PROP_REGISTRY` (const)
 - `PROP_REGISTRY` (window binding)
@@ -452,6 +456,13 @@
 
 ### 📄 `utils/completionFlow.js`
 - `ratingOverlayOptionsForCompletion` (function)
+
+### 📄 `utils/curriculumRouting.js`
+- `isRecoveryNode` (function)
+- `isRestOrRecoveryNode` (function)
+- `isSequenceReady` (function)
+- `nonSequenceNodeTitle` (function)
+- `prettifyCurriculumToken` (function)
 
 ### 📄 `utils/dom.js`
 - `$` (module export)

@@ -6,6 +6,7 @@ const EXPECTED_WEEKS = 24;
 const EXPECTED_TOTAL_ROWS = 160;
 const EXPECTED_ACTIVE_VISIBLE_ROWS = 145;
 const EXPECTED_SOURCE_BACKED_ROWS = 93;
+const CHOICE_COPY_PATTERN = /\b(choose|choose a|select your|pick|your choice|choice)\b/i;
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -35,6 +36,21 @@ function adaptiveBehavior(row) {
   return {};
 }
 
+function userFacingText(row) {
+  return [
+    row.node_type,
+    row.day_role,
+    row.recovery_type,
+    row.source_policy,
+    row.primary_focus,
+    row.source_name,
+    row.source_reference,
+    row.special_instructions,
+  ]
+    .filter(Boolean)
+    .join(' | ');
+}
+
 async function main() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env');
@@ -42,7 +58,7 @@ async function main() {
 
   const { data: rows, error } = await supabase
     .from('program_curriculum')
-    .select('id, week_number, day_number, node_type, day_role, recovery_type, source_policy, sequence_id, is_active, is_visible, requires_user_selection, adaptive_behavior, curriculum_payload')
+    .select('id, week_number, day_number, node_type, day_role, recovery_type, source_policy, sequence_id, is_active, is_visible, requires_user_selection, adaptive_behavior, curriculum_payload, primary_focus, source_name, source_reference, special_instructions')
     .eq('curriculum_slug', CURRICULUM_SLUG)
     .order('order_index');
 
@@ -93,6 +109,9 @@ async function main() {
 
   const invalidAdaptiveRows = adaptiveRows.filter((row) => row.sequence_id != null || !adaptiveBehavior(row).selector);
   assertPass(invalidAdaptiveRows.length === 0, 'adaptive rows are automatic selector nodes', JSON.stringify(invalidAdaptiveRows));
+
+  const choiceCopyRows = activeVisibleRows.filter((row) => CHOICE_COPY_PATTERN.test(userFacingText(row)));
+  assertPass(choiceCopyRows.length === 0, 'active visible testing_v2 rows do not ask users to choose practices', JSON.stringify(choiceCopyRows));
 
   console.table([{
     total_rows: allRows.length,

@@ -5,6 +5,16 @@ const SOURCE_CURRICULUM_SLUG = 'iyengar_integrated_master_path_draft_v1';
 const CURRICULUM_SLUG = 'iyengar_integrated_master_path_testing_v2';
 const PROGRAM_NAME = 'Integrated Iyengar Practice Path - Testing v2';
 
+const AUTOMATIC_ADAPTIVE_INSTRUCTIONS = {
+  '7:6': 'Today\'s practice will revisit a prior lesson that would benefit from steadier understanding.',
+  '9:6': 'Today\'s practice will revisit a suitable lighter practice if fatigue or reserve is accumulating.',
+  '15:6': 'Today\'s practice will stay light, using a short marked practice or quiet recovery as appropriate.',
+  '18:4': 'Today\'s practice will consolidate a Light on Yoga Course 1 backbone practice that needs steadier timing and ease.',
+  '20:6': 'Today\'s practice will revisit an easy marked practice.',
+  '22:6': 'Today\'s practice will use recovery-oriented revision after the Course 1 plateau practice.',
+  '24:6': 'Today\'s practice will stay deliberately light after the Course 1 plateau practice, using a short, restorative, or quiet practice as appropriate.',
+};
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -120,13 +130,27 @@ function sourceReference(row) {
 }
 
 function specialInstructions(row) {
+  const automaticInstruction = AUTOMATIC_ADAPTIVE_INSTRUCTIONS[`${row.week_number}:${row.day_number}`];
+  if (automaticInstruction && ['choice', 'revision', 'consolidation'].includes(row.node_type)) {
+    return automaticInstruction;
+  }
+
   if (row.node_type === 'choice') {
     return row.special_instructions.replace(/^Reserve-alert choice:/, 'Reserve-alert review:');
   }
   return row.special_instructions;
 }
 
-function rowFromDraft(row, sourceSequenceOrder) {
+async function hasProgramCurriculumColumn(columnName) {
+  const { error } = await supabase
+    .from('program_curriculum')
+    .select(columnName)
+    .limit(1);
+
+  return !error;
+}
+
+function rowFromDraft(row, sourceSequenceOrder, options = {}) {
   const { id, ...draftValues } = row;
   const active = row.is_active === true;
   const policy = sourcePolicy(row);
@@ -146,7 +170,7 @@ function rowFromDraft(row, sourceSequenceOrder) {
     curriculum_unit_id: `testing_v2_w${row.week_number}`,
     adaptive_behavior: adaptiveBehavior(row),
     is_revision_node: isAdaptive(row),
-    is_optional: isRecovery(row),
+    ...(options.hasIsOptional ? { is_optional: isRecovery(row) } : {}),
     is_rest_day: isRecovery(row),
     requires_user_selection: false,
     completion_requirement: isRecovery(row) ? 'optional' : 'attempt',
@@ -199,10 +223,12 @@ async function main() {
   if (draftError) throw draftError;
   if (!draftRows?.length) throw new Error(`No source rows found for ${SOURCE_CURRICULUM_SLUG}.`);
 
+  const hasIsOptional = await hasProgramCurriculumColumn('is_optional');
+
   let sourceSequenceOrder = 0;
   const rows = draftRows.map((row) => {
     if (row.sequence_id != null) sourceSequenceOrder += 1;
-    return rowFromDraft(row, row.sequence_id != null ? sourceSequenceOrder : null);
+    return rowFromDraft(row, row.sequence_id != null ? sourceSequenceOrder : null, { hasIsOptional });
   });
 
   const { error: deleteError } = await supabase

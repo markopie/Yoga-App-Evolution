@@ -21,6 +21,51 @@
   }
 }
 
+## [2026-05-24] - Session [Testing v2 Adaptive Copy Fix]
+**Goal:** Resolve the `testing_v2` promotion blocker where adaptive revision/consolidation instructions still asked the user to choose a practice.
+
+**Architectural Decisions:**
+- Kept the fix limited to seed copy, validation, documentation, and this log.
+- Preserved active curriculum slug, schema, migrations, RPC logic, adaptive resolution, source placement, and roadmap counts.
+- Used explicit local Supabase environment overrides for validation because `.env` points at the remote project.
+
+**Code Changed:**
+- `scripts/active/seed_testing_curriculum_v2.mjs`: Replaced the seven choice-based adaptive instructions with automatic-selection copy and made the legacy `is_optional` seed field conditional on the target schema.
+- `scripts/active/validate_testing_curriculum_v2.mjs`: Added a guard that fails active visible user-facing copy containing choice/select/pick language.
+- `docs/testing-v2-promotion-readiness.md`: Updated the readiness report to mark the previous blocker resolved.
+- `DEV_LOG.md`: Added this entry.
+
+**Verification:**
+- `supabase db reset` passed locally.
+- `npm run seed:curriculum-testing-v2` and `npm run validate:curriculum-testing-v2` passed against local Supabase with explicit local env overrides.
+- Focused audit confirmed 160 total rows, 145 active visible rows, 0 placeholders, exact seven copy replacements, no choose/choice copy, composed/adaptive/recovery resolution, and user-scoped progression.
+- `npm test`, `npm run build`, and `npm run lint` passed; lint remains warning-only.
+
+**Next Steps for Next Session:**
+- Decide whether `testing_v2` stays active for review or moves behind a dev-only selector before broader exposure.
+---
+
+## [2026-05-24] - Session [Testing v2 Promotion Readiness Audit]
+**Goal:** Audit whether `iyengar_integrated_master_path_testing_v2` is ready to promote beyond active review.
+
+**Architectural Decisions:**
+- Kept the audit read-only for schema/runtime/seed strategy after finding user-facing adaptive copy that still implies user choice.
+- Did not change the active curriculum slug or push Supabase migrations.
+- Treated the requested seed/validation run as verification, then documented the promotion blocker instead of patching seed logic autonomously.
+
+**Code Changed:**
+- `docs/testing-v2-promotion-readiness.md`: Added the promotion-readiness report, counts, verification results, risks, Mark decisions, and recommendation.
+- `DEV_LOG.md`: Added this audit entry.
+
+**Verification:**
+- `supabase start` started the local stack after the first reset attempt found it stopped.
+- `supabase db reset`, `npm run seed:curriculum-testing-v2`, `npm run validate:curriculum-testing-v2`, `npm test`, `npm run build`, and `npm run lint` passed.
+- Focused RPC/data audit passed for counts, source-backed playback, composed parts, adaptive resolution, recovery acknowledgement, and user-scoped progression.
+
+**Next Steps for Next Session:**
+- Normalize adaptive revision/consolidation instructions that still say the user should choose a practice before promoting `testing_v2`.
+---
+
 ## [2026-05-19] - Session [Testing v2 Visible Curriculum Contract]
 **Goal:** Prove the curriculum contract v2 path can represent two visible seven-day weeks with non-sequence curriculum nodes.
 
