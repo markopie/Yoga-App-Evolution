@@ -1,10 +1,53 @@
 // src/services/supabaseClient.js
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = "https://qrcpiyncvfmpmeuyhsha.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyY3BpeW5jdmZtcG1ldXloc2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTA2NDgsImV4cCI6MjA4NzI4NjY0OH0.7sjbfwdT_aYmrJyVFYWpfMNBQpCJAI7Vd5uNEkzD4GI";
+const env = import.meta.env || {};
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = String(env.VITE_SUPABASE_URL || '').trim();
+const SUPABASE_PUBLISHABLE_KEY = String(
+    env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || '',
+).trim();
+const SUPABASE_TARGET = String(env.VITE_SUPABASE_TARGET || 'local').trim();
+const hasSupabaseConfig = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
 
-// THIS IS THE BRIDGE: It makes the worker global for your app.js
+export const supabaseConfig = hasSupabaseConfig ? {
+    url: SUPABASE_URL,
+    target: SUPABASE_TARGET,
+    keyType: SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_') ? 'publishable' : 'legacy-anon',
+    storageKey: `yoga-evolution-${SUPABASE_TARGET}-auth`,
+} : null;
+
+if (!hasSupabaseConfig) {
+    console.warn(
+        '[Supabase] Missing runtime config. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local to enable cloud features.',
+    );
+} else {
+    console.info('[Supabase] Runtime target:', supabaseConfig);
+}
+
+export const supabase = hasSupabaseConfig ? createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storageKey: supabaseConfig.storageKey,
+    },
+}) : null;
+
+if (supabase) {
+    supabase.auth.getSession().then(({ error }) => {
+        if (!error) return;
+        if (!/refresh token/i.test(error.message || '')) return;
+        console.warn('[Supabase] Clearing stale local auth session after reset:', error.message);
+        return supabase.auth.signOut({ scope: 'local' });
+    }).catch((error) => {
+        if (/refresh token/i.test(error?.message || '')) {
+            console.warn('[Supabase] Clearing stale local auth session after reset:', error.message);
+            return supabase.auth.signOut({ scope: 'local' });
+        }
+        console.warn('[Supabase] Session check failed:', error);
+    });
+}
+
 window.supabase = supabase;
+window.supabaseConfig = supabaseConfig;

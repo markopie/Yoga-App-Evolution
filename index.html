@@ -33,6 +33,23 @@
       <div id="loginLogo">🧘</div>
       <h1 id="loginTitle">Yoga Evolution</h1>
       <p id="loginSubtitle">Your personal practice, beautifully organised.</p>
+      <form id="emailAuthForm" style="display:flex; flex-direction:column; gap:10px; width:100%; margin-bottom:10px;">
+        <input id="authEmailInput" type="email" autocomplete="email" placeholder="Email" required style="width:100%; box-sizing:border-box; padding:12px 14px; border:1px solid #d2d2d7; border-radius:10px; font-size:1rem;">
+        <input id="authPasswordInput" type="password" autocomplete="current-password" placeholder="Password" required minlength="6" style="width:100%; box-sizing:border-box; padding:12px 14px; border:1px solid #d2d2d7; border-radius:10px; font-size:1rem;">
+        <button id="emailSignInBtn" type="submit">Sign in</button>
+        <button id="emailSignUpBtn" type="button" style="
+            background: transparent;
+            border: 1px solid #d2d2d7;
+            color: #1d1d1f;
+            font-size: 0.9rem;
+            padding: 10px 20px;
+            border-radius: 980px;
+            cursor: pointer;
+            width: 100%;
+        ">
+          Create account
+        </button>
+      </form>
       <button id="googleSignInBtn">
         <svg width="20" height="20" viewBox="0 0 48 48" style="flex-shrink:0;">
           <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/>
@@ -577,15 +594,7 @@
     </div>
   </div>
 
-<script>
-  // Skip main app scripts when running a prototype
-  if (!new URLSearchParams(location.search).get('prototype')) {
-    ['src/services/supabaseClient.js','src/services/dataAdapter.js','app.js'].forEach(function(src){
-      var s = document.createElement('script'); s.type = 'module'; s.src = src;
-      document.currentScript.parentNode.appendChild(s);
-    });
-  }
-</script>
+<script type="module" src="/src/main.js"></script>
 
 </body>
 </html>

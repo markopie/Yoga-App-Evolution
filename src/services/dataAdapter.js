@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient.js';
 import { parseHoldTimes, parseSequenceText } from '../utils/parsing.js';
 import { setCourses, setAsanaLibrary } from '../store/state.js';
 import { attachPrivatePlateUrls, parsePlateGroups } from './privatePlateImages.js';
+import { resolveSupabaseStorageUrl } from './mediaUrl.js';
 
 /** 
  * Bridge: Converts new JSON schema into the app's internal array format 
@@ -52,7 +53,7 @@ async function fetchCourses(currentUserId = null) {
         const rawAccumulator = [];
 
         // 1. Fetch courses WITH their relational parent categories
-        const { data: coursesData, error } = await supabase
+        let { data: coursesData, error } = await supabase
             .from('courses')
             .select(`
                 *,
@@ -64,6 +65,15 @@ async function fetchCourses(currentUserId = null) {
                 )
             `);
 
+        if (error && error.code === 'PGRST200') {
+            console.warn("[Courses] Relational category join unavailable; falling back to legacy course category fields.", error);
+            const fallback = await supabase
+                .from('courses')
+                .select('*');
+            coursesData = fallback.data;
+            error = fallback.error;
+        }
+
         if (error) throw error;
 
         if (coursesData) {
@@ -73,7 +83,9 @@ async function fetchCourses(currentUserId = null) {
                     ? parseSequenceJSON(row.sequence_json)
                     : parseSequenceText(row.sequence_text || '');
                 
-                if (row.title && poses.length > 0) {
+                const title = row.title || row.course_title || '';
+
+                if (title && poses.length > 0) {
                     
                     // Resolve variation string keys from stage IDs if loaded from JSON
                     poses.forEach(p => {
@@ -89,7 +101,8 @@ async function fetchCourses(currentUserId = null) {
 
                     // 🌟 CATEGORY & MODE RESOLUTION
                     const subObj = row.course_sub_categories;
-                    const author = subObj?.course_categories?.name || 'General';
+                    const legacyCategory = String(row.category || 'General').trim();
+                    const author = subObj?.course_categories?.name || legacyCategory.split('>')[0]?.trim() || 'General';
                     const sub    = subObj?.name || '';
                     const categoryId = subObj?.course_categories?.id ?? null;
                     const subCategoryId = subObj?.id ?? row.sub_category_id ?? null;
@@ -102,7 +115,7 @@ async function fetchCourses(currentUserId = null) {
                     else if (isCycle) playbackMode = 'cycle';
 
                     // Reconstruct the "Author > Course" string for the UI
-                    const categoryString = (sub && sub !== 'General') ? `${author} > ${sub}` : author;
+                    const categoryString = (sub && sub !== 'General') ? `${author} > ${sub}` : legacyCategory || author;
 
                     // 🌟 REFACTORED CATEGORY LABEL LOGIC: Suppress redundant info
                     let categoryLabel = categoryString;
@@ -110,7 +123,7 @@ async function fetchCourses(currentUserId = null) {
                     else if (playbackMode === 'flow' && sub === 'Routines') categoryLabel = "Flow";
 
                     rawAccumulator.push({
-                        title: row.title.trim(),
+                        title: title.trim(),
                         category: categoryString,
                         categoryId,
                         subCategoryId,
@@ -284,8 +297,8 @@ function normalizeAsana(row, existingData = {}) {
         iast: row.iast ?? existingData.iast ?? '',
         english: row.english_name ?? row.english ?? row.name ?? existingData.english ?? `Pose ${key}`,
         devanagari: row.devanagari ?? existingData.devanagari ?? '', 
-        audio: row.audio_url ?? row.audio ?? existingData.audio ?? '',
-        image_url: row.image_url ?? existingData.image_url ?? '',
+        audio: resolveSupabaseStorageUrl(row.audio_url ?? row.audio ?? existingData.audio ?? '', 'audio-assets'),
+        image_url: resolveSupabaseStorageUrl(row.image_url ?? existingData.image_url ?? '', 'yoga-cards'),
         plate_numbers_raw: row.plate_numbers ?? existingData.plate_numbers_raw ?? '',
         technique: row.technique ?? row.Technique ?? existingData.technique ?? '',
         description: row.description ?? row.Description ?? existingData.description ?? '',
@@ -357,8 +370,8 @@ function normalizeStageRow(stage, index = 0) {
             hold: holdStr,
             holdTimes: holdTimes,
             hold_json: hold_json,
-            image_url: stage.image_url ?? '',
-            audio: stage.audio_url ?? stage.Audio_URL ?? '',
+            image_url: resolveSupabaseStorageUrl(stage.image_url ?? '', 'yoga-cards'),
+            audio: resolveSupabaseStorageUrl(stage.audio_url ?? stage.Audio_URL ?? '', 'audio-assets'),
             recovery_pose_id: stage.recovery_pose_id ?? null,
             preparatory_pose_id: stage.preparatory_pose_id ?? null,
             page_primary,

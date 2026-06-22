@@ -1,8 +1,9 @@
+import { storagePublicBase } from "../services/mediaUrl.js";
+
 // The base URL for any remaining raw assets on GitHub (images/icons)
 const BASE_RAW_URL = "https://raw.githubusercontent.com/markopie/Yoga-App-Evolution/main/";
 
-// Current production deployment serves media from Supabase Storage
-const AUDIO_BASE = "https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/public/audio-assets/";
+const AUDIO_BASE = storagePublicBase('audio-assets');
 
 /**
  * BRIDGE_SKIP_PROBABILITY

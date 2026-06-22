@@ -120,6 +120,10 @@
 ### 📄 `services/http.js`
 - `loadJSON` (module export)
 
+### 📄 `services/mediaUrl.js`
+- `resolveSupabaseStorageUrl` (function)
+- `storagePublicBase` (function)
+
 ### 📄 `services/persistence.js`
 - `findAsanaCategoryId` (function)
 - `getOrCreateSubCategoryId` (function)
@@ -142,6 +146,8 @@
 - `normalizePlate` (window binding)
 
 ### 📄 `services/supabaseClient.js`
+- `supabaseConfig` (const)
+- `supabaseConfig` (window binding)
 - `supabase` (const)
 - `supabase` (window binding)
 
