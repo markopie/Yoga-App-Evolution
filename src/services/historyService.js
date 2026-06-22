@@ -185,15 +185,16 @@ export async function fetchServerHistory() {
  
     } catch (e) {
        console.error("Failed to fetch server history:", e);
-       serverHistoryCache = supabase ? [] : loadCompletionLog();
+       serverHistoryCache = loadCompletionLog();
        _rebuildLegacyHistory(serverHistoryCache);
        return serverHistoryCache;
     }
 }
 
 export async function appendServerHistory(title, whenDate, category = null, durationSeconds = null, options = {}) {
+   addCompletion(title, whenDate, category);
+
    if (!supabase) {
-      addCompletion(title, whenDate, category);
       return false;
    }
 
@@ -269,7 +270,6 @@ export async function appendServerHistory(title, whenDate, category = null, dura
       }
 
       if (error) throw error;
-      addCompletion(title, whenDate, category);
       await fetchServerHistory();
       
       if (data && data.length > 0) {

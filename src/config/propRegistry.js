@@ -63,6 +63,11 @@ Adjustment: Utilize varying block heights to maintain spinal alignment.<br>
  * Converts snake_case DB columns to the camelCase properties used in the UI.
  */
 export async function hydratePropsFromDb(supabase) {
+    if (!supabase) {
+        console.warn("[Props] Supabase unavailable, using hardcoded defaults.");
+        return;
+    }
+
     const { data, error } = await supabase.from('props').select('*');
     if (error) {
         console.warn("[Props] Failed to load from DB, using hardcoded defaults.", error);

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 
 const HOSTED_PUBLIC_PREFIX = 'https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v1/object/public/';
@@ -21,10 +22,13 @@ const shouldDownload = args.has('--download') || args.has('--all') || args.size 
 const shouldUpload = args.has('--upload') || args.has('--all') || args.size === 0;
 
 function localSupabaseEnv() {
-    const output = execFileSync('cmd.exe', ['/c', 'npx.cmd', 'supabase', 'status', '-o', 'env'], {
+    const outputOptions = {
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    };
+    const output = process.platform === 'win32'
+        ? execSync('npx supabase status -o env', outputOptions)
+        : execFileSync('npx', ['supabase', 'status', '-o', 'env'], outputOptions);
     return Object.fromEntries(
         output
             .split(/\r?\n/)
@@ -76,7 +80,7 @@ async function downloadPublicObjects(objects) {
 
         const bytes = Buffer.from(await response.arrayBuffer());
         mkdirSync(destination.slice(0, -basename(destination).length), { recursive: true });
-        await import('node:fs/promises').then(({ writeFile }) => writeFile(destination, bytes));
+        await writeFile(destination, bytes);
         downloaded += 1;
         if ((index + 1) % 50 === 0) console.log(`[download] checked=${index + 1}/${objects.length}`);
     }

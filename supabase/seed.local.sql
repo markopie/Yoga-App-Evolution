@@ -1,4 +1,4 @@
--- Local development seed generated from supabase/seed.sql.
+-- Local development seed for Supabase resets.
 -- Selected runtime tables only; excludes cloud auth, progress, source-analysis, and obsolete dump tables.
 
 begin;
@@ -7001,7 +7001,7 @@ LOOP_END | 0 | [Repetition]
 
 
 --
--- Data for Name: course_analysis_refresh_queue; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: program_curriculum; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 INSERT INTO "public"."program_curriculum" ("id", "sequence_id", "curriculum_slug", "program_name", "week_number", "day_number", "order_index", "is_revision_node", "special_instructions", "source_name", "source_reference", "level_number", "intensity", "primary_focus", "is_active", "node_type", "source_key", "source_rule_id", "source_course", "curriculum_payload", "generated_from_rule", "is_optional", "is_rest_day", "requires_user_selection", "mastery_gate_required", "curriculum_phase", "practice_track", "completion_requirement", "day_role", "recovery_type", "is_visible", "source_policy", "source_sequence_order", "estimated_minutes", "curriculum_unit_id", "adaptive_behavior") VALUES

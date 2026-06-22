@@ -8,43 +8,46 @@ const SUPABASE_PUBLISHABLE_KEY = String(
     env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || '',
 ).trim();
 const SUPABASE_TARGET = String(env.VITE_SUPABASE_TARGET || 'local').trim();
+const hasSupabaseConfig = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
 
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    throw new Error(
-        'Missing Supabase runtime config. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local.',
-    );
-}
-
-export const supabaseConfig = {
+export const supabaseConfig = hasSupabaseConfig ? {
     url: SUPABASE_URL,
     target: SUPABASE_TARGET,
     keyType: SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_') ? 'publishable' : 'legacy-anon',
     storageKey: `yoga-evolution-${SUPABASE_TARGET}-auth`,
-};
+} : null;
 
-console.info('[Supabase] Runtime target:', supabaseConfig);
+if (!hasSupabaseConfig) {
+    console.warn(
+        '[Supabase] Missing runtime config. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local to enable cloud features.',
+    );
+} else {
+    console.info('[Supabase] Runtime target:', supabaseConfig);
+}
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = hasSupabaseConfig ? createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
         storageKey: supabaseConfig.storageKey,
     },
-});
+}) : null;
 
-supabase.auth.getSession().then(({ error }) => {
-    if (!error) return;
-    if (!/refresh token/i.test(error.message || '')) return;
-    console.warn('[Supabase] Clearing stale local auth session after reset:', error.message);
-    return supabase.auth.signOut({ scope: 'local' });
-}).catch((error) => {
-    if (/refresh token/i.test(error?.message || '')) {
+if (supabase) {
+    supabase.auth.getSession().then(({ error }) => {
+        if (!error) return;
+        if (!/refresh token/i.test(error.message || '')) return;
         console.warn('[Supabase] Clearing stale local auth session after reset:', error.message);
         return supabase.auth.signOut({ scope: 'local' });
-    }
-    console.warn('[Supabase] Session check failed:', error);
-});
+    }).catch((error) => {
+        if (/refresh token/i.test(error?.message || '')) {
+            console.warn('[Supabase] Clearing stale local auth session after reset:', error.message);
+            return supabase.auth.signOut({ scope: 'local' });
+        }
+        console.warn('[Supabase] Session check failed:', error);
+    });
+}
 
 window.supabase = supabase;
 window.supabaseConfig = supabaseConfig;

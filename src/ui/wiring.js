@@ -613,6 +613,15 @@ function showLogin() {
 }
 
 function setupAuthListeners() {
+    if (!supabase) {
+        window.currentUserId = null;
+        window.currentUserEmail = null;
+        window.isGuestMode = false;
+        themeManager.setUserId(null);
+        showLogin();
+        return;
+    }
+
     const emailForm = document.getElementById("emailAuthForm");
     const emailInput = document.getElementById("authEmailInput");
     const passwordInput = document.getElementById("authPasswordInput");
@@ -752,9 +761,10 @@ function setupAuthListeners() {
             }
 
             showApp();
-        } else if (!window.isGuestMode) {
+        } else {
             window.currentUserId = null;
             window.currentUserEmail = null;
+            window.isGuestMode = false;
             themeManager.setUserId(null);
             showLogin();
         }
