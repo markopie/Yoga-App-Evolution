@@ -657,7 +657,10 @@ function setupAuthListeners() {
                 if (error) throw error;
             } catch (err) {
                 console.error('Email sign-in failed:', err);
-                setLoginError(err.message || 'Sign-in failed.');
+                const message = /invalid login credentials/i.test(err.message || '')
+                    ? 'Invalid login credentials. If you just reset local Supabase, create the account again first.'
+                    : (err.message || 'Sign-in failed.');
+                setLoginError(message);
             } finally {
                 setEmailAuthBusy(false);
             }

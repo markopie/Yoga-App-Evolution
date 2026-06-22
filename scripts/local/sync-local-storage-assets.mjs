@@ -7,6 +7,14 @@ const HOSTED_PUBLIC_PREFIX = 'https://qrcpiyncvfmpmeuyhsha.supabase.co/storage/v
 const ASSET_ROOT = 'assets/supabase_storage';
 const SEED_PATH = 'supabase/seed.local.sql';
 const PLATE_SOURCE_DIR = 'assets/light_on_yoga_plates';
+const RUNTIME_PUBLIC_OBJECTS = [
+    { bucket: 'audio-assets', objectPath: 'left_side.mp3' },
+    { bucket: 'audio-assets', objectPath: 'right_side.mp3' },
+    { bucket: 'audio-assets', objectPath: 'bridge_stage.mp3' },
+    { bucket: 'audio-assets', objectPath: 'bridge_stage_2.mp3' },
+    { bucket: 'audio-assets', objectPath: 'bridge_stage_3.mp3' },
+    { bucket: 'audio-assets', objectPath: 'macro_start.mp3' },
+];
 
 const args = new Set(process.argv.slice(2));
 const shouldDownload = args.has('--download') || args.has('--all') || args.size === 0;
@@ -37,6 +45,9 @@ function publicSeedObjects() {
         const objectPath = pathParts.join('/').replace(/^\/+/, '');
         if (!bucket || !objectPath) continue;
         out.set(`${bucket}/${objectPath}`, { bucket, objectPath });
+    }
+    for (const object of RUNTIME_PUBLIC_OBJECTS) {
+        out.set(`${object.bucket}/${object.objectPath}`, object);
     }
     return [...out.values()].sort((a, b) => `${a.bucket}/${a.objectPath}`.localeCompare(`${b.bucket}/${b.objectPath}`));
 }

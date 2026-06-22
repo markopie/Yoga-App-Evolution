@@ -19,6 +19,7 @@ export const supabaseConfig = {
     url: SUPABASE_URL,
     target: SUPABASE_TARGET,
     keyType: SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_') ? 'publishable' : 'legacy-anon',
+    storageKey: `yoga-evolution-${SUPABASE_TARGET}-auth`,
 };
 
 console.info('[Supabase] Runtime target:', supabaseConfig);
@@ -28,7 +29,21 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        storageKey: supabaseConfig.storageKey,
     },
+});
+
+supabase.auth.getSession().then(({ error }) => {
+    if (!error) return;
+    if (!/refresh token/i.test(error.message || '')) return;
+    console.warn('[Supabase] Clearing stale local auth session after reset:', error.message);
+    return supabase.auth.signOut({ scope: 'local' });
+}).catch((error) => {
+    if (/refresh token/i.test(error?.message || '')) {
+        console.warn('[Supabase] Clearing stale local auth session after reset:', error.message);
+        return supabase.auth.signOut({ scope: 'local' });
+    }
+    console.warn('[Supabase] Session check failed:', error);
 });
 
 window.supabase = supabase;
