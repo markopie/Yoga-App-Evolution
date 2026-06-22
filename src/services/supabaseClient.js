@@ -1,10 +1,35 @@
 // src/services/supabaseClient.js
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = "https://qrcpiyncvfmpmeuyhsha.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyY3BpeW5jdmZtcG1ldXloc2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTA2NDgsImV4cCI6MjA4NzI4NjY0OH0.7sjbfwdT_aYmrJyVFYWpfMNBQpCJAI7Vd5uNEkzD4GI";
+const env = import.meta.env || {};
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = String(env.VITE_SUPABASE_URL || '').trim();
+const SUPABASE_PUBLISHABLE_KEY = String(
+    env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || '',
+).trim();
+const SUPABASE_TARGET = String(env.VITE_SUPABASE_TARGET || 'local').trim();
 
-// THIS IS THE BRIDGE: It makes the worker global for your app.js
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+    throw new Error(
+        'Missing Supabase runtime config. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local.',
+    );
+}
+
+export const supabaseConfig = {
+    url: SUPABASE_URL,
+    target: SUPABASE_TARGET,
+    keyType: SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_') ? 'publishable' : 'legacy-anon',
+};
+
+console.info('[Supabase] Runtime target:', supabaseConfig);
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+    },
+});
+
 window.supabase = supabase;
+window.supabaseConfig = supabaseConfig;

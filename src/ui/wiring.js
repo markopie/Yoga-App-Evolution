@@ -613,9 +613,76 @@ function showLogin() {
 }
 
 function setupAuthListeners() {
+    const emailForm = document.getElementById("emailAuthForm");
+    const emailInput = document.getElementById("authEmailInput");
+    const passwordInput = document.getElementById("authPasswordInput");
+    const emailSignInBtn = document.getElementById("emailSignInBtn");
+    const emailSignUpBtn = document.getElementById("emailSignUpBtn");
     const googleBtn = document.getElementById("googleSignInBtn");
     const guestBtn = document.getElementById("guestSignInBtn");
     const signOutBtn = document.getElementById("signOutBtn");
+    const loginError = document.getElementById('loginError');
+
+    const setLoginError = (message = '') => {
+        if (!loginError) return;
+        loginError.textContent = message;
+        loginError.style.display = message ? 'block' : 'none';
+    };
+
+    const readEmailCredentials = () => {
+        const email = String(emailInput?.value || '').trim();
+        const password = String(passwordInput?.value || '');
+        if (!email || !password) {
+            throw new Error('Enter an email and password.');
+        }
+        return { email, password };
+    };
+
+    const setEmailAuthBusy = (busy, label = 'Sign in') => {
+        if (emailSignInBtn) {
+            emailSignInBtn.disabled = busy;
+            emailSignInBtn.textContent = label;
+        }
+        if (emailSignUpBtn) emailSignUpBtn.disabled = busy;
+    };
+
+    if (emailForm) {
+        emailForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            setLoginError('');
+            try {
+                const credentials = readEmailCredentials();
+                setEmailAuthBusy(true, 'Signing in...');
+                const { error } = await supabase.auth.signInWithPassword(credentials);
+                if (error) throw error;
+            } catch (err) {
+                console.error('Email sign-in failed:', err);
+                setLoginError(err.message || 'Sign-in failed.');
+            } finally {
+                setEmailAuthBusy(false);
+            }
+        });
+    }
+
+    if (emailSignUpBtn) {
+        emailSignUpBtn.onclick = async () => {
+            setLoginError('');
+            try {
+                const credentials = readEmailCredentials();
+                setEmailAuthBusy(true, 'Creating...');
+                const { data, error } = await supabase.auth.signUp(credentials);
+                if (error) throw error;
+                if (!data.session) {
+                    setLoginError('Account created. Check your email or local Inbucket to confirm before signing in.');
+                }
+            } catch (err) {
+                console.error('Email sign-up failed:', err);
+                setLoginError(err.message || 'Account creation failed.');
+            } finally {
+                setEmailAuthBusy(false);
+            }
+        };
+    }
 
     if (googleBtn) {
         googleBtn.onclick = async () => {
@@ -636,11 +703,7 @@ function setupAuthListeners() {
 
             if (error) {
                 console.error('Anonymous sign-in failed:', error.message);
-                const errEl = document.getElementById('loginError');
-                if (errEl) {
-                    errEl.textContent = `Guest sign-in failed: ${error.message}`;
-                    errEl.style.display = 'block';
-                }
+                setLoginError(`Guest sign-in failed: ${error.message}`);
                 guestBtn.disabled = false;
                 guestBtn.textContent = 'Continue as Guest';
             }
@@ -687,6 +750,9 @@ function setupAuthListeners() {
 
             showApp();
         } else if (!window.isGuestMode) {
+            window.currentUserId = null;
+            window.currentUserEmail = null;
+            themeManager.setUserId(null);
             showLogin();
         }
     });

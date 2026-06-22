@@ -152,14 +152,17 @@ export async function fetchServerHistory() {
           _rebuildLegacyHistory(serverHistoryCache);
           return serverHistoryCache;
        }
+
+       if (!window.currentUserId) {
+          serverHistoryCache = [];
+          _rebuildLegacyHistory(serverHistoryCache);
+          return serverHistoryCache;
+       }
  
        let query = supabase
           .from('sequence_completions')
-          .select('id, title, category, completed_at');
-
-       if (window.currentUserId) {
-          query = query.eq('user_id', window.currentUserId);
-       }
+          .select('id, title, category, completed_at')
+          .eq('user_id', window.currentUserId);
 
        const { data, error } = await query;
  
@@ -182,16 +185,22 @@ export async function fetchServerHistory() {
  
     } catch (e) {
        console.error("Failed to fetch server history:", e);
-       serverHistoryCache = loadCompletionLog();
+       serverHistoryCache = supabase ? [] : loadCompletionLog();
        _rebuildLegacyHistory(serverHistoryCache);
        return serverHistoryCache;
     }
 }
 
 export async function appendServerHistory(title, whenDate, category = null, durationSeconds = null, options = {}) {
-   addCompletion(title, whenDate, category);
+   if (!supabase) {
+      addCompletion(title, whenDate, category);
+      return false;
+   }
 
-   if (!supabase) return false;
+   if (!window.currentUserId) {
+      console.error("Cannot save completion without a signed-in user.");
+      return false;
+   }
 
    try {
       const completionOptions = typeof options === 'string' ? { status: options } : (options || {});
@@ -236,7 +245,7 @@ export async function appendServerHistory(title, whenDate, category = null, dura
          if (completionOptions.curriculum_node_id !== undefined && completionOptions.curriculum_node_id !== null) {
             payload.curriculum_node_id = completionOptions.curriculum_node_id;
          }
-         if (window.currentUserId) payload.user_id = window.currentUserId;
+         payload.user_id = window.currentUserId;
          return payload;
       };
 
@@ -260,6 +269,7 @@ export async function appendServerHistory(title, whenDate, category = null, dura
       }
 
       if (error) throw error;
+      addCompletion(title, whenDate, category);
       await fetchServerHistory();
       
       if (data && data.length > 0) {
@@ -274,7 +284,7 @@ export async function appendServerHistory(title, whenDate, category = null, dura
 }
 
 export async function updateCompletionRating(id, rating) {
-   if (!supabase || !id) return false;
+   if (!supabase || !id || !window.currentUserId) return false;
    try {
       const ratingIds = Array.isArray(window.pendingRatingCompletionIds) && window.pendingRatingCompletionIds.includes(id)
          ? window.pendingRatingCompletionIds
@@ -282,7 +292,8 @@ export async function updateCompletionRating(id, rating) {
       const { error } = await supabase
          .from('sequence_completions')
          .update({ rating: rating })
-         .in('id', ratingIds);
+         .in('id', ratingIds)
+         .eq('user_id', window.currentUserId);
       if (error) throw error;
       if (Array.isArray(window.pendingRatingCompletionIds) && window.pendingRatingCompletionIds.includes(id)) {
          window.pendingRatingCompletionIds = null;
@@ -295,12 +306,13 @@ export async function updateCompletionRating(id, rating) {
 }
 
 export async function deleteCompletionById(id) {
-   if (!supabase || !id) return false;
+   if (!supabase || !id || !window.currentUserId) return false;
    try {
       const { error } = await supabase
          .from('sequence_completions')
          .delete()
-         .eq('id', id);
+         .eq('id', id)
+         .eq('user_id', window.currentUserId);
       if (error) throw error;
       await fetchServerHistory();
       return true;
@@ -311,12 +323,13 @@ export async function deleteCompletionById(id) {
 }
 
 export async function deleteAllCompletionsForTitle(title) {
-   if (!supabase || !title) return false;
+   if (!supabase || !title || !window.currentUserId) return false;
    try {
       const { error } = await supabase
          .from('sequence_completions')
          .delete()
-         .eq('title', title);
+         .eq('title', title)
+         .eq('user_id', window.currentUserId);
       if (error) throw error;
       await fetchServerHistory();
       return true;
