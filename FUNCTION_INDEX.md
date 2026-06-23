@@ -124,6 +124,16 @@
 - `resolveSupabaseStorageUrl` (function)
 - `storagePublicBase` (function)
 
+### 📄 `services/offlineSync.js`
+- `CONFLICT_STATUS` (const)
+- `buildMutation` (function)
+- `chooseMediaUrl` (function)
+- `detectConflict` (function)
+- `mediaAssetChanged` (function)
+- `normalizeSyncPk` (function)
+- `shouldDownloadAsset` (function)
+- `stableSyncKey` (function)
+
 ### 📄 `services/persistence.js`
 - `findAsanaCategoryId` (function)
 - `getOrCreateSubCategoryId` (function)

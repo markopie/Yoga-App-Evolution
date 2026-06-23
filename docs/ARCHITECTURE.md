@@ -134,6 +134,7 @@ Data collection only — not integrated with current app code.
 
 ## Data Flow
 - **Supabase**: Source of truth for all tables
+- **Offline-first sync**: See [OFFLINE_FIRST_SYNC.md](OFFLINE_FIRST_SYNC.md) for the Android Room/local media sync contract, conflict model, media variant metadata, and storage-size report workflow.
 - **`dataAdapter.js`**: Fetches and normalises data.
   - `loadAsanaLibrary()`: Queries `asanas` + `stages`, builds `window.asanaLibrary` map. **Self-executes at module load time** (line 150 — eager cache warm).
   - `fetchCourses()`: Queries `courses`, parses `sequence_text` into pose arrays.
