@@ -292,6 +292,8 @@ export function createBrowserTestSupabaseClient() {
             async signInWithPassword() { return this.signInAnonymously(); },
             async signUp() { return this.signInAnonymously(); },
             async signInWithOAuth() { return { data: {}, error: null }; },
+            async resetPasswordForEmail() { return { data: {}, error: null }; },
+            async updateUser() { return { data: { user: TEST_USER }, error: null }; },
             async signOut() {
                 session = null;
                 notifyAuth('SIGNED_OUT');

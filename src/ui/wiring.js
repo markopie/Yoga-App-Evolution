@@ -627,6 +627,7 @@ function setupAuthListeners() {
     const passwordInput = document.getElementById("authPasswordInput");
     const emailSignInBtn = document.getElementById("emailSignInBtn");
     const emailSignUpBtn = document.getElementById("emailSignUpBtn");
+    const passwordResetBtn = document.getElementById("passwordResetBtn");
     const googleBtn = document.getElementById("googleSignInBtn");
     const guestBtn = document.getElementById("guestSignInBtn");
     const signOutBtn = document.getElementById("signOutBtn");
@@ -667,7 +668,7 @@ function setupAuthListeners() {
             } catch (err) {
                 console.error('Email sign-in failed:', err);
                 const message = /invalid login credentials/i.test(err.message || '')
-                    ? 'Invalid login credentials. If you just reset local Supabase, create the account again first.'
+                    ? 'Invalid email/password. If this email was first used with Google, use Sign in with Google or set/reset a password.'
                     : (err.message || 'Sign-in failed.');
                 setLoginError(message);
             } finally {
@@ -685,13 +686,40 @@ function setupAuthListeners() {
                 const { data, error } = await supabase.auth.signUp(credentials);
                 if (error) throw error;
                 if (!data.session) {
-                    setLoginError('Account created. Check your email or local Inbucket to confirm before signing in.');
+                    setLoginError('Check your email to confirm. If this address already uses Google sign-in, use Sign in with Google or set/reset a password.');
                 }
             } catch (err) {
                 console.error('Email sign-up failed:', err);
                 setLoginError(err.message || 'Account creation failed.');
             } finally {
                 setEmailAuthBusy(false);
+            }
+        };
+    }
+
+    if (passwordResetBtn) {
+        passwordResetBtn.onclick = async () => {
+            setLoginError('');
+            const email = String(emailInput?.value || '').trim();
+            if (!email) {
+                setLoginError('Enter your email first, then request a password reset.');
+                return;
+            }
+
+            passwordResetBtn.disabled = true;
+            passwordResetBtn.textContent = 'Sending reset email...';
+            try {
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + window.location.pathname,
+                });
+                if (error) throw error;
+                setLoginError('Password reset email sent. Open the link, then choose a new password.');
+            } catch (err) {
+                console.error('Password reset request failed:', err);
+                setLoginError(err.message || 'Could not send password reset email.');
+            } finally {
+                passwordResetBtn.disabled = false;
+                passwordResetBtn.textContent = 'Set or reset password';
             }
         };
     }
@@ -740,8 +768,23 @@ function setupAuthListeners() {
         };
     }
 
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
         if (session && session.user) {
+            if (event === 'PASSWORD_RECOVERY') {
+                const nextPassword = window.prompt('Enter a new password for Yoga Evolution:');
+                if (nextPassword && nextPassword.length >= 6) {
+                    const { error } = await supabase.auth.updateUser({ password: nextPassword });
+                    if (error) {
+                        console.error('Password update failed:', error);
+                        setLoginError(error.message || 'Could not update password.');
+                    } else {
+                        setLoginError('Password updated. You are signed in.');
+                    }
+                } else if (nextPassword !== null) {
+                    setLoginError('Password must be at least 6 characters.');
+                }
+            }
+
             window.currentUserId = session.user.id;
             themeManager.setUserId(session.user.id);
 
