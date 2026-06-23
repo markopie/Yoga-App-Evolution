@@ -2,7 +2,7 @@
 
 ## Standard workflow
 
-Use this for all code changes.
+Use this for code changes.
 
 ```bash
 npm run save -- "Describe the change"
@@ -16,7 +16,7 @@ npm run db:refresh-analysis
 
 After changing:
 - asana or stage durations / intensities
-- course-analysis SQL (e.g. `refresh_course_sequence_analysis_for_course`)
+- course-analysis SQL, such as `refresh_course_sequence_analysis_for_course`
 - any Supabase function that affects theme classification
 
 Run:
@@ -27,13 +27,24 @@ npm run db:refresh-analysis
 
 This calls `process_course_analysis_refresh_queue(50)` repeatedly until the queue is empty.
 
-> **Note:** `npm run push` may run a database backup when migrations have changed (via the pre-push hook), but it does **not** refresh the analysis cache. Git hooks are intentionally kept fast and safe — production DB refreshes are not hidden inside commit or push hooks.
+## Hook behavior
+
+Pre-commit is local and deterministic:
+- checks staged whitespace
+- checks merge conflict markers
+- checks staged diffs for obvious Supabase service-role/JWT leaks
+- regenerates `FUNCTION_INDEX.md` only when staged `src/**/*.js` files or `scripts/generate_index.py` changed
+
+Pre-push runs `scripts/sync_and_backup.py` only when migration files changed, or when `RUN_DB_BACKUP_ON_PUSH=1` is set. Backups, schema snapshots, and generated docs are written inside this repo only.
+
+Git hooks do not refresh production caches or write to external sync folders.
 
 ## Related commands
 
 | Command | Description |
 |---------|-------------|
 | `npm run save -- "msg"` | Stage all changes and commit |
-| `npm run push` | Push to remote (may trigger backup) |
+| `npm run push` | Push to remote; may trigger a local backup |
 | `npm run db:refresh-analysis` | Process the course-analysis refresh queue |
-| `npm run backup` | Manual Supabase JSON backup + schema sync |
+| `npm run backup` | Manual local Supabase JSON backup and schema sync |
+| `npm run index` | Regenerate `FUNCTION_INDEX.md` locally |

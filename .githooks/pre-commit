@@ -1,33 +1,43 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "🧘‍♂️ Pre-commit pipeline..."
+echo "Pre-commit pipeline..."
 
-PYTHON_CMD="python"
+PYTHON_CMD="${PYTHON_CMD:-python}"
+export PYTHONUTF8=1
+export PYTHONIOENCODING=utf-8
 
+echo "Checking staged whitespace..."
 git diff --cached --check
 
-echo "🔎 Checking for merge conflict markers..."
+echo "Checking for merge conflict markers..."
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -v '^.githooks/pre-commit$' || true)
 
 if [ -n "$STAGED_FILES" ]; then
-  if echo "$STAGED_FILES" | xargs grep -nIE '^(<<<<<<< .+|=======$|>>>>>>> .+)$' 2>/dev/null; then    echo "❌ Merge conflict markers found."
-    exit 1
-  fi
+  while IFS= read -r file; do
+    [ -z "$file" ] && continue
+    if grep -nIE '^(<<<<<<< .+|=======$|>>>>>>> .+)$' "$file" 2>/dev/null; then
+      echo "Merge conflict markers found in $file."
+      exit 1
+    fi
+  done <<< "$STAGED_FILES"
 fi
 
-echo "🔐 Checking for accidental secrets..."
-if git diff --cached -- . ':(exclude).githooks/pre-commit' | grep -Ei "SUPABASE_SERVICE_ROLE_KEY\s*=.+|service_role.+eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.|eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\." >/dev/null; then  echo "❌ Possible secret detected."
-  echo "   Check .env, service_role keys, or JWT-looking strings."
+echo "Checking for accidental secrets..."
+if git diff --cached -- . ':(exclude).githooks/pre-commit' | grep -Ei "SUPABASE_SERVICE_ROLE_KEY\s*=.+|service_role.+eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.|eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\." >/dev/null; then
+  echo "Possible secret detected."
+  echo "Check .env, service_role keys, or JWT-looking strings."
   exit 1
 fi
 
-echo "📄 Running scripts/generate_index.py..."
-$PYTHON_CMD scripts/generate_index.py
+if echo "$STAGED_FILES" | grep -Eq '^(src/.*\.js|scripts/generate_index.py)$'; then
+  echo "Generating FUNCTION_INDEX.md..."
+  "$PYTHON_CMD" scripts/generate_index.py --output FUNCTION_INDEX.md
+  git add FUNCTION_INDEX.md
+  git diff --cached --check
+else
+  echo "Skipping FUNCTION_INDEX.md generation; no staged source JS changes."
+fi
 
-git add FUNCTION_INDEX.md 2>/dev/null || true
-git add docs/*.md 2>/dev/null || true
-git add supabase/migrations/*.sql 2>/dev/null || true
-
-echo "✅ Pre-commit complete."
+echo "Pre-commit complete."
 exit 0

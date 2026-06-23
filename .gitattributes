@@ -1,6 +1,10 @@
+.gitattributes text eol=lf
 .githooks/* text eol=lf
 *.sh text eol=lf
+*.py text eol=lf
 *.js text eol=crlf
+*.cjs text eol=crlf
+*.mjs text eol=crlf
 *.css text eol=crlf
 *.html text eol=crlf
 *.json text eol=crlf

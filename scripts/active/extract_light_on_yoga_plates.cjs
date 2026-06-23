@@ -9,13 +9,15 @@ const dotenv = require('dotenv');
 const ROOT = path.resolve(__dirname, '..', '..');
 dotenv.config({ path: path.join(ROOT, '.env') });
 
-const DEFAULT_PDF = 'G:\\My Drive\\Personal\\02_Education_Yoga\\Yoga_Project_Files\\Light On Yoga\\Light_On_Yoga_Master_Photo_List_By_Plate.pdf';
+const DEFAULT_PDF = process.env.LIGHT_ON_YOGA_PLATES_PDF || '';
 const DEFAULT_OUT = path.join(ROOT, 'assets', 'light_on_yoga_plates');
 const DEFAULT_MANIFEST = path.join(DEFAULT_OUT, 'manifest.csv');
 const PAGE_COUNT_FALLBACK = 610;
 
 const args = parseArgs(process.argv.slice(2));
-const pdfPath = path.resolve(args.pdf || DEFAULT_PDF);
+const selectedPdf = args.pdf || DEFAULT_PDF;
+if (!selectedPdf) fail('Missing PDF path. Pass --pdf or set LIGHT_ON_YOGA_PLATES_PDF.');
+const pdfPath = path.resolve(selectedPdf);
 const outDir = path.resolve(args.out || DEFAULT_OUT);
 const manifestPath = path.resolve(args.manifest || DEFAULT_MANIFEST);
 const startPage = parsePositiveInt(args.start || '1', 'start');

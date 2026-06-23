@@ -30,11 +30,11 @@ function setManualLibraryPanelOpen(open) {
 window.updateNextBtnText = function updateNextBtnText() {
     const nextBtn = document.getElementById('nextBtn');
     if (!nextBtn) return;
-    
+
     const poses = (window.activePlaybackList && window.activePlaybackList.length > 0)
         ? window.activePlaybackList
         : (window.currentSequence?.poses || []);
-        
+
     // ARCHITECT FIX: Only show 'Complete' if it's the last pose AND no second side is pending.
     const isLastIndex = poses.length > 0 && window.currentIndex >= poses.length - 1;
     const isFinalStep = isLastIndex && !window.needsSecondSide;
@@ -54,7 +54,7 @@ function updateAliasUIFeedback() {
     const playerHeader = document.querySelector(".player-header");
 
     const fallbackNotes = 'Set up your space and props. Work steadily and stay within your limits.';
-    
+
     // Correctly reference the imported playbackEngine if window.playbackEngine isn't set yet
     const engine = window.playbackEngine || playbackEngine;
     const isSessionActive = (engine && engine.activePracticeSeconds > 5) || window.currentIndex > 0 || (typeof window.getCompletionTracker === 'function' && Object.values(window.getCompletionTracker()).some(v => v > 0));
@@ -95,7 +95,7 @@ function updateAliasUIFeedback() {
         if (true) {
             // 1. Briefing "Cover" Mode Card
             if (stage) stage.style.display = "flex";
-            
+
             const sequenceName = (window.pendingSequence || window.currentSequence)?.title || "Sequence";
             const masterSub = window.isAliasView ? `<div style="font-size: 0.9rem; color: #86868b; margin-top: 4px; font-weight: 500;">Protocol: ${window.masterCourseTitle}</div>` : "";
 
@@ -117,7 +117,7 @@ function updateAliasUIFeedback() {
                         <button type="button" class="briefing-secondary-action" onclick="handleNext()">Preview first pose</button>
                     </div>
                 </div>`;
-            
+
             // Component Isolation & Cleanup: Hide underlying Asana UI components
             if (poseName) poseName.style.display = 'none';
             if (focusPoseName) focusPoseName.style.display = 'none';
@@ -128,7 +128,7 @@ function updateAliasUIFeedback() {
             }
             if (infoStack) infoStack.style.display = 'none';
             if (metaArea) metaArea.style.display = 'none';
-            
+
             remedialArea.style.display = "block";
         }
     } else {
@@ -168,14 +168,14 @@ window.applySequenceInternal = (seq) => {
         window.activePlaybackList = window.getExpandedPoses(seq);
     } else {
         window.activePlaybackList = seq.poses ? [...seq.poses] : [];
-    } 
+    }
 
     if (typeof window.applyDurationDial === 'function') window.applyDurationDial();
     if (typeof window.updateDialUI === 'function') window.updateDialUI();
     if (typeof window.updateTotalAndLastUI === 'function') window.updateTotalAndLastUI();
     if (typeof window.updateActiveCategoryTitle === 'function') window.updateActiveCategoryTitle();
 
-    window.currentIndex = 0; 
+    window.currentIndex = 0;
     if (typeof window.setPose === "function") window.setPose(0);
 };
 
@@ -208,12 +208,12 @@ function checkAndRestoreBriefing() {
 // ── 1. Sequence Selection & Dynamic Buttons ──────────────────────────────────
 function setupSequenceSelector() {
     const seqSelect = $("sequenceSelect");
-    
+
     if (!seqSelect) return;
 
     seqSelect.addEventListener("change", () => {
         const idx = seqSelect.value;
-        if (typeof window.stopTimer === "function") window.stopTimer(); 
+        if (typeof window.stopTimer === "function") window.stopTimer();
         if (!window.suppressCurriculumClear) {
             window.currentCurriculumPractice = null;
             const summary = $("curriculumPracticeSummary");
@@ -232,10 +232,10 @@ function setupSequenceSelector() {
                 window.updateCurriculumLibraryLock();
             }
         }
-        
+
         // Reset granular progress so we don't carry over completion data to the new sequence
         if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
-        
+
         // Clear Alias/Remedial state
         window.isAliasView = false;
         window.masterCourseTitle = null;
@@ -246,7 +246,7 @@ function setupSequenceSelector() {
             window.currentSequence = null;
             window.activePlaybackList = [];
             window.currentIndex = 0;
-            
+
             updateAliasUIFeedback();
 
             if ($("poseName"))         $("poseName").textContent = "Select a sequence";
@@ -255,7 +255,7 @@ function setupSequenceSelector() {
             if ($("poseTimer"))        $("poseTimer").textContent = "–";
             if ($("statusText"))       $("statusText").textContent = "Select a sequence";
             if ($("collageWrap"))      $("collageWrap").innerHTML = `<div class="msg">Select a sequence</div>`;
-            
+
             const _tp = document.querySelector(".time-content");
             if (_tp) _tp.innerHTML = `<span id="timeRemainingDisplay">--:--</span><span class="time-sep">/</span><span id="timeTotalDisplay">--:--</span>`;
             if (typeof window.updateActiveCategoryTitle === 'function') window.updateActiveCategoryTitle();
@@ -265,12 +265,12 @@ function setupSequenceSelector() {
         setManualLibraryPanelOpen(true);
 
         const rawSequence = window.courses[parseInt(idx, 10)];
-        
+
         // --- RECURSIVE ALIAS RESOLUTION ---
         let resolvedSequence = { ...rawSequence };
 
         if (rawSequence.is_alias) {
-            const master = (window.courses || []).find(c => 
+            const master = (window.courses || []).find(c =>
                 String(c.supabaseId || c.id) === String(rawSequence.redirect_id)
             );
 
@@ -296,7 +296,7 @@ function setupSequenceSelector() {
 
         const engine = window.playbackEngine || playbackEngine;
         const isSessionActive = (engine && engine.activePracticeSeconds > 5) || window.currentIndex > 0 || (typeof window.getCompletionTracker === 'function' && Object.values(window.getCompletionTracker()).some(v => v > 0));
-        
+
         // Universal Briefing: Always enabled on load
         window.isBriefingActive = true;
 
@@ -312,28 +312,28 @@ function setupSequenceSelector() {
         }
         updateAliasUIFeedback();
         window.updateNextBtnText();
-        
-        if ($("statusText")) $("statusText").textContent = "Ready to Start"; 
+
+        if ($("statusText")) $("statusText").textContent = "Ready to Start";
         if ($("startStopBtn")) $("startStopBtn").textContent = "Start";
     });
 
     if (!document.getElementById("quickEditBtn")) {
         const editBtn = document.createElement("button");
         editBtn.id = "quickEditBtn";
-        
+
         // Use standard text instead of weird emojis
-        editBtn.innerHTML = "Review"; 
+        editBtn.innerHTML = "Review";
         editBtn.title = "Review / Edit Sequence";
         editBtn.className = "tiny";
-        
+
         // Normal button styling (matching the + New button)
         editBtn.style.cssText = "margin-left: 8px; padding: 4px 12px; font-size: 0.9rem; font-weight: 600; border-radius: 8px;";
 
         seqSelect.parentNode.insertBefore(editBtn, seqSelect.nextSibling);
-        
+
         editBtn.onclick = () => {
             if (!getCurrentSequence()) return showError("Please select a sequence first.");
-            openEditCourse(); 
+            openEditCourse();
         };
 
         const newBtn = document.createElement("button");
@@ -348,17 +348,17 @@ function setupSequenceSelector() {
 
 // ── 2. Playback & Dial Wiring ────────────────────────────────────────────────
 function setupPlaybackControls() {
-    safeListen("nextBtn", "click", () => { 
+    safeListen("nextBtn", "click", () => {
         if (window.isBriefingActive) {
             window.isBriefingActive = false;
             updateAliasUIFeedback();
             if (typeof window.setPose === 'function') window.setPose(window.currentIndex, true);
             return; // Dismiss briefing to reveal first pose
         }
-        window.stopTimer(); window.nextPose(); window.updateNextBtnText(); 
+        window.stopTimer(); window.nextPose(); window.updateNextBtnText();
     });
     safeListen("prevBtn", "click", () => { window.stopTimer(); window.prevPose(); window.updateNextBtnText(); });
-    
+
     safeListen("startStopBtn", "click", () => {
         if (!getCurrentSequence()) return;
         if (window.isBriefingActive) {
@@ -374,7 +374,7 @@ function setupPlaybackControls() {
         if (typeof window.stopTimer === 'function') {
             window.stopTimer();
         }
-        
+
         // If on step 0, clicking reset should ideally just show the briefing again
         if (window.currentIndex === 0 && checkAndRestoreBriefing()) {
             return;
@@ -384,17 +384,17 @@ function setupPlaybackControls() {
         if (window.playbackEngine && typeof window.playbackEngine.resetPracticeTimer === 'function') {
             window.playbackEngine.resetPracticeTimer();
         }
-        
+
         // 🛡️ ARCHITECT FIX 2: Wipe the localStorage save file so "Resume" doesn't trigger on refresh
         if (typeof window.clearProgress === 'function') {
             window.clearProgress();
         }
-        
+
         // 🛡️ ARCHITECT FIX 3: Wipe the local completion tracker memory
         if (typeof window.resetCompletionTracker === 'function') {
             window.resetCompletionTracker();
         }
-        window.completionTracker = {}; 
+        window.completionTracker = {};
 
         const seqSelect = document.getElementById("sequenceSelect");
         if (seqSelect) {
@@ -409,7 +409,7 @@ function setupPlaybackControls() {
             "timeTotalDisplay":     ["--:--", "text"],
             "statusText":           ["Ready to Start", "text"],
             "poseName":             ["", "text"],
-            "poseLabel":            ["", "text"], 
+            "poseLabel":            ["", "text"],
             "poseShorthand":        ["", "html"],
             "glossaryArea":         ["", "html"],
             "poseNoteBody":         ["", "html"],
@@ -427,7 +427,7 @@ function setupPlaybackControls() {
             if (el) {
                 if (type === "text") el.textContent = value;
                 else el.innerHTML = value;
-                
+
                 // Hide specific elements that shouldn't be visible when empty
                 if (["poseLabel", "poseShorthand", "glossaryArea", "activeCategoryTitle"].includes(id)) {
                     el.style.display = "none";
@@ -440,16 +440,16 @@ function setupPlaybackControls() {
         const descDetails = document.getElementById("poseAsanaDescDetails");
         const techDetails = document.getElementById("poseTechniqueDetails");
         const noteDetails = document.getElementById("poseNoteDetails");
-        
+
         if (infoStack) infoStack.style.display = "none";
-        
+
         if (descDetails) {
-            descDetails.style.display = "none"; 
-            descDetails.open = false; 
+            descDetails.style.display = "none";
+            descDetails.open = false;
         }
         if (techDetails) {
             techDetails.style.display = "none";
-            techDetails.open = false; 
+            techDetails.open = false;
         }
         if (noteDetails) {
             noteDetails.style.display = "none";
@@ -468,11 +468,11 @@ function setupPlaybackControls() {
         window.currentSequence = null;
         window.currentIndex = 0;
         window.needsSecondSide = false;
-        
+
         // Reset the start button text
         const startBtn = document.getElementById("startStopBtn");
         if (startBtn) startBtn.textContent = "Start";
-        
+
         console.log("🛠️ Architect: Session Reset Complete. Engine, UI, and Save State Flushed.");
     });
 
@@ -482,7 +482,7 @@ function setupPlaybackControls() {
         const performReset = (e) => {
             const dial = document.getElementById("durationDial");
             if (!dial) return;
-            if (e.cancelable) e.preventDefault(); 
+            if (e.cancelable) e.preventDefault();
             dial.value = 50;
             dial.dispatchEvent(new Event('input', { bubbles: true }));
             if (typeof window.updateDialUI === "function") window.updateDialUI();
@@ -490,28 +490,28 @@ function setupPlaybackControls() {
         resetText.addEventListener("touchend", performReset, { passive: false });
         resetText.addEventListener("click", performReset);
     }
-} 
+}
 
 
 // ── 3. Builder Modal Wiring ──────────────────────────────────────────────────
 function setupBuilderWiring() {
     safeListen("btnOpenLinkModal", "click", openLinkSequenceModal);
-    
+
     safeListen("btnConfirmLink", "click", () => {
         const input = $('linkSequenceInput');
         const repsInp = $('linkSequenceReps');
         const overlay = $('linkSequenceOverlay');
         const title = (input?.value || '').trim();
         const reps = parseInt(repsInp?.value || '1', 10) || 1;
-        
-        if (!title) return showError('Please select or type a sequence name.'); 
-        
+
+        if (!title) return showError('Please select or type a sequence name.');
+
         const exists = (window.courses || []).find(c => c.title.trim().toLowerCase() === title.toLowerCase());
-        if (!exists) return showError('Sequence not found. Choose from the list.'); 
-        
+        if (!exists) return showError('Sequence not found. Choose from the list.');
+
         const newMacro = {
             id: `MACRO:${exists.id}`,
-            name: `[Sequence] ${exists.title}`, 
+            name: `[Sequence] ${exists.title}`,
             duration: reps,
             variation: '',
             note: `Linked Sequence: ${reps} Round${reps !== 1 ? 's' : ''}`
@@ -524,13 +524,13 @@ function setupBuilderWiring() {
             builderState.activeMacroSwapIdx = -1; // Reset
         } else {
             // Standard Insert
-            const insertAt = getTargetInsertionIndex(); 
+            const insertAt = getTargetInsertionIndex();
             addPoseToBuilder(newMacro, insertAt);
         }
 
         clearBuilderSelection(); // 👈 Uncheck boxes
         builderRender();
-        
+
         if (overlay) overlay.style.display = 'none';
         const activeEl = document.activeElement;
         if (activeEl && typeof activeEl.blur === 'function') activeEl.blur();
@@ -538,22 +538,22 @@ function setupBuilderWiring() {
 
     safeListen("builderAddBlank", "click", () => {
         const insertAt = getTargetInsertionIndex();
-        
+
         addPoseToBuilder({
-            id: "", 
+            id: "",
             asana_id: null,
             duration: 30,
             variation: "",
             metadata: {}
         }, insertAt);
-        
+
         clearBuilderSelection(); // 👈 Uncheck boxes
         builderRender();
-        
+
         setTimeout(() => {
             const tbody = document.getElementById("builderTableBody");
-            const targetRow = insertAt >= 0 
-                ? tbody.querySelector(`tr[data-idx="${insertAt}"]`) 
+            const targetRow = insertAt >= 0
+                ? tbody.querySelector(`tr[data-idx="${insertAt}"]`)
                 : tbody.lastElementChild;
             if (targetRow) targetRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }, 50);
@@ -565,12 +565,12 @@ function setupBuilderWiring() {
     });
 
     safeListen("editCourseBtn", "click", openEditCourse);
-    
+
     const closeBuilderModal = () => {
-        $("editCourseBackdrop").style.display = "none"; 
+        $("editCourseBackdrop").style.display = "none";
         document.body.classList.remove("modal-open");
     };
-    
+
     safeListen("editCourseCloseBtn", "click", closeBuilderModal);
     safeListen("editCourseCancelBtn", "click", closeBuilderModal);
 }
@@ -596,7 +596,7 @@ function setupUIExtras() {
 // ── 5. Auth & Initialization ─────────────────────────────────────────────────
 function showApp() {
     document.getElementById("loginScreen").style.display = "none";
-    
+
     // Inject the empty state once before showing the app
     const collageWrap = $("collageWrap");
     if (collageWrap && !collageWrap.innerHTML.trim()) {
@@ -784,10 +784,10 @@ function setupAuthListeners() {
                 const emailSpan = $('userEmailDisplay');
                 if (emailSpan) { emailSpan.textContent = ''; emailSpan.style.display = 'none'; }
                 window.isGuestMode = false;
-                
+
                 const { error } = await supabase.auth.signOut();
                 if (error) throw error;
-                
+
             } catch (err) {
                 console.error("Sign out failed:", err.message);
                 showError("Sign out failed. Please refresh the page.");
@@ -859,17 +859,17 @@ if (mainResetBtn) {
             window.appendServerHistory(title, new Date(), category, focusDuration, 'incomplete').catch(console.error);
         }
 
-        // 2. Wipe the granular completion tracker 
+        // 2. Wipe the granular completion tracker
         if (typeof window.resetCompletionTracker === 'function') window.resetCompletionTracker();
-        
+
         // 3. Reset the engine's active wall-clock timer
         if (window.playbackEngine && typeof window.playbackEngine.resetPracticeTimer === 'function') {
             window.playbackEngine.resetPracticeTimer();
         }
-        
+
         // 4. Stop playback
         if (typeof window.stopTimer === 'function') window.stopTimer();
-        
+
         // 5. Instantly flush the UI progress bar
         const bar = document.getElementById("timeProgressFill");
         if (bar) {
@@ -878,7 +878,7 @@ if (mainResetBtn) {
         }
         const remDisp = document.getElementById("timeRemainingDisplay");
         if (remDisp) remDisp.textContent = "--:--";
-        
+
         // 6. Reset UI to Pose 0 using your exact render function
         if (typeof window.setPose === 'function') window.setPose(0);
         if (typeof window.updateNextBtnText === 'function') window.updateNextBtnText();
@@ -900,7 +900,7 @@ function initWiring() {
     setupPlaybackControls();
     setupBuilderWiring();
     setupUIExtras();
-    
+
     // Global exports for external access where strictly necessary
     window.createRepeatGroup = createRepeatGroup;
     window.openLinkSequenceModal = openLinkSequenceModal;

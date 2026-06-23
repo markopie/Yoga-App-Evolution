@@ -1,19 +1,18 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "💾 Pre-push check..."
+echo "Pre-push check..."
 
-# Run backup if explicitly requested
+PYTHON_CMD="${PYTHON_CMD:-python}"
+export PYTHONUTF8=1
+export PYTHONIOENCODING=utf-8
+
 if [ "${RUN_DB_BACKUP_ON_PUSH:-0}" = "1" ]; then
-  echo "📦 RUN_DB_BACKUP_ON_PUSH=1 detected. Running backup..."
-  python scripts/sync_and_backup.py
-  echo "✅ Backup complete."
+  echo "RUN_DB_BACKUP_ON_PUSH=1 detected. Running backup..."
+  "$PYTHON_CMD" scripts/sync_and_backup.py
+  echo "Backup complete."
   exit 0
 fi
-
-# Run backup automatically if this push includes migration changes
-REMOTE="${1:-origin}"
-URL="${2:-}"
 
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 UPSTREAM=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || true)
@@ -25,11 +24,11 @@ else
 fi
 
 if echo "$CHANGED_FILES" | grep -q '^supabase/migrations/'; then
-  echo "🗃️ Migration changes detected. Running Supabase backup..."
-  python scripts/sync_and_backup.py
-  echo "✅ Backup complete."
+  echo "Migration changes detected. Running Supabase backup..."
+  "$PYTHON_CMD" scripts/sync_and_backup.py
+  echo "Backup complete."
 else
-  echo "ℹ️ No migration changes detected. Skipping backup."
+  echo "No migration changes detected. Skipping backup."
 fi
 
 exit 0

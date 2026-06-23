@@ -1,8 +1,8 @@
-# 🗺️ Application Architecture & Function Index
+# Application Architecture & Function Index
 
-> *Auto-generated map of all exported modules and window bindings.*
+> Auto-generated map of all exported modules and window bindings.
 
-### 📄 `config/appConfig.js`
+### File: `config/appConfig.js`
 - `ADMIN_EMAILS` (module export)
 - `AUDIO_BASE` (module export)
 - `BASE_RAW_URL` (module export)
@@ -10,16 +10,16 @@
 - `isConfiguredAdminEmail` (function)
 - `normalizeEmail` (function)
 
-### 📄 `config/curriculumConfig.js`
+### File: `config/curriculumConfig.js`
 - `ACTIVE_CURRICULUM_NAME` (const)
 - `ACTIVE_CURRICULUM_SLUG` (const)
 
-### 📄 `config/propRegistry.js`
+### File: `config/propRegistry.js`
 - `PROP_REGISTRY` (const)
 - `PROP_REGISTRY` (window binding)
 - `hydratePropsFromDb` (function)
 
-### 📄 `playback/audioEngine.js`
+### File: `playback/audioEngine.js`
 - `detectSide` (function)
 - `getCurrentAudio` (function)
 - `getCurrentAudio` (window binding)
@@ -40,11 +40,11 @@
 - `toggleSpeak` (function)
 - `toggleSpeak` (window binding)
 
-### 📄 `playback/timer.js`
+### File: `playback/timer.js`
 - `PlaybackEngine` (class)
 - `playbackEngine` (const)
 
-### 📄 `playback/timerEvents.js`
+### File: `playback/timerEvents.js`
 - `_lastBoundaryIdx` (window binding)
 - `_lastSideIdx` (window binding)
 - `appendServerHistory` (window binding)
@@ -74,10 +74,10 @@
 - `updateTimerUI` (window binding)
 - `updateTotalAndLastUI` (window binding)
 
-### 📄 `services/coursePoseIndexService.js`
+### File: `services/coursePoseIndexService.js`
 - `fetchCourseIdsByPoseId` (function)
 
-### 📄 `services/dataAdapter.js`
+### File: `services/dataAdapter.js`
 - `asanaLibrary` (window binding)
 - `fetchCourses` (module export)
 - `findAsanaByIdOrPlate` (module export)
@@ -88,7 +88,7 @@
 - `normalizePlate` (module export)
 - `parsePlates` (module export)
 
-### 📄 `services/historyService.js`
+### File: `services/historyService.js`
 - `COMPLETION_KEY` (module export)
 - `addCompletion` (function)
 - `appendServerHistory` (function)
@@ -117,14 +117,14 @@
 - `updateCompletionRating` (function)
 - `updateCompletionRating` (window binding)
 
-### 📄 `services/http.js`
+### File: `services/http.js`
 - `loadJSON` (module export)
 
-### 📄 `services/mediaUrl.js`
+### File: `services/mediaUrl.js`
 - `resolveSupabaseStorageUrl` (function)
 - `storagePublicBase` (function)
 
-### 📄 `services/offlineSync.js`
+### File: `services/offlineSync.js`
 - `CONFLICT_STATUS` (const)
 - `buildMutation` (function)
 - `chooseMediaUrl` (function)
@@ -134,38 +134,40 @@
 - `shouldDownloadAsset` (function)
 - `stableSyncKey` (function)
 
-### 📄 `services/persistence.js`
+### File: `services/persistence.js`
 - `findAsanaCategoryId` (function)
 - `getOrCreateSubCategoryId` (function)
 - `saveSequence` (function)
 
-### 📄 `services/privatePlateImages.js`
+### File: `services/privatePlateImages.js`
 - `attachPrivatePlateUrls` (function)
 - `canUsePrivatePlateImages` (function)
 - `normalizePlateLabel` (function)
 - `parsePlateGroups` (function)
 - `plateStoragePath` (function)
 
-### 📄 `services/ratingOptionsService.js`
+### File: `services/ratingOptionsService.js`
 - `fetchRatingOptions` (function)
 
-### 📄 `services/sequenceEngine.js`
+### File: `services/sequenceEngine.js`
 - `findAsanaByIdOrPlate` (window binding)
 - `getExpandedPoses` (function)
 - `getExpandedPoses` (window binding)
 - `normalizePlate` (window binding)
 
-### 📄 `services/supabaseBrowserTestMock.js`
+### File: `services/supabaseBrowserTestMock.js`
 - `browserTestSupabaseConfig` (const)
 - `createBrowserTestSupabaseClient` (function)
+- `mockNextSignInFailure` (function)
 
-### 📄 `services/supabaseClient.js`
+### File: `services/supabaseClient.js`
+- `__mockNextSignInFailure` (window binding)
 - `supabaseConfig` (const)
 - `supabaseConfig` (window binding)
 - `supabase` (const)
 - `supabase` (window binding)
 
-### 📄 `store/builderState.js`
+### File: `store/builderState.js`
 - `addPoseToBuilder` (function)
 - `builderState` (const)
 - `clearAmbiguity` (function)
@@ -177,7 +179,7 @@
 - `setPoseSide` (function)
 - `toggleSanskrit` (function)
 
-### 📄 `store/state.js`
+### File: `store/state.js`
 - `activePlaybackList` (window binding)
 - `asanaLibrary` (window binding)
 - `completionTracker` (window binding)
@@ -209,7 +211,7 @@
 - `setServerAudioFiles` (function)
 - `updateNodeCompletion` (function)
 
-### 📄 `ui/asanaEditor.js`
+### File: `ui/asanaEditor.js`
 - `_applyInjectionSearch` (window binding)
 - `_asanaInjectionTarget` (window binding)
 - `_closeInjectionSearch` (window binding)
@@ -226,7 +228,7 @@
 - `showAsanaDetail` (window binding)
 - `triggerAsanaInjectionSearch` (window binding)
 
-### 📄 `ui/browse.js`
+### File: `ui/browse.js`
 - `applyBrowseFilters` (module export)
 - `applyBrowseFilters` (window binding)
 - `closeBrowse` (module export)
@@ -247,7 +249,7 @@
 - `startBrowseAsana` (module export)
 - `startBrowseAsana` (window binding)
 
-### 📄 `ui/builder.js`
+### File: `ui/builder.js`
 - `addPoseToBuilder` (module export)
 - `builderCompileSequenceJSON` (module export)
 - `builderOpen` (module export)
@@ -270,10 +272,10 @@
 - `triggerRowSearch` (window binding)
 - `updateToolbarState` (function)
 
-### 📄 `ui/builderSearch.js`
+### File: `ui/builderSearch.js`
 - `setupBuilderSearch` (function)
 
-### 📄 `ui/builderTemplates.js`
+### File: `ui/builderTemplates.js`
 - `buildMacroInfoHTML` (function)
 - `builderPoseName` (function)
 - `generateExportHeaderHTML` (function)
@@ -282,7 +284,7 @@
 - `generateVariationSelectHTML` (function)
 - `resolvePoseInfo` (const)
 
-### 📄 `ui/builderUI.js`
+### File: `ui/builderUI.js`
 - `calculateTotalSequenceTime` (window binding)
 - `downloadSequencePdf` (function)
 - `getExpandedPoses` (window binding)
@@ -293,7 +295,7 @@
 - `toggleWarning` (window binding)
 - `updateBuilderModeUI` (function)
 
-### 📄 `ui/courseUI.js`
+### File: `ui/courseUI.js`
 - `renderCategoryFilter` (function)
 - `renderCategoryFilter` (window binding)
 - `renderCollage` (function)
@@ -306,10 +308,10 @@
 - `updateActiveCategoryTitle` (function)
 - `updateActiveCategoryTitle` (window binding)
 
-### 📄 `ui/curriculumRoadmapUI.js`
+### File: `ui/curriculumRoadmapUI.js`
 - `setupCurriculumRoadmapUI` (function)
 
-### 📄 `ui/curriculumUI.js`
+### File: `ui/curriculumUI.js`
 - `activePlaybackList` (window binding)
 - `applySequenceInternal` (window binding)
 - `completionTracker` (window binding)
@@ -337,7 +339,7 @@
 - `updateCurriculumLibraryLock` (window binding)
 - `updateNextBtnText` (window binding)
 
-### 📄 `ui/durationDial.js`
+### File: `ui/durationDial.js`
 - `activePlaybackList` (window binding)
 - `applyDurationDial` (function)
 - `applyDurationDial` (window binding)
@@ -357,12 +359,12 @@
 - `updateTimerUI` (window binding)
 - `updateTotalAndLastUI` (window binding)
 
-### 📄 `ui/historyModal.js`
+### File: `ui/historyModal.js`
 - `openHistoryModal` (module export)
 - `renderGlobalHistory` (module export)
 - `switchHistoryTab` (module export)
 
-### 📄 `ui/linkedSequenceDetails.js`
+### File: `ui/linkedSequenceDetails.js`
 - `findLinkedSequence` (function)
 - `getExpandedPoses` (window binding)
 - `getLinkedSequenceDetailItems` (function)
@@ -370,7 +372,7 @@
 - `renderLinkedSequenceDetailsHtml` (function)
 - `sequenceNodeToDetailItem` (function)
 
-### 📄 `ui/posePlayer.js`
+### File: `ui/posePlayer.js`
 - `currentActualNote` (window binding)
 - `currentIndex` (window binding)
 - `currentPropModifier` (window binding)
@@ -398,7 +400,7 @@
 - `updatePoseNote` (window binding)
 - `updateTimerUI` (window binding)
 
-### 📄 `ui/progressSummaryUI.js`
+### File: `ui/progressSummaryUI.js`
 - `formatHMS` (window binding)
 - `getActivePlaybackList` (window binding)
 - `getCompletionTracker` (function)
@@ -412,14 +414,14 @@
 - `stopTimer` (window binding)
 - `updateNodeCompletion` (function)
 
-### 📄 `ui/renderers.js`
+### File: `ui/renderers.js`
 - `descriptionForPose` (function)
 - `getContentForPose` (function)
 - `updatePoseAsanaDescription` (function)
 - `updatePoseDescription` (function)
 - `updatePoseNote` (function)
 
-### 📄 `ui/statsUI.js`
+### File: `ui/statsUI.js`
 - `builderRender` (window binding)
 - `calculateTotalSequenceTime` (window binding)
 - `getPosePillTime` (window binding)
@@ -430,10 +432,10 @@
 - `updateTotalAndLastUI` (function)
 - `updateTotalAndLastUI` (window binding)
 
-### 📄 `ui/themeToggle.js`
+### File: `ui/themeToggle.js`
 - `themeManager` (const)
 
-### 📄 `ui/wiring.js`
+### File: `ui/wiring.js`
 - `_lastBoundaryIdx` (window binding)
 - `activePlaybackList` (window binding)
 - `appendServerHistory` (window binding)
@@ -471,20 +473,20 @@
 - `updateNextBtnText` (window binding)
 - `updateTotalAndLastUI` (window binding)
 
-### 📄 `utils/builderParser.js`
+### File: `utils/builderParser.js`
 - `parseSemicolonCommand` (function)
 
-### 📄 `utils/completionFlow.js`
+### File: `utils/completionFlow.js`
 - `ratingOverlayOptionsForCompletion` (function)
 
-### 📄 `utils/curriculumRouting.js`
+### File: `utils/curriculumRouting.js`
 - `isRecoveryNode` (function)
 - `isRestOrRecoveryNode` (function)
 - `isSequenceReady` (function)
 - `nonSequenceNodeTitle` (function)
 - `prettifyCurriculumToken` (function)
 
-### 📄 `utils/dom.js`
+### File: `utils/dom.js`
 - `$` (module export)
 - `enterBrowseDetailMode` (module export)
 - `exitBrowseDetailMode` (module export)
@@ -493,7 +495,7 @@
 - `setStatus` (module export)
 - `showError` (module export)
 
-### 📄 `utils/format.js`
+### File: `utils/format.js`
 - `displayName` (function)
 - `escapeHtml2` (function)
 - `formatCategory` (function)
@@ -504,7 +506,7 @@
 - `renderMarkdownMinimal` (function)
 - `setIASTPref` (function)
 
-### 📄 `utils/helpers.js`
+### File: `utils/helpers.js`
 - `ensureArray` (function)
 - `filenameFromUrl` (function)
 - `isBrowseMobile` (function)
@@ -514,7 +516,7 @@
 - `primaryAsanaFromFilename` (function)
 - `smartUrlsForPoseId` (function)
 
-### 📄 `utils/parsing.js`
+### File: `utils/parsing.js`
 - `buildHoldString` (module export)
 - `getHoldTimes` (module export)
 - `getHoldTimes` (window binding)
@@ -522,16 +524,16 @@
 - `parseSequenceText` (module export)
 - `secsToMSS` (module export)
 
-### 📄 `utils/poseId.js`
+### File: `utils/poseId.js`
 - `normalisePoseId` (function)
 - `poseIdFromSequenceNode` (function)
 
-### 📄 `utils/resumeState.js`
+### File: `utils/resumeState.js`
 - `buildResumeState` (function)
 - `resolveResumeCourse` (function)
 - `resumeCourseId` (function)
 
-### 📄 `utils/sequenceUtils.js`
+### File: `utils/sequenceUtils.js`
 - `calculateRequiredSequenceTime` (function)
 - `calculateTotalSequenceTime` (function)
 - `extractTier` (function)
@@ -541,6 +543,6 @@
 - `isProtectedSequence` (function)
 - `reindexSortOrder` (function)
 
-### 📄 `utils/visibility.js`
+### File: `utils/visibility.js`
 - `isElementDisplayed` (function)
 
