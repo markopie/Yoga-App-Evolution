@@ -155,6 +155,10 @@
 - `getExpandedPoses` (window binding)
 - `normalizePlate` (window binding)
 
+### 📄 `services/supabaseBrowserTestMock.js`
+- `browserTestSupabaseConfig` (const)
+- `createBrowserTestSupabaseClient` (function)
+
 ### 📄 `services/supabaseClient.js`
 - `supabaseConfig` (const)
 - `supabaseConfig` (window binding)

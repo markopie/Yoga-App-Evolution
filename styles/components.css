@@ -696,7 +696,8 @@ button.tiny {
   100% { r: 15; opacity: 0.3; }
 }
 .cr-map-pulse { animation: cr-pulse 2.6s ease-in-out infinite; }
-.cr-map-station:focus-visible { outline: 2px solid var(--cr-teal); outline-offset: 3px; }
+.cr-map-hit-target { pointer-events: all; }
+.cr-map-hit-target:focus-visible { outline: 2px solid var(--cr-teal); outline-offset: 3px; }
 
 /* Station detail panel */
 .cr-detail-section { margin-top: .1rem; position: sticky; top: .4rem; }

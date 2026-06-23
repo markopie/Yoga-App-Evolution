@@ -1,54 +1,44 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
-
-const CURRICULUM_SLUG = 'iyengar_integrated_master_path_testing_v2';
-const EXPECTED_WEEKS = 24;
-const EXPECTED_TOTAL_ROWS = 160;
-const EXPECTED_ACTIVE_VISIBLE_ROWS = 145;
-const EXPECTED_SOURCE_BACKED_ROWS = 93;
-const CHOICE_COPY_PATTERN = /\b(choose|choose a|select your|pick|your choice|choice)\b/i;
+import {
+  CURRICULUM_SLUG,
+  PROGRAM_NAME,
+  PRACTICE_DAYS_PER_WEEK,
+  auditCurriculumCoverage,
+  classifyCourse,
+} from './curriculum_testing_v2_builder.mjs';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
-function assertPass(condition, message, details = '') {
+const failures = [];
+
+function recordCheck(condition, message, details = '') {
   if (!condition) {
-    throw new Error(details ? `${message}: ${details}` : message);
+    const failure = details ? `${message}: ${details}` : message;
+    failures.push(failure);
+    console.error(`FAIL - ${failure}`);
+    return;
   }
   console.log(`PASS - ${message}`);
 }
 
-function hasComposition(row) {
-  return Array.isArray(row.curriculum_payload?.practice_composition);
-}
-
-function adaptiveBehavior(row) {
-  if (row.adaptive_behavior && typeof row.adaptive_behavior === 'object') return row.adaptive_behavior;
-  if (typeof row.adaptive_behavior === 'string') {
-    try {
-      return JSON.parse(row.adaptive_behavior);
-    } catch {
-      return {};
-    }
+function playableRefs(row) {
+  const refs = [];
+  if (row.sequence_id != null) {
+    refs.push({ node_id: row.id, sequence_id: Number(row.sequence_id), kind: 'anchor' });
   }
-  return {};
-}
-
-function userFacingText(row) {
-  return [
-    row.node_type,
-    row.day_role,
-    row.recovery_type,
-    row.source_policy,
-    row.primary_focus,
-    row.source_name,
-    row.source_reference,
-    row.special_instructions,
-  ]
-    .filter(Boolean)
-    .join(' | ');
+  const composition = row.curriculum_payload?.practice_composition;
+  if (Array.isArray(composition)) {
+    composition.forEach((part, index) => {
+      if (part?.sequence_id != null) {
+        refs.push({ node_id: row.id, sequence_id: Number(part.sequence_id), kind: `composition_${index + 1}` });
+      }
+    });
+  }
+  return refs;
 }
 
 async function main() {
@@ -56,77 +46,157 @@ async function main() {
     throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env');
   }
 
-  const { data: rows, error } = await supabase
-    .from('program_curriculum')
-    .select('id, week_number, day_number, node_type, day_role, recovery_type, source_policy, sequence_id, is_active, is_visible, requires_user_selection, adaptive_behavior, curriculum_payload, primary_focus, source_name, source_reference, special_instructions')
-    .eq('curriculum_slug', CURRICULUM_SLUG)
-    .order('order_index');
+  const [{ data: courses, error: courseError }, { data: rows, error: rowError }] = await Promise.all([
+    supabase
+      .from('courses')
+      .select(`
+        *,
+        course_sub_categories (
+          id,
+          name,
+          category_id,
+          course_categories ( id, name )
+        )
+      `)
+      .order('id'),
+    supabase
+      .from('program_curriculum')
+      .select('id, sequence_id, curriculum_slug, program_name, week_number, day_number, order_index, node_type, is_active, is_visible, is_rest_day, source_name, source_course, source_reference, curriculum_payload, requires_user_selection')
+      .eq('curriculum_slug', CURRICULUM_SLUG)
+      .order('order_index'),
+  ]);
+  if (courseError) throw courseError;
+  if (rowError) throw rowError;
 
-  if (error) throw error;
-
-  const allRows = rows || [];
-  const activeVisibleRows = allRows.filter((row) => row.is_active && row.is_visible);
-  const sourceBackedRows = allRows.filter((row) => row.sequence_id != null || hasComposition(row));
-  const adaptiveRows = activeVisibleRows.filter((row) =>
-    ['adaptive_revision', 'adaptive_consolidation'].includes(row.source_policy)
-  );
-  const recoveryRows = activeVisibleRows.filter((row) => row.node_type === 'recovery');
-  const placeholderRows = allRows.filter((row) =>
-    row.source_policy === 'placeholder_non_sequence' || row.curriculum_payload?.placeholder_non_sequence === true
-  );
-
-  assertPass(allRows.length === EXPECTED_TOTAL_ROWS, 'testing_v2 has the full draft_v1-derived row count', `${allRows.length} found`);
-  assertPass(activeVisibleRows.length === EXPECTED_ACTIVE_VISIBLE_ROWS, 'testing_v2 has the expected active visible row count', `${activeVisibleRows.length} found`);
-  assertPass(sourceBackedRows.length === EXPECTED_SOURCE_BACKED_ROWS, 'testing_v2 preserves source-backed draft_v1 rows', `${sourceBackedRows.length} found`);
-  assertPass(placeholderRows.length === 0, 'testing_v2 has no placeholder curriculum nodes', JSON.stringify(placeholderRows));
-
-  const weekCounts = activeVisibleRows.reduce((acc, row) => {
-    acc.set(row.week_number, (acc.get(row.week_number) || 0) + 1);
-    return acc;
-  }, new Map());
-  assertPass(
-    Array.from({ length: EXPECTED_WEEKS }, (_, index) => index + 1)
-      .every((week) => weekCounts.get(week) >= 4),
-    'each testing_v2 week has at least four active visible rows',
-    JSON.stringify(Object.fromEntries(weekCounts)),
-  );
-
-  const duplicateKeys = [...activeVisibleRows.reduce((acc, row) => {
-    const key = `W${row.week_number}D${row.day_number}`;
-    acc.set(key, (acc.get(key) || 0) + 1);
-    return acc;
-  }, new Map()).entries()].filter(([, count]) => count > 1);
-  assertPass(duplicateKeys.length === 0, 'no duplicate active visible week/day rows', JSON.stringify(duplicateKeys));
-
-  const visibleInactiveRows = allRows.filter((row) => !row.is_active && row.is_visible);
-  assertPass(visibleInactiveRows.length === 0, 'inactive source-shadow rows are not visible on the roadmap', JSON.stringify(visibleInactiveRows));
-
-  const invalidRecoveryRows = recoveryRows.filter((row) => row.day_role !== 'recovery' || !row.recovery_type);
-  assertPass(invalidRecoveryRows.length === 0, 'recovery rows carry day_role and recovery_type', JSON.stringify(invalidRecoveryRows));
-
+  const classifiedCourses = (courses || []).map(classifyCourse);
+  const curriculumRows = rows || [];
+  const audit = auditCurriculumCoverage(classifiedCourses, curriculumRows);
+  const activeVisibleRows = curriculumRows.filter((row) => row.is_active && row.is_visible);
+  const sequenceRows = activeVisibleRows.filter((row) => row.node_type === 'sequence');
+  const recoveryRows = activeVisibleRows.filter((row) => row.node_type === 'recovery' || row.is_rest_day);
+  const scheduledRefs = curriculumRows.flatMap(playableRefs);
+  const compositionRefs = scheduledRefs.filter((ref) => ref.kind !== 'anchor');
+  const courseIds = new Set(classifiedCourses.map((course) => Number(course.id)));
+  const unresolvedCompositionReferences = compositionRefs.filter((ref) => !courseIds.has(ref.sequence_id));
+  const nonCleanProgramNames = activeVisibleRows.filter((row) => row.program_name !== PROGRAM_NAME);
   const userSelectionRows = activeVisibleRows.filter((row) => row.requires_user_selection);
-  assertPass(userSelectionRows.length === 0, 'no active visible testing_v2 rows require user curriculum selection', JSON.stringify(userSelectionRows));
+  const devLabelRows = activeVisibleRows.filter((row) =>
+    /testing|dev/i.test(String(row.program_name || ''))
+    || /testing|dev/i.test(String(row.curriculum_payload?.progression_group_label || ''))
+  );
 
-  const invalidAdaptiveRows = adaptiveRows.filter((row) => row.sequence_id != null || !adaptiveBehavior(row).selector);
-  assertPass(invalidAdaptiveRows.length === 0, 'adaptive rows are automatic selector nodes', JSON.stringify(invalidAdaptiveRows));
-
-  const choiceCopyRows = activeVisibleRows.filter((row) => CHOICE_COPY_PATTERN.test(userFacingText(row)));
-  assertPass(choiceCopyRows.length === 0, 'active visible testing_v2 rows do not ask users to choose practices', JSON.stringify(choiceCopyRows));
+  recordCheck(audit.totalCourses > 0, 'courses table is populated');
+  recordCheck(audit.playableCourses > 0, 'playable courses exist');
+  recordCheck(
+    audit.unscheduledPlayableCourses.length === 0,
+    'every playable course is scheduled or explicitly excluded',
+    JSON.stringify(audit.unscheduledPlayableCourses.slice(0, 25)),
+  );
+  recordCheck(
+    audit.excludedCourses.every((course) => course.exclusionReasons.length > 0),
+    'excluded courses have explicit reasons',
+    JSON.stringify(audit.excludedCourses.map((course) => ({ id: course.id, title: course.title, reasons: course.exclusionReasons }))),
+  );
+  recordCheck(
+    audit.duplicateScheduledCourses.length === 0,
+    'no course is scheduled more than once',
+    JSON.stringify(audit.duplicateScheduledCourses),
+  );
+  recordCheck(
+    audit.invalidCourseReferences.length === 0,
+    'all scheduled course references are valid playable courses',
+    JSON.stringify(audit.invalidCourseReferences),
+  );
+  recordCheck(
+    unresolvedCompositionReferences.length === 0,
+    'all composition references resolve to courses',
+    JSON.stringify(unresolvedCompositionReferences),
+  );
+  recordCheck(
+    audit.scheduledUniqueCourses === audit.playableCourses,
+    'scheduled unique course count matches playable course count',
+    `${audit.scheduledUniqueCourses} scheduled, ${audit.playableCourses} playable`,
+  );
+  recordCheck(
+    sequenceRows.length === audit.playableCourses,
+    'sequence node count matches playable course count',
+    `${sequenceRows.length} sequence nodes, ${audit.playableCourses} playable courses`,
+  );
+  recordCheck(
+    recoveryRows.length === audit.weekCount,
+    'one recovery node is scheduled per week',
+    `${recoveryRows.length} recovery nodes, ${audit.weekCount} weeks`,
+  );
+  recordCheck(
+    audit.weekCoverage.every((week) =>
+      week.missing_practice_days === 'none'
+      && week.has_recovery_day
+      && (week.week === audit.weekCount || week.is_full_practice_week)
+    ),
+    '6-day-per-week coverage is complete until the final partial week',
+    JSON.stringify(audit.weekCoverage.filter((week) =>
+      week.missing_practice_days !== 'none'
+      || !week.has_recovery_day
+      || (week.week !== audit.weekCount && !week.is_full_practice_week)
+    )),
+  );
+  recordCheck(nonCleanProgramNames.length === 0, 'curriculum uses the clean public program name', JSON.stringify(nonCleanProgramNames));
+  recordCheck(userSelectionRows.length === 0, 'no rows require user curriculum selection', JSON.stringify(userSelectionRows));
+  recordCheck(devLabelRows.length === 0, 'no user-facing testing/dev labels remain in curriculum rows', JSON.stringify(devLabelRows));
+  recordCheck(audit.duplicateNaturalKeys.length === 0, 'no duplicate category/title playable courses were found', JSON.stringify(audit.duplicateNaturalKeys));
 
   console.table([{
-    total_rows: allRows.length,
-    active_visible_rows: activeVisibleRows.length,
-    source_backed_rows: sourceBackedRows.length,
-    adaptive_rows: adaptiveRows.length,
-    recovery_rows: recoveryRows.length,
-    placeholders: placeholderRows.length,
+    total_courses: audit.totalCourses,
+    playable_courses: audit.playableCourses,
+    excluded_courses: audit.excludedCourses.length,
+    scheduled_curriculum_course_count: audit.scheduledUniqueCourses,
+    unscheduled_playable_courses: audit.unscheduledPlayableCourses.length,
+    duplicate_scheduled_courses: audit.duplicateScheduledCourses.length,
+    total_curriculum_nodes: audit.totalCurriculumNodes,
+    active_visible_nodes: audit.activeVisibleNodes,
+    week_count: audit.weekCount,
+    practice_days_per_week: PRACTICE_DAYS_PER_WEEK,
+    rest_recovery_days: audit.recoveryDays,
+    composed_practices: audit.composedPractices,
+    invalid_course_references: audit.invalidCourseReferences.length,
+    unresolved_composition_references: unresolvedCompositionReferences.length,
   }]);
-  console.table(
-    Object.entries(activeVisibleRows.reduce((acc, row) => {
-      acc[row.source_policy] = (acc[row.source_policy] || 0) + 1;
+
+  console.table(Array.from(
+    classifiedCourses.reduce((acc, course) => {
+      const key = `${course.categoryName}${course.subCategoryName ? ` > ${course.subCategoryName}` : ''}`;
+      const existing = acc.get(key) || { category: key, total: 0, playable: 0, excluded: 0 };
+      existing.total += 1;
+      if (course.isPlayable) existing.playable += 1;
+      else existing.excluded += 1;
+      acc.set(key, existing);
       return acc;
-    }, {})).map(([source_policy, count]) => ({ source_policy, count })),
+    }, new Map()).values()),
   );
+
+  if (audit.excludedCourses.length) {
+    console.log('Excluded courses:');
+    console.table(audit.excludedCourses.map((course) => ({
+      id: Number(course.id),
+      title: course.title,
+      category: `${course.categoryName}${course.subCategoryName ? ` > ${course.subCategoryName}` : ''}`,
+      reason: course.exclusionReasons.join('; '),
+    })));
+  }
+
+  const weekCoverageIssues = audit.weekCoverage.filter((week) =>
+    week.missing_practice_days !== 'none'
+    || !week.has_recovery_day
+    || (week.week !== audit.weekCount && !week.is_full_practice_week)
+  );
+  console.log(`Week coverage: ${audit.weekCoverage.length} weeks checked, ${weekCoverageIssues.length} issue(s).`);
+  if (weekCoverageIssues.length) {
+    console.table(weekCoverageIssues);
+  }
+
+  if (failures.length) {
+    throw new Error(`Curriculum validation failed with ${failures.length} issue(s):\n- ${failures.join('\n- ')}`);
+  }
 }
 
 main().catch((error) => {

@@ -134,7 +134,7 @@ async function loadRoadmapData() {
         .select(`id, week_number, day_number, order_index, node_type,
                  day_role, recovery_type, is_visible, estimated_minutes,
                  sequence_id, is_active, is_rest_day, source_name, source_key,
-                 source_course, source_reference, intensity, primary_focus,
+                 source_course, source_reference, practice_track, intensity, primary_focus,
                  curriculum_payload, completion_requirement, level_number,
                  special_instructions`)
         .eq('curriculum_slug', CURRICULUM_SLUG)
@@ -188,6 +188,7 @@ function assembleRoadmapNodes(nodes, completions, currentNodeId) {
             is_current:       node.id === effectiveCurrentNodeId,
             is_explicit_current: hasExplicitCurrent && node.id === effectiveCurrentNodeId,
             duration_minutes: durationMinutes,
+            progression_group_label: payload.progression_group_label || node.source_name || levelDisplayName(node.level_number),
             // Title: derive from source for sequences, type label for rest/revision
             title: buildNodeTitle(node),
         };
@@ -232,7 +233,7 @@ function groupIntoLevels(assembledNodes) {
     for (const node of assembledNodes) {
         const lvl = node.level_number || 1;
         if (!levelMap.has(lvl)) {
-            levelMap.set(lvl, { level_number: lvl, label: levelDisplayName(lvl), weeks: new Map() });
+            levelMap.set(lvl, { level_number: lvl, label: node.progression_group_label || levelDisplayName(lvl), weeks: new Map() });
         }
         const level = levelMap.get(lvl);
         const wk = node.week_number;
@@ -257,7 +258,7 @@ function groupIntoLevels(assembledNodes) {
 }
 
 function levelDisplayName(n) {
-    return { 1: 'Foundation', 2: 'Development', 3: 'Deepening', 4: 'Advanced' }[n] || `Level ${n}`;
+    return n ? `Group ${n}` : 'Weekly Recovery';
 }
 
 function computeGroupStatus(nodes) {
@@ -312,7 +313,13 @@ function nodeStream(node) {
     if (Array.isArray(comp) && comp.length > 1) return 'combined';
     if (node.node_type === 'rest' || node.node_type === 'recovery' || node.day_role === 'recovery') return 'rest';
     if (['revision', 'consolidation', 'choice', 'instruction', 'assessment'].includes(node.node_type)) return 'revision';
-    if (node.primary_focus === 'Pranayama') return 'pranayama';
+    if (
+        node.practice_track === 'pranayama'
+        || node.source_key === 'light_on_pranayama'
+        || node.source_name === 'Light on Pranayama'
+        || node.curriculum_payload?.source_category === 'Light on Pranayama'
+        || node.primary_focus === 'Pranayama'
+    ) return 'pranayama';
     return 'asana';
 }
 
@@ -430,6 +437,9 @@ function renderMap(placed, currentNodeId, selectedNodeId) {
         const stroke = stationStroke(n);
         const sw     = isInterchange ? 2.5 : 2;
         const op     = stationOpacity(n);
+        const ariaLabel = `Week ${n.week_number} Day ${n.day_number}: ${n.title}`;
+
+        stations += `<circle cx="${n.x}" cy="${n.y}" r="20" fill="transparent" data-id="${n.id}" data-testid="curriculum-station-hit-target" class="cr-map-hit-target" role="button" aria-label="${esc(ariaLabel)}" tabindex="0" style="cursor:pointer"/>`;
 
         if (isCurrent) {
             stations += `<circle class="cr-map-pulse" cx="${n.x}" cy="${n.y}" r="${r + 8}" fill="none" stroke="${STREAM_COLOUR[n.stream]}" stroke-width="1.5" opacity="0.3"/>`;
@@ -445,11 +455,11 @@ function renderMap(placed, currentNodeId, selectedNodeId) {
             const fillP   = ['completed', 'repeated', 'plateau'].includes(n.status) ? STREAM_COLOUR.pranayama : 'none';
             const strokeP = n.status === 'upcoming' ? '#ccc8c0' : STREAM_COLOUR.pranayama;
             const ariaLabelP = `Week ${n.week_number} Day ${n.day_number} pranayama part`;
-            stations += `<circle cx="${n.x}" cy="${LANE_Y.pranayama}" r="7" fill="${fillP}" stroke="${strokeP}" stroke-width="2.5" opacity="${op}" data-id="${n.id}" class="cr-map-station" role="button" aria-label="${esc(ariaLabelP)}" tabindex="0" style="cursor:pointer"/>`;
+            stations += `<circle cx="${n.x}" cy="${LANE_Y.pranayama}" r="18" fill="transparent" data-id="${n.id}" data-testid="curriculum-station-hit-target" class="cr-map-hit-target" role="button" aria-label="${esc(ariaLabelP)}" tabindex="0" style="cursor:pointer"/>`;
+            stations += `<circle cx="${n.x}" cy="${LANE_Y.pranayama}" r="7" fill="${fillP}" stroke="${strokeP}" stroke-width="2.5" opacity="${op}" data-id="${n.id}" data-testid="curriculum-station" class="cr-map-station" style="pointer-events:none"/>`;
         }
 
-        const ariaLabel = `Week ${n.week_number} Day ${n.day_number}: ${n.title}`;
-        stations += `<circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" opacity="${op}" data-id="${n.id}" class="cr-map-station" role="button" aria-label="${esc(ariaLabel)}" tabindex="0" style="cursor:pointer"/>`;
+        stations += `<circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" opacity="${op}" data-id="${n.id}" data-testid="curriculum-station" class="cr-map-station" style="pointer-events:none"/>`;
 
         if (isCurrent) {
             stations += `<text x="${n.x}" y="${n.y - r - 6}" text-anchor="middle" font-size="8" fill="${STREAM_COLOUR[n.stream]}" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${n.is_explicit_current ? 'YOU ARE HERE' : 'NEXT'}</text>`;
@@ -459,7 +469,7 @@ function renderMap(placed, currentNodeId, selectedNodeId) {
         stations += `<text x="${n.x}" y="${labelY}" text-anchor="middle" font-size="8" fill="#a8a39a" font-family="-apple-system,BlinkMacSystemFont,sans-serif">W${n.week_number}·D${n.day_number}</text>`;
     });
 
-    return `<svg class="cr-map-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-label="Practice journey map" role="img">
+    return `<svg class="cr-map-svg" data-testid="curriculum-map" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-label="Practice journey map" role="img">
     <defs>
       <style>
         @keyframes cr-pulse { 0% { r: 15; opacity: 0.3; } 55% { r: 22; opacity: 0.07; } 100% { r: 15; opacity: 0.3; } }
@@ -696,6 +706,7 @@ function renderListView(levels, currentNodeId) {
 
 function renderMapView(placed, currentNodeId) {
     const mapSvg = renderMap(placed, currentNodeId, currentNodeId);
+    const defaultNode = placed.find(node => node.id === currentNodeId) || placed[0] || null;
     return `<div id="cr-map-view">
     <div class="cr-map-content">
       <div class="cr-map-main">
@@ -707,13 +718,12 @@ function renderMapView(placed, currentNodeId) {
             <span class="cr-legend-item"><span class="cr-legend-dot" style="background:#bfb9af;border:1px solid #a8a39a"></span>Rest</span>
             <span class="cr-legend-item cr-legend-interchange"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke="#1e8e83" stroke-width="2"/><circle cx="7" cy="7" r="2" fill="#1e8e83"/></svg>Combined</span>
           </div>
-          <span class="cr-map-hint">Scroll sideways and tap a station</span>
         </div>
         <div class="cr-map-scroll">${mapSvg}</div>
       </div>
       <div class="cr-detail-section">
-        <div class="cr-detail-section-label">Station details</div>
-        <div class="cr-detail-wrap" id="cr-detail-wrap">${renderStationDetail(null, true)}</div>
+        <div class="cr-detail-section-label">Practice details</div>
+        <div class="cr-detail-wrap" id="cr-detail-wrap" data-testid="curriculum-detail">${renderStationDetail(defaultNode, !defaultNode)}</div>
       </div>
     </div>
   </div>`;
@@ -722,10 +732,10 @@ function renderMapView(placed, currentNodeId) {
 // ─── Full roadmap render ──────────────────────────────────────────────────────
 
 function renderRoadmap(assembledNodes, levels, summary) {
-    const placed = buildLayout(assembledNodes.map(n => ({ ...n, level_label: levelDisplayName(n.level_number) })));
+    const placed = buildLayout(assembledNodes.map(n => ({ ...n, level_label: n.progression_group_label || levelDisplayName(n.level_number) })));
 
     return `
-    <div class="cr-program-name">${esc(ACTIVE_CURRICULUM_NAME)} <span class="cr-dev-badge">DEV</span></div>
+    <div class="cr-program-name">${esc(ACTIVE_CURRICULUM_NAME)}</div>
     ${renderSummaryStrip(summary)}
     <div class="cr-view-toggle" role="tablist" aria-label="Journey view">
       <button class="cr-view-btn cr-view-btn--active" id="cr-btn-map" role="tab" aria-selected="true">Map view</button>
@@ -775,7 +785,7 @@ function wireMapClicks(assembledNodes, currentNodeId) {
         if (!node) return;
 
         // Re-render SVG with selection ring
-        const placed = buildLayout(assembledNodes.map(n => ({ ...n, level_label: levelDisplayName(n.level_number) })));
+        const placed = buildLayout(assembledNodes.map(n => ({ ...n, level_label: n.progression_group_label || levelDisplayName(n.level_number) })));
         const mapScroll = document.querySelector('#curriculumMapBackdrop .cr-map-scroll');
         if (mapScroll) mapScroll.innerHTML = renderMap(placed, currentNodeId, id);
 
@@ -789,13 +799,13 @@ function wireMapClicks(assembledNodes, currentNodeId) {
     }
 
     backdrop.addEventListener('click', e => {
-        const circle = e.target.closest('.cr-map-station');
+        const circle = e.target.closest('.cr-map-hit-target, .cr-map-station');
         if (circle) handleSelect(parseInt(circle.getAttribute('data-id'), 10));
     });
 
     backdrop.addEventListener('keydown', e => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
-        const circle = e.target.closest('.cr-map-station');
+        const circle = e.target.closest('.cr-map-hit-target, .cr-map-station');
         if (!circle) return;
         e.preventDefault();
         handleSelect(parseInt(circle.getAttribute('data-id'), 10));
@@ -836,7 +846,7 @@ async function openCurriculumRoadmap() {
         if (effectiveCurrentNodeId) {
             const mapScroll = body.querySelector('.cr-map-scroll');
             if (mapScroll) {
-                const placed = buildLayout(assembledNodes.map(n => ({ ...n, level_label: levelDisplayName(n.level_number) })));
+                const placed = buildLayout(assembledNodes.map(n => ({ ...n, level_label: n.progression_group_label || levelDisplayName(n.level_number) })));
                 const currentPlaced = placed.find(n => n.id === effectiveCurrentNodeId);
                 if (currentPlaced) {
                     // Scroll horizontally so current node is visible

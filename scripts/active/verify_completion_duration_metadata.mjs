@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
+import { CURRICULUM_SLUG } from './curriculum_testing_v2_builder.mjs';
 
-const CURRICULUM_SLUG = 'iyengar_integrated_master_path_draft_v1';
 const DURATION_SCALE = 0.75;
 const NOTES_MARKER = `duration-metadata-verification-${Date.now()}`;
 
