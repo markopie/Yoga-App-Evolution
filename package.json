@@ -11,6 +11,7 @@
     "deploy": "bash deploy.sh",
     "index": ".\\.venv\\Scripts\\python.exe scripts/generate_index.py",
     "backup": ".\\.venv\\Scripts\\python.exe scripts/sync_and_backup.py",
+    "offline:size-report": "node scripts/offline-size-report.mjs",
     "db:refresh-analysis": ".\\.venv\\Scripts\\python.exe scripts/process_course_analysis_queue.py",
     "db:reset-local": "npx supabase db reset && npm run storage:sync-local",
     "storage:sync-local": "node scripts/local/sync-local-storage-assets.mjs --all",
