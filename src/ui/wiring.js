@@ -612,12 +612,41 @@ function showLogin() {
     document.getElementById("mainAppContainer").style.display = "none";
 }
 
+function classifyAuthError(err) {
+    const msg = (err?.message || '').toLowerCase();
+    const code = err?.code || '';
+    if (code === 'invalid_credentials' || /invalid login credentials/i.test(msg)) {
+        return 'That email or password is incorrect. Double-check and try again, or use "Reset password".';
+    }
+    if (code === 'email_not_confirmed' || /email not confirmed/i.test(msg)) {
+        return 'Your email address has not been confirmed yet. Check your inbox for a confirmation link.';
+    }
+    if (code === 'signup_disabled' || /sign.?ups? (are )?not allowed/i.test(msg) || /signup.*disabled/i.test(msg)) {
+        return 'New account sign-ups are currently disabled. Use Google sign-in or contact the administrator.';
+    }
+    if (code === 'user_already_exists' || /user already registered/i.test(msg)) {
+        return 'An account with that email already exists. Try signing in or use "Reset password" if you forgot it.';
+    }
+    if (/network|fetch|failed to fetch|load failed/i.test(msg)) {
+        return 'Could not reach the authentication service. Check your internet connection and try again.';
+    }
+    return err?.message || 'Authentication failed.';
+}
+
 function setupAuthListeners() {
     if (!supabase) {
         window.currentUserId = null;
         window.currentUserEmail = null;
         window.isGuestMode = false;
         themeManager.setUserId(null);
+        const loginCard = document.getElementById('loginCard');
+        if (loginCard) {
+            const notice = document.createElement('p');
+            notice.id = 'loginConfigNotice';
+            notice.style.cssText = 'margin-top:12px; padding:10px 14px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; font-size:0.85rem; color:#664d03;';
+            notice.textContent = 'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to enable sign-in. Guest mode is also unavailable without a backend.';
+            loginCard.appendChild(notice);
+        }
         showLogin();
         return;
     }
@@ -638,6 +667,9 @@ function setupAuthListeners() {
         loginError.textContent = message;
         loginError.style.display = message ? 'block' : 'none';
     };
+
+    if (emailInput) emailInput.addEventListener('input', () => setLoginError(''));
+    if (passwordInput) passwordInput.addEventListener('input', () => setLoginError(''));
 
     const readEmailCredentials = () => {
         const email = String(emailInput?.value || '').trim();
@@ -667,10 +699,7 @@ function setupAuthListeners() {
                 const { error } = await supabase.auth.signInWithPassword(credentials);
                 if (error) throw error;
             } catch (err) {
-                console.error('Email sign-in failed:', err);
-                const message = /invalid login credentials/i.test(err.message || '')
-                    ? 'That email/password did not work. Try Google, or reset your password.'
-                    : (err.message || 'Sign-in failed.');
+                const message = classifyAuthError(err);
                 setLoginError(message);
             } finally {
                 setEmailAuthBusy(false);
@@ -687,11 +716,10 @@ function setupAuthListeners() {
                 const { data, error } = await supabase.auth.signUp(credentials);
                 if (error) throw error;
                 if (!data.session) {
-                    setLoginError('Check your email to confirm. If you already use Google for this address, continue with Google.');
+                    setLoginError('Check your inbox — a confirmation email has been sent. Click the link to activate your account.');
                 }
             } catch (err) {
-                console.error('Email sign-up failed:', err);
-                setLoginError(err.message || 'Account creation failed.');
+                setLoginError(classifyAuthError(err));
             } finally {
                 setEmailAuthBusy(false);
             }
@@ -716,8 +744,7 @@ function setupAuthListeners() {
                 if (error) throw error;
                 setLoginError('Password reset email sent. Open the link, then choose a new password.');
             } catch (err) {
-                console.error('Password reset request failed:', err);
-                setLoginError(err.message || 'Could not send password reset email.');
+                setLoginError(classifyAuthError(err));
             } finally {
                 passwordResetBtn.disabled = false;
                 passwordResetBtn.textContent = 'Reset password';
@@ -743,8 +770,7 @@ function setupAuthListeners() {
             const { error } = await supabase.auth.signInAnonymously();
 
             if (error) {
-                console.error('Anonymous sign-in failed:', error.message);
-                setLoginError(`Guest sign-in failed: ${error.message}`);
+                setLoginError(classifyAuthError(error));
                 guestBtn.disabled = false;
                 guestBtn.textContent = 'Continue as Guest';
             }

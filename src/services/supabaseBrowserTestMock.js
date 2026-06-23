@@ -83,6 +83,12 @@ let session = null;
 let completionId = 1;
 let completions = [];
 const authSubscribers = new Set();
+let _signInShouldFail = false;
+
+/** For tests only: make the next signInWithPassword call return an error. */
+export function mockNextSignInFailure() {
+    _signInShouldFail = true;
+}
 
 function curriculumNode(id, week, day, order, sequenceId, sourceName, sourceKey, sourceCourse, reference, track, extraPayload = {}) {
     const composition = extraPayload.practice_composition || [{
@@ -289,7 +295,14 @@ export function createBrowserTestSupabaseClient() {
                 notifyAuth('SIGNED_IN');
                 return { data: { session, user: TEST_USER }, error: null };
             },
-            async signInWithPassword() { return this.signInAnonymously(); },
+            async signInWithPassword() {
+                if (_signInShouldFail) {
+                    _signInShouldFail = false;
+                    const err = Object.assign(new Error('Invalid login credentials'), { code: 'invalid_credentials' });
+                    return { data: {}, error: err };
+                }
+                return this.signInAnonymously();
+            },
             async signUp() { return this.signInAnonymously(); },
             async signInWithOAuth() { return { data: {}, error: null }; },
             async resetPasswordForEmail() { return { data: {}, error: null }; },

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
     browserTestSupabaseConfig,
     createBrowserTestSupabaseClient,
+    mockNextSignInFailure,
 } from './supabaseBrowserTestMock.js';
 
 const env = import.meta.env || {};
@@ -58,3 +59,6 @@ if (supabase) {
 
 window.supabase = supabase;
 window.supabaseConfig = supabaseConfig;
+if (USE_BROWSER_TEST_MOCKS) {
+    window.__mockNextSignInFailure = mockNextSignInFailure;
+}
