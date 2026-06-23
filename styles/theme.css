@@ -223,14 +223,14 @@ table td, table th {
 }
 
 #googleSignInBtn {
-  background: var(--color-bg-secondary);
-  border-color: var(--color-border-secondary);
-  color: var(--color-text-primary);
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+  color: var(--color-bg-primary);
 }
 
 #googleSignInBtn:hover {
-  background: var(--color-bg-hover);
-  border-color: var(--color-border-secondary);
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
 }
 
 #categoryFilter {

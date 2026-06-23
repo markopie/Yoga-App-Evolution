@@ -648,12 +648,13 @@ function setupAuthListeners() {
         return { email, password };
     };
 
-    const setEmailAuthBusy = (busy, label = 'Sign in') => {
+    const setEmailAuthBusy = (busy, label = 'Continue') => {
         if (emailSignInBtn) {
             emailSignInBtn.disabled = busy;
             emailSignInBtn.textContent = label;
         }
         if (emailSignUpBtn) emailSignUpBtn.disabled = busy;
+        if (passwordResetBtn) passwordResetBtn.disabled = busy;
     };
 
     if (emailForm) {
@@ -668,7 +669,7 @@ function setupAuthListeners() {
             } catch (err) {
                 console.error('Email sign-in failed:', err);
                 const message = /invalid login credentials/i.test(err.message || '')
-                    ? 'Invalid email/password. If this email was first used with Google, use Sign in with Google or set/reset a password.'
+                    ? 'That email/password did not work. Try Google, or reset your password.'
                     : (err.message || 'Sign-in failed.');
                 setLoginError(message);
             } finally {
@@ -686,7 +687,7 @@ function setupAuthListeners() {
                 const { data, error } = await supabase.auth.signUp(credentials);
                 if (error) throw error;
                 if (!data.session) {
-                    setLoginError('Check your email to confirm. If this address already uses Google sign-in, use Sign in with Google or set/reset a password.');
+                    setLoginError('Check your email to confirm. If you already use Google for this address, continue with Google.');
                 }
             } catch (err) {
                 console.error('Email sign-up failed:', err);
@@ -707,7 +708,7 @@ function setupAuthListeners() {
             }
 
             passwordResetBtn.disabled = true;
-            passwordResetBtn.textContent = 'Sending reset email...';
+            passwordResetBtn.textContent = 'Sending...';
             try {
                 const { error } = await supabase.auth.resetPasswordForEmail(email, {
                     redirectTo: window.location.origin + window.location.pathname,
@@ -719,7 +720,7 @@ function setupAuthListeners() {
                 setLoginError(err.message || 'Could not send password reset email.');
             } finally {
                 passwordResetBtn.disabled = false;
-                passwordResetBtn.textContent = 'Set or reset password';
+                passwordResetBtn.textContent = 'Reset password';
             }
         };
     }

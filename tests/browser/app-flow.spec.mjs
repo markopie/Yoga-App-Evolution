@@ -26,6 +26,26 @@ test('app loads, guest sign-in reaches the main app, and normal UI has no dev la
   expect(errors).toEqual([]);
 });
 
+test('login screen keeps email actions tucked behind one simple option', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.getByRole('button', { name: /continue with google/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /continue as guest/i })).toBeVisible();
+
+  const emailPanel = page.locator('#emailAuthDetails');
+  await expect(emailPanel).toBeVisible();
+  await expect(emailPanel).not.toHaveAttribute('open', '');
+  await expect(page.locator('#authEmailInput')).toBeHidden();
+  await expect(page.getByRole('button', { name: /^create email account$/i })).toBeHidden();
+  await expect(page.getByRole('button', { name: /^reset password$/i })).toBeHidden();
+
+  await emailPanel.locator('summary').click();
+  await expect(page.locator('#authEmailInput')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^continue$/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^create email account$/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^reset password$/i })).toBeVisible();
+});
+
 test('Start Today loads a playable practice and rating advances to the next node', async ({ page }) => {
   await openAsGuest(page);
 
