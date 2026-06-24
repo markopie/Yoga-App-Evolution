@@ -13,6 +13,14 @@
 ### File: `config/curriculumConfig.js`
 - `ACTIVE_CURRICULUM_NAME` (const)
 - `ACTIVE_CURRICULUM_SLUG` (const)
+- `CURRICULA` (const)
+- `CURRICULUM_SELECTION_STORAGE_KEY` (const)
+- `DEFAULT_CURRICULUM` (const)
+- `getCurriculumBySlug` (function)
+- `getSelectedCurriculumName` (function)
+- `getSelectedCurriculumSlug` (function)
+- `getSelectedCurriculum` (function)
+- `setSelectedCurriculumSlug` (function)
 
 ### File: `config/propRegistry.js`
 - `PROP_REGISTRY` (const)

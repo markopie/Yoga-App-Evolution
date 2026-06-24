@@ -63,6 +63,10 @@ const SOURCE_KEY_BY_CATEGORY = new Map([
   ['Light on Pranayama', 'light_on_pranayama'],
 ]);
 
+const EXCLUDED_SOURCE_SUBCATEGORY_IDS = new Map([
+  [236, 'Yoga A Gem For Women > Hygienic Habits'],
+]);
+
 export function cleanSourceName(value) {
   return String(value || 'General')
     .replace(/Prānāyāma/g, 'Pranayama')
@@ -197,6 +201,10 @@ export function classifyCourse(course) {
   if (!title) exclusionReasons.push('missing title');
   if (length <= 0) exclusionReasons.push('no sequence content');
   if (course.is_alias || course.redirect_id) exclusionReasons.push('alias or redirect course');
+  const stableSubCategoryId = Number(parts.subCategoryId);
+  if (EXCLUDED_SOURCE_SUBCATEGORY_IDS.has(stableSubCategoryId)) {
+    exclusionReasons.push(`excluded source category: ${EXCLUDED_SOURCE_SUBCATEGORY_IDS.get(stableSubCategoryId)}`);
+  }
 
   const classified = {
     ...course,

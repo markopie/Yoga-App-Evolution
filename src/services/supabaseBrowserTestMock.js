@@ -77,6 +77,27 @@ const programCurriculum = [
     recoveryNode(9007, 1, 7, 7, 'How to Use Yoga'),
     curriculumNode(9008, 2, 1, 8, 104, 'Light on Yoga', 'Light on Yoga', 'Course 1', 'Mock Full Practice', 'asana', { counts_for_source_completion: false }),
     recoveryNode(9009, 2, 7, 9, 'Light on Yoga'),
+    curriculumNode(910011, 1, 1, 11, 101, 'How to Use Yoga', 'How to Use Yoga', 'Week 1', 'Mock Combined Curriculum Foundation', 'asana', {
+        curriculum_slug: 'iyengar_combined_school_year_v1',
+        program_name: 'Integrated Iyengar School-Year Path',
+        progression_group_label: 'Term 1: Foundation & Orientation',
+        practice_role: 'foundation',
+        term_number: 1,
+    }),
+    curriculumNode(910012, 1, 2, 12, 102, 'Yoga The Iyengar Way', 'Yoga The Iyengar Way', 'Course 1', 'Mock Combined Curriculum Technical', 'asana', {
+        curriculum_slug: 'iyengar_combined_school_year_v1',
+        program_name: 'Integrated Iyengar School-Year Path',
+        progression_group_label: 'Term 1: Foundation & Orientation',
+        practice_role: 'technical',
+        term_number: 1,
+    }),
+    recoveryNode(910017, 1, 7, 17, 'Integrated Iyengar School-Year Path', {
+        curriculum_slug: 'iyengar_combined_school_year_v1',
+        program_name: 'Integrated Iyengar School-Year Path',
+        progression_group_label: 'Term 1: Foundation & Orientation',
+        practice_role: 'rest',
+        term_number: 1,
+    }),
 ];
 
 let session = null;
@@ -102,8 +123,8 @@ function curriculumNode(id, week, day, order, sequenceId, sourceName, sourceKey,
     return {
         id,
         curriculum_node_id: id,
-        curriculum_slug: 'iyengar_integrated_master_path_testing_v2',
-        program_name: 'Integrated Iyengar Practice Path',
+        curriculum_slug: extraPayload.curriculum_slug || 'iyengar_integrated_master_path_testing_v2',
+        program_name: extraPayload.program_name || 'Integrated Iyengar Practice Path',
         week_number: week,
         day_number: day,
         order_index: order,
@@ -130,20 +151,22 @@ function curriculumNode(id, week, day, order, sequenceId, sourceName, sourceKey,
         special_instructions: 'Browser harness practice node.',
         curriculum_payload: {
             total_duration_minutes: 3,
-            progression_group_label: sourceName,
+            progression_group_label: extraPayload.progression_group_label || sourceName,
             source_category: sourceName,
+            practice_role: extraPayload.practice_role || 'practice',
+            term_number: extraPayload.term_number || null,
             practice_composition: composition,
             ...extraPayload,
         },
     };
 }
 
-function recoveryNode(id, week, day, order, sourceName) {
+function recoveryNode(id, week, day, order, sourceName, extraPayload = {}) {
     return {
         id,
         curriculum_node_id: id,
-        curriculum_slug: 'iyengar_integrated_master_path_testing_v2',
-        program_name: 'Integrated Iyengar Practice Path',
+        curriculum_slug: extraPayload.curriculum_slug || 'iyengar_integrated_master_path_testing_v2',
+        program_name: extraPayload.program_name || 'Integrated Iyengar Practice Path',
         week_number: week,
         day_number: day,
         order_index: order,
@@ -167,7 +190,13 @@ function recoveryNode(id, week, day, order, sourceName) {
         completion_requirement: 'acknowledge',
         level_number: Math.max(1, week),
         special_instructions: 'Rest or quiet Savasana only.',
-        curriculum_payload: { progression_group_label: sourceName, source_category: sourceName },
+        curriculum_payload: {
+            progression_group_label: extraPayload.progression_group_label || sourceName,
+            source_category: sourceName,
+            practice_role: extraPayload.practice_role || 'rest',
+            term_number: extraPayload.term_number || null,
+            ...extraPayload,
+        },
     };
 }
 
@@ -175,12 +204,13 @@ function notifyAuth(event) {
     for (const callback of authSubscribers) callback(event, session);
 }
 
-function nextPractice(repeatNodeId) {
+function nextPractice(repeatNodeId, curriculumSlug = 'iyengar_integrated_master_path_testing_v2') {
+    const curriculumRows = programCurriculum.filter((node) => node.curriculum_slug === curriculumSlug);
     if (repeatNodeId != null) {
-        return programCurriculum.find((node) => String(node.id) === String(repeatNodeId)) || programCurriculum[0];
+        return curriculumRows.find((node) => String(node.id) === String(repeatNodeId)) || curriculumRows[0];
     }
     const completedIds = new Set(completions.map((row) => Number(row.curriculum_node_id)).filter(Boolean));
-    return programCurriculum.find((node) => !completedIds.has(Number(node.id))) || programCurriculum[0];
+    return curriculumRows.find((node) => !completedIds.has(Number(node.id))) || curriculumRows[0];
 }
 
 function clone(value) {
@@ -328,7 +358,7 @@ export function createBrowserTestSupabaseClient() {
         },
         async rpc(name, params = {}) {
             if (name === 'get_today_curriculum_practice') {
-                return { data: clone(nextPractice(params.p_repeat_node_id)), error: null };
+                return { data: clone(nextPractice(params.p_repeat_node_id, params.p_curriculum_slug)), error: null };
             }
             return { data: null, error: new Error(`Browser test mock does not implement rpc ${name}`) };
         },

@@ -1,8 +1,14 @@
 import { supabase } from '../services/supabaseClient.js';
 import { isConfiguredAdminEmail } from '../config/appConfig.js';
-import { ACTIVE_CURRICULUM_NAME, ACTIVE_CURRICULUM_SLUG } from '../config/curriculumConfig.js';
+import { getSelectedCurriculumName, getSelectedCurriculumSlug } from '../config/curriculumConfig.js';
 
-const CURRICULUM_SLUG = ACTIVE_CURRICULUM_SLUG;
+function selectedCurriculumSlug() {
+    return getSelectedCurriculumSlug();
+}
+
+function selectedCurriculumName() {
+    return getSelectedCurriculumName();
+}
 
 // ─── Dev gate ─────────────────────────────────────────────────────────────────
 // Roadmap button is only visible to local dev or admin (god mode) users.
@@ -137,7 +143,7 @@ async function loadRoadmapData() {
                  source_course, source_reference, practice_track, intensity, primary_focus,
                  curriculum_payload, completion_requirement, level_number,
                  special_instructions`)
-        .eq('curriculum_slug', CURRICULUM_SLUG)
+        .eq('curriculum_slug', selectedCurriculumSlug())
         .eq('is_active', true)
         .eq('is_visible', true)
         .order('order_index');
@@ -146,12 +152,14 @@ async function loadRoadmapData() {
 
     // Fetch completions for this user (only those linked to this curriculum)
     let completions = [];
-    if (userId) {
+    const nodeIds = (nodes || []).map((node) => node.id).filter((id) => id != null);
+    if (userId && nodeIds.length) {
         const { data: compData, error: compErr } = await supabase
             .from('sequence_completions')
             .select('curriculum_node_id, sequence_id, rating, completed_at')
             .eq('user_id', userId)
             .not('curriculum_node_id', 'is', null)
+            .in('curriculum_node_id', nodeIds)
             .order('completed_at');
         if (compErr) throw compErr;
         completions = compData || [];
@@ -500,7 +508,7 @@ function renderStationDetail(node, isIdle) {
 
     // Source label: suppress for rest/revision, use "Source: <name> — <ref>" for others
     let sourceLabel = null;
-    if (!isRestNode && !isRevision && node.source_name && node.source_name !== ACTIVE_CURRICULUM_NAME) {
+    if (!isRestNode && !isRevision && node.source_name && node.source_name !== selectedCurriculumName()) {
         sourceLabel = node.source_reference
             ? `${node.source_name} — ${node.source_reference}`
             : node.source_name;
@@ -611,7 +619,7 @@ function renderNodeCard(node, currentNodeId) {
 
     // Source: suppress for rest/revision
     let sourceText = null;
-    if (!isRest && !isRevision && node.source_name && node.source_name !== ACTIVE_CURRICULUM_NAME) {
+    if (!isRest && !isRevision && node.source_name && node.source_name !== selectedCurriculumName()) {
         sourceText = node.source_reference ? `${node.source_name} — ${node.source_reference}` : node.source_name;
     }
 
@@ -735,7 +743,7 @@ function renderRoadmap(assembledNodes, levels, summary) {
     const placed = buildLayout(assembledNodes.map(n => ({ ...n, level_label: n.progression_group_label || levelDisplayName(n.level_number) })));
 
     return `
-    <div class="cr-program-name">${esc(ACTIVE_CURRICULUM_NAME)}</div>
+    <div class="cr-program-name">${esc(selectedCurriculumName())}</div>
     ${renderSummaryStrip(summary)}
     <div class="cr-view-toggle" role="tablist" aria-label="Journey view">
       <button class="cr-view-btn cr-view-btn--active" id="cr-btn-map" role="tab" aria-selected="true">Map view</button>
