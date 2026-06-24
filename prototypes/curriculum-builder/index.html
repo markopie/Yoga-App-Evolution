@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Curriculum Builder Workbench</title>
+    <link rel="stylesheet" href="./builder.css">
+  </head>
+  <body>
+    <div id="authGate" class="auth-gate" hidden>Not authorized</div>
+    <main id="app" class="app-shell" hidden>
+      <header class="topbar">
+        <div>
+          <nav class="breadcrumb" aria-label="Breadcrumb">
+            <button id="breadcrumbHomeBtn" type="button" class="breadcrumb-link">Curriculum Builder</button>
+            <span id="breadcrumbSeparator" class="breadcrumb-separator" hidden>&gt;</span>
+            <span id="breadcrumbCurrent" class="breadcrumb-current"></span>
+          </nav>
+          <h1 id="pageTitle">Curriculum Builder</h1>
+          <div id="draftMeta" class="meta-line">No curriculum open</div>
+        </div>
+        <div class="topbar-actions">
+          <span id="saveStatus" class="save-status">Saved</span>
+          <button id="newDraftBtn" type="button" class="btn btn-primary">New curriculum</button>
+        </div>
+      </header>
+
+      <section id="startScreen" class="start-screen">
+        <div class="start-card">
+          <div>
+            <h2 id="startHeading">Create your first curriculum</h2>
+            <p id="startIntro" class="meta-line">Arrange practices into sections, weeks, and days.</p>
+          </div>
+          <div id="startGuide" class="start-guide">
+            <div><strong>1.</strong> Create a curriculum</div>
+            <div><strong>2.</strong> Add practices from the library</div>
+            <div><strong>3.</strong> Check for issues</div>
+            <div><strong>4.</strong> Publish</div>
+          </div>
+          <div id="savedCurricula" class="saved-curricula"></div>
+          <div class="start-actions">
+            <button id="startNewBtn" type="button" class="btn btn-primary">New curriculum</button>
+          </div>
+          <p class="meta-line">Drafts are saved to your account and available on any device.</p>
+        </div>
+      </section>
+
+      <section id="workbench" class="workbench" hidden>
+        <aside class="panel source-panel" aria-label="Source library">
+          <div class="panel-header">
+            <h2>Practice Library</h2>
+            <input id="sourceSearch" type="search" placeholder="Search practice or book">
+            <div id="assignHelp" class="meta-line">Select a day, then use a practice card action.</div>
+          </div>
+          <div id="categoryFilters" class="category-filters"></div>
+          <div id="sourceList" class="source-list"></div>
+        </aside>
+
+        <section class="panel structure-panel" aria-label="Curriculum structure">
+          <div class="panel-header">
+            <h2>Curriculum Plan</h2>
+            <div class="toolbar">
+              <button id="addSectionBtn" type="button" class="btn btn-secondary">Add Course / Level</button>
+              <button id="addWeekBtn" type="button" class="btn btn-secondary">Add Week</button>
+              <button id="addItemBtn" type="button" class="btn btn-secondary">Add Day</button>
+              <button id="addRestBtn" type="button" class="btn btn-secondary">Add Rest Day</button>
+            </div>
+          </div>
+          <div class="toolbar item-actions">
+            <button id="moveUpBtn" type="button" class="btn btn-secondary">Move Up</button>
+            <button id="moveDownBtn" type="button" class="btn btn-secondary">Move Down</button>
+            <button id="duplicateBtn" type="button" class="btn btn-secondary">Duplicate</button>
+            <button id="clearBtn" type="button" class="btn btn-secondary">Clear</button>
+            <button id="deleteBtn" type="button" class="btn btn-secondary">Delete</button>
+          </div>
+          <div id="structureTree" class="structure-tree"></div>
+        </section>
+
+        <aside class="panel editor-panel" aria-label="Selected item editor">
+          <div class="panel-header">
+            <h2>Selected Day</h2>
+          </div>
+          <form id="itemEditor" class="item-editor">
+            <p class="empty-state">Select an item to edit.</p>
+          </form>
+          <section class="validation-box">
+            <details class="publishing-panel">
+              <summary>Publishing</summary>
+              <div class="export-note">Publish writes the checked curriculum directly to program_curriculum.</div>
+              <div id="publishingSummary" class="publishing-summary"></div>
+              <div class="publishing-actions">
+                <button id="validateBtn" type="button" class="btn btn-secondary">Check Curriculum</button>
+                <button id="publishBtn" type="button" class="btn btn-primary">Publish</button>
+                <details class="more-menu">
+                  <summary class="btn btn-secondary">...</summary>
+                  <button id="exportBtn" type="button" class="btn btn-secondary">Download JSON</button>
+                </details>
+              </div>
+            </details>
+            <div id="validationOutput"></div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <dialog id="createDialog" class="modal-dialog">
+      <form id="createForm" method="dialog" class="modal-card">
+        <h2>New Curriculum</h2>
+        <div class="field">
+          <label for="curriculumNameInput">Curriculum name</label>
+          <input id="curriculumNameInput" name="curriculumName" type="text" required autocomplete="off">
+          <div id="slugPreview" class="meta-line">Internal key will be created automatically.</div>
+        </div>
+        <div class="field">
+          <label for="curriculumDescriptionInput">Short description</label>
+          <textarea id="curriculumDescriptionInput" name="curriculumDescription"></textarea>
+        </div>
+        <fieldset class="starter-options">
+          <legend>Start with</legend>
+          <label><input type="radio" name="starterShape" value="empty"> Empty curriculum</label>
+          <label><input type="radio" name="starterShape" value="starter_week" checked> One starter week, six practice days + one rest day</label>
+          <label><input type="radio" name="starterShape" value="standard_term"> Standard term, 12 weeks</label>
+          <label><input type="radio" name="starterShape" value="custom"> Custom</label>
+        </fieldset>
+        <div class="custom-shape">
+          <div class="field">
+            <label for="customSectionsInput">Sections</label>
+            <input id="customSectionsInput" name="customSections" type="number" min="1" max="4" value="1">
+          </div>
+          <div class="field">
+            <label for="customWeeksInput">Weeks per section</label>
+            <input id="customWeeksInput" name="customWeeks" type="number" min="1" max="20" value="4">
+          </div>
+          <div class="field">
+            <label for="customDaysInput">Days per week</label>
+            <input id="customDaysInput" name="customDays" type="number" min="5" max="7" value="7">
+          </div>
+        </div>
+        <div id="createDialogError" class="dialog-error" role="alert"></div>
+        <div class="dialog-actions">
+          <button id="cancelCreateBtn" type="button" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Curriculum</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="./builder.js"></script>
+  </body>
+</html>

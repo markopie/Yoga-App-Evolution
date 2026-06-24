@@ -82,6 +82,7 @@ const programCurriculum = [
 let session = null;
 let completionId = 1;
 let completions = [];
+let curriculumDrafts = [];
 const authSubscribers = new Set();
 let _signInShouldFail = false;
 
@@ -224,6 +225,7 @@ class Query {
     async execute() {
         try {
             if (this.operation === 'insert') return { data: this.insertRows(), error: null };
+            if (this.operation === 'upsert') return { data: this.upsertRows(), error: null };
             if (this.operation === 'update') return { data: this.updateRows(), error: null };
             if (this.operation === 'delete') return { data: this.deleteRows(), error: null };
             const rows = this.applyQuery(getTableRows(this.table));
@@ -266,20 +268,80 @@ class Query {
             completions.push(...inserted);
             return clone(inserted);
         }
+        if (this.table === 'program_curriculum') {
+            const nextId = Math.max(0, ...programCurriculum.map((row) => Number(row.id) || 0)) + 1;
+            const inserted = rows.map((row, index) => ({
+                id: nextId + index,
+                curriculum_node_id: nextId + index,
+                ...row,
+            }));
+            programCurriculum.push(...inserted);
+            return clone(inserted);
+        }
         return clone(rows);
+    }
+
+    upsertRows() {
+        const rows = Array.isArray(this.payload) ? this.payload : [this.payload];
+        if (this.table !== 'curriculum_drafts') return clone(rows);
+        const savedRows = rows.map((row) => {
+            const now = new Date().toISOString();
+            const index = curriculumDrafts.findIndex((draft) => (
+                String(draft.user_id) === String(row.user_id)
+                && String(draft.curriculum_slug) === String(row.curriculum_slug)
+            ));
+            if (index >= 0) {
+                curriculumDrafts[index] = {
+                    ...curriculumDrafts[index],
+                    ...row,
+                    updated_at: now,
+                };
+                return curriculumDrafts[index];
+            }
+            const inserted = {
+                id: `draft-${curriculumDrafts.length + 1}`,
+                created_at: now,
+                updated_at: now,
+                ...row,
+            };
+            curriculumDrafts.push(inserted);
+            return inserted;
+        });
+        return clone(savedRows);
     }
 
     updateRows() {
-        if (this.table !== 'sequence_completions') return [];
-        const rows = this.applyQuery(completions);
-        rows.forEach((row) => Object.assign(row, this.payload));
-        return clone(rows);
+        if (this.table === 'sequence_completions') {
+            const rows = this.applyQuery(completions);
+            rows.forEach((row) => Object.assign(row, this.payload));
+            return clone(rows);
+        }
+        if (this.table === 'curriculum_drafts') {
+            const rows = this.applyQuery(curriculumDrafts);
+            rows.forEach((row) => Object.assign(row, this.payload, { updated_at: new Date().toISOString() }));
+            return clone(rows);
+        }
+        return [];
     }
 
     deleteRows() {
-        if (this.table !== 'sequence_completions') return [];
-        const removeIds = new Set(this.applyQuery(completions).map((row) => row.id));
-        completions = completions.filter((row) => !removeIds.has(row.id));
+        if (this.table === 'sequence_completions') {
+            const removeIds = new Set(this.applyQuery(completions).map((row) => row.id));
+            completions = completions.filter((row) => !removeIds.has(row.id));
+            return [];
+        }
+        if (this.table === 'curriculum_drafts') {
+            const removeIds = new Set(this.applyQuery(curriculumDrafts).map((row) => row.id));
+            curriculumDrafts = curriculumDrafts.filter((row) => !removeIds.has(row.id));
+            return [];
+        }
+        if (this.table === 'program_curriculum') {
+            const removeIds = new Set(this.applyQuery(programCurriculum).map((row) => row.id));
+            for (let index = programCurriculum.length - 1; index >= 0; index -= 1) {
+                if (removeIds.has(programCurriculum[index].id)) programCurriculum.splice(index, 1);
+            }
+            return [];
+        }
         return [];
     }
 }
@@ -290,6 +352,7 @@ function getTableRows(table) {
     if (table === 'stages') return [];
     if (table === 'props') return [];
     if (table === 'program_curriculum') return programCurriculum;
+    if (table === 'curriculum_drafts') return curriculumDrafts;
     if (table === 'sequence_completions') return completions;
     if (table === 'completion_rating_options') return ratingOptions;
     return [];
@@ -299,6 +362,7 @@ export function createBrowserTestSupabaseClient() {
     return {
         auth: {
             async getSession() { return { data: { session }, error: null }; },
+            async getUser() { return { data: { user: session?.user || null }, error: null }; },
             async signInAnonymously() {
                 session = { user: TEST_USER, access_token: 'browser-test-token' };
                 notifyAuth('SIGNED_IN');
@@ -331,6 +395,7 @@ export function createBrowserTestSupabaseClient() {
             return {
                 select(columns) { return new Query(table).select(columns); },
                 insert(payload) { return new Query(table, 'insert', payload); },
+                upsert(payload) { return new Query(table, 'upsert', payload); },
                 update(payload) { return new Query(table, 'update', payload); },
                 delete() { return new Query(table, 'delete'); },
             };
