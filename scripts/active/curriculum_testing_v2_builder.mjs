@@ -1,6 +1,11 @@
 export const CURRICULUM_SLUG = 'iyengar_integrated_master_path_testing_v2';
 export const PROGRAM_NAME = 'Integrated Iyengar Practice Path';
 export const PRACTICE_DAYS_PER_WEEK = 6;
+const WEEKLY_RECOVERY_DAY = 7;
+
+function orderIndex(week, day, slot = 0) {
+  return (Number(week) * 100) + (Number(day) * 10) + Number(slot);
+}
 
 const FAMILY_ORDER = [
   'How to Use Yoga',
@@ -113,6 +118,66 @@ function titleOrder(title) {
   return 999999;
 }
 
+function sourceWeekRange(title) {
+  const text = String(title || '').toLowerCase();
+  const match = text.match(
+    /\b(?:week|weeks|wk|wks)\s+(\d+)(?:\s*(?:to|through|thru|&|and|-)\s*(\d+))?/i,
+  );
+  if (!match) return null;
+
+  const start = Number(match[1]);
+  const end = Number(match[2] || match[1]);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+
+  return {
+    start: Math.min(start, end),
+    end: Math.max(start, end),
+  };
+}
+
+function practiceDayNumber(title) {
+  const match = String(title || '').match(/\bday\s+(\d+)\b/i);
+  if (!match) return null;
+  const day = Number(match[1]);
+  return Number.isFinite(day) ? day : null;
+}
+
+function lightOnYogaCourseNumber(course) {
+  if (course.categoryName !== 'Light on Yoga') return null;
+  const match = String(course.subCategoryName || '').match(/^Course\s+(\d+)$/i);
+  if (!match) return null;
+  return Number(match[1]);
+}
+
+function lightOnYogaTitleKind(course) {
+  const title = String(course.title || '').toLowerCase();
+  if (sourceWeekRange(title)) return 'source_week';
+  if (/important\s+asanas/.test(title)) return 'important_asanas';
+  if (/weekly\s+practice\s+day/.test(title)) return 'weekly_practice';
+  if (/final\s+practice\s+day/.test(title)) return 'final_practice';
+  return null;
+}
+
+function lightOnYogaBaseOrder(course) {
+  const courseNumber = lightOnYogaCourseNumber(course);
+  const titleKind = lightOnYogaTitleKind(course);
+  const range = sourceWeekRange(course.title);
+  const day = practiceDayNumber(course.title) || 0;
+
+  if (!courseNumber) return null;
+  if (titleKind === 'source_week') {
+    const course3WeeklyPracticeSplit = courseNumber === 3 && range.start >= 181 ? 45 : 10;
+    return courseNumber * 100000 + course3WeeklyPracticeSplit * 1000 + range.start;
+  }
+  if (titleKind === 'weekly_practice') {
+    if (courseNumber === 3) return courseNumber * 100000 + 30 * 1000 + day;
+    return courseNumber * 100000 + 80 * 1000 + day;
+  }
+  if (titleKind === 'important_asanas') return courseNumber * 100000 + 90 * 1000;
+  if (titleKind === 'final_practice') return courseNumber * 100000 + 95 * 1000 + day;
+  return courseNumber * 100000 + 99 * 1000 + titleOrder(course.title);
+}
+
 function familyOrder(family) {
   const index = FAMILY_ORDER.indexOf(family);
   return index >= 0 ? index + 1 : FAMILY_ORDER.length + 1;
@@ -133,7 +198,7 @@ export function classifyCourse(course) {
   if (length <= 0) exclusionReasons.push('no sequence content');
   if (course.is_alias || course.redirect_id) exclusionReasons.push('alias or redirect course');
 
-  return {
+  const classified = {
     ...course,
     ...parts,
     title,
@@ -141,6 +206,10 @@ export function classifyCourse(course) {
     sequenceLength: length,
     isPlayable: exclusionReasons.length === 0,
     exclusionReasons,
+    sourceWeekRange: sourceWeekRange(title),
+    practiceDayNumber: practiceDayNumber(title),
+    lightOnYogaCourseNumber: null,
+    lightOnYogaTitleKind: null,
     order: {
       family: familyOrder(family),
       subcategory: subcategoryOrder(parts.categoryName, parts.subCategoryName),
@@ -148,12 +217,18 @@ export function classifyCourse(course) {
       id: Number(course.id),
     },
   };
+
+  classified.lightOnYogaCourseNumber = lightOnYogaCourseNumber(classified);
+  classified.lightOnYogaTitleKind = lightOnYogaTitleKind(classified);
+  classified.order.lightOnYoga = lightOnYogaBaseOrder(classified);
+  return classified;
 }
 
 export function sortCoursesForCurriculum(courses) {
   return [...courses].sort((a, b) =>
     a.order.family - b.order.family
     || a.order.subcategory - b.order.subcategory
+    || (a.order.lightOnYoga ?? a.order.title) - (b.order.lightOnYoga ?? b.order.title)
     || a.order.title - b.order.title
     || a.title.localeCompare(b.title, undefined, { numeric: true })
     || Number(a.id) - Number(b.id)
@@ -165,13 +240,154 @@ function estimatedMinutes(course) {
   return Math.max(10, sequenceMinutes);
 }
 
+function expandLightOnYogaOccurrences(course) {
+  const courseNumber = course.lightOnYogaCourseNumber;
+  const titleKind = course.lightOnYogaTitleKind;
+  if (!courseNumber || !titleKind) return null;
+
+  if (titleKind === 'source_week') {
+    const range = course.sourceWeekRange;
+    const occurrences = [];
+    for (let week = range.start; week <= range.end; week += 1) {
+      occurrences.push({
+        course,
+        week,
+        day: 4,
+        sortOrderIndex: orderIndex(week, 4),
+        orderOffset: 0,
+        sourceWeekNumber: week,
+        repeatLabel: `source week ${week}`,
+        orderingRule: 'light_on_yoga_source_week_range_expansion',
+      });
+    }
+    return occurrences;
+  }
+
+  if (titleKind === 'weekly_practice') {
+    const day = course.practiceDayNumber;
+    if (!day) return [{ course, fixed: false }];
+
+    const supplementalWeek = courseNumber === 1
+      ? 30
+      : courseNumber === 2
+        ? 73
+        : 180;
+    const mappedDay = courseNumber === 1 && day <= 3 ? day : day;
+    const occurrences = [{
+      course,
+      week: supplementalWeek,
+      day: mappedDay,
+      orderOffset: 0.001,
+      sortOrderIndex: orderIndex(supplementalWeek, 4, mappedDay),
+      repeatLabel: `weekly practice day ${mappedDay}`,
+      orderingRule: 'light_on_yoga_weekly_practice_end_block',
+    }];
+
+    if (courseNumber === 1 && day <= 3) {
+      occurrences.push({
+        course,
+        week: supplementalWeek,
+        day: day + 3,
+        orderOffset: 0.001,
+        sortOrderIndex: orderIndex(supplementalWeek, 4, day + 3),
+        repeatLabel: `weekly practice repeated day ${day + 3}`,
+        orderingRule: 'light_on_yoga_course_1_weekly_practice_day_1_to_3_repeated_as_day_4_to_6',
+      });
+    }
+
+    return occurrences;
+  }
+
+  if (titleKind === 'important_asanas') {
+    const supplementalWeek = courseNumber === 1 ? 30 : courseNumber === 2 ? 73 : 300;
+    return [{
+      course,
+      week: supplementalWeek,
+      day: 6,
+      orderOffset: 0.002,
+      sortOrderIndex: orderIndex(supplementalWeek, 4, 7),
+      repeatLabel: 'important asanas end reference',
+      orderingRule: 'light_on_yoga_important_asanas_after_course_work',
+    }];
+  }
+
+  if (titleKind === 'final_practice') {
+    const day = course.practiceDayNumber || 1;
+    return [{
+      course,
+      week: 300,
+      day,
+      orderOffset: 0,
+      sortOrderIndex: orderIndex(300, 4, day),
+      repeatLabel: `final practice day ${day}`,
+      orderingRule: 'light_on_yoga_course_3_final_practice_after_week_300',
+    }];
+  }
+
+  return null;
+}
+
+function buildCourseOccurrences(playableCourses) {
+  const fixed = [];
+  const flexible = [];
+
+  for (const course of playableCourses) {
+    const loyOccurrences = expandLightOnYogaOccurrences(course);
+    if (loyOccurrences) {
+      loyOccurrences.forEach((occurrence) => fixed.push(occurrence));
+      continue;
+    }
+    flexible.push({ course, fixed: false });
+  }
+
+  const occupied = new Map();
+  fixed.forEach((occurrence) => {
+    const key = `${occurrence.week}.${occurrence.day}`;
+    occupied.set(key, (occupied.get(key) || 0) + 1);
+  });
+
+  let week = 1;
+  let day = 1;
+  const allocatedFlexible = flexible.map((occurrence) => {
+    while (occupied.has(`${week}.${day}`)) {
+      day += 1;
+      if (day > PRACTICE_DAYS_PER_WEEK) {
+        day = 1;
+        week += 1;
+      }
+    }
+    const allocated = { ...occurrence, week, day, orderOffset: 0, orderingRule: 'category_family_then_subcategory_then_title_numbers_then_course_id' };
+    occupied.set(`${week}.${day}`, 1);
+    day += 1;
+    if (day > PRACTICE_DAYS_PER_WEEK) {
+      day = 1;
+      week += 1;
+    }
+    return allocated;
+  });
+
+  const occurrenceOrder = (occurrence) =>
+    occurrence.sortOrderIndex ?? orderIndex(occurrence.week, occurrence.day);
+
+  return [...fixed, ...allocatedFlexible].sort((a, b) =>
+    occurrenceOrder(a) - occurrenceOrder(b)
+    || (a.orderOffset || 0) - (b.orderOffset || 0)
+    || a.course.order.family - b.course.order.family
+    || a.course.order.subcategory - b.course.order.subcategory
+    || (a.course.order.lightOnYoga ?? a.course.order.title) - (b.course.order.lightOnYoga ?? b.course.order.title)
+    || Number(a.course.id) - Number(b.course.id)
+  );
+}
+
 export function buildCurriculumRows(classifiedCourses) {
   const playableCourses = sortCoursesForCurriculum(classifiedCourses.filter((course) => course.isPlayable));
+  const courseOccurrences = buildCourseOccurrences(playableCourses);
   const rows = [];
 
-  playableCourses.forEach((course, index) => {
-    const week = Math.floor(index / PRACTICE_DAYS_PER_WEEK) + 1;
-    const day = (index % PRACTICE_DAYS_PER_WEEK) + 1;
+  courseOccurrences.forEach((occurrence, index) => {
+    const course = occurrence.course;
+    const week = occurrence.week;
+    const day = occurrence.day;
     const family = course.family;
     const sourceName = course.categoryName;
     const sourceCourse = course.subCategoryName || null;
@@ -187,7 +403,8 @@ export function buildCurriculumRows(classifiedCourses) {
       program_name: PROGRAM_NAME,
       week_number: week,
       day_number: day,
-      order_index: Number(`${week}.${String(day).padStart(2, '0')}`),
+      order_index: occurrence.sortOrderIndex
+        ?? (orderIndex(week, day) + (occurrence.orderOffset || 0)),
       is_revision_node: false,
       special_instructions: `${sourceName}${sourceCourse ? ` - ${sourceCourse}` : ''}: ${course.title}.`,
       source_name: sourceName,
@@ -208,8 +425,12 @@ export function buildCurriculumRows(classifiedCourses) {
         source_category: sourceName,
         source_subcategory: sourceCourse,
         source_course_id: Number(course.id),
+        source_week_min: course.sourceWeekRange?.start ?? null,
+        source_week_max: course.sourceWeekRange?.end ?? null,
+        source_week_number: occurrence.sourceWeekNumber ?? null,
+        repeat_label: occurrence.repeatLabel ?? null,
         sequence_length: course.sequenceLength,
-        ordering_rule: 'category_family_then_subcategory_then_title_numbers_then_course_id',
+        ordering_rule: occurrence.orderingRule,
         placeholder_non_sequence: false,
       },
       generated_from_rule: true,
@@ -234,20 +455,25 @@ export function buildCurriculumRows(classifiedCourses) {
     });
   });
 
-  const weekCount = Math.ceil(playableCourses.length / PRACTICE_DAYS_PER_WEEK);
+  const weekCount = Math.max(0, ...rows.map((row) => Number(row.week_number) || 0));
   for (let week = 1; week <= weekCount; week += 1) {
-    const weekCourses = playableCourses.slice((week - 1) * PRACTICE_DAYS_PER_WEEK, week * PRACTICE_DAYS_PER_WEEK);
-    const anchorCourse = weekCourses[weekCourses.length - 1] || null;
+    const weekRows = rows.filter((row) => row.week_number === week);
+    const anchorRow = weekRows[weekRows.length - 1] || null;
+    const anchorCourse = anchorRow?.curriculum_payload?.progression_group_label
+      ? { family: anchorRow.curriculum_payload.progression_group_label, order: { family: anchorRow.level_number } }
+      : null;
     const recoveryGroup = anchorCourse?.family || 'Weekly Recovery';
     const recoveryLevel = anchorCourse?.order.family || FAMILY_ORDER.length + 1;
+    const hasDaySevenPractice = weekRows.some((row) => row.day_number === WEEKLY_RECOVERY_DAY && !row.is_rest_day);
 
+    if (hasDaySevenPractice) continue;
     rows.push({
       sequence_id: null,
       curriculum_slug: CURRICULUM_SLUG,
       program_name: PROGRAM_NAME,
       week_number: week,
-      day_number: 7,
-      order_index: Number(`${week}.07`),
+      day_number: WEEKLY_RECOVERY_DAY,
+      order_index: orderIndex(week, WEEKLY_RECOVERY_DAY),
       is_revision_node: false,
       special_instructions: 'Recovery day. Rest, Savasana, or quiet observation.',
       source_name: PROGRAM_NAME,
@@ -318,7 +544,19 @@ export function auditCurriculumCoverage(classifiedCourses, curriculumRows) {
     return acc;
   }, new Map()).entries()]
     .filter(([, count]) => count > 1)
-    .map(([sequence_id, count]) => ({ sequence_id, count }));
+    .map(([sequence_id, count]) => {
+      const occurrences = curriculumRows.filter((row) =>
+        Number(row.sequence_id) === sequence_id
+        || (row.curriculum_payload?.practice_composition || []).some((part) => Number(part?.sequence_id) === sequence_id)
+      );
+      const intentional = occurrences.every((row) => {
+        const payload = row.curriculum_payload || {};
+        return payload.source_week_number != null
+          || /^light_on_yoga_/i.test(String(payload.ordering_rule || ''));
+      });
+      return { sequence_id, count, intentional };
+    });
+  const accidentalDuplicateScheduledCourses = duplicateScheduledCourses.filter((row) => !row.intentional);
 
   const unscheduledPlayableCourses = playableCourses
     .filter((course) => !scheduledIdSet.has(Number(course.id)))
@@ -382,6 +620,7 @@ export function auditCurriculumCoverage(classifiedCourses, curriculumRows) {
     scheduledUniqueCourses: scheduledIdSet.size,
     unscheduledPlayableCourses,
     duplicateScheduledCourses,
+    accidentalDuplicateScheduledCourses,
     duplicateNaturalKeys,
     totalCurriculumNodes: curriculumRows.length,
     activeVisibleNodes: activeVisibleRows.length,

@@ -41,6 +41,23 @@ function playableRefs(row) {
   return refs;
 }
 
+function sequenceOrder(rows, sequenceId) {
+  return rows
+    .filter((row) => Number(row.sequence_id) === Number(sequenceId))
+    .map((row) => Number(row.order_index))
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b);
+}
+
+function firstSequenceOrder(rows, sequenceId) {
+  return sequenceOrder(rows, sequenceId)[0] ?? null;
+}
+
+function lastSequenceOrder(rows, sequenceId) {
+  const orders = sequenceOrder(rows, sequenceId);
+  return orders[orders.length - 1] ?? null;
+}
+
 async function main() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env');
@@ -74,6 +91,16 @@ async function main() {
   const activeVisibleRows = curriculumRows.filter((row) => row.is_active && row.is_visible);
   const sequenceRows = activeVisibleRows.filter((row) => row.node_type === 'sequence');
   const recoveryRows = activeVisibleRows.filter((row) => row.node_type === 'recovery' || row.is_rest_day);
+  const weeks = new Set(activeVisibleRows.map((row) => Number(row.week_number)).filter(Number.isFinite));
+  const recoveryOnlyWeeks = [...weeks]
+    .filter((week) => !activeVisibleRows.some((row) => row.week_number === week && row.node_type === 'sequence'))
+    .sort((a, b) => a - b);
+  const weeksWithoutRecoveryOrDaySevenPractice = [...weeks]
+    .filter((week) => !activeVisibleRows.some((row) =>
+      row.week_number === week
+      && (row.node_type === 'recovery' || row.is_rest_day || (row.node_type === 'sequence' && row.day_number === 7))
+    ))
+    .sort((a, b) => a - b);
   const scheduledRefs = curriculumRows.flatMap(playableRefs);
   const compositionRefs = scheduledRefs.filter((ref) => ref.kind !== 'anchor');
   const courseIds = new Set(classifiedCourses.map((course) => Number(course.id)));
@@ -98,9 +125,9 @@ async function main() {
     JSON.stringify(audit.excludedCourses.map((course) => ({ id: course.id, title: course.title, reasons: course.exclusionReasons }))),
   );
   recordCheck(
-    audit.duplicateScheduledCourses.length === 0,
-    'no course is scheduled more than once',
-    JSON.stringify(audit.duplicateScheduledCourses),
+    audit.accidentalDuplicateScheduledCourses.length === 0,
+    'no course is accidentally scheduled more than once',
+    JSON.stringify(audit.accidentalDuplicateScheduledCourses),
   );
   recordCheck(
     audit.invalidCourseReferences.length === 0,
@@ -118,32 +145,42 @@ async function main() {
     `${audit.scheduledUniqueCourses} scheduled, ${audit.playableCourses} playable`,
   );
   recordCheck(
-    sequenceRows.length === audit.playableCourses,
-    'sequence node count matches playable course count',
+    sequenceRows.length >= audit.playableCourses,
+    'sequence node count covers playable courses including intentional source-week repeats',
     `${sequenceRows.length} sequence nodes, ${audit.playableCourses} playable courses`,
   );
   recordCheck(
-    recoveryRows.length === audit.weekCount,
-    'one recovery node is scheduled per week',
-    `${recoveryRows.length} recovery nodes, ${audit.weekCount} weeks`,
-  );
-  recordCheck(
-    audit.weekCoverage.every((week) =>
-      week.missing_practice_days === 'none'
-      && week.has_recovery_day
-      && (week.week === audit.weekCount || week.is_full_practice_week)
-    ),
-    '6-day-per-week coverage is complete until the final partial week',
-    JSON.stringify(audit.weekCoverage.filter((week) =>
-      week.missing_practice_days !== 'none'
-      || !week.has_recovery_day
-      || (week.week !== audit.weekCount && !week.is_full_practice_week)
-    )),
+    weeksWithoutRecoveryOrDaySevenPractice.length === 0,
+    'every curriculum week has recovery or a day 7 source practice',
+    JSON.stringify(weeksWithoutRecoveryOrDaySevenPractice),
   );
   recordCheck(nonCleanProgramNames.length === 0, 'curriculum uses the clean public program name', JSON.stringify(nonCleanProgramNames));
   recordCheck(userSelectionRows.length === 0, 'no rows require user curriculum selection', JSON.stringify(userSelectionRows));
   recordCheck(devLabelRows.length === 0, 'no user-facing testing/dev labels remain in curriculum rows', JSON.stringify(devLabelRows));
   recordCheck(audit.duplicateNaturalKeys.length === 0, 'no duplicate category/title playable courses were found', JSON.stringify(audit.duplicateNaturalKeys));
+  recordCheck(
+    sequenceOrder(activeVisibleRows, 114).length === 2
+      && activeVisibleRows.some((row) => Number(row.sequence_id) === 114 && row.week_number === 1)
+      && activeVisibleRows.some((row) => Number(row.sequence_id) === 114 && row.week_number === 2),
+    'Light on Yoga Course 1 Week 1 & 2 is repeated in curriculum weeks 1 and 2',
+  );
+  recordCheck(
+    firstSequenceOrder(activeVisibleRows, 113) > lastSequenceOrder(activeVisibleRows, 124),
+    'Light on Yoga Course 1 Important Asanas is after Course 1 week work',
+  );
+  recordCheck(
+    firstSequenceOrder(activeVisibleRows, 128) > lastSequenceOrder(activeVisibleRows, 135),
+    'Light on Yoga Course 2 Important Asanas is after Course 2 week work',
+  );
+  recordCheck(
+    firstSequenceOrder(activeVisibleRows, 167) > lastSequenceOrder(activeVisibleRows, 160)
+      && lastSequenceOrder(activeVisibleRows, 172) < firstSequenceOrder(activeVisibleRows, 161),
+    'Light on Yoga Course 3 weekly practice is after Week 176-180 and before Week 181-190',
+  );
+  recordCheck(
+    firstSequenceOrder(activeVisibleRows, 142) > lastSequenceOrder(activeVisibleRows, 166),
+    'Light on Yoga Course 3 final practice is after Week 276-300',
+  );
 
   console.table([{
     total_courses: audit.totalCourses,
@@ -152,11 +189,13 @@ async function main() {
     scheduled_curriculum_course_count: audit.scheduledUniqueCourses,
     unscheduled_playable_courses: audit.unscheduledPlayableCourses.length,
     duplicate_scheduled_courses: audit.duplicateScheduledCourses.length,
+    accidental_duplicate_scheduled_courses: audit.accidentalDuplicateScheduledCourses.length,
     total_curriculum_nodes: audit.totalCurriculumNodes,
     active_visible_nodes: audit.activeVisibleNodes,
     week_count: audit.weekCount,
     practice_days_per_week: PRACTICE_DAYS_PER_WEEK,
     rest_recovery_days: audit.recoveryDays,
+    recovery_only_source_gap_weeks: recoveryOnlyWeeks.length,
     composed_practices: audit.composedPractices,
     invalid_course_references: audit.invalidCourseReferences.length,
     unresolved_composition_references: unresolvedCompositionReferences.length,
@@ -184,11 +223,10 @@ async function main() {
     })));
   }
 
-  const weekCoverageIssues = audit.weekCoverage.filter((week) =>
-    week.missing_practice_days !== 'none'
-    || !week.has_recovery_day
-    || (week.week !== audit.weekCount && !week.is_full_practice_week)
-  );
+  const weekCoverageIssues = audit.weekCoverage.filter((week) => {
+    const weekNumber = Number(week.week);
+    return weeksWithoutRecoveryOrDaySevenPractice.includes(weekNumber);
+  });
   console.log(`Week coverage: ${audit.weekCoverage.length} weeks checked, ${weekCoverageIssues.length} issue(s).`);
   if (weekCoverageIssues.length) {
     console.table(weekCoverageIssues);
