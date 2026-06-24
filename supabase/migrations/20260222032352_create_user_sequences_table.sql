@@ -22,7 +22,7 @@
 */
 
 CREATE TABLE IF NOT EXISTS user_sequences (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   title TEXT NOT NULL DEFAULT '',
   category TEXT DEFAULT '',
   sequence_text TEXT NOT NULL DEFAULT '',

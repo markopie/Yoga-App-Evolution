@@ -6,7 +6,7 @@
 -- the sync metadata tables themselves. Future tables can opt in with
 -- public.sync_register_table('table_name').
 
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.sync_tables (
   table_name text primary key,
@@ -36,7 +36,7 @@ create index if not exists idx_sync_entities_changed_at
   on public.sync_entities(changed_at);
 
 create table if not exists public.sync_mutations (
-  id uuid primary key default gen_random_uuid(),
+  id uuid primary key default extensions.gen_random_uuid(),
   client_mutation_id uuid not null,
   user_id uuid not null default auth.uid(),
   table_name text not null references public.sync_tables(table_name),
@@ -56,7 +56,7 @@ create index if not exists idx_sync_mutations_user_status
   on public.sync_mutations(user_id, status, created_at);
 
 create table if not exists public.media_assets (
-  id uuid primary key default gen_random_uuid(),
+  id uuid primary key default extensions.gen_random_uuid(),
   source_table text,
   source_pk jsonb,
   source_column text,
@@ -84,7 +84,7 @@ create index if not exists idx_media_assets_updated_at
   on public.media_assets(updated_at);
 
 create table if not exists public.offline_download_packs (
-  id uuid primary key default gen_random_uuid(),
+  id uuid primary key default extensions.gen_random_uuid(),
   user_id uuid not null default auth.uid(),
   pack_type text not null,
   pack_key text not null,
@@ -192,7 +192,7 @@ begin
     tg_table_name,
     entity_pk,
     lower(tg_op),
-    case when tg_op = 'DELETE' then null else encode(digest(row_data::text, 'sha256'), 'hex') end,
+    case when tg_op = 'DELETE' then null else encode(extensions.digest(row_data::text, 'sha256'), 'hex') end,
     owner,
     now(),
     case when tg_op = 'DELETE' then now() else null end
