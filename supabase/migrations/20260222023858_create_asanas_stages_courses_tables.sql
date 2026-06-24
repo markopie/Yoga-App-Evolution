@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS asanas (
 
 -- Create stages table
 CREATE TABLE IF NOT EXISTS stages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   parent_id TEXT[] NOT NULL,
   stage_name TEXT NOT NULL DEFAULT '',
   title TEXT DEFAULT '',

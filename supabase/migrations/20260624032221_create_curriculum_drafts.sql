@@ -1,5 +1,5 @@
 create table if not exists public.curriculum_drafts (
-  id uuid primary key default gen_random_uuid(),
+  id uuid primary key default extensions.gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   curriculum_slug text not null,
   name text not null,

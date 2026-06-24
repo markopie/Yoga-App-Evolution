@@ -21,7 +21,7 @@
 */
 
 CREATE TABLE IF NOT EXISTS sequence_completions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   title TEXT NOT NULL DEFAULT '',
   category TEXT DEFAULT '',
   completed_at TIMESTAMPTZ NOT NULL DEFAULT now(),

@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS user_asanas (
 );
 
 CREATE TABLE IF NOT EXISTS user_stages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   user_id UUID,
   parent_id TEXT[] NOT NULL,
   stage_name TEXT NOT NULL DEFAULT '',
