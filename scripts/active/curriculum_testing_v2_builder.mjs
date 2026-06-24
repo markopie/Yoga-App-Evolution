@@ -64,7 +64,15 @@ const SOURCE_KEY_BY_CATEGORY = new Map([
 ]);
 
 const EXCLUDED_SOURCE_SUBCATEGORY_IDS = new Map([
+  [5, 'Light on Yoga > Therapeutic'],
+  [235, 'Yoga The Iyengar Way > Remedial Programmes'],
   [236, 'Yoga A Gem For Women > Hygienic Habits'],
+]);
+
+const EXCLUDED_SOURCE_CATEGORY_IDS = new Map([
+  [1, 'General'],
+  [55, 'Flow'],
+  [56, 'Cycle'],
 ]);
 
 export function cleanSourceName(value) {
@@ -146,6 +154,22 @@ function practiceDayNumber(title) {
   return Number.isFinite(day) ? day : null;
 }
 
+function practiceDayNumbers(title) {
+  const match = String(title || '').match(/\bday\s+(.+)$/i);
+  if (!match) return [];
+  return [...match[1].matchAll(/\d+/g)]
+    .map((dayMatch) => Number(dayMatch[0]))
+    .filter((day) => Number.isInteger(day) && day >= 1 && day <= WEEKLY_RECOVERY_DAY)
+    .filter((day, index, days) => days.indexOf(day) === index);
+}
+
+function sourceSubcategoryWeekNumber(course) {
+  const match = String(course.subCategoryName || '').match(/^Week\s+(\d+)$/i);
+  if (!match) return null;
+  const week = Number(match[1]);
+  return Number.isFinite(week) ? week : null;
+}
+
 function lightOnYogaCourseNumber(course) {
   if (course.categoryName !== 'Light on Yoga') return null;
   const match = String(course.subCategoryName || '').match(/^Course\s+(\d+)$/i);
@@ -201,7 +225,11 @@ export function classifyCourse(course) {
   if (!title) exclusionReasons.push('missing title');
   if (length <= 0) exclusionReasons.push('no sequence content');
   if (course.is_alias || course.redirect_id) exclusionReasons.push('alias or redirect course');
+  const stableCategoryId = Number(parts.categoryId);
   const stableSubCategoryId = Number(parts.subCategoryId);
+  if (EXCLUDED_SOURCE_CATEGORY_IDS.has(stableCategoryId)) {
+    exclusionReasons.push(`excluded source category: ${EXCLUDED_SOURCE_CATEGORY_IDS.get(stableCategoryId)}`);
+  }
   if (EXCLUDED_SOURCE_SUBCATEGORY_IDS.has(stableSubCategoryId)) {
     exclusionReasons.push(`excluded source category: ${EXCLUDED_SOURCE_SUBCATEGORY_IDS.get(stableSubCategoryId)}`);
   }
@@ -216,6 +244,7 @@ export function classifyCourse(course) {
     exclusionReasons,
     sourceWeekRange: sourceWeekRange(title),
     practiceDayNumber: practiceDayNumber(title),
+    practiceDayNumbers: practiceDayNumbers(title),
     lightOnYogaCourseNumber: null,
     lightOnYogaTitleKind: null,
     order: {
@@ -257,16 +286,18 @@ function expandLightOnYogaOccurrences(course) {
     const range = course.sourceWeekRange;
     const occurrences = [];
     for (let week = range.start; week <= range.end; week += 1) {
-      occurrences.push({
-        course,
-        week,
-        day: 4,
-        sortOrderIndex: orderIndex(week, 4),
-        orderOffset: 0,
-        sourceWeekNumber: week,
-        repeatLabel: `source week ${week}`,
-        orderingRule: 'light_on_yoga_source_week_range_expansion',
-      });
+      for (let day = 1; day <= PRACTICE_DAYS_PER_WEEK; day += 1) {
+        occurrences.push({
+          course,
+          week,
+          day,
+          sortOrderIndex: orderIndex(week, day),
+          orderOffset: 0,
+          sourceWeekNumber: week,
+          repeatLabel: `source week ${week} day ${day}`,
+          orderingRule: 'light_on_yoga_source_week_range_expansion_to_days_1_to_6',
+        });
+      }
     }
     return occurrences;
   }
@@ -286,7 +317,7 @@ function expandLightOnYogaOccurrences(course) {
       week: supplementalWeek,
       day: mappedDay,
       orderOffset: 0.001,
-      sortOrderIndex: orderIndex(supplementalWeek, 4, mappedDay),
+      sortOrderIndex: orderIndex(supplementalWeek, WEEKLY_RECOVERY_DAY, mappedDay),
       repeatLabel: `weekly practice day ${mappedDay}`,
       orderingRule: 'light_on_yoga_weekly_practice_end_block',
     }];
@@ -297,7 +328,7 @@ function expandLightOnYogaOccurrences(course) {
         week: supplementalWeek,
         day: day + 3,
         orderOffset: 0.001,
-        sortOrderIndex: orderIndex(supplementalWeek, 4, day + 3),
+        sortOrderIndex: orderIndex(supplementalWeek, WEEKLY_RECOVERY_DAY, day + 3),
         repeatLabel: `weekly practice repeated day ${day + 3}`,
         orderingRule: 'light_on_yoga_course_1_weekly_practice_day_1_to_3_repeated_as_day_4_to_6',
       });
@@ -313,7 +344,7 @@ function expandLightOnYogaOccurrences(course) {
       week: supplementalWeek,
       day: 6,
       orderOffset: 0.002,
-      sortOrderIndex: orderIndex(supplementalWeek, 4, 7),
+      sortOrderIndex: orderIndex(supplementalWeek, WEEKLY_RECOVERY_DAY, 7),
       repeatLabel: 'important asanas end reference',
       orderingRule: 'light_on_yoga_important_asanas_after_course_work',
     }];
@@ -326,7 +357,7 @@ function expandLightOnYogaOccurrences(course) {
       week: 300,
       day,
       orderOffset: 0,
-      sortOrderIndex: orderIndex(300, 4, day),
+      sortOrderIndex: orderIndex(300, WEEKLY_RECOVERY_DAY, day),
       repeatLabel: `final practice day ${day}`,
       orderingRule: 'light_on_yoga_course_3_final_practice_after_week_300',
     }];
@@ -338,11 +369,27 @@ function expandLightOnYogaOccurrences(course) {
 function buildCourseOccurrences(playableCourses) {
   const fixed = [];
   const flexible = [];
+  const dayListGroups = new Map();
 
   for (const course of playableCourses) {
     const loyOccurrences = expandLightOnYogaOccurrences(course);
     if (loyOccurrences) {
       loyOccurrences.forEach((occurrence) => fixed.push(occurrence));
+      continue;
+    }
+    if (course.practiceDayNumbers.length) {
+      const sourceWeek = sourceSubcategoryWeekNumber(course);
+      const key = sourceWeek
+        ? `${course.categoryName}|${course.subCategoryName}`
+        : `${course.categoryName}|${course.subCategoryName}|${course.id}`;
+      if (!dayListGroups.has(key)) {
+        dayListGroups.set(key, {
+          sortCourse: course,
+          sourceWeek,
+          occurrences: [],
+        });
+      }
+      dayListGroups.get(key).occurrences.push({ course, fixed: false });
       continue;
     }
     flexible.push({ course, fixed: false });
@@ -354,9 +401,11 @@ function buildCourseOccurrences(playableCourses) {
     occupied.set(key, (occupied.get(key) || 0) + 1);
   });
 
-  let week = 1;
+  const firstFlexibleWeek = Math.max(0, ...fixed.map((occurrence) => Number(occurrence.week) || 0)) + 1;
+  let week = firstFlexibleWeek;
   let day = 1;
-  const allocatedFlexible = flexible.map((occurrence) => {
+
+  const reserveNextOpenWeek = () => {
     while (occupied.has(`${week}.${day}`)) {
       day += 1;
       if (day > PRACTICE_DAYS_PER_WEEK) {
@@ -364,6 +413,46 @@ function buildCourseOccurrences(playableCourses) {
         week += 1;
       }
     }
+  };
+
+  const allocatedDayList = [];
+  const sortedDayListGroups = [...dayListGroups.values()].sort((a, b) =>
+    a.sortCourse.order.family - b.sortCourse.order.family
+    || a.sortCourse.order.subcategory - b.sortCourse.order.subcategory
+    || a.sortCourse.order.title - b.sortCourse.order.title
+    || Number(a.sortCourse.id) - Number(b.sortCourse.id)
+  );
+
+  for (const group of sortedDayListGroups) {
+    reserveNextOpenWeek();
+    const groupWeek = week;
+    group.occurrences
+      .sort((a, b) =>
+        a.course.order.title - b.course.order.title
+        || Number(a.course.id) - Number(b.course.id)
+      )
+      .forEach((occurrence) => {
+        occurrence.course.practiceDayNumbers.forEach((practiceDay) => {
+          const key = `${groupWeek}.${practiceDay}`;
+          occupied.set(key, (occupied.get(key) || 0) + 1);
+          allocatedDayList.push({
+            ...occurrence,
+            week: groupWeek,
+            day: practiceDay,
+            orderOffset: 0,
+            sortOrderIndex: orderIndex(groupWeek, practiceDay),
+            sourceWeekNumber: group.sourceWeek,
+            repeatLabel: `source day ${practiceDay}`,
+            orderingRule: 'source_title_day_list_expansion',
+          });
+        });
+      });
+    week = groupWeek + 1;
+    day = 1;
+  }
+
+  const allocatedFlexible = flexible.map((occurrence) => {
+    reserveNextOpenWeek();
     const allocated = { ...occurrence, week, day, orderOffset: 0, orderingRule: 'category_family_then_subcategory_then_title_numbers_then_course_id' };
     occupied.set(`${week}.${day}`, 1);
     day += 1;
@@ -377,7 +466,7 @@ function buildCourseOccurrences(playableCourses) {
   const occurrenceOrder = (occurrence) =>
     occurrence.sortOrderIndex ?? orderIndex(occurrence.week, occurrence.day);
 
-  return [...fixed, ...allocatedFlexible].sort((a, b) =>
+  return [...fixed, ...allocatedDayList, ...allocatedFlexible].sort((a, b) =>
     occurrenceOrder(a) - occurrenceOrder(b)
     || (a.orderOffset || 0) - (b.orderOffset || 0)
     || a.course.order.family - b.course.order.family
@@ -560,7 +649,8 @@ export function auditCurriculumCoverage(classifiedCourses, curriculumRows) {
       const intentional = occurrences.every((row) => {
         const payload = row.curriculum_payload || {};
         return payload.source_week_number != null
-          || /^light_on_yoga_/i.test(String(payload.ordering_rule || ''));
+          || /^light_on_yoga_/i.test(String(payload.ordering_rule || ''))
+          || payload.ordering_rule === 'source_title_day_list_expansion';
       });
       return { sequence_id, count, intentional };
     });

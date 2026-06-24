@@ -2,12 +2,7 @@ import { supabase } from '../services/supabaseClient.js';
 import { $ } from '../utils/dom.js';
 import { playbackEngine } from '../playback/timer.js';
 import { isConfiguredAdminEmail } from '../config/appConfig.js';
-import {
-    CURRICULA,
-    getSelectedCurriculum,
-    getSelectedCurriculumSlug,
-    setSelectedCurriculumSlug,
-} from '../config/curriculumConfig.js';
+import { ACTIVE_CURRICULUM_SLUG } from '../config/curriculumConfig.js';
 import {
     isRestOrRecoveryNode,
     isSequenceReady,
@@ -20,26 +15,7 @@ function isLocalDev() {
     return ['localhost', '127.0.0.1', '::1'].includes(h) || h.endsWith('.webcontainer-api.io');
 }
 
-function selectedCurriculumSlug() {
-    return getSelectedCurriculumSlug();
-}
-
-function selectedCurriculumName() {
-    return getSelectedCurriculum().name;
-}
-
-function updateCurriculumSelectionLabel() {
-    const label = $('curriculumSelectedName');
-    if (label) label.textContent = selectedCurriculumName();
-}
-
-function resetLoadedCurriculumPractice() {
-    if (window.currentCurriculumPractice?.curriculum_node_id) {
-        exitCurriculumPractice();
-    }
-    const summary = $('curriculumPracticeSummary');
-    if (summary) summary.textContent = 'Ready when you are.';
-}
+const CURRICULUM_SLUG = ACTIVE_CURRICULUM_SLUG;
 
 function isDevOrAdmin() {
     return isLocalDev() || !!window.adminMode || isConfiguredAdminEmail(window.currentUserEmail);
@@ -439,7 +415,7 @@ async function startTodayPractice(repeatNodeId = null) {
 
     try {
         const rpcParams = {
-            p_curriculum_slug: selectedCurriculumSlug(),
+            p_curriculum_slug: CURRICULUM_SLUG,
             p_user_id: window.currentUserId || null,
         };
         if (repeatNodeId != null) rpcParams.p_repeat_node_id = repeatNodeId;
@@ -596,7 +572,7 @@ async function undoCurrentCurriculumNodeCompletionForTesting() {
         const { data: prevData } = await supabase
             .from('program_curriculum')
             .select('id')
-            .eq('curriculum_slug', selectedCurriculumSlug())
+            .eq('curriculum_slug', CURRICULUM_SLUG)
             .lt('order_index', practice.order_index)
             .order('order_index', { ascending: false })
             .limit(1)
@@ -633,7 +609,7 @@ async function getFirstActiveCurriculumNodeId() {
     const { data, error } = await supabase
         .from('program_curriculum')
         .select('id')
-        .eq('curriculum_slug', selectedCurriculumSlug())
+        .eq('curriculum_slug', CURRICULUM_SLUG)
         .eq('is_active', true)
         .eq('is_visible', true)
         .order('order_index', { ascending: true })
@@ -669,7 +645,7 @@ async function resetCurriculumTestProgress() {
         const { data: nodes, error: nodeError } = await supabase
             .from('program_curriculum')
             .select('id')
-            .eq('curriculum_slug', selectedCurriculumSlug());
+            .eq('curriculum_slug', CURRICULUM_SLUG);
         if (nodeError) throw nodeError;
 
         const nodeIds = (nodes || []).map(node => node.id).filter(id => id !== null && id !== undefined);
@@ -699,21 +675,6 @@ async function resetCurriculumTestProgress() {
 }
 
 function setupCurriculumUI() {
-    const curriculumSelect = $('curriculumSelector');
-    if (curriculumSelect) {
-        curriculumSelect.innerHTML = CURRICULA
-            .filter((item) => item.enabled !== false)
-            .map((item) => `<option value="${escapeHtml(item.slug)}">${escapeHtml(item.name)}</option>`)
-            .join('');
-        curriculumSelect.value = selectedCurriculumSlug();
-        updateCurriculumSelectionLabel();
-        curriculumSelect.addEventListener('change', () => {
-            setSelectedCurriculumSlug(curriculumSelect.value);
-            updateCurriculumSelectionLabel();
-            resetLoadedCurriculumPractice();
-        });
-    }
-
     const btn = $('startTodayPracticeBtn');
     if (btn) btn.addEventListener('click', () => startTodayPractice());
 

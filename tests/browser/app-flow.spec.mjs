@@ -1,8 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { ACTIVE_CURRICULUM_SLUG, CURRICULA } from '../../src/config/curriculumConfig.js';
-
-const COMBINED_CURRICULUM_SLUG = CURRICULA.find((item) => item.type === 'combined')?.slug;
-const BOOK_CURRICULUM_SLUG = ACTIVE_CURRICULUM_SLUG;
 
 async function openAsGuest(page) {
   const errors = [];
@@ -62,72 +58,6 @@ test('Start Today loads a playable practice and rating advances to the next node
   await page.getByRole('button', { name: /good/i }).click();
 
   await expect(page.locator('#ratingOverlay')).toBeHidden();
-  await expect(page.locator('#curriculumPracticeSummary')).toContainText('Week 1, Day 2');
-});
-
-test('curriculum selector scopes Start Today and persists after reload', async ({ page }) => {
-  await openAsGuest(page);
-
-  const selector = page.locator('#curriculumSelector');
-  await expect(selector).toBeVisible();
-  await selector.selectOption(COMBINED_CURRICULUM_SLUG);
-
-  await page.getByRole('button', { name: /start today's practice/i }).click();
-  await expect(page.locator('#curriculumPracticeSummary')).toContainText('Week 1, Day 1');
-  await expect(page.locator('#curriculumPracticeSummary')).toContainText('Mock Combined Curriculum Foundation');
-
-  await page.reload();
-  await expect(page.getByRole('button', { name: /continue as guest/i })).toBeVisible();
-  await page.getByRole('button', { name: /continue as guest/i }).click();
-  await expect(page.locator('#mainAppContainer')).toBeVisible();
-  await expect(selector).toHaveValue(COMBINED_CURRICULUM_SLUG);
-});
-
-test('completion and reset progress stay scoped to the selected curriculum', async ({ page }) => {
-  await openAsGuest(page);
-
-  await page.getByRole('button', { name: /start today's practice/i }).click();
-  await expect(page.locator('#curriculumPracticeSummary')).toContainText('Week 1, Day 1');
-  await page.evaluate(() => window.markCurrentCurriculumNodeCompleteForTesting());
-  await expect(page.locator('#ratingOverlay')).toBeVisible();
-  await page.getByRole('button', { name: /good/i }).click();
-  await expect(page.locator('#curriculumPracticeSummary')).toContainText('Week 1, Day 2');
-
-  await page.locator('#curriculumSelector').selectOption(COMBINED_CURRICULUM_SLUG);
-  await page.evaluate(() => window.startTodayPractice());
-  await expect(page.locator('#curriculumPracticeSummary')).toContainText('Mock Combined Curriculum Foundation');
-  await page.evaluate(() => window.markCurrentCurriculumNodeCompleteForTesting());
-  await expect(page.locator('#ratingOverlay')).toBeVisible();
-  await page.getByRole('button', { name: /good/i }).click();
-
-  let completedNodeIds = await page.evaluate(async () => {
-    const { data } = await window.supabase
-      .from('sequence_completions')
-      .select('curriculum_node_id')
-      .eq('user_id', window.currentUserId);
-    return data.map((row) => Number(row.curriculum_node_id)).sort((a, b) => a - b);
-  });
-  expect(completedNodeIds).toContain(9001);
-  expect(completedNodeIds).toContain(910011);
-
-  await page.evaluate(() => {
-    window.confirm = () => true;
-  });
-  await page.evaluate(() => window.resetCurriculumTestProgress());
-  await expect(page.locator('#curriculumPracticeSummary')).toContainText('Mock Combined Curriculum Foundation');
-
-  completedNodeIds = await page.evaluate(async () => {
-    const { data } = await window.supabase
-      .from('sequence_completions')
-      .select('curriculum_node_id')
-      .eq('user_id', window.currentUserId);
-    return data.map((row) => Number(row.curriculum_node_id)).sort((a, b) => a - b);
-  });
-  expect(completedNodeIds).toContain(9001);
-  expect(completedNodeIds).not.toContain(910011);
-
-  await page.locator('#curriculumSelector').selectOption(BOOK_CURRICULUM_SLUG);
-  await page.evaluate(() => window.startTodayPractice());
   await expect(page.locator('#curriculumPracticeSummary')).toContainText('Week 1, Day 2');
 });
 

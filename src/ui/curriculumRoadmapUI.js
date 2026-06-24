@@ -1,14 +1,8 @@
 import { supabase } from '../services/supabaseClient.js';
 import { isConfiguredAdminEmail } from '../config/appConfig.js';
-import { getSelectedCurriculumName, getSelectedCurriculumSlug } from '../config/curriculumConfig.js';
+import { ACTIVE_CURRICULUM_NAME, ACTIVE_CURRICULUM_SLUG } from '../config/curriculumConfig.js';
 
-function selectedCurriculumSlug() {
-    return getSelectedCurriculumSlug();
-}
-
-function selectedCurriculumName() {
-    return getSelectedCurriculumName();
-}
+const CURRICULUM_SLUG = ACTIVE_CURRICULUM_SLUG;
 
 // ─── Dev gate ─────────────────────────────────────────────────────────────────
 // Roadmap button is only visible to local dev or admin (god mode) users.
@@ -143,7 +137,7 @@ async function loadRoadmapData() {
                  source_course, source_reference, practice_track, intensity, primary_focus,
                  curriculum_payload, completion_requirement, level_number,
                  special_instructions`)
-        .eq('curriculum_slug', selectedCurriculumSlug())
+        .eq('curriculum_slug', CURRICULUM_SLUG)
         .eq('is_active', true)
         .eq('is_visible', true)
         .order('order_index');
@@ -508,7 +502,7 @@ function renderStationDetail(node, isIdle) {
 
     // Source label: suppress for rest/revision, use "Source: <name> — <ref>" for others
     let sourceLabel = null;
-    if (!isRestNode && !isRevision && node.source_name && node.source_name !== selectedCurriculumName()) {
+    if (!isRestNode && !isRevision && node.source_name && node.source_name !== ACTIVE_CURRICULUM_NAME) {
         sourceLabel = node.source_reference
             ? `${node.source_name} — ${node.source_reference}`
             : node.source_name;
@@ -619,7 +613,7 @@ function renderNodeCard(node, currentNodeId) {
 
     // Source: suppress for rest/revision
     let sourceText = null;
-    if (!isRest && !isRevision && node.source_name && node.source_name !== selectedCurriculumName()) {
+    if (!isRest && !isRevision && node.source_name && node.source_name !== ACTIVE_CURRICULUM_NAME) {
         sourceText = node.source_reference ? `${node.source_name} — ${node.source_reference}` : node.source_name;
     }
 
@@ -743,7 +737,7 @@ function renderRoadmap(assembledNodes, levels, summary) {
     const placed = buildLayout(assembledNodes.map(n => ({ ...n, level_label: n.progression_group_label || levelDisplayName(n.level_number) })));
 
     return `
-    <div class="cr-program-name">${esc(selectedCurriculumName())}</div>
+    <div class="cr-program-name">${esc(ACTIVE_CURRICULUM_NAME)}</div>
     ${renderSummaryStrip(summary)}
     <div class="cr-view-toggle" role="tablist" aria-label="Journey view">
       <button class="cr-view-btn cr-view-btn--active" id="cr-btn-map" role="tab" aria-selected="true">Map view</button>

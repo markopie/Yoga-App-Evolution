@@ -77,27 +77,6 @@ const programCurriculum = [
     recoveryNode(9007, 1, 7, 7, 'How to Use Yoga'),
     curriculumNode(9008, 2, 1, 8, 104, 'Light on Yoga', 'Light on Yoga', 'Course 1', 'Mock Full Practice', 'asana', { counts_for_source_completion: false }),
     recoveryNode(9009, 2, 7, 9, 'Light on Yoga'),
-    curriculumNode(910011, 1, 1, 11, 101, 'How to Use Yoga', 'How to Use Yoga', 'Week 1', 'Mock Combined Curriculum Foundation', 'asana', {
-        curriculum_slug: 'iyengar_combined_school_year_v1',
-        program_name: 'Integrated Iyengar School-Year Path',
-        progression_group_label: 'Term 1: Foundation & Orientation',
-        practice_role: 'foundation',
-        term_number: 1,
-    }),
-    curriculumNode(910012, 1, 2, 12, 102, 'Yoga The Iyengar Way', 'Yoga The Iyengar Way', 'Course 1', 'Mock Combined Curriculum Technical', 'asana', {
-        curriculum_slug: 'iyengar_combined_school_year_v1',
-        program_name: 'Integrated Iyengar School-Year Path',
-        progression_group_label: 'Term 1: Foundation & Orientation',
-        practice_role: 'technical',
-        term_number: 1,
-    }),
-    recoveryNode(910017, 1, 7, 17, 'Integrated Iyengar School-Year Path', {
-        curriculum_slug: 'iyengar_combined_school_year_v1',
-        program_name: 'Integrated Iyengar School-Year Path',
-        progression_group_label: 'Term 1: Foundation & Orientation',
-        practice_role: 'rest',
-        term_number: 1,
-    }),
 ];
 
 let session = null;

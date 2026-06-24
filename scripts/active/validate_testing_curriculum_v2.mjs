@@ -14,6 +14,8 @@ const supabase = createClient(
 );
 
 const failures = [];
+const EXCLUDED_CATEGORY_IDS = new Set([1, 55, 56]);
+const EXCLUDED_SUBCATEGORY_IDS = new Set([5, 235, 236]);
 
 function recordCheck(condition, message, details = '') {
   if (!condition) {
@@ -58,15 +60,28 @@ function lastSequenceOrder(rows, sequenceId) {
   return orders[orders.length - 1] ?? null;
 }
 
+async function fetchAll(table, select, query = (q) => q) {
+  const pageSize = 1000;
+  const rows = [];
+  for (let from = 0; ; from += pageSize) {
+    const request = query(supabase.from(table).select(select).range(from, from + pageSize - 1));
+    const { data, error } = await request;
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
 async function main() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env');
   }
 
-  const [{ data: courses, error: courseError }, { data: rows, error: rowError }] = await Promise.all([
-    supabase
-      .from('courses')
-      .select(`
+  const [courses, rows] = await Promise.all([
+    fetchAll(
+      'courses',
+      `
         *,
         course_sub_categories (
           id,
@@ -74,16 +89,15 @@ async function main() {
           category_id,
           course_categories ( id, name )
         )
-      `)
-      .order('id'),
-    supabase
-      .from('program_curriculum')
-      .select('id, sequence_id, curriculum_slug, program_name, week_number, day_number, order_index, node_type, is_active, is_visible, is_rest_day, source_name, source_course, source_reference, curriculum_payload, requires_user_selection')
-      .eq('curriculum_slug', CURRICULUM_SLUG)
-      .order('order_index'),
+      `,
+      (q) => q.order('id'),
+    ),
+    fetchAll(
+      'program_curriculum',
+      'id, sequence_id, curriculum_slug, program_name, week_number, day_number, order_index, node_type, is_active, is_visible, is_rest_day, source_name, source_course, source_reference, curriculum_payload, requires_user_selection',
+      (q) => q.eq('curriculum_slug', CURRICULUM_SLUG).order('order_index'),
+    ),
   ]);
-  if (courseError) throw courseError;
-  if (rowError) throw rowError;
 
   const classifiedCourses = (courses || []).map(classifyCourse);
   const curriculumRows = rows || [];
@@ -104,7 +118,22 @@ async function main() {
   const scheduledRefs = curriculumRows.flatMap(playableRefs);
   const compositionRefs = scheduledRefs.filter((ref) => ref.kind !== 'anchor');
   const courseIds = new Set(classifiedCourses.map((course) => Number(course.id)));
+  const courseById = new Map(classifiedCourses.map((course) => [Number(course.id), course]));
   const unresolvedCompositionReferences = compositionRefs.filter((ref) => !courseIds.has(ref.sequence_id));
+  const excludedScheduledRefs = scheduledRefs
+    .map((ref) => ({ ...ref, course: courseById.get(ref.sequence_id) }))
+    .filter((ref) =>
+      EXCLUDED_CATEGORY_IDS.has(Number(ref.course?.categoryId))
+      || EXCLUDED_SUBCATEGORY_IDS.has(Number(ref.course?.subCategoryId))
+    )
+    .map((ref) => ({
+      node_id: ref.node_id,
+      sequence_id: ref.sequence_id,
+      kind: ref.kind,
+      category_id: Number(ref.course?.categoryId),
+      sub_category_id: Number(ref.course?.subCategoryId),
+      title: ref.course?.title,
+    }));
   const nonCleanProgramNames = activeVisibleRows.filter((row) => row.program_name !== PROGRAM_NAME);
   const userSelectionRows = activeVisibleRows.filter((row) => row.requires_user_selection);
   const devLabelRows = activeVisibleRows.filter((row) =>
@@ -135,6 +164,11 @@ async function main() {
     JSON.stringify(audit.invalidCourseReferences),
   );
   recordCheck(
+    excludedScheduledRefs.length === 0,
+    'no excluded stable category/source IDs are scheduled',
+    JSON.stringify(excludedScheduledRefs),
+  );
+  recordCheck(
     unresolvedCompositionReferences.length === 0,
     'all composition references resolve to courses',
     JSON.stringify(unresolvedCompositionReferences),
@@ -159,10 +193,16 @@ async function main() {
   recordCheck(devLabelRows.length === 0, 'no user-facing testing/dev labels remain in curriculum rows', JSON.stringify(devLabelRows));
   recordCheck(audit.duplicateNaturalKeys.length === 0, 'no duplicate category/title playable courses were found', JSON.stringify(audit.duplicateNaturalKeys));
   recordCheck(
-    sequenceOrder(activeVisibleRows, 114).length === 2
-      && activeVisibleRows.some((row) => Number(row.sequence_id) === 114 && row.week_number === 1)
-      && activeVisibleRows.some((row) => Number(row.sequence_id) === 114 && row.week_number === 2),
-    'Light on Yoga Course 1 Week 1 & 2 is repeated in curriculum weeks 1 and 2',
+    [1, 2].every((week) =>
+      [1, 2, 3, 4, 5, 6].every((day) =>
+        activeVisibleRows.some((row) =>
+          Number(row.sequence_id) === 114
+          && Number(row.week_number) === week
+          && Number(row.day_number) === day
+        )
+      )
+    ),
+    'Light on Yoga Course 1 Week 1 & 2 is repeated across Days 1-6 in curriculum weeks 1 and 2',
   );
   recordCheck(
     firstSequenceOrder(activeVisibleRows, 113) > lastSequenceOrder(activeVisibleRows, 124),
@@ -198,6 +238,7 @@ async function main() {
     recovery_only_source_gap_weeks: recoveryOnlyWeeks.length,
     composed_practices: audit.composedPractices,
     invalid_course_references: audit.invalidCourseReferences.length,
+    excluded_scheduled_refs: excludedScheduledRefs.length,
     unresolved_composition_references: unresolvedCompositionReferences.length,
   }]);
 

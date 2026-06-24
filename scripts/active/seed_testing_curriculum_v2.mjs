@@ -65,10 +65,14 @@ async function main() {
     .eq('curriculum_slug', CURRICULUM_SLUG);
   if (deleteError) throw deleteError;
 
-  const { error: insertError } = await supabase
-    .from('program_curriculum')
-    .insert(rows);
-  if (insertError) throw insertError;
+  const chunkSize = 500;
+  for (let index = 0; index < rows.length; index += chunkSize) {
+    const chunk = rows.slice(index, index + chunkSize);
+    const { error: insertError } = await supabase
+      .from('program_curriculum')
+      .insert(chunk);
+    if (insertError) throw insertError;
+  }
 
   console.log(`Inserted ${rows.length} rows for ${CURRICULUM_SLUG} (${PROGRAM_NAME}).`);
   console.table([{
